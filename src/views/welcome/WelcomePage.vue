@@ -6,7 +6,7 @@ import {IonPage, IonRouterOutlet} from "@ionic/vue";
 <template>
   <ion-page>
     <ion-router-outlet></ion-router-outlet>
-    <div class="button-block-wrapper">
+    <div class="wrapper">
       <div class="button-block">
         <div>
           <ion-button class="button-list-element"
@@ -26,7 +26,8 @@ import {IonPage, IonRouterOutlet} from "@ionic/vue";
 </template>
 
 <style scoped>
-.button-block-wrapper {
+.wrapper {
+  background: black;
   width: 100%;
   height: 100%;
   position: fixed;

@@ -6,32 +6,53 @@ export default {
   data() {
     return {
       errors: [],
-      inputUsername: '',
+      accessToken: '',
       inputEmail: '',
       inputPassword: '',
-      inputMatchingPassword: '',
       responseData: ''
     }
   },
+  beforeMount() {
+      this.fastLogin()
+  },
   methods: {
-    async register() {
+    async fastLogin() {
+      const accessToken = localStorage.getItem("accessToken");
+      if (accessToken != null) {
+        this.accessToken = accessToken
+      } else if (this.$cookies.get("accessToken") != null) {
+        this.accessToken = this.$cookies.get("accessToken")
+      }
+      if (this.accessToken != null && this.accessToken != '') {
+
+        const http = axios.create({
+          baseURL: "http://localhost:8080",
+          headers: {
+            "Content-type": "application/json",
+          },
+        });
+        const config = {headers: {'X-Auth-Token': this.accessToken,}}
+        const res = await http.get("/auth", config);
+        if(res.status == 200){
+          console.log('That`s all yet:)')
+          await router.push({name: 'welcomePage'})
+        }
+      }
+    },
+    async login() {
       this.validateInput()
       if (this.errors.length === 0) {
-
-
         try {
           const http = axios.create({
-            baseURL: "http://localhost:8080/auth",
+            baseURL: "http://localhost:8080",
             headers: {
               "Content-type": "application/json",
             },
           });
 
-          const res = await http.post("/registration", {
-            username: this.inputUsername,
+          const res = await http.post("/auth", {
             email: this.inputEmail,
             password: this.inputPassword,
-            matchingPassword: this.inputMatchingPassword,
           });
 
           this.responseData = res.data;
@@ -41,7 +62,6 @@ export default {
             localStorage.setItem("refreshToken", res.data.refreshToken);
             this.$cookies.set("accessToken", res.data.accessToken);
             this.$cookies.set("refreshToken", res.data.refreshToken);
-            await router.push({name: 'loginPage'})
           }
         } catch (error) {
           console.error("Registration failed:", error);
@@ -50,15 +70,6 @@ export default {
     },
     validateInput() {
       this.errors = []
-      this.comparePasswords()
-    },
-    comparePasswords() {
-      if (this.inputUsername == '') {
-        this.errors.push({
-          color: 'danger',
-          text: 'Введите имя пользователя!'
-        })
-      }
       if (this.inputEmail == '') {
         this.errors.push({
           color: 'danger',
@@ -71,18 +82,6 @@ export default {
           text: 'Введите пароль!'
         })
       }
-      if (this.inputMatchingPassword == '') {
-        this.errors.push({
-          color: 'danger',
-          text: 'Введите пароль еще раз!'
-        })
-      }
-      if (this.inputPassword !== this.inputMatchingPassword) {
-        this.errors.push({
-          color: 'danger',
-          text: 'Пароли не совпадают'
-        })
-      }
     }
   }
 }
@@ -93,23 +92,16 @@ export default {
     <div class="wrapper">
       <ion-list>
         <ion-item>
-          <ion-input label="Имя пользователя" @input="this.inputUsername = $event.target.value"></ion-input>
-        </ion-item>
-        <ion-item>
           <ion-input label="Электронная почта" type="email" @input="this.inputEmail = $event.target.value"></ion-input>
         </ion-item>
         <ion-item>
           <ion-input label="Пароль" type="password" @input="this.inputPassword = $event.target.value"></ion-input>
         </ion-item>
-        <ion-item>
-          <ion-input label="Повторите пароль" type="password"
-                     @input="inputMatchingPassword = $event.target.value"></ion-input>
-        </ion-item>
         <div class="alerts" v-show="this.errors.length >= 1">
           <ion-chip :color="error.color" v-for="error in errors">{{ error.text }}</ion-chip>
         </div>
         <br>
-        <ion-button color="tertiary" expand="block" @click="register()">Зарегестрироваться</ion-button>
+        <ion-button color="tertiary" expand="block" @click="login()">Войти в систему</ion-button>
       </ion-list>
 
     </div>
@@ -117,7 +109,6 @@ export default {
 </template>
 
 <style scoped>
-
 .wrapper {
   background: black;
   width: 100%;

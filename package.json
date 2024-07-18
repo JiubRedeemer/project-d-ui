@@ -22,6 +22,7 @@
     "axios": "^1.7.2",
     "ionicons": "^7.0.0",
     "vue": "^3.3.0",
+    "vue-cookies": "^1.8.4",
     "vue-router": "^4.2.0"
   },
   "devDependencies": {
