@@ -109,7 +109,7 @@ export default {
           <ion-chip :color="error.color" v-for="error in errors">{{ error.text }}</ion-chip>
         </div>
         <br>
-        <ion-button color="tertiary" expand="block" @click="register()">Зарегестрироваться</ion-button>
+        <ion-button color="tertiary" expand="block" @click="register()">Регистрация</ion-button>
       </ion-list>
 
     </div>
