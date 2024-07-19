@@ -1,8 +1,12 @@
 import {createRouter, createWebHistory} from '@ionic/vue-router';
 import {RouteRecordRaw} from 'vue-router';
 import WelcomePage from "@/views/welcome/WelcomePage.vue";
-import RegisterPage from "@/views/welcome/RegisterPage.vue";
-import LoginPage from "@/views/welcome/LoginPage.vue";
+import LoginPageEmail from "@/views/welcome/login/LoginPageEmail.vue";
+import LoginPagePassword from "@/views/welcome/login/LoginPagePassword.vue";
+import RegisterPageEmail from "@/views/welcome/register/RegisterPageEmail.vue";
+import RegisterPageUsername from "@/views/welcome/register/RegisterPageUsername.vue";
+import RegisterPagePassword from "@/views/welcome/register/RegisterPagePassword.vue";
+import RegisterPageMatchingPassword from "@/views/welcome/register/RegisterPageMatchingPassword.vue";
 
 const routes: Array<RouteRecordRaw> = [
     {
@@ -15,14 +19,34 @@ const routes: Array<RouteRecordRaw> = [
         name: 'welcomePage'
     },
     {
-        path: '/welcome/register',
-        component: RegisterPage,
-        name: 'registerPage'
+        path: '/welcome/register/email',
+        component: RegisterPageEmail,
+        name: 'registerPageEmail'
     },
     {
-        path: '/welcome/login',
-        component: LoginPage,
-        name: 'loginPage'
+        path: '/welcome/register/username',
+        component: RegisterPageUsername,
+        name: 'registerPageUsername'
+    },
+    {
+        path: '/welcome/register/password',
+        component: RegisterPagePassword,
+        name: 'registerPagePassword'
+    },
+    {
+        path: '/welcome/register/matchingPassword',
+        component: RegisterPageMatchingPassword,
+        name: 'registerPageMatchingPassword'
+    },
+    {
+        path: '/welcome/login/email',
+        component: LoginPageEmail,
+        name: 'loginPageEmail'
+    },
+    {
+        path: '/welcome/login/password',
+        component: LoginPagePassword,
+        name: 'loginPagePassword'
     }
     // {
     //   path: '/tabs/',

@@ -36,7 +36,7 @@ import '@ionic/vue/css/palettes/dark.system.css';
 import './theme/variables.css';
 
 const app = createApp(App)
-    .use(IonicVue, {mode: 'ios'})
+    .use(IonicVue, {mode: 'md'})
     .use(router)
     .use(VueCookies);
 

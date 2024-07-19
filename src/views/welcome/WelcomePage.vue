@@ -1,27 +1,30 @@
 <script setup lang="ts">
+import {IonButton, IonContent, IonPage, useIonRouter} from "@ionic/vue";
 
-import {IonPage, IonRouterOutlet} from "@ionic/vue";
+const ionRouter = useIonRouter();
 </script>
 
 <template>
   <ion-page>
-    <ion-router-outlet></ion-router-outlet>
-    <div class="wrapper">
-      <div class="button-block">
-        <div>
-          <ion-button class="button-list-element"
-                      color="tertiary" href="/welcome/login">
+    <ion-content :fullscreen="true">
+      <div class="wrapper">
+        <h1 class="title">Project-D</h1>
+        <div class="button-block">
+          <ion-button shape="round"
+                      class="button-list-element"
+                      color="tertiary"
+                      @click="ionRouter.navigate('welcome/login/email', 'forward', 'push')">
             Войти
           </ion-button>
-        </div>
-        <div>
-          <ion-button class="button-list-element"
-                      color="tertiary" href="/welcome/register">
+          <ion-button shape="round"
+                      class="button-list-element"
+                      color="tertiary"
+                      @click="ionRouter.navigate('welcome/register/email', 'forward', 'push')">
             Регистрация
           </ion-button>
         </div>
       </div>
-    </div>
+    </ion-content>
   </ion-page>
 </template>
 
@@ -36,19 +39,38 @@ import {IonPage, IonRouterOutlet} from "@ionic/vue";
   display: flex;
   align-items: center;
   align-content: center;
+  flex-direction: column;
   justify-content: center;
   overflow: auto;
 }
 
+.title {
+  align-self: center;
+}
+
 .button-block {
-  margin-top: 50%;
-  width: 60%;
+  margin-top: 500px;
+  width: 70%;
 }
 
 .button-list-element {
   width: 100%;
+  height: 60%;
   min-width: fit-content;
 }
 
+@media (min-width: 768px) {
+  .wrapper {
+    flex-direction: row;
+  }
+
+  .button-block {
+    border-left: solid 1px whitesmoke;
+    padding-left: 12%;
+    width: 50%;
+    margin-top: 0;
+    margin-left: 25%;
+  }
+}
 
 </style>
