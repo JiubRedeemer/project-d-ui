@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {IonButton, IonContent, IonPage, useIonRouter} from "@ionic/vue";
+import {TEXTS} from "@/config/localisations";
 
 const ionRouter = useIonRouter();
 </script>
@@ -14,13 +15,13 @@ const ionRouter = useIonRouter();
                       class="button-list-element"
                       color="tertiary"
                       @click="ionRouter.navigate('welcome/login/email', 'forward', 'push')">
-            Войти
+            {{ TEXTS.login.rus }}
           </ion-button>
           <ion-button shape="round"
                       class="button-list-element"
                       color="tertiary"
                       @click="ionRouter.navigate('welcome/register/email', 'forward', 'push')">
-            Регистрация
+            {{ TEXTS.register.rus }}
           </ion-button>
         </div>
       </div>

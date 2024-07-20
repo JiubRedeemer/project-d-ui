@@ -4,6 +4,7 @@ import SingleValueForm from "@/views/welcome/SingleValueForm.vue";
 import axios from "axios";
 import {toastController} from "@ionic/vue";
 import {INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {TEXTS} from "@/config/localisations";
 
 
 const goNext = async () => {
@@ -52,7 +53,7 @@ const goNext = async () => {
 
   async function showInternalErrorToast() {
     const toast = await toastController.create({
-      message: 'Ошибка сервера, попробуйте снова или немного подождите',
+      message: TEXTS.internalError.rus,
       duration: 1500,
       position: 'top'
     })
@@ -63,8 +64,8 @@ const goNext = async () => {
 </script>
 
 <template>
-  <SingleValueForm headerText="Введите пароль снова" fieldType="password" placeholderText="Пароль"
-                   button-text="Зарегистрироваться"
+  <SingleValueForm :headerText="TEXTS.enterPasswordAlready.rus" fieldType="password" :placeholderText="TEXTS.password.rus"
+                   :button-text="TEXTS.register.rus"
                    storageFieldName="userMatchingPassword" :next-action="goNext"></SingleValueForm>
 </template>
 

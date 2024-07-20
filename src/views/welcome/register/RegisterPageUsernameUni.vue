@@ -2,6 +2,7 @@
 
 import SingleValueForm from "@/views/welcome/SingleValueForm.vue";
 import {useIonRouter} from "@ionic/vue";
+import {TEXTS} from "@/config/localisations";
 
 const ionRouter = useIonRouter();
 
@@ -12,7 +13,7 @@ const goNext = () => {
 </script>
 
 <template>
-<SingleValueForm headerText="Введите имя пользователя" fieldType="text" placeholderText="Имя пользователя" button-text="Далее" storageFieldName="userUsername" :next-action="goNext"></SingleValueForm>
+<SingleValueForm :headerText="TEXTS.enterUsername.rus" fieldType="text" :placeholderText="TEXTS.username.rus" :button-text="TEXTS.next.rus" storageFieldName="userUsername" :next-action="goNext"></SingleValueForm>
 </template>
 
 <style scoped>

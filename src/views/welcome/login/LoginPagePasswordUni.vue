@@ -4,6 +4,7 @@ import {ref} from "vue";
 import axios from "axios";
 import {toastController} from "@ionic/vue";
 import {INTEGRATION_ROUTES} from "@/config/integrationRoutes";  // Импортируем конфигурацию
+import {TEXTS} from "@/config/localisations";
 
 const errors = ref<{ color: string; text: string }[]>([]);
 
@@ -39,7 +40,7 @@ const auth = async () => {
 
   async function showInvalidPasswordToast() {
     const toast = await toastController.create({
-      message: 'Неверный email или пароль',
+      message: TEXTS.invalidPassword.rus,
       duration: 1500,
       position: 'top'
     })
@@ -48,7 +49,7 @@ const auth = async () => {
 
   async function showInternalErrorToast() {
     const toast = await toastController.create({
-      message: 'Ошибка сервера, попробуйте снова или немного подождите',
+      message: TEXTS.internalError.rus,
       duration: 2500,
       position: 'top'
     })
@@ -59,7 +60,7 @@ const auth = async () => {
 </script>
 
 <template>
-  <SingleValueForm headerText="Введите пароль" fieldType="password" placeholderText="Пароль" button-text="Войти"
+  <SingleValueForm :headerText="TEXTS.enterPassword.rus" fieldType="password" :placeholderText="TEXTS.password.rus" :button-text="TEXTS.login.rus"
                    storageFieldName="userPassword" :next-action="auth"></SingleValueForm>
 </template>
 

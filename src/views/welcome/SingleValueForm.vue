@@ -11,6 +11,7 @@ import {
   IonToolbar
 } from "@ionic/vue";
 import {ref} from "vue";
+import {TEXTS} from "@/config/localisations";
 
 const props = defineProps(['headerText', 'fieldType', 'placeholderText', 'buttonText', 'storageFieldName', 'nextStepLocation', 'nextAction'])
 
@@ -32,7 +33,7 @@ function validate() {
   if (!inputValue.value) {
     errors.value.push({
       color: 'danger',
-      text: 'Поле не может быть пустым'
+      text: TEXTS.fieldCantBeEmpty.rus
     });
   }
 }
