@@ -1,12 +1,12 @@
 import {createRouter, createWebHistory} from '@ionic/vue-router';
 import {RouteRecordRaw} from 'vue-router';
 import WelcomePage from "@/views/welcome/WelcomePage.vue";
-import LoginPageEmail from "@/views/welcome/login/LoginPageEmail.vue";
-import LoginPagePassword from "@/views/welcome/login/LoginPagePassword.vue";
-import RegisterPageEmail from "@/views/welcome/register/RegisterPageEmail.vue";
-import RegisterPageUsername from "@/views/welcome/register/RegisterPageUsername.vue";
-import RegisterPagePassword from "@/views/welcome/register/RegisterPagePassword.vue";
-import RegisterPageMatchingPassword from "@/views/welcome/register/RegisterPageMatchingPassword.vue";
+import LoginPageEmailUni from "@/views/welcome/login/LoginPageEmailUni.vue";
+import LoginPagePasswordUni from "@/views/welcome/login/LoginPagePasswordUni.vue";
+import RegisterPageMatchingPasswordUni from "@/views/welcome/register/RegisterPageMatchingPasswordUni.vue";
+import RegisterPagePasswordUni from "@/views/welcome/register/RegisterPagePasswordUni.vue";
+import RegisterPageUsernameUni from "@/views/welcome/register/RegisterPageUsernameUni.vue";
+import RegisterPageEmailUni from '@/views/welcome/register/RegisterPageEmailUni.vue';
 
 const routes: Array<RouteRecordRaw> = [
     {
@@ -20,60 +20,34 @@ const routes: Array<RouteRecordRaw> = [
     },
     {
         path: '/welcome/register/email',
-        component: RegisterPageEmail,
+        component: RegisterPageEmailUni,
         name: 'registerPageEmail'
     },
     {
         path: '/welcome/register/username',
-        component: RegisterPageUsername,
+        component: RegisterPageUsernameUni,
         name: 'registerPageUsername'
     },
     {
         path: '/welcome/register/password',
-        component: RegisterPagePassword,
+        component: RegisterPagePasswordUni,
         name: 'registerPagePassword'
     },
     {
         path: '/welcome/register/matchingPassword',
-        component: RegisterPageMatchingPassword,
+        component: RegisterPageMatchingPasswordUni,
         name: 'registerPageMatchingPassword'
     },
     {
         path: '/welcome/login/email',
-        component: LoginPageEmail,
+        component: LoginPageEmailUni,
         name: 'loginPageEmail'
     },
     {
         path: '/welcome/login/password',
-        component: LoginPagePassword,
+        component: LoginPagePasswordUni,
         name: 'loginPagePassword'
     }
-    // {
-    //   path: '/tabs/',
-    //   component: TabsPage,
-    //   children: [
-    //     {
-    //       path: '',
-    //       redirect: '/tabs/welcome'
-    //     },
-    //     {
-    //       path: 'tab1',
-    //       component: () => import('@/views/Tab1Page.vue')
-    //     },
-    //     {
-    //       path: 'tab2',
-    //       component: () => import('@/views/Tab2Page.vue')
-    //     },
-    //     {
-    //       path: 'tab3',
-    //       component: () => import('@/views/Tab3Page.vue')
-    //     },
-    //     {
-    //       path: 'welcome',
-    //       component: () => import('@/views/WelcomePage.vue'),
-    //     }
-    //   ]
-    // }
 ]
 
 const router = createRouter({

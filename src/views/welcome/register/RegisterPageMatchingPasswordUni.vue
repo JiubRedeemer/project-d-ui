@@ -1,0 +1,72 @@
+<script setup lang="ts">
+
+import SingleValueForm from "@/views/welcome/SingleValueForm.vue";
+import axios from "axios";
+import {toastController} from "@ionic/vue";
+
+
+const goNext = async () => {
+  try {
+    const http = axios.create({
+      baseURL: "http://localhost:8080/auth",
+      headers: {
+        "Content-type": "application/json",
+      },
+    });
+
+    const res = await http.post("/registration", {
+      username: sessionStorage.getItem("userUsername"),
+      email: sessionStorage.getItem("userEmail"),
+      password: sessionStorage.getItem("userPassword"),
+      matchingPassword: sessionStorage.getItem("matchingPassword"),
+    });
+
+    console.log(res)
+    if (res.status == 200) {
+      sessionStorage.setItem("accessToken", res.data.accessToken);
+      sessionStorage.setItem("refreshToken", res.data.refreshToken);
+      sessionStorage.removeItem("userUsername")
+      sessionStorage.removeItem("userEmail")
+      sessionStorage.removeItem("userPassword")
+      sessionStorage.removeItem("matchingPassword")
+    }
+  } catch (error) {
+    if (error.response?.status == 406) {
+      await showInvalidValidationToast(error.response?.data?.code)
+    } else {
+      await showInternalErrorToast()
+    }
+
+    console.error("Registration failed:", error);
+  }
+
+  async function showInvalidValidationToast(code: any) {
+    const toast = await toastController.create({
+      message: code,
+      duration: 1500,
+      position: 'top'
+    })
+    await toast.present();
+  }
+
+  async function showInternalErrorToast() {
+    const toast = await toastController.create({
+      message: 'Ошибка сервера, попробуйте снова или немного подождите',
+      duration: 1500,
+      position: 'top'
+    })
+    await toast.present();
+  }
+}
+
+</script>
+
+<template>
+  <SingleValueForm headerText="Введите пароль снова" fieldType="password" placeholderText="Пароль"
+                   button-text="Зарегистрироваться"
+                   storageFieldName="userMatchingPassword" :next-action="goNext"></SingleValueForm>
+</template>
+
+<style scoped>
+
+</style>

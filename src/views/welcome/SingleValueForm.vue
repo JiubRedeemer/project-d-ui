@@ -1,5 +1,4 @@
 <script setup lang="ts">
-
 import {
   IonBackButton,
   IonButton,
@@ -12,60 +11,32 @@ import {
   IonToolbar
 } from "@ionic/vue";
 import {ref} from "vue";
-import axios from "axios";
 
-const password = ref("");
+const props = defineProps(['headerText', 'fieldType', 'placeholderText', 'buttonText', 'storageFieldName', 'nextStepLocation', 'nextAction'])
+
+
+const inputValue = ref("");
 const errors = ref<{ color: string; text: string }[]>([]);
 
-async function nextStep() {
+
+function nextStep() {
   validate()
   if (errors.value.length === 0) {
-    try {
-      const http = axios.create({
-        baseURL: "http://localhost:8080",
-        headers: {
-          "Content-type": "application/json",
-        },
-      });
-
-      const res = await http.post("/auth", {
-        email: localStorage.getItem("userEmail"),
-        password: password.value,
-      });
-
-      this.responseData = res.data;
-      console.log(res)
-      if (res.status == 200) {
-        localStorage.setItem("accessToken", res.data.accessToken);
-        localStorage.setItem("refreshToken", res.data.refreshToken);
-      }
-    } catch (error) {
-      console.error("Registration failed:", error);
-      if (error.response.status === 401 || error.response.status === 403) {
-        errors.value.push({
-          color: 'danger',
-          text: 'Неверный пароль'
-        });
-      } else {
-        errors.value.push({
-          color: 'danger',
-          text: 'Ошибка'
-        });
-      }
-    }
+    sessionStorage.setItem(props.storageFieldName, inputValue.value);
+    props.nextAction()
   }
 }
 
 function validate() {
   errors.value = [];
-  if (!password.value) {
+  if (!inputValue.value) {
     errors.value.push({
       color: 'danger',
-      text: 'Введите пароль'
+      text: 'Поле не может быть пустым'
     });
   }
-
 }
+
 </script>
 
 <template>
@@ -82,17 +53,17 @@ function validate() {
     <ion-content class="ion-padding">
       <div class="wrapper">
         <div class="input-block">
-            <h1 class="input-header">Введите пароль</h1>
+          <h1 class="input-header">{{ props.headerText }}</h1>
           <div class="button-block">
-            <ion-input type="text" fill="outline" color="tertiary"
-                       placeholder="Пароль" :clear-input="true" v-model="password"></ion-input>
-            <div class="alerts" v-if="errors.length >=1">
+            <ion-input :type="props.fieldType" fill="outline" color="tertiary"
+                       :placeholder="props.placeholderText" :clear-input="true" v-model="inputValue"></ion-input>
+            <div class="alerts" v-if="errors?.length >=1">
               <ion-chip :color="error.color" v-for="(error, index) in errors" :key="index">{{ error.text }}</ion-chip>
             </div>
             <ion-button shape="round"
                         class="button-list-element"
                         color="tertiary" @click="nextStep()">
-              Войти
+              {{ props.buttonText }}
             </ion-button>
           </div>
         </div>
@@ -115,9 +86,10 @@ ion-back-button {
   left: 0;
   display: flex;
   align-items: center;
+  align-content: center;
+  flex-direction: column;
   justify-content: center;
   overflow: auto;
-  flex-direction: column;
 }
 
 .input-block {
