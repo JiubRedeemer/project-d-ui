@@ -3,18 +3,19 @@
 import SingleValueForm from "@/views/welcome/SingleValueForm.vue";
 import axios from "axios";
 import {toastController} from "@ionic/vue";
+import {INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 
 
 const goNext = async () => {
   try {
     const http = axios.create({
-      baseURL: "http://localhost:8080/auth",
+      baseURL: INTEGRATION_ROUTES.baseURL,
       headers: {
         "Content-type": "application/json",
       },
     });
 
-    const res = await http.post("/registration", {
+    const res = await http.post(INTEGRATION_ROUTES.registration, {
       username: sessionStorage.getItem("userUsername"),
       email: sessionStorage.getItem("userEmail"),
       password: sessionStorage.getItem("userPassword"),

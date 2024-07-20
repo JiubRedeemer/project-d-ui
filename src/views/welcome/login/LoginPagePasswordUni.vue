@@ -3,6 +3,7 @@ import SingleValueForm from "@/views/welcome/SingleValueForm.vue";
 import {ref} from "vue";
 import axios from "axios";
 import {toastController} from "@ionic/vue";
+import {INTEGRATION_ROUTES} from "@/config/integrationRoutes";  // Импортируем конфигурацию
 
 const errors = ref<{ color: string; text: string }[]>([]);
 
@@ -10,13 +11,13 @@ const auth = async () => {
   if (errors.value.length === 0) {
     try {
       const http = axios.create({
-        baseURL: "http://localhost:8080",
+        baseURL: INTEGRATION_ROUTES.baseURL,
         headers: {
           "Content-type": "application/json",
         },
       });
 
-      const res = await http.post("/auth", {
+      const res = await http.post(INTEGRATION_ROUTES.auth, {
         email: sessionStorage.getItem("userEmail"),
         password: sessionStorage.getItem("userPassword"),
       });
