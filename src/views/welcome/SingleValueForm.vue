@@ -51,19 +51,19 @@ function validate() {
         </ion-toolbar>
       </ion-buttons>
     </ion-header>
-    <ion-content class="ion-padding">
+    <ion-content class="ion-padding" color="dark">
       <div class="wrapper">
         <div class="input-block">
           <h1 class="input-header">{{ props.headerText }}</h1>
           <div class="button-block">
-            <ion-input :type="props.fieldType" fill="outline" color="tertiary"
+            <ion-input :type="props.fieldType" fill="outline" color="primary"
                        :placeholder="props.placeholderText" :clear-input="true" v-model="inputValue"></ion-input>
             <div class="alerts" v-if="errors?.length >=1">
               <ion-chip :color="error.color" v-for="(error, index) in errors" :key="index">{{ error.text }}</ion-chip>
             </div>
             <ion-button shape="round"
                         class="button-list-element"
-                        color="tertiary" @click="nextStep()">
+                        color="primary" @click="nextStep()">
               {{ props.buttonText }}
             </ion-button>
           </div>

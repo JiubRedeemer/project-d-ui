@@ -2,9 +2,11 @@
 import SingleValueForm from "@/views/welcome/SingleValueForm.vue";
 import {ref} from "vue";
 import axios from "axios";
-import {toastController} from "@ionic/vue";
-import {INTEGRATION_ROUTES} from "@/config/integrationRoutes";  // Импортируем конфигурацию
+import {toastController, useIonRouter} from "@ionic/vue";
+import {INTEGRATION_ROUTES} from "@/config/integrationRoutes"; // Импортируем конфигурацию
 import {TEXTS} from "@/config/localisations";
+
+const ionRouter = useIonRouter();
 
 const errors = ref<{ color: string; text: string }[]>([]);
 
@@ -25,8 +27,14 @@ const auth = async () => {
       if (res.status == 200) {
         sessionStorage.setItem("accessToken", res.data.accessToken);
         sessionStorage.setItem("refreshToken", res.data.refreshToken);
+        localStorage.setItem("accessToken", res.data.accessToken);
+        localStorage.setItem("refreshToken", res.data.refreshToken);
+
         sessionStorage.removeItem("userEmail")
         sessionStorage.removeItem("userPassword")
+
+        ionRouter.replace('/rooms');
+
       }
     } catch (error) {
       if (error.response?.status == 403) {
@@ -60,7 +68,8 @@ const auth = async () => {
 </script>
 
 <template>
-  <SingleValueForm :headerText="TEXTS.enterPassword.rus" fieldType="password" :placeholderText="TEXTS.password.rus" :button-text="TEXTS.login.rus"
+  <SingleValueForm :headerText="TEXTS.enterPassword.rus" fieldType="password" :placeholderText="TEXTS.password.rus"
+                   :button-text="TEXTS.login.rus"
                    storageFieldName="userPassword" :next-action="auth"></SingleValueForm>
 </template>
 

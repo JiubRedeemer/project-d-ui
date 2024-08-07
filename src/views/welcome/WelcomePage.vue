@@ -7,19 +7,19 @@ const ionRouter = useIonRouter();
 
 <template>
   <ion-page>
-    <ion-content :fullscreen="true">
+    <ion-content :fullscreen="true" color="dark">
       <div class="wrapper">
         <h1 class="title">Project-D</h1>
         <div class="button-block">
           <ion-button shape="round"
                       class="button-list-element"
-                      color="tertiary"
+                      color="primary"
                       @click="ionRouter.navigate('welcome/login/email', 'forward', 'push')">
             {{ TEXTS.login.rus }}
           </ion-button>
           <ion-button shape="round"
                       class="button-list-element"
-                      color="tertiary"
+                      color="primary"
                       @click="ionRouter.navigate('welcome/register/email', 'forward', 'push')">
             {{ TEXTS.register.rus }}
           </ion-button>

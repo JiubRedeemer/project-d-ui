@@ -2,7 +2,7 @@
 
 import SingleValueForm from "@/views/welcome/SingleValueForm.vue";
 import axios from "axios";
-import {toastController} from "@ionic/vue";
+import {toastController, useIonRouter} from "@ionic/vue";
 import {INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {TEXTS} from "@/config/localisations";
 
@@ -25,12 +25,17 @@ const goNext = async () => {
 
     console.log(res)
     if (res.status == 200) {
+      localStorage.setItem("accessToken", res.data.accessToken);
+      localStorage.setItem("refreshToken", res.data.refreshToken);
       sessionStorage.setItem("accessToken", res.data.accessToken);
       sessionStorage.setItem("refreshToken", res.data.refreshToken);
+
       sessionStorage.removeItem("userUsername")
       sessionStorage.removeItem("userEmail")
       sessionStorage.removeItem("userPassword")
       sessionStorage.removeItem("matchingPassword")
+
+      useIonRouter().navigate('rooms', 'forward', 'replace');
     }
   } catch (error) {
     if (error.response?.status == 406) {
@@ -64,7 +69,8 @@ const goNext = async () => {
 </script>
 
 <template>
-  <SingleValueForm :headerText="TEXTS.enterPasswordAlready.rus" fieldType="password" :placeholderText="TEXTS.password.rus"
+  <SingleValueForm :headerText="TEXTS.enterPasswordAlready.rus" fieldType="password"
+                   :placeholderText="TEXTS.password.rus"
                    :button-text="TEXTS.register.rus"
                    storageFieldName="userMatchingPassword" :next-action="goNext"></SingleValueForm>
 </template>

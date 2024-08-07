@@ -9,6 +9,7 @@ export const TEXTS = {
     next: {rus: 'Далее', eng: 'Continue'},
     register: {rus: 'Зарегистрироваться', eng: 'Sign up'},
     login: {rus: 'Войти', eng: 'Sign in'},
+    emptyRoomList: {rus: 'У вас пока нет комнат', eng: 'Empty room list'},
 
 
     invalidPassword: {rus: 'Неверный email или пароль', eng: 'Invalid email or password'},
@@ -18,3 +19,7 @@ export const TEXTS = {
     },
     fieldCantBeEmpty: {rus: 'Поле не может быть пустым', eng: 'Field can`t be empty'}
 };
+
+export const HEADERS = {
+    rooms: {rus: 'Комнаты', eng: 'Rooms'}
+}

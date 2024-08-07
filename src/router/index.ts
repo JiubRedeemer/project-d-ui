@@ -1,12 +1,13 @@
 import {createRouter, createWebHistory} from '@ionic/vue-router';
 import {RouteRecordRaw} from 'vue-router';
 import WelcomePage from "@/views/welcome/WelcomePage.vue";
-import LoginPageEmailUni from "@/views/welcome/login/LoginPageEmailUni.vue";
-import LoginPagePasswordUni from "@/views/welcome/login/LoginPagePasswordUni.vue";
-import RegisterPageMatchingPasswordUni from "@/views/welcome/register/RegisterPageMatchingPasswordUni.vue";
-import RegisterPagePasswordUni from "@/views/welcome/register/RegisterPagePasswordUni.vue";
-import RegisterPageUsernameUni from "@/views/welcome/register/RegisterPageUsernameUni.vue";
-import RegisterPageEmailUni from '@/views/welcome/register/RegisterPageEmailUni.vue';
+import LoginPageEmail from "@/views/welcome/login/LoginPageEmail.vue";
+import LoginPagePassword from "@/views/welcome/login/LoginPagePassword.vue";
+import RegisterPageMatchingPassword from "@/views/welcome/register/RegisterPageMatchingPassword.vue";
+import RegisterPagePassword from "@/views/welcome/register/RegisterPagePassword.vue";
+import RegisterPageUsername from "@/views/welcome/register/RegisterPageUsername.vue";
+import RegisterPageEmail from '@/views/welcome/register/RegisterPageEmail.vue';
+import RoomsPage from "@/views/rooms/RoomsPage.vue";
 
 const routes: Array<RouteRecordRaw> = [
     {
@@ -20,33 +21,38 @@ const routes: Array<RouteRecordRaw> = [
     },
     {
         path: '/welcome/register/email',
-        component: RegisterPageEmailUni,
+        component: RegisterPageEmail,
         name: 'registerPageEmail'
     },
     {
         path: '/welcome/register/username',
-        component: RegisterPageUsernameUni,
+        component: RegisterPageUsername,
         name: 'registerPageUsername'
     },
     {
         path: '/welcome/register/password',
-        component: RegisterPagePasswordUni,
+        component: RegisterPagePassword,
         name: 'registerPagePassword'
     },
     {
         path: '/welcome/register/matchingPassword',
-        component: RegisterPageMatchingPasswordUni,
+        component: RegisterPageMatchingPassword,
         name: 'registerPageMatchingPassword'
     },
     {
         path: '/welcome/login/email',
-        component: LoginPageEmailUni,
+        component: LoginPageEmail,
         name: 'loginPageEmail'
     },
     {
         path: '/welcome/login/password',
-        component: LoginPagePasswordUni,
+        component: LoginPagePassword,
         name: 'loginPagePassword'
+    },
+    {
+        path: '/rooms',
+        component: RoomsPage,
+        name: 'roomsPage'
     }
 ]
 
