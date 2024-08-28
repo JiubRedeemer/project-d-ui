@@ -1,13 +1,12 @@
 <script setup lang="ts">
-import {IonBadge, IonButton, IonButtons, IonHeader, IonIcon, IonTitle, IonToolbar, useIonRouter} from "@ionic/vue";
-import {notificationsOutline, personCircleOutline, searchOutline} from "ionicons/icons";
+import {IonBackButton, IonBadge, IonButton, IonButtons, IonHeader, IonIcon, IonTitle, IonToolbar} from "@ionic/vue";
+import {notificationsOutline, personCircleOutline} from "ionicons/icons";
 import {HEADERS} from "@/config/localisations";
 import {onBeforeMount, ref} from "vue";
 import axios from "axios";
 import {INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 
 const notifications = ref<{ count: number; }>({count: 0});
-const ionRouter = useIonRouter();
 
 const setupNotificationCount = async () => {
   const http = axios.create({
@@ -35,14 +34,12 @@ onBeforeMount(() => {
   <ion-header>
     <ion-buttons>
       <ion-toolbar style="--background: transparent">
-        <ion-title>{{ HEADERS.rooms.rus }}</ion-title>
+        <ion-title>{{ HEADERS.invites.rus }}</ion-title>
         <ion-buttons slot="start">
-          <ion-button size="small">
-            <ion-icon slot="icon-only" :ios="searchOutline" :md="searchOutline"></ion-icon>
-          </ion-button>
+          <ion-back-button></ion-back-button>
         </ion-buttons>
         <ion-buttons slot="end">
-          <ion-button size="small" @click="ionRouter.navigate('invites', 'forward', 'push')">
+          <ion-button size="small">>
             <ion-icon slot="icon-only" :ios="notificationsOutline" :md="notificationsOutline">
             </ion-icon>
             <ion-badge color="primary" v-show="notifications.count > 0">{{ notifications.count }}</ion-badge>

@@ -7,6 +7,10 @@ export const INTEGRATION_ROUTES = {
 
     api: "/api",
     roomInviteCount: "/invites/rooms/count",
+    invites: "/invites/rooms",
+    acceptInvite: "/invites/rooms/accept",
+    declineInvite: "/invites/rooms/decline",
 
     rooms: "/rooms"
+
 };

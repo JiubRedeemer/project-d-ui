@@ -10,6 +10,7 @@ export const TEXTS = {
     register: {rus: 'Зарегистрироваться', eng: 'Sign up'},
     login: {rus: 'Войти', eng: 'Sign in'},
     emptyRoomList: {rus: 'У вас пока нет комнат', eng: 'Empty room list'},
+    emptyInviteList: {rus: 'У вас пока нет приглашений', eng: 'Empty room list'},
 
 
     invalidPassword: {rus: 'Неверный email или пароль', eng: 'Invalid email or password'},
@@ -21,5 +22,6 @@ export const TEXTS = {
 };
 
 export const HEADERS = {
-    rooms: {rus: 'Комнаты', eng: 'Rooms'}
+    rooms: {rus: 'Комнаты', eng: 'Rooms'},
+    invites: {rus: 'Приглашения', eng: 'Invites'}
 }

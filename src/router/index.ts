@@ -8,6 +8,7 @@ import RegisterPagePassword from "@/views/welcome/register/RegisterPagePassword.
 import RegisterPageUsername from "@/views/welcome/register/RegisterPageUsername.vue";
 import RegisterPageEmail from '@/views/welcome/register/RegisterPageEmail.vue';
 import RoomsPage from "@/views/rooms/RoomsPage.vue";
+import InvitesPage from "@/views/invites/InvitesPage.vue";
 
 const routes: Array<RouteRecordRaw> = [
     {
@@ -53,6 +54,11 @@ const routes: Array<RouteRecordRaw> = [
         path: '/rooms',
         component: RoomsPage,
         name: 'roomsPage'
+    },
+    {
+        path: '/invites',
+        component: InvitesPage,
+        name: 'invitesPage'
     }
 ]
 

@@ -1,10 +1,21 @@
 <script setup lang="ts">
 
-import {IonAvatar, IonContent, IonFab, IonFabButton, IonIcon, IonItem, IonLabel, IonList, IonPage} from "@ionic/vue";
+import {
+  IonAvatar,
+  IonContent,
+  IonFab,
+  IonFabButton,
+  IonIcon,
+  IonItem,
+  IonLabel,
+  IonList,
+  IonPage,
+  onIonViewDidEnter
+} from "@ionic/vue";
 import {add, chevronForwardOutline} from "ionicons/icons";
 import {TEXTS} from "@/config/localisations";
 import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
-import {onBeforeMount, ref} from "vue";
+import {ref} from "vue";
 import axios from "axios";
 import {INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 
@@ -21,16 +32,15 @@ const setupRooms = async () => {
 
   const res = await http.get(INTEGRATION_ROUTES.api + INTEGRATION_ROUTES.rooms);
 
-  console.log(res)
   if (res.status == 200) {
     rooms.value = res.data
-    console.log(rooms)
   }
 }
-
-onBeforeMount(() => {
+onIonViewDidEnter(() => {
   setupRooms()
 })
+
+
 </script>
 
 <template>
@@ -38,7 +48,7 @@ onBeforeMount(() => {
     <RoomsHeader></RoomsHeader>
     <ion-content :fullscreen="true" color="dark">
 
-      <ion-list v-show="rooms.length != 0" class="room-list" >
+      <ion-list v-show="rooms.length != 0" class="room-list">
         <ion-item v-for="(room, index) in rooms" :key="index" :button="true" color="dark">
           <ion-avatar aria-hidden="true" slot="start">
             <img width="64" height="64"
@@ -69,7 +79,7 @@ onBeforeMount(() => {
 
 <style scoped>
 
-.room-list{
+.room-list {
   background: transparent;
 }
 

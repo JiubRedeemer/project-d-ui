@@ -1,8 +1,36 @@
 <script setup lang="ts">
 import {IonButton, IonContent, IonPage, useIonRouter} from "@ionic/vue";
 import {TEXTS} from "@/config/localisations";
+import {onBeforeMount} from "vue";
+import axios from "axios";
+import {INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 
 const ionRouter = useIonRouter();
+
+const setupRooms = async () => {
+  try {
+    const http = axios.create({
+      baseURL: INTEGRATION_ROUTES.baseURL,
+      headers: {
+        "Content-type": "application/json",
+        "Authorization": "Bearer " + localStorage.getItem("accessToken")
+      },
+    });
+
+    const res = await http.get(INTEGRATION_ROUTES.api + INTEGRATION_ROUTES.rooms);
+
+    if (res.status == 200) {
+      ionRouter.replace('/rooms');
+    }
+  } catch (error) {
+    console.debug("No auth:", error);
+  }
+}
+
+onBeforeMount(() => {
+  setupRooms()
+})
+
 </script>
 
 <template>
