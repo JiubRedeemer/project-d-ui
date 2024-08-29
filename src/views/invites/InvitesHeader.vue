@@ -39,7 +39,7 @@ onBeforeMount(() => {
           <ion-back-button></ion-back-button>
         </ion-buttons>
         <ion-buttons slot="end">
-          <ion-button size="small">>
+          <ion-button size="small">
             <ion-icon slot="icon-only" :ios="notificationsOutline" :md="notificationsOutline">
             </ion-icon>
             <ion-badge color="primary" v-show="notifications.count > 0">{{ notifications.count }}</ion-badge>

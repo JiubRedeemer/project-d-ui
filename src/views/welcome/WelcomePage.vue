@@ -42,13 +42,13 @@ onBeforeMount(() => {
           <ion-button shape="round"
                       class="button-list-element"
                       color="primary"
-                      @click="ionRouter.navigate('welcome/login/email', 'forward', 'push')">
+                      @click="ionRouter.navigate('welcome/login', 'forward', 'push')">
             {{ TEXTS.login.rus }}
           </ion-button>
           <ion-button shape="round"
                       class="button-list-element"
                       color="primary"
-                      @click="ionRouter.navigate('welcome/register/email', 'forward', 'push')">
+                      @click="ionRouter.navigate('welcome/register', 'forward', 'push')">
             {{ TEXTS.register.rus }}
           </ion-button>
         </div>
