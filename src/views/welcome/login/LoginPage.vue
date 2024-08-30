@@ -22,6 +22,8 @@ import {arrowBack} from "ionicons/icons";
 import axios from "axios";
 import {INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 
+const ionRouter = useIonRouter();
+
 // Управление шагами
 const step = ref(0);
 const stepsCount = 2; // Всего шагов
@@ -109,17 +111,18 @@ const login = async () => {
     });
 
     const res = await http.post(INTEGRATION_ROUTES.auth, {
-      email: email,
-      password: password,
+      email: email.value,
+      password: password.value,
     });
 
+    console.log(res)
     if (res.status == 200) {
       localStorage.setItem("accessToken", res.data.accessToken);
       localStorage.setItem("refreshToken", res.data.refreshToken);
       sessionStorage.setItem("accessToken", res.data.accessToken);
       sessionStorage.setItem("refreshToken", res.data.refreshToken);
 
-      useIonRouter().navigate('rooms', 'forward', 'replace');
+      ionRouter.replace('/rooms');
     }
   } catch (error) {
     if (error.response?.status == 406) {

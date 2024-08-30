@@ -125,10 +125,10 @@ const register = async () => {
     });
 
     const res = await http.post(INTEGRATION_ROUTES.registration, {
-      username: username,
-      email: email,
-      password: password,
-      matchingPassword: matchingPassword,
+      username: username.value,
+      email: email.value,
+      password: password.value,
+      matchingPassword: matchingPassword.value,
     });
 
     if (res.status == 200) {

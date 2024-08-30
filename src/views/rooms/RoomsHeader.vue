@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import {IonBadge, IonButton, IonButtons, IonHeader, IonIcon, IonTitle, IonToolbar, useIonRouter} from "@ionic/vue";
-import {notificationsOutline, personCircleOutline, searchOutline} from "ionicons/icons";
+import {notificationsOutline, searchOutline} from "ionicons/icons";
 import {HEADERS} from "@/config/localisations";
 import {onBeforeMount, ref} from "vue";
 import axios from "axios";
 import {INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import LogOutButton from "@/views/common/LogOutButton.vue";
 
 const notifications = ref<{ count: number; }>({count: 0});
 const ionRouter = useIonRouter();
@@ -47,9 +48,7 @@ onBeforeMount(() => {
             </ion-icon>
             <ion-badge color="primary" v-show="notifications.count > 0">{{ notifications.count }}</ion-badge>
           </ion-button>
-          <ion-button size="small">
-            <ion-icon slot="icon-only" :ios="personCircleOutline" :md="personCircleOutline"></ion-icon>
-          </ion-button>
+          <LogOutButton/>
         </ion-buttons>
       </ion-toolbar>
     </ion-buttons>
