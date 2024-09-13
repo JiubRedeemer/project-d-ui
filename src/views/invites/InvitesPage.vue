@@ -119,11 +119,11 @@ onIonViewDidEnter(() => {
       <ion-list v-show="invites.length !== 0" class="invite-room-list">
         <ion-item v-for="(invite, index) in invites" :key="index" :button="true" color="dark">
           <ion-buttons slot="end">
-            <ion-button size="large" @click="acceptInvite(invite.id)">
-              <ion-icon aria-hidden="true" color="success" :icon="checkmarkCircleOutline" slot="icon-only"></ion-icon>
-            </ion-button>
             <ion-button size="large" @click="declineInvite(invite.id)">
               <ion-icon aria-hidden="true" color="danger" :icon="closeCircleOutline" slot="icon-only"></ion-icon>
+            </ion-button>
+            <ion-button size="large" @click="acceptInvite(invite.id)">
+              <ion-icon aria-hidden="true" color="success" :icon="checkmarkCircleOutline" slot="icon-only"></ion-icon>
             </ion-button>
           </ion-buttons>
           <ion-label>

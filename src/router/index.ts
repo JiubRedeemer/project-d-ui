@@ -5,6 +5,7 @@ import InvitesPage from "@/views/invites/InvitesPage.vue";
 import RegisterPage from '@/views/welcome/register/RegisterPage.vue';
 import LoginPage from "@/views/welcome/login/LoginPage.vue";
 import WelcomePage from '@/views/welcome/WelcomePage.vue';
+import CreateCharacter from "@/views/createCharacter/CreateCharacter.vue";
 
 const routes: Array<RouteRecordRaw> = [
     {
@@ -35,6 +36,11 @@ const routes: Array<RouteRecordRaw> = [
         path: '/invites',
         component: InvitesPage,
         name: 'invitesPage'
+    },
+    {
+        path: '/rooms/:roomId/create-character',
+        component: CreateCharacter,
+        name: 'createCharacter'
     }
 ]
 

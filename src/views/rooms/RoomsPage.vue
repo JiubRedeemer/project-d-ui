@@ -10,7 +10,7 @@ import {
   IonLabel,
   IonList,
   IonPage,
-  onIonViewDidEnter
+  onIonViewDidEnter, useIonRouter
 } from "@ionic/vue";
 import {add, chevronForwardOutline} from "ionicons/icons";
 import {TEXTS} from "@/config/localisations";
@@ -18,6 +18,8 @@ import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
 import {ref} from "vue";
 import axios from "axios";
 import {INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+
+const ionRouter = useIonRouter();
 
 const rooms = ref<{ id: string; name: string; description: string; lastActivityDate: string } []>([]);
 
@@ -40,6 +42,10 @@ onIonViewDidEnter(() => {
   setupRooms()
 })
 
+const goToRoom = (roomId: string) => {
+  ionRouter.navigate('rooms/' + roomId + '/create-character', 'forward', 'push')
+}
+
 
 </script>
 
@@ -49,7 +55,7 @@ onIonViewDidEnter(() => {
     <ion-content :fullscreen="true" color="dark">
 
       <ion-list v-show="rooms.length != 0" class="room-list">
-        <ion-item v-for="(room, index) in rooms" :key="index" :button="true" color="dark">
+        <ion-item v-for="(room, index) in rooms" :key="index" :button="true" color="dark" @click="goToRoom(room.id)">
           <ion-avatar aria-hidden="true" slot="start">
             <img width="64" height="64"
                  src="https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png"

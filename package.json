@@ -19,8 +19,10 @@
     "@capacitor/status-bar": "6.0.0",
     "@ionic/vue": "^8.0.0",
     "@ionic/vue-router": "^8.0.0",
+    "@types/swiper": "^6.0.0",
     "axios": "^1.7.2",
     "ionicons": "^7.0.0",
+    "swiper": "^11.1.14",
     "vue": "^3.3.0",
     "vue-cookies": "^1.8.4",
     "vue-router": "^4.2.0"
