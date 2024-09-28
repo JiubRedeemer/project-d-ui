@@ -1,10 +1,19 @@
 <script setup lang="ts">
 
 import {arrowBack} from "ionicons/icons";
-import {IonBackButton, IonButton, IonButtons, IonIcon, IonHeader, IonToolbar, IonProgressBar, IonTitle} from "@ionic/vue";
+import {
+  IonBackButton,
+  IonButton,
+  IonButtons,
+  IonHeader,
+  IonIcon,
+  IonProgressBar,
+  IonTitle,
+  IonToolbar
+} from "@ionic/vue";
 import LogOutButton from "@/views/common/LogOutButton.vue";
 
-const props = defineProps(['headerText', 'stepsCount', 'step'])
+const props = defineProps(['headerText', 'step'])
 
 </script>
 
@@ -14,15 +23,15 @@ const props = defineProps(['headerText', 'stepsCount', 'step'])
       <ion-toolbar style="--background: transparent">
         <ion-title>{{ props.headerText }}</ion-title>
         <ion-buttons slot="start">
-          <ion-back-button v-show="props.step === 0"></ion-back-button>
-          <ion-button v-show="props.step !== 0" size="small">
+          <ion-back-button v-show="props.step.current == 0"></ion-back-button>
+          <ion-button v-show="props.step.current != 0" size="small" @click="props.step.current--">
             <ion-icon slot="icon-only" :icon="arrowBack"></ion-icon>
           </ion-button>
         </ion-buttons>
         <ion-buttons slot="end">
           <LogOutButton/>
         </ion-buttons>
-        <ion-progress-bar :value="props.step / props.stepsCount"></ion-progress-bar>
+        <ion-progress-bar :value="props.step.current / props.step.total"></ion-progress-bar>
       </ion-toolbar>
     </ion-buttons>
   </ion-header>
