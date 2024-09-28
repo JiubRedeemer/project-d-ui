@@ -38,10 +38,14 @@
         >
           <swiper-slide v-show="racesLoaded" v-for="(race, i) in races" :key="i" class="slide-content">
             <div class="race-container">
-              <img :src="`src/static/images/races/image_${race.code}_M.png`" class="race-large-image"
-                   alt="Изображение расы"/>
+              <div class="image-wrapper">
+                <img :src="`src/static/images/races/image_${race.code}_M.png`" class="background-large-image"
+                     alt="Изображение расы"/>
+                <div class="race-overlay">
+                  <p class="race-name">{{ race.name }}</p>
+                </div>
+              </div>
               <div class="race-description">
-                <p class="race-name">{{ race.name }}</p>
                 <p class="race-text">{{ race.description }}</p>
               </div>
             </div>
@@ -52,7 +56,7 @@
   </div>
   <ion-fab slot="fixed" vertical="bottom" horizontal="end">
     <ion-fab-button color="primary">
-      <ion-icon :icon="arrowForwardOutline" color="light" @click="onChooseRace(races[selectedIndex].code)"></ion-icon>
+      <ion-icon :icon="arrowForwardOutline" color="light" @click="onChooseRace(races[selectedIndex])"></ion-icon>
     </ion-fab-button>
   </ion-fab>
 </template>
@@ -63,18 +67,15 @@ import {onMounted, ref} from "vue";
 import {Swiper, SwiperSlide} from "swiper/vue";
 import {arrowForwardOutline, menuOutline} from "ionicons/icons";
 import axios from "axios";
-import CreateCharacterHeader from "@/views/createCharacter/CreateCharacterHeader.vue";
 import {Swiper as SwiperType} from "swiper/types";
 
-const step = ref(1);
-const stepsCount = 10;
 const races = ref([]);
 const racesPlaceholder = ref([1, 2, 3, 4, 5, 6, 7, 8, 9]);
 let racesLoaded = false;
 
 const props = defineProps({
   characterData: Object,
-  currentStep: Object
+  currentStep: Object,
 });
 
 onMounted(async () => {
@@ -113,10 +114,10 @@ function onSmallSlideClick(index: number) {
   }
 }
 
-function onChooseRace(code: string) {
+function onChooseRace(race: object) {
   if (props.characterData) {
     // eslint-disable-next-line vue/no-mutating-props
-    props.characterData.race = code;
+    props.characterData.race = race;
   }
   if (props.currentStep) {
     // eslint-disable-next-line vue/no-mutating-props
@@ -159,13 +160,6 @@ function onChooseRace(code: string) {
   transform: scale(1.2);
 }
 
-.race-large-image {
-  width: 100%;
-  height: auto;
-  object-fit: cover;
-  border-radius: 7%;
-}
-
 .race-container {
   display: flex;
   flex-direction: column;
@@ -173,15 +167,46 @@ function onChooseRace(code: string) {
   justify-content: center;
 }
 
+.image-wrapper {
+  position: relative; /* Positioning context for the overlay */
+  width: 100%; /* Ensure it takes the full width of the container */
+}
+
+.background-large-image {
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+  border-radius: 7%;
+}
+
+.race-overlay {
+  position: absolute; /* Position absolutely within the image wrapper */
+  bottom: 0; /* Align to the bottom */
+  left: 0;
+  right: 0;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.6) 100%); /* Gradient overlay */
+  color: white; /* Text color */
+  text-align: center; /* Center text */
+  padding: 10px; /* Padding for the text */
+  border-radius: 0 0 7% 7%; /* Match border radius of the image */
+}
+
+
+.race-name {
+  font-size: 1.5rem; /* Increase font size for visibility */
+  font-weight: bold;
+  margin: 0; /* Reset margin */
+}
+
 .race-description {
   text-align: center;
   margin-top: 10px;
 }
 
-.race-name {
-  font-size: 1.2rem;
-  font-weight: bold;
+.race-text {
+  font-size: 1rem;
   color: white;
+  margin-top: 5px;
 }
 
 .race-text {

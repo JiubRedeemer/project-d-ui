@@ -3,7 +3,7 @@
   <div class="wrapper">
     <div class="image-wrapper">
 
-      <img :src="`src/static/images/backgrounds/image_SELECT_NAME.png`" class="background-large-image"
+      <img :src="`src/static/images/backgrounds/image_SELECT_AGE.png`" class="background-large-image"
            alt="Фоновое изображение"/>
       <div class="background-large-image-overlay">
       </div>
@@ -12,19 +12,16 @@
         type="text"
         fill="outline"
         color="primary"
-        :placeholder="TEXTS.whatIsYourName.rus"
+        :placeholder="TEXTS.whatIsYourAge.rus"
         :clear-input="true"
-        v-model="inputName"
+        v-model="inputAge"
         class="input-block"
     ></ion-input>
-    <p class="support-text">
-      {{ TEXTS.nameSupportText.rus }}
-    </p>
   </div>
 
   <ion-fab slot="fixed" vertical="bottom" horizontal="end">
     <ion-fab-button color="primary">
-      <ion-icon :icon="arrowForwardOutline" color="light" @click="onChooseName(inputName)"></ion-icon>
+      <ion-icon :icon="arrowForwardOutline" color="light" @click="onChooseAge(inputAge)"></ion-icon>
     </ion-fab-button>
   </ion-fab>
 </template>
@@ -35,17 +32,17 @@ import {arrowForwardOutline} from "ionicons/icons";
 import {TEXTS} from "@/config/localisations";
 import {ref} from "vue";
 
-const inputName = ref("");
+const inputAge = ref("");
 
 const props = defineProps({
   characterData: Object,
   currentStep: Object
 });
 
-function onChooseName(name: string) {
+function onChooseAge(age: number) {
   if (props.characterData) {
     // eslint-disable-next-line vue/no-mutating-props
-    props.characterData.name = name;
+    props.characterData.age = age;
   }
   if (props.currentStep) {
     // eslint-disable-next-line vue/no-mutating-props
@@ -83,7 +80,4 @@ function onChooseName(name: string) {
   margin-top: 5%;
 }
 
-.support-text {
-  text-align: center;
-}
 </style>
