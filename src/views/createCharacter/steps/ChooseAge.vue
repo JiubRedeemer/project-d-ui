@@ -9,30 +9,34 @@
       </div>
     </div>
     <ion-input
-        type="text"
+        type="number"
         fill="outline"
         color="primary"
         :placeholder="TEXTS.whatIsYourAge.rus"
         :clear-input="true"
         v-model="inputAge"
         class="input-block"
-    ></ion-input>
+    >
+      <ion-text slot="end">
+        {{ TEXTS.ageEI.rus }}
+      </ion-text>
+    </ion-input>
   </div>
 
-  <ion-fab slot="fixed" vertical="bottom" horizontal="end">
+  <ion-fab slot="fixed" vertical="bottom" horizontal="end" @click="onChooseAge(inputAge)">
     <ion-fab-button color="primary">
-      <ion-icon :icon="arrowForwardOutline" color="light" @click="onChooseAge(inputAge)"></ion-icon>
+      <ion-icon :icon="arrowForwardOutline" color="light"></ion-icon>
     </ion-fab-button>
   </ion-fab>
 </template>
 
 <script setup lang="ts">
-import {IonFab, IonFabButton, IonIcon, IonInput} from "@ionic/vue";
+import {IonFab, IonFabButton, IonIcon, IonInput, IonText} from "@ionic/vue";
 import {arrowForwardOutline} from "ionicons/icons";
 import {TEXTS} from "@/config/localisations";
 import {ref} from "vue";
 
-const inputAge = ref("");
+const inputAge = ref();
 
 const props = defineProps({
   characterData: Object,
@@ -40,13 +44,17 @@ const props = defineProps({
 });
 
 function onChooseAge(age: number) {
-  if (props.characterData) {
-    // eslint-disable-next-line vue/no-mutating-props
-    props.characterData.age = age;
-  }
-  if (props.currentStep) {
-    // eslint-disable-next-line vue/no-mutating-props
-    props.currentStep.current = props.currentStep.current + 1
+  if (age != null && age > 0) {
+    if (props.characterData) {
+      // eslint-disable-next-line vue/no-mutating-props
+      props.characterData.age = age;
+    }
+    if (props.currentStep) {
+      // eslint-disable-next-line vue/no-mutating-props
+      props.currentStep.current = props.currentStep.current + 1
+    }
+  } else {
+    console.log("Field can't be empty")
   }
 }
 </script>

@@ -3,50 +3,56 @@
   <div class="wrapper">
     <div class="image-wrapper">
 
-      <img :src="`src/static/images/backgrounds/image_SELECT_WEIGHT.png`" class="background-large-image"
+      <img :src="`src/static/images/backgrounds/image_SELECT_RELATIONSHIPS.png`" class="background-large-image"
            alt="Фоновое изображение"/>
       <div class="background-large-image-overlay">
       </div>
     </div>
-    <ion-input
+    <ion-textarea
+        shape="round"
         type="text"
         fill="outline"
         color="primary"
-        :placeholder="TEXTS.whatIsYourWeight.rus"
+        :placeholder="TEXTS.whatIsYourRelationships.rus"
         :clear-input="true"
-        v-model="inputWeight"
+        v-model="inputRelationships"
         class="input-block"
-    ></ion-input>
+        rows="15"
+    ></ion-textarea>
   </div>
 
-  <ion-fab slot="fixed" vertical="bottom" horizontal="end">
+  <ion-fab slot="fixed" vertical="bottom" horizontal="end" @click="onChooseRelationships(inputRelationships)">
     <ion-fab-button color="primary">
-      <ion-icon :icon="arrowForwardOutline" color="light" @click="onChooseWeight(inputWeight)"></ion-icon>
+      <ion-icon :icon="arrowForwardOutline" color="light"></ion-icon>
     </ion-fab-button>
   </ion-fab>
 </template>
 
 <script setup lang="ts">
-import {IonFab, IonFabButton, IonIcon, IonInput} from "@ionic/vue";
+import {IonFab, IonFabButton, IonIcon, IonTextarea} from "@ionic/vue";
 import {arrowForwardOutline} from "ionicons/icons";
 import {TEXTS} from "@/config/localisations";
 import {ref} from "vue";
 
-const inputWeight = ref("");
+const inputRelationships = ref("");
 
 const props = defineProps({
   characterData: Object,
   currentStep: Object
 });
 
-function onChooseWeight(weight: number) {
-  if (props.characterData) {
-    // eslint-disable-next-line vue/no-mutating-props
-    props.characterData.weight = weight;
-  }
-  if (props.currentStep) {
-    // eslint-disable-next-line vue/no-mutating-props
-    props.currentStep.current = props.currentStep.current + 1
+function onChooseRelationships(relationships: string) {
+  if (relationships != null && relationships.length > 0) {
+    if (props.characterData) {
+      // eslint-disable-next-line vue/no-mutating-props
+      props.characterData.relationships = relationships;
+    }
+    if (props.currentStep) {
+      // eslint-disable-next-line vue/no-mutating-props
+      props.currentStep.current = props.currentStep.current + 1
+    }
+  } else {
+    console.log("Field can't be empty")
   }
 }
 </script>
@@ -59,7 +65,7 @@ function onChooseWeight(weight: number) {
 
 .background-large-image {
   width: 100%;
-  height: auto;
+  height: 100%;
   object-fit: cover;
   border-radius: 7%;
 }
@@ -79,5 +85,6 @@ function onChooseWeight(weight: number) {
 .input-block {
   margin-top: 5%;
 }
+
 
 </style>

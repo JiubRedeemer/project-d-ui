@@ -3,53 +3,56 @@
   <div class="wrapper">
     <div class="image-wrapper">
 
-      <img :src="`src/static/images/backgrounds/image_SELECT_NAME.png`" class="background-large-image"
+      <img :src="`src/static/images/backgrounds/image_SELECT_ATTACHMENTS.png`" class="background-large-image"
            alt="Фоновое изображение"/>
       <div class="background-large-image-overlay">
       </div>
     </div>
-    <ion-input
+    <ion-textarea
+        shape="round"
         type="text"
         fill="outline"
         color="primary"
-        :placeholder="TEXTS.whatIsYourName.rus"
+        :placeholder="TEXTS.whatIsYourAttachments.rus"
         :clear-input="true"
-        v-model="inputName"
+        v-model="inputAttachments"
         class="input-block"
-    ></ion-input>
-    <p class="support-text">
-      {{ TEXTS.nameSupportText.rus }}
-    </p>
+        rows="15"
+    ></ion-textarea>
   </div>
 
-  <ion-fab slot="fixed" vertical="bottom" horizontal="end">
+  <ion-fab slot="fixed" vertical="bottom" horizontal="end" @click="onChooseAttachments(inputAttachments)">
     <ion-fab-button color="primary">
-      <ion-icon :icon="arrowForwardOutline" color="light" @click="onChooseName(inputName)"></ion-icon>
+      <ion-icon :icon="arrowForwardOutline" color="light"></ion-icon>
     </ion-fab-button>
   </ion-fab>
 </template>
 
 <script setup lang="ts">
-import {IonFab, IonFabButton, IonIcon, IonInput} from "@ionic/vue";
+import {IonFab, IonFabButton, IonIcon, IonTextarea} from "@ionic/vue";
 import {arrowForwardOutline} from "ionicons/icons";
 import {TEXTS} from "@/config/localisations";
 import {ref} from "vue";
 
-const inputName = ref("");
+const inputAttachments = ref("");
 
 const props = defineProps({
   characterData: Object,
   currentStep: Object
 });
 
-function onChooseName(name: string) {
-  if (props.characterData) {
-    // eslint-disable-next-line vue/no-mutating-props
-    props.characterData.name = name;
-  }
-  if (props.currentStep) {
-    // eslint-disable-next-line vue/no-mutating-props
-    props.currentStep.current = props.currentStep.current + 1
+function onChooseAttachments(attachments: string) {
+  if (attachments != null && attachments.length > 0) {
+    if (props.characterData) {
+      // eslint-disable-next-line vue/no-mutating-props
+      props.characterData.attachments = attachments;
+    }
+    if (props.currentStep) {
+      // eslint-disable-next-line vue/no-mutating-props
+      props.currentStep.current = props.currentStep.current + 1
+    }
+  } else {
+    console.log("Field can't be empty")
   }
 }
 </script>
@@ -62,7 +65,7 @@ function onChooseName(name: string) {
 
 .background-large-image {
   width: 100%;
-  height: auto;
+  height: 100%;
   object-fit: cover;
   border-radius: 7%;
 }
@@ -83,7 +86,5 @@ function onChooseName(name: string) {
   margin-top: 5%;
 }
 
-.support-text {
-  text-align: center;
-}
+
 </style>

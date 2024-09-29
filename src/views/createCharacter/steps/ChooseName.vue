@@ -3,7 +3,7 @@
   <div class="wrapper">
     <div class="image-wrapper">
 
-      <img :src="`src/static/images/backgrounds/image_SELECT_HEIGHT.png`" class="background-large-image"
+      <img :src="`src/static/images/backgrounds/image_SELECT_NAME.png`" class="background-large-image"
            alt="Фоновое изображение"/>
       <div class="background-large-image-overlay">
       </div>
@@ -12,16 +12,19 @@
         type="text"
         fill="outline"
         color="primary"
-        :placeholder="TEXTS.whatIsYourHeight.rus"
+        :placeholder="TEXTS.whatIsYourName.rus"
         :clear-input="true"
-        v-model="inputHeight"
+        v-model="inputName"
         class="input-block"
     ></ion-input>
+    <p class="support-text">
+      {{ TEXTS.nameSupportText.rus }}
+    </p>
   </div>
 
-  <ion-fab slot="fixed" vertical="bottom" horizontal="end">
+  <ion-fab slot="fixed" vertical="bottom" horizontal="end" @click="onChooseName(inputName)">
     <ion-fab-button color="primary">
-      <ion-icon :icon="arrowForwardOutline" color="light" @click="onChooseHeight(inputHeight)"></ion-icon>
+      <ion-icon :icon="arrowForwardOutline" color="light"></ion-icon>
     </ion-fab-button>
   </ion-fab>
 </template>
@@ -32,21 +35,25 @@ import {arrowForwardOutline} from "ionicons/icons";
 import {TEXTS} from "@/config/localisations";
 import {ref} from "vue";
 
-const inputHeight = ref("");
+const inputName = ref("");
 
 const props = defineProps({
   characterData: Object,
   currentStep: Object
 });
 
-function onChooseHeight(height: number) {
-  if (props.characterData) {
-    // eslint-disable-next-line vue/no-mutating-props
-    props.characterData.height = height;
-  }
-  if (props.currentStep) {
-    // eslint-disable-next-line vue/no-mutating-props
-    props.currentStep.current = props.currentStep.current + 1
+function onChooseName(name: string) {
+  if (name != null && name.length > 0) {
+    if (props.characterData) {
+      // eslint-disable-next-line vue/no-mutating-props
+      props.characterData.name = name;
+    }
+    if (props.currentStep) {
+      // eslint-disable-next-line vue/no-mutating-props
+      props.currentStep.current = props.currentStep.current + 1
+    }
+  } else {
+    console.log("Field can't be empty")
   }
 }
 </script>
@@ -80,4 +87,7 @@ function onChooseHeight(height: number) {
   margin-top: 5%;
 }
 
+.support-text {
+  text-align: center;
+}
 </style>

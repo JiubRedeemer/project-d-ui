@@ -54,9 +54,9 @@
       </div>
     </div>
   </div>
-  <ion-fab slot="fixed" vertical="bottom" horizontal="end">
+  <ion-fab slot="fixed" vertical="bottom" horizontal="end" @click="onChooseRace(races[selectedIndex])">
     <ion-fab-button color="primary">
-      <ion-icon :icon="arrowForwardOutline" color="light" @click="onChooseRace(races[selectedIndex])"></ion-icon>
+      <ion-icon :icon="arrowForwardOutline" color="light"></ion-icon>
     </ion-fab-button>
   </ion-fab>
 </template>
