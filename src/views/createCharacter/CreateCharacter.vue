@@ -15,6 +15,7 @@ import ChooseWeaknesses from "@/views/createCharacter/steps/ChooseWeaknesses.vue
 import ChooseRelationships from "@/views/createCharacter/steps/ChooseRelationships.vue";
 import ChooseIdeals from "@/views/createCharacter/steps/ChooseIdeals.vue";
 import ChooseClass from "@/views/createCharacter/steps/ChooseClass.vue";
+import ChooseAbilities from "@/views/createCharacter/steps/ChooseAbilities.vue";
 
 const step = ref({
   current: 0,
@@ -96,10 +97,9 @@ const characterData = ref({
       <div v-show="step.current == 11">
         <ChooseClass :characterData="characterData" :currentStep="step"/>
       </div>
-
-      <!-- Остальные шаги -->
-
-
+      <div v-show="step.current == 12">
+        <ChooseAbilities :characterData="characterData" :currentStep="step"/>
+      </div>
     </ion-content>
   </ion-page>
 </template>

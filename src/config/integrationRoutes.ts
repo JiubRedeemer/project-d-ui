@@ -13,5 +13,6 @@ export const INTEGRATION_ROUTES = {
 
     rooms: "/rooms",
     roomClasses: "/classes",
-    roomRaces: "/races"
+    roomRaces: "/races",
+    roomAbilities: "/abilities"
 };

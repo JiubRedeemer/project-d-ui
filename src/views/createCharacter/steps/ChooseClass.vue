@@ -38,6 +38,12 @@
                   <p class="class-name">{{ clazz.name }}</p>
                 </div>
               </div>
+              <div class="abilities-container">
+                <ion-chip v-for="(ability, i) in clazz.stats.savingThrowsAbilities">
+                  <ion-icon :icon="arrowUp" color="success"></ion-icon>
+                  <ion-label>{{ ability.name }}</ion-label>
+                </ion-chip>
+              </div>
               <div class="class-description">
                 <p class="class-text">{{ clazz.description }}</p>
               </div>
@@ -55,14 +61,15 @@
 </template>
 
 <script setup lang="ts">
-import {IonButton, IonFab, IonFabButton, IonIcon, IonicSlides} from "@ionic/vue";
+import {IonButton, IonChip, IonFab, IonFabButton, IonIcon, IonicSlides, IonLabel} from "@ionic/vue";
 import {onMounted, ref} from "vue";
 import {Swiper, SwiperSlide} from "swiper/vue";
-import {arrowForwardOutline, menuOutline} from "ionicons/icons";
+import {arrowForwardOutline, arrowUp, menuOutline} from "ionicons/icons";
 import axios from "axios";
 import {Swiper as SwiperType} from "swiper/types";
 import {useRoute} from "vue-router";
 import {INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+
 const route = useRoute()
 
 const classes = ref([]);
@@ -216,5 +223,11 @@ swiper-slide {
   justify-content: center;
   width: 10vw;
   height: auto;
+}
+
+.abilities-container {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px; /* Между элементами можно добавить отступ */
 }
 </style>
