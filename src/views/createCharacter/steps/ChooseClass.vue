@@ -43,6 +43,10 @@
                   <ion-icon :icon="arrowUp" color="success"></ion-icon>
                   <ion-label>{{ ability.name }}</ion-label>
                 </ion-chip>
+                <ion-chip>
+                  <ion-icon :icon="heart" color="danger"></ion-icon>
+                  <ion-label>{{ clazz.stats.hpDice.substring(0, clazz.stats.hpDice.length-4) }}</ion-label>
+                </ion-chip>
               </div>
               <div class="class-description">
                 <p class="class-text">{{ clazz.description }}</p>
@@ -64,7 +68,7 @@
 import {IonButton, IonChip, IonFab, IonFabButton, IonIcon, IonicSlides, IonLabel} from "@ionic/vue";
 import {onMounted, ref} from "vue";
 import {Swiper, SwiperSlide} from "swiper/vue";
-import {arrowForwardOutline, arrowUp, menuOutline} from "ionicons/icons";
+import {arrowForwardOutline, arrowUp, heart, menuOutline} from "ionicons/icons";
 import axios from "axios";
 import {Swiper as SwiperType} from "swiper/types";
 import {useRoute} from "vue-router";

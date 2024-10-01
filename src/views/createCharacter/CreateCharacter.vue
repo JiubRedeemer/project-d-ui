@@ -31,7 +31,7 @@ const step = ref({
     HEADERS.flaws.rus,
     HEADERS.relationships.rus,
     HEADERS.class.rus,
-    HEADERS.characteristics.rus]
+    HEADERS.abilities.rus]
 });
 
 const characterData = ref({
@@ -47,7 +47,7 @@ const characterData = ref({
   weaknesses: '',
   relationships: '',
   class: {},
-  characteristics: {},
+  abilities: [{}],
 
   // Добавляем сюда другие свойства, которые будут собираться на разных шагах
 });
