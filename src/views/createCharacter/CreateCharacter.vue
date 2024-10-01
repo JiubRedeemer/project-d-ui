@@ -14,6 +14,7 @@ import ChooseAttachments from "@/views/createCharacter/steps/ChooseAttachments.v
 import ChooseWeaknesses from "@/views/createCharacter/steps/ChooseWeaknesses.vue";
 import ChooseRelationships from "@/views/createCharacter/steps/ChooseRelationships.vue";
 import ChooseIdeals from "@/views/createCharacter/steps/ChooseIdeals.vue";
+import ChooseClass from "@/views/createCharacter/steps/ChooseClass.vue";
 
 const step = ref({
   current: 0,
@@ -29,8 +30,7 @@ const step = ref({
     HEADERS.flaws.rus,
     HEADERS.relationships.rus,
     HEADERS.class.rus,
-    HEADERS.characteristics.rus],
-  total: 10
+    HEADERS.characteristics.rus]
 });
 
 const characterData = ref({
@@ -45,7 +45,7 @@ const characterData = ref({
   attachments: '',
   weaknesses: '',
   relationships: '',
-  class: '',
+  class: {},
   characteristics: {},
 
   // Добавляем сюда другие свойства, которые будут собираться на разных шагах
@@ -92,6 +92,9 @@ const characterData = ref({
       </div>
       <div v-show="step.current == 10">
         <ChooseRelationships :characterData="characterData" :currentStep="step"/>
+      </div>
+      <div v-show="step.current == 11">
+        <ChooseClass :characterData="characterData" :currentStep="step"/>
       </div>
 
       <!-- Остальные шаги -->

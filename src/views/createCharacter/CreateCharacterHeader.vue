@@ -31,7 +31,7 @@ const props = defineProps(['headerText', 'step'])
         <ion-buttons slot="end">
           <LogOutButton/>
         </ion-buttons>
-        <ion-progress-bar :value="props.step.current / props.step.total"></ion-progress-bar>
+        <ion-progress-bar :value="props.step.current / props.step.names.length"></ion-progress-bar>
       </ion-toolbar>
     </ion-buttons>
   </ion-header>

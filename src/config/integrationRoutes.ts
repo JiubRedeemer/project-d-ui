@@ -11,6 +11,7 @@ export const INTEGRATION_ROUTES = {
     acceptInvite: "/invites/rooms/accept",
     declineInvite: "/invites/rooms/decline",
 
-    rooms: "/rooms"
-
+    rooms: "/rooms",
+    roomClasses: "/classes",
+    roomRaces: "/races"
 };
