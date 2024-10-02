@@ -104,7 +104,7 @@ onMounted(async () => {
 // Функция для вычисления значений способностей
 function calculateAbilityValues() {
   const raceModifiers = getAbilityRaceModifiers();
-
+  totalCoins.value = MAX_COINS_VALUE;
   abilities.value = abilities.value.map(ability => {
     const modifier = raceModifiers.find(mod => mod.code === ability.code || mod.code === "ALL");
     const modifierValue = modifier ? modifier.value : 0; // Если модификатор не найден, 0

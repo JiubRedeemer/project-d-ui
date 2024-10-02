@@ -16,6 +16,7 @@ import ChooseRelationships from "@/views/createCharacter/steps/ChooseRelationshi
 import ChooseIdeals from "@/views/createCharacter/steps/ChooseIdeals.vue";
 import ChooseClass from "@/views/createCharacter/steps/ChooseClass.vue";
 import ChooseAbilities from "@/views/createCharacter/steps/ChooseAbilities.vue";
+import ChooseSkills from "@/views/createCharacter/steps/ChooseSkills.vue";
 
 const step = ref({
   current: 0,
@@ -31,7 +32,8 @@ const step = ref({
     HEADERS.flaws.rus,
     HEADERS.relationships.rus,
     HEADERS.class.rus,
-    HEADERS.abilities.rus]
+    HEADERS.abilities.rus,
+    HEADERS.skills.rus]
 });
 
 const characterData = ref({
@@ -48,6 +50,7 @@ const characterData = ref({
   relationships: '',
   class: {},
   abilities: [{}],
+  skills: [{}],
 
   // Добавляем сюда другие свойства, которые будут собираться на разных шагах
 });
@@ -99,6 +102,9 @@ const characterData = ref({
       </div>
       <div v-show="step.current == 12">
         <ChooseAbilities :characterData="characterData" :currentStep="step"/>
+      </div>
+      <div v-show="step.current == 13">
+        <ChooseSkills :characterData="characterData" :currentStep="step"/>
       </div>
     </ion-content>
   </ion-page>

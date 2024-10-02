@@ -74,5 +74,6 @@ export const HEADERS = {
     flaws: {rus: 'Слабости', eng: 'Flaws'},
     relationships: {rus: 'Отношения', eng: 'Relationships'},
     class: {rus: 'Класс', eng: 'Class'},
-    abilities: {rus: 'Характеристики', eng: 'Characteristics'}
+    abilities: {rus: 'Характеристики', eng: 'Characteristics'},
+    skills: {rus: 'Навыки', eng: 'Skills'}
 }
