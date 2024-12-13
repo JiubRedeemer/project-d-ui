@@ -27,6 +27,9 @@ const props = defineProps(['headerText', 'step'])
           <ion-button v-show="props.step.current != 0" size="small" @click="props.step.current--">
             <ion-icon slot="icon-only" :icon="arrowBack"></ion-icon>
           </ion-button>
+          <ion-button v-show="props.step.current == 0" size="small">
+            <ion-back-button></ion-back-button>
+          </ion-button>
         </ion-buttons>
         <ion-buttons slot="end">
           <LogOutButton/>
