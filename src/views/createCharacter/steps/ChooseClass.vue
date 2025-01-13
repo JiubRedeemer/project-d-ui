@@ -39,7 +39,7 @@
                 </div>
               </div>
               <div class="abilities-container">
-                <ion-chip v-for="(ability, i) in clazz.stats.savingThrowsAbilities">
+                <ion-chip v-for="(ability, i) in clazz.stats.savingThrowsAbilities" :key="i">
                   <ion-icon :icon="arrowUp" color="success"></ion-icon>
                   <ion-label>{{ ability.name }}</ion-label>
                 </ion-chip>
@@ -76,7 +76,7 @@ import {INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 
 const route = useRoute()
 
-const classes = ref([]);
+const classes = ref<ClassResponse[]>([]);
 
 const props = defineProps({
   characterData: Object,

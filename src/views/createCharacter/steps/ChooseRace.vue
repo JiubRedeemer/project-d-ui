@@ -73,7 +73,7 @@ import {INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 
 const route = useRoute()
 
-const races = ref([]);
+const races = ref<RaceResponse[]>([]);
 const racesPlaceholder = ref([1, 2, 3, 4, 5, 6, 7, 8, 9]);
 let racesLoaded = false;
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {IonContent, IonPage} from "@ionic/vue";
 import ChooseRace from "./steps/ChooseRace.vue";
-import {ref} from "vue";
+import {ref, watch} from "vue";
 import CreateCharacterHeader from "@/views/createCharacter/CreateCharacterHeader.vue";
 import ChooseName from "@/views/createCharacter/steps/ChooseName.vue";
 import {HEADERS} from "@/config/localisations";
@@ -17,10 +17,17 @@ import ChooseIdeals from "@/views/createCharacter/steps/ChooseIdeals.vue";
 import ChooseClass from "@/views/createCharacter/steps/ChooseClass.vue";
 import ChooseAbilities from "@/views/createCharacter/steps/ChooseAbilities.vue";
 import ChooseSkills from "@/views/createCharacter/steps/ChooseSkills.vue";
+import {useRoute} from "vue-router";
+import axios from "axios";
+import {INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 
+const route = useRoute();
+
+// Константы для шагов
 const step = ref({
   current: 0,
-  names: [HEADERS.race.rus,
+  names: [
+    HEADERS.race.rus,
     HEADERS.name.rus,
     HEADERS.age.rus,
     HEADERS.height.rus,
@@ -33,29 +40,87 @@ const step = ref({
     HEADERS.relationships.rus,
     HEADERS.class.rus,
     HEADERS.abilities.rus,
-    HEADERS.skills.rus]
+    HEADERS.skills.rus
+  ]
 });
 
+// Данные персонажа
 const characterData = ref({
   race: {},
-  name: '',
+  name: "",
   age: null,
   height: null,
   weight: null,
-  history: '',
-  personality: '',
-  ideals: '',
-  attachments: '',
-  weaknesses: '',
-  relationships: '',
-  class: {},
+  history: "",
+  personality: "",
+  ideals: "",
+  attachments: "",
+  weaknesses: "",
+  relationships: "",
+  clazz: {},
   abilities: [{}],
   skills: [{}],
-
-  // Добавляем сюда другие свойства, которые будут собираться на разных шагах
 });
 
+const FINAL_STEP = 14;
+watch(
+    () => step.value.current,
+    async (newStep) => { // Добавляем async
+      if (newStep === FINAL_STEP) {
+        const convertedData = convertCharacterData();
+        console.log("Converted Character Data:", convertedData);
 
+        try {
+          const response = await axios.put(
+              INTEGRATION_ROUTES.baseURL +
+              INTEGRATION_ROUTES.api +
+              INTEGRATION_ROUTES.rooms +
+              '/' + route.params.roomId +
+              INTEGRATION_ROUTES.characters,
+              // Данные запроса
+              convertedData,
+              // Конфигурация запроса
+              {
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: "Bearer " + localStorage.getItem("accessToken"),
+                },
+              }
+          );
+          console.log("Response:", response.data);
+        } catch (error) {
+          console.error("Ошибка при сохранении персонажа:", error);
+        }
+      }
+    }
+);
+
+
+// Конвертация данных персонажа
+function convertCharacterData() {
+  return {
+    roomId: route.params.roomId, // Или заменить на динамическое значение
+    name: characterData.value.name,
+    clazzCode: characterData.value.clazz?.code || "",
+    raceCode: characterData.value.race?.code || "",
+    abilities: characterData.value.abilities.map((ability: any) => ({
+      code: ability.code,
+      value: ability.value,
+    })),
+    skills: characterData.value.skills.map((skillCode: any) => ({
+      code: skillCode,
+    })),
+    age: parseInt(characterData.value.age, 10),
+    height: parseInt(characterData.value.height, 10),
+    weight: parseInt(characterData.value.weight, 10),
+    attachments: characterData.value.attachments,
+    history: characterData.value.history,
+    ideals: characterData.value.ideals,
+    personality: characterData.value.personality,
+    relationships: characterData.value.relationships,
+    weaknesses: characterData.value.weaknesses,
+  };
+}
 </script>
 
 <template>
@@ -114,5 +179,4 @@ const characterData = ref({
 .header-block {
   padding-bottom: 3%;
 }
-
 </style>

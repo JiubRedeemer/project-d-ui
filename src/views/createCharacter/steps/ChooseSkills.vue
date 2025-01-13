@@ -14,7 +14,7 @@
               :disabled="skills.length === 0"
           >
             <ion-select-option
-                v-for="(skill, skillIndex) in filteredSkills"
+                v-for="(skill, skillIndex) in skills"
                 :key="skillIndex"
                 :value="skill.code">
               {{ skill.name }}
@@ -33,9 +33,9 @@
 </template>
 
 <script setup lang="ts">
-import {IonFab, IonFabButton, IonIcon, IonSelect, IonList, IonItem, IonSelectOption} from "@ionic/vue";
+import {IonFab, IonFabButton, IonIcon, IonItem, IonList, IonSelect, IonSelectOption} from "@ionic/vue";
 import {arrowForwardOutline} from "ionicons/icons";
-import {onMounted, ref, computed} from "vue";
+import {computed, ref, watch} from "vue";
 import axios from "axios";
 import {INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {useRoute} from "vue-router";
@@ -47,22 +47,48 @@ const props = defineProps({
   currentStep: Object,
 });
 
-const skills = ref<Skill[]>([]);
+const skills = ref<SkillResponse[]>([]);
 const selectedSkills = ref<string[]>([]);
 const maxSelectable = ref<number>(0);
 const availableSkillCodes = ref<string[]>([]);
 
-const filteredSkills = computed(() =>
-    skills.value.filter(skill => availableSkillCodes.value.includes(skill.code))
-);
 
-const numberOfSelectors = computed(() => maxSelectable.value === -1 ? filteredSkills.value.length : maxSelectable.value);
+const numberOfSelectors = computed(() => maxSelectable.value === -1 ? skills.value.length : maxSelectable.value);
 
-onMounted(async () => {
+// onMounted(async () => {
+//   try {
+//     // Загружаем навыки класса
+//     const response = await axios.get(
+//         `${INTEGRATION_ROUTES.baseURL}${INTEGRATION_ROUTES.api}${INTEGRATION_ROUTES.rooms}/${route.params.roomId}${INTEGRATION_ROUTES.roomSkillsByClassCode}/${props.characterData.clazz.code}`,
+//         {
+//           headers: {
+//             "Content-Type": "application/json",
+//             Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+//           },
+//         }
+//     );
+//     skills.value = response.data;
+//
+//     // Получаем доступные навыки
+//     const availableSkills = props.characterData.clazz.stats.availableSkills.find(
+//         (item: any) => item.type === "ABILITY"
+//     );
+//
+//     if (availableSkills) {
+//       maxSelectable.value = availableSkills.count;
+//       availableSkillCodes.value = availableSkills.of;
+//     }
+//   } catch (error) {
+//     console.error("Ошибка при получении данных:", error);
+//   }
+// });
+
+
+async function fetchClassSkills() {
   try {
     // Загружаем навыки класса
     const response = await axios.get(
-        `${INTEGRATION_ROUTES.baseURL}${INTEGRATION_ROUTES.api}${INTEGRATION_ROUTES.rooms}/${route.params.roomId}${INTEGRATION_ROUTES.roomSkillsByClassCode}/${props.characterData.clazz.code}`,
+        `${INTEGRATION_ROUTES.baseURL}${INTEGRATION_ROUTES.api}${INTEGRATION_ROUTES.rooms}/${route.params.roomId}${INTEGRATION_ROUTES.roomSkillsByClassCode}/${props!.characterData!.clazz.code}`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -73,7 +99,7 @@ onMounted(async () => {
     skills.value = response.data;
 
     // Получаем доступные навыки
-    const availableSkills = props.characterData.clazz.stats.availableSkills.find(
+    const availableSkills = props?.characterData?.clazz.stats.availableSkills.find(
         (item: any) => item.type === "ABILITY"
     );
 
@@ -84,12 +110,23 @@ onMounted(async () => {
   } catch (error) {
     console.error("Ошибка при получении данных:", error);
   }
-});
+}
+
+watch(() => props.characterData?.clazz?.code, () => {
+  if (props.characterData != undefined && props.characterData.clazz != null) {
+    fetchClassSkills();
+  }
+}, {immediate: false});
 
 function onSkillChange(event: any, index: number) {
   const chosenSkill = event.detail.value;
   selectedSkills.value[index] = chosenSkill;
 }
+
+// function saveCharacter() {
+//   const chosenSkill = event.detail.value;
+//   selectedSkills.value[index] = chosenSkill;
+// }
 
 function onChooseSkills() {
   if (props.characterData) {

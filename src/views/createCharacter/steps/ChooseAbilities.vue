@@ -62,11 +62,11 @@ const props = defineProps({
   currentStep: Object,
 });
 
-const abilities = ref<Ability[]>([]);
+const abilities = ref<AbilityResponse[]>([]);
 const totalCoins = ref(27);
 let onChooseCount = 0;
-let selected = [];
-const abilityUpgradeCostTable = {
+let selected: string[] = [];
+const abilityUpgradeCostTable: { [key: number]: number } = {
   0: 1,
   1: 1,
   2: 1,
@@ -90,7 +90,7 @@ onMounted(async () => {
         }
     );
 
-    abilities.value = response.data.map(ability => ({
+    abilities.value = response.data.map((ability: AbilityResponse) => ({
       ...ability,
       defaultValue: MINIMAL_ABILITY_VALUE // Начальное значение
     }));
@@ -106,7 +106,7 @@ function calculateAbilityValues() {
   const raceModifiers = getAbilityRaceModifiers();
   totalCoins.value = MAX_COINS_VALUE;
   abilities.value = abilities.value.map(ability => {
-    const modifier = raceModifiers.find(mod => mod.code === ability.code || mod.code === "ALL");
+    const modifier = raceModifiers.find((mod: AbilityModifier) => mod.code === ability.code || mod.code === "ALL");
     const modifierValue = modifier ? modifier.value : 0; // Если модификатор не найден, 0
 
     return {
@@ -119,13 +119,13 @@ function calculateAbilityValues() {
 }
 
 // Используем watch для отслеживания изменений в abilityModifiers
-watch(() => props.characterData?.race?.stats?.abilityModifiers, (newModifiers) => {
+watch(() => props.characterData?.race?.stats?.abilityModifiers, () => {
   calculateAbilityValues(); // Пересчитываем значения, когда модификаторы меняются
 }, {immediate: true}); // Вызов при первой инициализации
 
 function getAbilityRaceModifiers() {
   return (props.characterData?.race?.stats?.abilityModifiers || [{code: 'Нет модификаторов'}])
-      .map(raceModifier => {
+      .map((raceModifier: AbilityModifier) => {
         let calcedName: string;
         if (raceModifier?.code == 'ANY') {
           onChooseCount = raceModifier?.count
@@ -134,7 +134,11 @@ function getAbilityRaceModifiers() {
           calcedName = "Все"
         } else {
           const matchingAbility = abilities.value.find(ability => ability.code === raceModifier.code);
-          calcedName = matchingAbility?.name;
+          if (matchingAbility != undefined) {
+            calcedName = matchingAbility.name;
+          } else {
+            calcedName = ""
+          }
         }
         return {
           ...raceModifier,  // Сохраняем все остальные поля
@@ -145,9 +149,12 @@ function getAbilityRaceModifiers() {
 
 function onClickAbility(abilityCode: string) {
   const matchingAbility = abilities.value.find(ability => ability.code === abilityCode);
-  const matchingAnyModifier = getAbilityRaceModifiers().find(modifier => modifier.code === "ANY");
-  const matchingNotAnyModifier = getAbilityRaceModifiers().find(modifier => modifier.code === abilityCode);
-  if (!matchingNotAnyModifier && matchingAbility?.defaultValue + matchingAbility?.modifierValue == MINIMAL_ABILITY_VALUE) {
+  if (!matchingAbility) {
+    return
+  }
+  const matchingAnyModifier = getAbilityRaceModifiers().find((modifier: AbilityModifier) => modifier.code === "ANY");
+  const matchingNotAnyModifier = getAbilityRaceModifiers().find((modifier: AbilityModifier) => modifier.code === abilityCode);
+  if (!matchingNotAnyModifier && matchingAbility.defaultValue + matchingAbility.modifierValue == MINIMAL_ABILITY_VALUE) {
     if (selected.length < onChooseCount) {
       selected.push(matchingAbility.code)
       if (matchingAnyModifier) {
@@ -162,14 +169,14 @@ function onClickAbility(abilityCode: string) {
   }
 }
 
-function isAbilityHighlighted(abilityCode) {
+function isAbilityHighlighted(abilityCode: string) {
   const raceModifiers = getAbilityRaceModifiers();
-  return raceModifiers.some(modifier => modifier.code === "ALL") ||
-      raceModifiers.some(modifier => modifier.code === abilityCode) ||
+  return raceModifiers.some((modifier: AbilityModifier) => modifier.code === "ALL") ||
+      raceModifiers.some((modifier: AbilityModifier) => modifier.code === abilityCode) ||
       selected.some(code => code === abilityCode);
 }
 
-function abilityModify(abilityCode, change) {
+function abilityModify(abilityCode: string, change: number) {
   const ability = abilities.value.find(ab => ab.code === abilityCode);
 
   if (ability) {
@@ -203,7 +210,7 @@ function abilityModify(abilityCode, change) {
   }
 }
 
-function onChooseAbilities(abilities: Ability[]) {
+function onChooseAbilities(abilities: AbilityResponse[]) {
   if (props.characterData) {
     // eslint-disable-next-line vue/no-mutating-props
     props.characterData.abilities = abilities.map(ability => {

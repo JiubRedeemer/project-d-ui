@@ -17,7 +17,7 @@
         :clear-input="true"
         v-model="inputHistory"
         class="input-block"
-        rows="15"
+        :rows="15"
     ></ion-textarea>
   </div>
 

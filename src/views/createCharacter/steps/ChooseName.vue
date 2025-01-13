@@ -47,6 +47,7 @@ function onChooseName(name: string) {
     if (props.characterData) {
       // eslint-disable-next-line vue/no-mutating-props
       props.characterData.name = name;
+      console.log(props.characterData)
     }
     if (props.currentStep) {
       // eslint-disable-next-line vue/no-mutating-props

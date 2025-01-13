@@ -17,5 +17,7 @@ export const INTEGRATION_ROUTES = {
     roomAbilities: "/abilities",
     roomSkills: "/skills",
     roomSkillsByCode: "/skills/byCode",
-    roomSkillsByClassCode: "/skills/byClass"
+    roomSkillsByClassCode: "/skills/byClass",
+
+    characters: "/characters"
 };

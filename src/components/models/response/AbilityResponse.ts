@@ -1,5 +1,5 @@
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface Ability {
+type AbilityResponse = {
     name: string;
     code: string;
     roomId: string;
