@@ -115,7 +115,6 @@ const login = async () => {
       password: password.value,
     });
 
-    console.log(res)
     if (res.status == 200) {
       localStorage.setItem("accessToken", res.data.accessToken);
       localStorage.setItem("refreshToken", res.data.refreshToken);

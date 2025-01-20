@@ -12,7 +12,7 @@ function logout() {
   sessionStorage.removeItem("accessToken");
   sessionStorage.removeItem("refreshToken");
 
-  ionRouter.replace('welcome');
+  ionRouter.replace('/welcome');
 }
 
 </script>

@@ -68,10 +68,8 @@ watch(
     async (newStep) => { // Добавляем async
       if (newStep === FINAL_STEP) {
         const convertedData = convertCharacterData();
-        console.log("Converted Character Data:", convertedData);
-
         try {
-          const response = await axios.put(
+          await axios.put(
               INTEGRATION_ROUTES.baseURL +
               INTEGRATION_ROUTES.api +
               INTEGRATION_ROUTES.rooms +
@@ -87,7 +85,6 @@ watch(
                 },
               }
           );
-          console.log("Response:", response.data);
         } catch (error) {
           console.error("Ошибка при сохранении персонажа:", error);
         }

@@ -6,4 +6,10 @@ type AbilityResponse = {
     defaultValue: number;
     modifierValue: number;
     byCoinsValue: number;
+    skills: Skill[];
+}
+
+type Skill = {
+    name: string;
+    code: string;
 }

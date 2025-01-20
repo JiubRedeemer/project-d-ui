@@ -42,7 +42,7 @@
   </div>
   <ion-fab slot="fixed" vertical="bottom" horizontal="end" @click="onChooseAbilities(abilities)">
     <ion-fab-button color="primary">
-      <ion-icon :icon="arrowForwardOutline" color="light"></ion-icon>
+      <ion-icon :icon="arrowForwardOutline" color="dark"></ion-icon>
     </ion-fab-button>
   </ion-fab>
 </template>
@@ -224,7 +224,6 @@ function onChooseAbilities(abilities: AbilityResponse[]) {
     // eslint-disable-next-line vue/no-mutating-props
     props.currentStep.current = props.currentStep.current + 1
   }
-  console.log(props.characterData)
 }
 
 </script>

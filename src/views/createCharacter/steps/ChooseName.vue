@@ -24,7 +24,7 @@
 
   <ion-fab slot="fixed" vertical="bottom" horizontal="end" @click="onChooseName(inputName)">
     <ion-fab-button color="primary">
-      <ion-icon :icon="arrowForwardOutline" color="light"></ion-icon>
+      <ion-icon :icon="arrowForwardOutline" color="dark"></ion-icon>
     </ion-fab-button>
   </ion-fab>
 </template>
@@ -47,7 +47,6 @@ function onChooseName(name: string) {
     if (props.characterData) {
       // eslint-disable-next-line vue/no-mutating-props
       props.characterData.name = name;
-      console.log(props.characterData)
     }
     if (props.currentStep) {
       // eslint-disable-next-line vue/no-mutating-props

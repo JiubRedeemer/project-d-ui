@@ -23,7 +23,7 @@
 
   <ion-fab slot="fixed" vertical="bottom" horizontal="end" @click="onChoosePersonality(inputPersonality)">
     <ion-fab-button color="primary">
-      <ion-icon :icon="arrowForwardOutline" color="light"></ion-icon>
+      <ion-icon :icon="arrowForwardOutline" color="dark"></ion-icon>
     </ion-fab-button>
   </ion-fab>
 </template>
