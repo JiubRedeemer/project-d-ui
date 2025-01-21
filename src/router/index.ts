@@ -7,6 +7,7 @@ import LoginPage from "@/views/welcome/login/LoginPage.vue";
 import WelcomePage from '@/views/welcome/WelcomePage.vue';
 import CreateCharacter from "@/views/createCharacter/CreateCharacter.vue";
 import PlayerView from "@/views/character/PlayerView.vue";
+import CharacterList from "@/views/rooms/CharacterList.vue";
 
 const routes: Array<RouteRecordRaw> = [
     {
@@ -42,6 +43,11 @@ const routes: Array<RouteRecordRaw> = [
         path: '/rooms/:roomId/create-character',
         component: CreateCharacter,
         name: 'createCharacter'
+    },
+    {
+        path: '/rooms/:roomId/characters',
+        component: CharacterList,
+        name: 'characterList'
     },
     {
         path: '/rooms/:roomId/characters/:characterId',

@@ -10,7 +10,8 @@ import {
   IonLabel,
   IonList,
   IonPage,
-  onIonViewDidEnter, useIonRouter
+  onIonViewDidEnter,
+  useIonRouter
 } from "@ionic/vue";
 import {add, chevronForwardOutline} from "ionicons/icons";
 import {HEADERS, TEXTS} from "@/config/localisations";
@@ -18,12 +19,15 @@ import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
 import {ref} from "vue";
 import axios from "axios";
 import {INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {useRoute} from "vue-router";
+import {Character} from "@/components/models/response/Character";
 
 const ionRouter = useIonRouter();
+const route = useRoute();
 
-const rooms = ref<{ id: string; name: string; description: string; lastActivityDate: string } []>([]);
+const characters = ref<Character[]>([]);
 
-const setupRooms = async () => {
+const setupCharacters = async () => {
   const http = axios.create({
     baseURL: INTEGRATION_ROUTES.baseURL,
     headers: {
@@ -32,18 +36,22 @@ const setupRooms = async () => {
     },
   });
 
-  const res = await http.get(INTEGRATION_ROUTES.api + INTEGRATION_ROUTES.rooms);
+  const res = await http.get(INTEGRATION_ROUTES.api + INTEGRATION_ROUTES.rooms + '/' + route.params.roomId + INTEGRATION_ROUTES.characters);
 
   if (res.status == 200) {
-    rooms.value = res.data
+    characters.value = res.data
   }
 }
 onIonViewDidEnter(() => {
-  setupRooms()
+  setupCharacters()
 })
 
-const goToRoom = (roomId: string) => {
-  ionRouter.navigate('rooms/' + roomId + '/characters', 'forward', 'push')
+const createCharacter = () => {
+  ionRouter.navigate('/rooms/' + route.params.roomId + '/create-character', 'forward', 'push')
+}
+
+const goToCharacter = (characterId: string) => {
+  ionRouter.navigate('/rooms/' + route.params.roomId + '/characters/' + characterId, 'forward', 'push')
 }
 
 
@@ -51,11 +59,12 @@ const goToRoom = (roomId: string) => {
 
 <template>
   <ion-page>
-    <RoomsHeader :header-name="HEADERS.rooms.rus"></RoomsHeader>
+    <RoomsHeader :header-name="HEADERS.characters.rus"></RoomsHeader>
     <ion-content :fullscreen="true" color="dark">
 
-      <ion-list v-show="rooms.length != 0" class="room-list">
-        <ion-item v-for="(room, index) in rooms" :key="index" :button="true" color="dark" @click="goToRoom(room.id)">
+      <ion-list v-show="characters.length != 0" class="character-list">
+        <ion-item v-for="(character, index) in characters" :key="index" :button="true" color="dark"
+                  @click="goToCharacter(character.id)">
           <ion-avatar aria-hidden="true" slot="start">
             <img width="64" height="64"
                  src="https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png"
@@ -63,18 +72,18 @@ const goToRoom = (roomId: string) => {
           </ion-avatar>
           <ion-icon aria-hidden="true" :icon="chevronForwardOutline" slot="end"></ion-icon>
           <ion-label>
-            <h1 class="room-name">{{ room.name }}</h1>
-            <p class="room-description">{{ room.description }}</p>
+            <h1 class="character-name">{{ character.name }}</h1>
+            <p class="character-description">{{ character.raceInfo.name }} - {{ character.clazzInfo.name }}</p>
           </ion-label>
         </ion-item>
       </ion-list>
 
-      <div class="room-list-placeholder-wrapper" v-show="rooms.length == 0">
-        <div class="room-list-placeholder">{{ TEXTS.emptyRoomList.rus }}</div>
+      <div class="character-list-placeholder-wrapper" v-show="characters.length == 0">
+        <div class="room-list-placeholder">{{ TEXTS.emptyCharactersList.rus }}</div>
       </div>
 
       <ion-fab slot="fixed" vertical="bottom" horizontal="end">
-        <ion-fab-button color="primary">
+        <ion-fab-button color="primary" @click="createCharacter()">
           <ion-icon :icon="add" color="light"></ion-icon>
         </ion-fab-button>
       </ion-fab>
@@ -85,11 +94,11 @@ const goToRoom = (roomId: string) => {
 
 <style scoped>
 
-.room-list {
+.character-list {
   background: transparent;
 }
 
-.room-list-placeholder-wrapper {
+.character-list-placeholder-wrapper {
   width: 100%;
   height: 100%;
   position: fixed;

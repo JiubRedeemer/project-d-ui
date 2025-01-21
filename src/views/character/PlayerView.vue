@@ -1,6 +1,6 @@
 <script setup lang="ts">
 
-import {IonContent} from "@ionic/vue";
+import {IonContent, IonPage} from "@ionic/vue";
 import PlayerViewHeader from "@/views/character/PlayerViewHeader.vue";
 import AbilitiesView from "@/views/character/tabs/AbilitiesView.vue";
 import PlayerViewSubheader from "@/views/character/PlayerViewSubheader.vue";
@@ -14,6 +14,7 @@ const toggleSubheader = () => {
 </script>
 
 <template>
+  <ion-page>
     <ion-header>
       <PlayerViewHeader/>
       <div class="subheader-block" :class="{ openSubheader: subheaderVisible }">
@@ -23,14 +24,12 @@ const toggleSubheader = () => {
         <div class="arrow" @click="toggleSubheader">🛠</div>
       </div>
     </ion-header>
-  <ion-content direction="y" has-bouncing="true" class="ion-padding" color="dark" :scroll-x="false">
-    <div class="abilities" :class="{ openSubheader: subheaderVisible }">
-      <AbilitiesView/>
-    </div>
-  </ion-content>
-  <ion-footer>
-    123123
-  </ion-footer>
+    <ion-content direction="y" has-bouncing="true" class="ion-padding" color="dark" :scroll-x="false">
+      <div class="abilities" :class="{ openSubheader: subheaderVisible }">
+        <AbilitiesView/>
+      </div>
+    </ion-content>
+  </ion-page>
 </template>
 
 <style scoped>
@@ -40,8 +39,6 @@ const toggleSubheader = () => {
 }
 
 .abilities {
-  margin-top: -5%;
-  padding-bottom: 30px;
   transition: margin-top 0.3s ease;
 }
 

@@ -23,7 +23,7 @@ const props = defineProps(['headerText', 'step'])
       <ion-toolbar style="--background: transparent">
         <ion-title>{{ props.headerText }}</ion-title>
         <ion-buttons slot="start">
-          <ion-back-button v-show="props.step.current == 0"></ion-back-button>
+          <ion-back-button v-if="props.step.current == 0"></ion-back-button>
           <ion-button v-show="props.step.current != 0" size="small"
                       @click="
                       // eslint-disable-next-line vue/no-mutating-props

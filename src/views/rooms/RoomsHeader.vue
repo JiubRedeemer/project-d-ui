@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import {IonBadge, IonButton, IonButtons, IonHeader, IonIcon, IonTitle, IonToolbar, useIonRouter} from "@ionic/vue";
 import {notificationsOutline, searchOutline} from "ionicons/icons";
-import {HEADERS} from "@/config/localisations";
 import {onBeforeMount, ref} from "vue";
 import axios from "axios";
 import {INTEGRATION_ROUTES} from "@/config/integrationRoutes";
@@ -9,6 +8,10 @@ import LogOutButton from "@/views/common/LogOutButton.vue";
 
 const notifications = ref<{ count: number; }>({count: 0});
 const ionRouter = useIonRouter();
+
+const props = defineProps({
+  headerName: String
+});
 
 const setupNotificationCount = async () => {
   const http = axios.create({
@@ -36,7 +39,7 @@ onBeforeMount(() => {
   <ion-header>
     <ion-buttons>
       <ion-toolbar style="--background: transparent">
-        <ion-title>{{ HEADERS.rooms.rus }}</ion-title>
+        <ion-title>{{ props.headerName }}</ion-title>
         <ion-buttons slot="start">
           <ion-button size="small">
             <ion-icon slot="icon-only" :ios="searchOutline" :md="searchOutline"></ion-icon>

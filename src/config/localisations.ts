@@ -10,6 +10,7 @@ export const TEXTS = {
     register: {rus: 'Зарегистрироваться', eng: 'Sign up'},
     login: {rus: 'Войти', eng: 'Sign in'},
     emptyRoomList: {rus: 'У вас пока нет комнат', eng: 'Empty room list'},
+    emptyCharactersList: {rus: 'У вас пока нет персонажей в данной комнате', eng: 'You don\'t have any characters in this room yet'},
     emptyInviteList: {rus: 'У вас пока нет приглашений', eng: 'Empty room list'},
 
 
@@ -61,6 +62,7 @@ export const TEXTS = {
 
 export const HEADERS = {
     rooms: {rus: 'Комнаты', eng: 'Rooms'},
+    characters: {rus: 'Персонажи', eng: 'Characters'},
     invites: {rus: 'Приглашения', eng: 'Invites'},
     race: {rus: 'Раса', eng: 'Race'},
     name: {rus: 'Имя', eng: 'Name'},
