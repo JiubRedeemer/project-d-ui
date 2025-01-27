@@ -33,6 +33,7 @@ export interface Ability {
     name: string;
     code: string;
     value: number;
+    bonusValue: number;
     skills: Skill[]
 }
 

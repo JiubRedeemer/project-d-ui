@@ -6,6 +6,7 @@ type AbilityResponse = {
     defaultValue: number;
     modifierValue: number;
     byCoinsValue: number;
+    bonusValue: number;
     skills: Skill[];
 }
 
