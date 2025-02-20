@@ -22,5 +22,13 @@ export const INTEGRATION_ROUTES = {
     characters: "/characters",
     charactersHeader: "/header",
     charactersSubheader: "/subheader",
-    characterAbilities: "/abilities"
+    characterAbilities: "/abilities",
+
+    health: "/health",
+    updateCurrent: "/updateCurrent",
+    armoryClass: "/armoryClass",
+    speed: "/speed",
+    initiative: "/initiative",
+
+    bonus: "/bonus"
 };

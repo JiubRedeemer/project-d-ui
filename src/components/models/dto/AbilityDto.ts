@@ -4,9 +4,11 @@ interface SkillDto {
     up: boolean; // Указывает, прокачан ли навык
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface AbilityDto {
     code: string; // Код способности (например, "STR")
     value: number; // Значение способности
+    bonusValue: number; // Значение способности
     name: string; // Название способности (например, "Сила")
     skills?: SkillDto[]; // Список навыков, связанных с этой способностью (опционально)
 }

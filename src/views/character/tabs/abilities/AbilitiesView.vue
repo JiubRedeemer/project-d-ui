@@ -1,6 +1,5 @@
 <script setup lang="ts">
 
-import {IonContent} from "@ionic/vue";
 import SkillUp from "@/views/common/SkillUp.vue";
 import axios from "axios";
 import {useRoute} from "vue-router";
@@ -15,6 +14,12 @@ const character = ref<Character>();
 let ruleBookAbilityCodeMap: Map<string, AbilityResponse>;
 let characterAbilityCodeMap: Map<string, Ability>;
 const resultAbilities = ref<Record<string, AbilityDto>>();
+
+const emits = defineEmits(["ability-selected"]);
+
+const selectAbility = (ability: AbilityDto) => {
+  emits("ability-selected", ability); // Отправляем событие вверх
+};
 
 onMounted(async () => {
   try {
@@ -49,8 +54,6 @@ onMounted(async () => {
     characterAbilityCodeMap = buildCharacterAbilityCodeMap(character.value);
     characterAbilityCodeMap = buildCharacterAbilitiesWithNameAndValue(characterAbilityCodeMap);
     resultAbilities.value = Object.fromEntries(characterAbilityCodeMap)
-    console.log(characterAbilityCodeMap);
-    console.log(resultAbilities);
   } catch (error) {
     console.error("Ошибка при получении данных:", error);
   }
@@ -93,62 +96,63 @@ function enrichCharacterAbility(value: Ability, key: string, map: Map<string, Ab
 
   if (!ruleBookAbility.skills) return;
 
-  const characterSkillCodes = new Set(
-      character.value.skills.map((characterSkill) => characterSkill.code)
-  );
-
-  value.skills = ruleBookAbility.skills.map((skill) => ({
-    name: skill.name,
-    code: skill.code,
-    up: characterSkillCodes.has(skill.code),
-  }));
+  if (character.value) {
+    const characterSkillCodes = new Set(
+        character.value.skills.map((characterSkill) => characterSkill.code)
+    );
+    value.skills = ruleBookAbility.skills.map((skill) => ({
+      name: skill.name,
+      code: skill.code,
+      up: characterSkillCodes.has(skill.code),
+    }));
+  }
 }
 
 
-function changeChecked(skill) {
+function changeChecked(skill: any) {
   console.log(skill)
   skill.up = !skill.up; // Переключение состояния
 }
 
-function calculateSkillValue(value, skill) {
+function calculateSkillValue(value: any, skill: any) {
   let result = Math.floor((value - 10) / 2);
   if (skill.up) {
-    result += character.value?.proficiencyBonus
+    if (character.value?.proficiencyBonus)
+      result += character.value?.proficiencyBonus
   }
   return result; // Пример расчёта
 }
 
-function calculateSavingThrow(value) {
+function calculateSavingThrow(value: any) {
   return Math.floor((value - 10) / 2); // Пример расчёта
 }
 
-function calculateCheckValue(value) {
+function calculateCheckValue(value: any) {
   return Math.floor((value - 10) / 2); // Пример расчёта
 }
 
 </script>
 
-<template>
+<template >
   <!--  <ion-content class="ion-padding" color="dark">-->
   <div class="abilities" v-if="resultAbilities">
     <div
         class="ability-item"
         v-for="(ability, key) in Object.entries(resultAbilities)"
-        :key="key"
-    >
-      <div class="ability-header">
+        :key="key">
+      <div class="ability-header" @click="selectAbility(ability[1])">
         <div class="ability">
           <div class="ability-name">{{ ability[1].name }}</div>
-          <div class="ability-value">{{ ability[1].value }}</div>
+          <div class="ability-value">{{ ability[1].value + ability[1].bonusValue }}</div>
         </div>
         <div class="ability-side-block">
           <div class="check">
             <div class="check-name">Проверка</div>
-            <div class="check-value">{{ calculateCheckValue(ability[1].value) }}</div>
+            <div class="check-value">{{ calculateCheckValue(ability[1].value + ability[1].bonusValue) }}</div>
           </div>
           <div class="saving-throw">
             <div class="saving-throw-name">Спасбросок</div>
-            <div class="saving-throw-value">{{ calculateSavingThrow(ability[1].value) }}</div>
+            <div class="saving-throw-value">{{ calculateSavingThrow(ability[1].value + ability[1].bonusValue) }}</div>
           </div>
         </div>
       </div>
@@ -164,7 +168,7 @@ function calculateCheckValue(value) {
             </div>
             <div class="skill-name">{{ skill.name }}</div>
           </div>
-          <div class="skill-value">{{ calculateSkillValue(ability[1].value, skill) }}</div>
+          <div class="skill-value">{{ calculateSkillValue(ability[1].value + ability[1].bonusValue, skill) }}</div>
         </div>
       </div>
     </div>

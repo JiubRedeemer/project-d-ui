@@ -9,9 +9,12 @@ export interface Character {
     raceInfo: RaceInfo;
     proficiencyBonus: number;
     armoryClass: number;
+    bonusArmoryClass: number;
     speed: number;
+    bonusSpeed: number;
     inspiration: number;
     initiative: number;
+    bonusInitiative: number;
     abilities: Ability[];
     skills: Skill[];
     characterBio: CharacterBio;
@@ -62,6 +65,7 @@ export interface Health {
     currentHp: number;
     maxHp: number;
     tempHp: number;
+    bonusValue: number;
 }
 
 export interface Level {
