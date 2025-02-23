@@ -109,9 +109,29 @@ function enrichCharacterAbility(value: Ability, key: string, map: Map<string, Ab
 }
 
 
+async function updateMastery(skill: any) {
+  try {
+    await axios.patch(
+        `${INTEGRATION_ROUTES.baseURL}${INTEGRATION_ROUTES.api}${INTEGRATION_ROUTES.rooms}/${route.params.roomId}${INTEGRATION_ROUTES.characters}/${character.value?.id}${INTEGRATION_ROUTES.skills}/${skill.code}${INTEGRATION_ROUTES.mastery}`,
+        {
+          isMastery: skill.up,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          },
+        }
+    );
+  } catch (error) {
+    console.error("Ошибка при получении данных:", error);
+  }
+}
+
 function changeChecked(skill: any) {
   console.log(skill)
   skill.up = !skill.up; // Переключение состояния
+  updateMastery(skill)
 }
 
 function calculateSkillValue(value: any, skill: any) {
@@ -133,7 +153,7 @@ function calculateCheckValue(value: any) {
 
 </script>
 
-<template >
+<template>
   <!--  <ion-content class="ion-padding" color="dark">-->
   <div class="abilities" v-if="resultAbilities">
     <div

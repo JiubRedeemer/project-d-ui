@@ -29,6 +29,8 @@ export const INTEGRATION_ROUTES = {
     armoryClass: "/armoryClass",
     speed: "/speed",
     initiative: "/initiative",
+    skills: "/skills",
 
-    bonus: "/bonus"
+    bonus: "/bonus",
+    mastery: "/mastery"
 };
