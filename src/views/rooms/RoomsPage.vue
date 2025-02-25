@@ -17,7 +17,7 @@ import {HEADERS, TEXTS} from "@/config/localisations";
 import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
 import {ref} from "vue";
 import axios from "axios";
-import {INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 
 const ionRouter = useIonRouter();
 
@@ -25,14 +25,14 @@ const rooms = ref<{ id: string; name: string; description: string; lastActivityD
 
 const setupRooms = async () => {
   const http = axios.create({
-    baseURL: INTEGRATION_ROUTES.baseURL,
+    baseURL: GATEWAY_INTEGRATION_ROUTES.baseURL,
     headers: {
       "Content-type": "application/json",
       "Authorization": "Bearer " + localStorage.getItem("accessToken")
     },
   });
 
-  const res = await http.get(INTEGRATION_ROUTES.api + INTEGRATION_ROUTES.rooms);
+  const res = await http.get(GATEWAY_INTEGRATION_ROUTES.api + GATEWAY_INTEGRATION_ROUTES.rooms);
 
   if (res.status == 200) {
     rooms.value = res.data
@@ -44,6 +44,10 @@ onIonViewDidEnter(() => {
 
 const goToRoom = (roomId: string) => {
   ionRouter.navigate('rooms/' + roomId + '/characters', 'forward', 'push')
+}
+
+const goToCreateRoom = () => {
+  ionRouter.navigate('rooms/create', 'forward', 'push')
 }
 
 
@@ -74,7 +78,7 @@ const goToRoom = (roomId: string) => {
       </div>
 
       <ion-fab slot="fixed" vertical="bottom" horizontal="end">
-        <ion-fab-button color="primary">
+        <ion-fab-button color="primary" @click="goToCreateRoom()">
           <ion-icon :icon="add" color="light"></ion-icon>
         </ion-fab-button>
       </ion-fab>

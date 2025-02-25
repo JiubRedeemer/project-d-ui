@@ -3,7 +3,7 @@
 import SkillUp from "@/views/common/SkillUp.vue";
 import axios from "axios";
 import {useRoute} from "vue-router";
-import {INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {onMounted, ref} from "vue";
 import {Ability, Character} from "@/components/models/response/Character";
 
@@ -24,7 +24,7 @@ const selectAbility = (ability: AbilityDto) => {
 onMounted(async () => {
   try {
     const response = await axios.get(
-        `${INTEGRATION_ROUTES.baseURL}${INTEGRATION_ROUTES.api}${INTEGRATION_ROUTES.rooms}/${route.params.roomId}${INTEGRATION_ROUTES.roomAbilities}`,
+        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.roomAbilities}`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -41,7 +41,7 @@ onMounted(async () => {
 
   try {
     const response = await axios.get(
-        INTEGRATION_ROUTES.baseURL + INTEGRATION_ROUTES.api + INTEGRATION_ROUTES.rooms + '/' + route.params.roomId + INTEGRATION_ROUTES.characters + '/' + route.params.characterId + INTEGRATION_ROUTES.characterAbilities,
+        GATEWAY_INTEGRATION_ROUTES.baseURL + GATEWAY_INTEGRATION_ROUTES.api + GATEWAY_INTEGRATION_ROUTES.rooms + '/' + route.params.roomId + GATEWAY_INTEGRATION_ROUTES.characters + '/' + route.params.characterId + GATEWAY_INTEGRATION_ROUTES.characterAbilities,
         {
           headers: {
             "Content-Type": "application/json",
@@ -112,7 +112,7 @@ function enrichCharacterAbility(value: Ability, key: string, map: Map<string, Ab
 async function updateMastery(skill: any) {
   try {
     await axios.patch(
-        `${INTEGRATION_ROUTES.baseURL}${INTEGRATION_ROUTES.api}${INTEGRATION_ROUTES.rooms}/${route.params.roomId}${INTEGRATION_ROUTES.characters}/${character.value?.id}${INTEGRATION_ROUTES.skills}/${skill.code}${INTEGRATION_ROUTES.mastery}`,
+        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${character.value?.id}${GATEWAY_INTEGRATION_ROUTES.skills}/${skill.code}${GATEWAY_INTEGRATION_ROUTES.mastery}`,
         {
           isMastery: skill.up,
         },

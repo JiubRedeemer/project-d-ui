@@ -19,7 +19,7 @@ import ChooseAbilities from "@/views/createCharacter/steps/ChooseAbilities.vue";
 import ChooseSkills from "@/views/createCharacter/steps/ChooseSkills.vue";
 import {useRoute} from "vue-router";
 import axios from "axios";
-import {INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 
 const route = useRoute();
 
@@ -70,11 +70,11 @@ watch(
         const convertedData = convertCharacterData();
         try {
           await axios.put(
-              INTEGRATION_ROUTES.baseURL +
-              INTEGRATION_ROUTES.api +
-              INTEGRATION_ROUTES.rooms +
+              GATEWAY_INTEGRATION_ROUTES.baseURL +
+              GATEWAY_INTEGRATION_ROUTES.api +
+              GATEWAY_INTEGRATION_ROUTES.rooms +
               '/' + route.params.roomId +
-              INTEGRATION_ROUTES.characters,
+              GATEWAY_INTEGRATION_ROUTES.characters,
               // Данные запроса
               convertedData,
               // Конфигурация запроса

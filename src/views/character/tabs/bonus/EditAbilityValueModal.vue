@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {IonButton, IonIcon, IonInput, IonModal} from "@ionic/vue";
 import axios from "axios";
-import {INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {useRoute} from "vue-router";
 import {ref} from "vue";
 import {checkmarkOutline} from "ionicons/icons";
@@ -23,7 +23,7 @@ inputValue.value = props.ability?.value?.bonusValue
 async function onSubmit() {
   try {
     await axios.patch(
-        `${INTEGRATION_ROUTES.baseURL}${INTEGRATION_ROUTES.api}${INTEGRATION_ROUTES.rooms}/${route.params.roomId}${INTEGRATION_ROUTES.characters}/${props.characterId}${props.url}${INTEGRATION_ROUTES.bonus}`,
+        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${props.characterId}${props.url}${GATEWAY_INTEGRATION_ROUTES.bonus}`,
         {
           bonusValue: inputValue.value,
         },

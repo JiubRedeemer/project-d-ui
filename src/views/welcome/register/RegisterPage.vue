@@ -20,7 +20,7 @@ import 'swiper/css';
 import '@ionic/vue/css/ionic-swiper.css';
 import {arrowBack} from "ionicons/icons";
 import axios from "axios";
-import {INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 
 // Управление шагами
 const step = ref(0);
@@ -118,13 +118,13 @@ function validate() {
 const register = async () => {
   try {
     const http = axios.create({
-      baseURL: INTEGRATION_ROUTES.baseURL,
+      baseURL: GATEWAY_INTEGRATION_ROUTES.baseURL,
       headers: {
         "Content-type": "application/json",
       },
     });
 
-    const res = await http.post(INTEGRATION_ROUTES.registration, {
+    const res = await http.post(GATEWAY_INTEGRATION_ROUTES.registration, {
       username: username.value,
       email: email.value,
       password: password.value,

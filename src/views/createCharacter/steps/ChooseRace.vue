@@ -69,7 +69,7 @@ import {arrowForwardOutline, menuOutline} from "ionicons/icons";
 import axios from "axios";
 import {Swiper as SwiperType} from "swiper/types";
 import {useRoute} from "vue-router";
-import {INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 
 const route = useRoute()
 
@@ -85,7 +85,7 @@ const props = defineProps({
 onMounted(async () => {
   try {
     const response = await axios.get(
-        INTEGRATION_ROUTES.baseURL + INTEGRATION_ROUTES.api + INTEGRATION_ROUTES.rooms + '/' + route.params.roomId + INTEGRATION_ROUTES.roomRaces,
+        GATEWAY_INTEGRATION_ROUTES.baseURL + GATEWAY_INTEGRATION_ROUTES.api + GATEWAY_INTEGRATION_ROUTES.rooms + '/' + route.params.roomId + GATEWAY_INTEGRATION_ROUTES.roomRaces,
         {
           headers: {
             "Content-Type": "application/json",

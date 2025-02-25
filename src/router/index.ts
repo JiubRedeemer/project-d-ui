@@ -8,6 +8,7 @@ import WelcomePage from '@/views/welcome/WelcomePage.vue';
 import CreateCharacter from "@/views/createCharacter/CreateCharacter.vue";
 import PlayerView from "@/views/character/PlayerView.vue";
 import CharacterList from "@/views/rooms/CharacterList.vue";
+import CreateRoom from "@/views/rooms/CreateRoom.vue";
 
 const routes: Array<RouteRecordRaw> = [
     {
@@ -33,6 +34,11 @@ const routes: Array<RouteRecordRaw> = [
         path: '/rooms',
         component: RoomsPage,
         name: 'roomsPage'
+    },
+    {
+        path: '/rooms/create',
+        component: CreateRoom,
+        name: 'createRoom'
     },
     {
         path: '/invites',

@@ -53,7 +53,7 @@ import {onMounted, ref, watch} from "vue";
 import {addOutline, arrowForwardOutline, arrowUp, invertModeOutline, removeOutline} from "ionicons/icons";
 import axios from "axios";
 import {useRoute} from "vue-router";
-import {INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 
 const route = useRoute();
 
@@ -81,7 +81,7 @@ const MAX_COINS_VALUE = 27;
 onMounted(async () => {
   try {
     const response = await axios.get(
-        `${INTEGRATION_ROUTES.baseURL}${INTEGRATION_ROUTES.api}${INTEGRATION_ROUTES.rooms}/${route.params.roomId}${INTEGRATION_ROUTES.roomAbilities}`,
+        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.roomAbilities}`,
         {
           headers: {
             "Content-Type": "application/json",

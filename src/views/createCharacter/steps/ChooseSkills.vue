@@ -37,7 +37,7 @@ import {IonFab, IonFabButton, IonIcon, IonItem, IonList, IonSelect, IonSelectOpt
 import {checkmarkOutline} from "ionicons/icons";
 import {computed, ref, watch} from "vue";
 import axios from "axios";
-import {INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {useRoute} from "vue-router";
 
 const route = useRoute();
@@ -59,7 +59,7 @@ async function fetchClassSkills() {
   try {
     // Загружаем навыки класса
     const response = await axios.get(
-        `${INTEGRATION_ROUTES.baseURL}${INTEGRATION_ROUTES.api}${INTEGRATION_ROUTES.rooms}/${route.params.roomId}${INTEGRATION_ROUTES.roomSkillsByClassCode}/${props!.characterData!.clazz.code}`,
+        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.roomSkillsByClassCode}/${props!.characterData!.clazz.code}`,
         {
           headers: {
             "Content-Type": "application/json",

@@ -5,7 +5,7 @@ import {IonButton, IonButtons, IonIcon, IonTitle, IonToolbar} from "@ionic/vue";
 import LogOutButton from "@/views/common/LogOutButton.vue";
 import {onMounted, ref} from "vue";
 import axios from "axios";
-import {INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {Character} from "@/components/models/response/Character";
 import {useRoute} from "vue-router";
 
@@ -15,7 +15,7 @@ const route = useRoute()
 onMounted(async () => {
   try {
     const response = await axios.get(
-        INTEGRATION_ROUTES.baseURL + INTEGRATION_ROUTES.api + INTEGRATION_ROUTES.rooms + '/' + route.params.roomId + INTEGRATION_ROUTES.characters + '/' + route.params.characterId + INTEGRATION_ROUTES.charactersHeader,
+        GATEWAY_INTEGRATION_ROUTES.baseURL + GATEWAY_INTEGRATION_ROUTES.api + GATEWAY_INTEGRATION_ROUTES.rooms + '/' + route.params.roomId + GATEWAY_INTEGRATION_ROUTES.characters + '/' + route.params.characterId + GATEWAY_INTEGRATION_ROUTES.charactersHeader,
         {
           headers: {
             "Content-Type": "application/json",

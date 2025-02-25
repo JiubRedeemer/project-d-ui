@@ -6,7 +6,7 @@ import PlayerViewSubheader from "@/views/character/PlayerViewSubheader.vue";
 import {ref} from "vue";
 import EditAbilityValueModal from "@/views/character/tabs/bonus/EditAbilityValueModal.vue";
 import {useRoute} from "vue-router";
-import {INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import EditSpeedValueModal from "@/views/character/tabs/bonus/EditSpeedValueModal.vue";
 import {Character} from "@/components/models/response/Character";
 import EditArmoryClassValueModal from "@/views/character/tabs/bonus/EditArmoryClassValueModal.vue";
@@ -113,35 +113,35 @@ const closeSubheader = () => {
                            :ability="ref(selectedAbility)"
                            :isOpen="showEditAbilityBonusModal"
                            :character-id="String(route.params.characterId)"
-                           :url="String(INTEGRATION_ROUTES.characterAbilities + '/' + selectedAbility.code)"
+                           :url="String(GATEWAY_INTEGRATION_ROUTES.characterAbilities + '/' + selectedAbility.code)"
                            @closeEditAbilityModal="closeEditAbilityModal"/>
 
     <EditSpeedValueModal v-if="showEditSpeedBonusModal"
                          :character="ref(selectedCharacter)"
                          :isOpen="showEditSpeedBonusModal"
                          :character-id="String(route.params.characterId)"
-                         :url="String(INTEGRATION_ROUTES.speed)"
+                         :url="String(GATEWAY_INTEGRATION_ROUTES.speed)"
                          @closeEditSpeedModal="closeEditSpeedModal"/>
 
     <EditArmoryClassValueModal v-if="showEditArmoryClassBonusModal"
                                :character="ref(selectedCharacter)"
                                :isOpen="showEditArmoryClassBonusModal"
                                :character-id="String(route.params.characterId)"
-                               :url="String(INTEGRATION_ROUTES.armoryClass)"
+                               :url="String(GATEWAY_INTEGRATION_ROUTES.armoryClass)"
                                @closeEditArmoryClassModal="closeEditArmoryClassModal"/>
 
     <EditInitiativeValueModal v-if="showEditInitiativeBonusModal"
                               :character="ref(selectedCharacter)"
                               :isOpen="showEditInitiativeBonusModal"
                               :character-id="String(route.params.characterId)"
-                              :url="String(INTEGRATION_ROUTES.initiative)"
+                              :url="String(GATEWAY_INTEGRATION_ROUTES.initiative)"
                               @closeEditInitiativeModal="closeEditInitiativeModal"/>
 
     <HpModal v-if="showEditHealthModal"
              :character="ref(selectedCharacter)"
              :isOpen="showEditHealthModal"
              :character-id="String(route.params.characterId)"
-             :url="String(INTEGRATION_ROUTES.health)"
+             :url="String(GATEWAY_INTEGRATION_ROUTES.health)"
              @closeHpModal="closeEditHealthModal"/>
   </ion-page>
 </template>

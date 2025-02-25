@@ -31,7 +31,7 @@ import {ref} from 'vue';
 import {IonButton, IonCol, IonGrid, IonIcon, IonInput, IonRow} from '@ionic/vue';
 import {settingsOutline} from 'ionicons/icons';
 import axios from "axios";
-import {INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {useRoute} from "vue-router";
 import {Character} from "@/components/models/response/Character";
 
@@ -85,7 +85,7 @@ const backspace = () => {
 const updateCurrentHealth = async (type: string, value: number) => {
   try {
     await axios.patch(
-        `${INTEGRATION_ROUTES.baseURL}${INTEGRATION_ROUTES.api}${INTEGRATION_ROUTES.rooms}/${route.params.roomId}${INTEGRATION_ROUTES.characters}/${route.params.characterId}${INTEGRATION_ROUTES.health}${INTEGRATION_ROUTES.updateCurrent}`,
+        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${route.params.characterId}${GATEWAY_INTEGRATION_ROUTES.health}${GATEWAY_INTEGRATION_ROUTES.updateCurrent}`,
         {
           type,
           value

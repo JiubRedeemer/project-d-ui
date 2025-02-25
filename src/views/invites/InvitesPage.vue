@@ -14,7 +14,7 @@ import {checkmarkCircleOutline, closeCircleOutline} from "ionicons/icons";
 import {TEXTS} from "@/config/localisations";
 import {ref} from "vue";
 import InvitesHeader from "@/views/invites/InvitesHeader.vue";
-import {INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import axios from "axios";
 
 // Описание модели данных для приглашений
@@ -40,7 +40,7 @@ const invites = ref<Invite[]>([]);
 
 const setupRooms = async () => {
   const http = axios.create({
-    baseURL: INTEGRATION_ROUTES.baseURL,
+    baseURL: GATEWAY_INTEGRATION_ROUTES.baseURL,
     headers: {
       "Content-type": "application/json",
       "Authorization": "Bearer " + localStorage.getItem("accessToken"),
@@ -48,7 +48,7 @@ const setupRooms = async () => {
   });
 
   try {
-    const res = await http.get(INTEGRATION_ROUTES.api + INTEGRATION_ROUTES.invites);
+    const res = await http.get(GATEWAY_INTEGRATION_ROUTES.api + GATEWAY_INTEGRATION_ROUTES.invites);
 
     if (res.status === 200) {
       invites.value = res.data;
@@ -61,7 +61,7 @@ const setupRooms = async () => {
 // Метод для принятия приглашения
 const acceptInvite = async (inviteId: string) => {
   const http = axios.create({
-    baseURL: INTEGRATION_ROUTES.baseURL,
+    baseURL: GATEWAY_INTEGRATION_ROUTES.baseURL,
     headers: {
       "Content-type": "application/json",
       "Authorization": "Bearer " + localStorage.getItem("accessToken"),
@@ -69,7 +69,7 @@ const acceptInvite = async (inviteId: string) => {
   });
 
   try {
-    const res = await http.post(INTEGRATION_ROUTES.api + INTEGRATION_ROUTES.acceptInvite, {
+    const res = await http.post(GATEWAY_INTEGRATION_ROUTES.api + GATEWAY_INTEGRATION_ROUTES.acceptInvite, {
       inviteId: inviteId,
     });
 
@@ -85,7 +85,7 @@ const acceptInvite = async (inviteId: string) => {
 // Метод для отклонения приглашения
 const declineInvite = async (inviteId: string) => {
   const http = axios.create({
-    baseURL: INTEGRATION_ROUTES.baseURL,
+    baseURL: GATEWAY_INTEGRATION_ROUTES.baseURL,
     headers: {
       "Content-type": "application/json",
       "Authorization": "Bearer " + localStorage.getItem("accessToken"),
@@ -93,7 +93,7 @@ const declineInvite = async (inviteId: string) => {
   });
 
   try {
-    const res = await http.post(INTEGRATION_ROUTES.api + INTEGRATION_ROUTES.declineInvite, {
+    const res = await http.post(GATEWAY_INTEGRATION_ROUTES.api + GATEWAY_INTEGRATION_ROUTES.declineInvite, {
       inviteId: inviteId,
     });
 

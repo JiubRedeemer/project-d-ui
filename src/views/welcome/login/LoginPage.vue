@@ -20,7 +20,7 @@ import 'swiper/css';
 import '@ionic/vue/css/ionic-swiper.css';
 import {arrowBack} from "ionicons/icons";
 import axios from "axios";
-import {INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 
 const ionRouter = useIonRouter();
 
@@ -104,13 +104,13 @@ function validate() {
 const login = async () => {
   try {
     const http = axios.create({
-      baseURL: INTEGRATION_ROUTES.baseURL,
+      baseURL: GATEWAY_INTEGRATION_ROUTES.baseURL,
       headers: {
         "Content-type": "application/json",
       },
     });
 
-    const res = await http.post(INTEGRATION_ROUTES.auth, {
+    const res = await http.post(GATEWAY_INTEGRATION_ROUTES.auth, {
       email: email.value,
       password: password.value,
     });

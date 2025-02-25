@@ -1,4 +1,4 @@
-export const INTEGRATION_ROUTES = {
+export const GATEWAY_INTEGRATION_ROUTES = {
     baseURL: "http://localhost:8080",
 
     auth: "/auth",
@@ -34,3 +34,12 @@ export const INTEGRATION_ROUTES = {
     bonus: "/bonus",
     mastery: "/mastery"
 };
+
+export const FILE_STORAGE_INTEGRATION_ROUTES = {
+    baseURL: "http://localhost:8079",
+    api: "/files",
+
+    other_bucket: "/other",
+    room_images_bucket: "/roomImages",
+    upload: "/upload"
+}

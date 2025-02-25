@@ -18,7 +18,7 @@ import {HEADERS, TEXTS} from "@/config/localisations";
 import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
 import {ref} from "vue";
 import axios from "axios";
-import {INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {useRoute} from "vue-router";
 import {Character} from "@/components/models/response/Character";
 
@@ -29,14 +29,14 @@ const characters = ref<Character[]>([]);
 
 const setupCharacters = async () => {
   const http = axios.create({
-    baseURL: INTEGRATION_ROUTES.baseURL,
+    baseURL: GATEWAY_INTEGRATION_ROUTES.baseURL,
     headers: {
       "Content-type": "application/json",
       "Authorization": "Bearer " + localStorage.getItem("accessToken")
     },
   });
 
-  const res = await http.get(INTEGRATION_ROUTES.api + INTEGRATION_ROUTES.rooms + '/' + route.params.roomId + INTEGRATION_ROUTES.characters);
+  const res = await http.get(GATEWAY_INTEGRATION_ROUTES.api + GATEWAY_INTEGRATION_ROUTES.rooms + '/' + route.params.roomId + GATEWAY_INTEGRATION_ROUTES.characters);
 
   if (res.status == 200) {
     characters.value = res.data

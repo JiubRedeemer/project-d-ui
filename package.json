@@ -12,6 +12,8 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.750.0",
+    "@aws-sdk/credential-providers": "^3.750.0",
     "@capacitor/app": "6.0.0",
     "@capacitor/core": "6.1.0",
     "@capacitor/haptics": "6.0.0",
@@ -20,19 +22,24 @@
     "@ionic/vue": "^8.0.0",
     "@ionic/vue-router": "^8.0.0",
     "@types/swiper": "^6.0.0",
+    "aws-sdk": "^2.1692.0",
     "axios": "^1.7.2",
     "ionicons": "^7.0.0",
+    "minio": "^8.0.4",
     "swiper": "^11.1.14",
     "vue": "^3.3.0",
     "vue-cookies": "^1.8.4",
     "vue-router": "^4.2.0"
   },
   "devDependencies": {
+    "@aws-sdk/client-s3": "^3.750.0",
+    "@aws-sdk/credential-providers": "^3.750.0",
     "@capacitor/cli": "6.1.0",
     "@vitejs/plugin-legacy": "^5.0.0",
     "@vitejs/plugin-vue": "^4.0.0",
     "@vue/eslint-config-typescript": "^12.0.0",
     "@vue/test-utils": "^2.3.0",
+    "aws-sdk": "^2.1692.0",
     "cypress": "^13.5.0",
     "eslint": "^8.35.0",
     "eslint-plugin-vue": "^9.9.0",

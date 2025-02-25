@@ -4,21 +4,21 @@ import {notificationsOutline} from "ionicons/icons";
 import {HEADERS} from "@/config/localisations";
 import {onBeforeMount, ref} from "vue";
 import axios from "axios";
-import {INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import LogOutButton from "@/views/common/LogOutButton.vue";
 
 const notifications = ref<{ count: number; }>({count: 0});
 
 const setupNotificationCount = async () => {
   const http = axios.create({
-    baseURL: INTEGRATION_ROUTES.baseURL,
+    baseURL: GATEWAY_INTEGRATION_ROUTES.baseURL,
     headers: {
       "Content-type": "application/json",
       "Authorization": "Bearer " + localStorage.getItem("accessToken")
     },
   });
 
-  const res = await http.get(INTEGRATION_ROUTES.api + INTEGRATION_ROUTES.roomInviteCount);
+  const res = await http.get(GATEWAY_INTEGRATION_ROUTES.api + GATEWAY_INTEGRATION_ROUTES.roomInviteCount);
 
   if (res.status == 200) {
     notifications.value.count = res.data.count
