@@ -10,18 +10,19 @@ import {
   IonLabel,
   IonList,
   IonPage,
-  onIonViewDidEnter, useIonRouter
+  onIonViewDidEnter,
+  useIonRouter
 } from "@ionic/vue";
 import {add, chevronForwardOutline} from "ionicons/icons";
 import {HEADERS, TEXTS} from "@/config/localisations";
 import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
 import {ref} from "vue";
 import axios from "axios";
-import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 
 const ionRouter = useIonRouter();
 
-const rooms = ref<{ id: string; name: string; description: string; lastActivityDate: string } []>([]);
+const rooms = ref<{ id: string; name: string; description: string; filePath: string, lastActivityDate: string } []>([]);
 
 const setupRooms = async () => {
   const http = axios.create({
@@ -36,6 +37,7 @@ const setupRooms = async () => {
 
   if (res.status == 200) {
     rooms.value = res.data
+    console.log(rooms.value)
   }
 }
 onIonViewDidEnter(() => {
@@ -50,6 +52,10 @@ const goToCreateRoom = () => {
   ionRouter.navigate('rooms/create', 'forward', 'push')
 }
 
+const getRoomImage = (filePath: String) => {
+
+}
+
 
 </script>
 
@@ -62,7 +68,11 @@ const goToCreateRoom = () => {
         <ion-item v-for="(room, index) in rooms" :key="index" :button="true" color="dark" @click="goToRoom(room.id)">
           <ion-avatar aria-hidden="true" slot="start">
             <img width="64" height="64"
-                 src="https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png"
+                 :src="room.filePath ? FILE_STORAGE_INTEGRATION_ROUTES.baseURL +
+                 FILE_STORAGE_INTEGRATION_ROUTES.api +
+                 FILE_STORAGE_INTEGRATION_ROUTES.room_images_bucket +
+                 FILE_STORAGE_INTEGRATION_ROUTES.download + '/' + room.filePath :
+                 'https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"
                  alt="external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2"/>
           </ion-avatar>
           <ion-icon aria-hidden="true" :icon="chevronForwardOutline" slot="end"></ion-icon>
