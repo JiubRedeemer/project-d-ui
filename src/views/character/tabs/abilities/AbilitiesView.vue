@@ -205,7 +205,7 @@ function calculateCheckValue(value: any) {
   background: var(--ion-color-medium);
   border-radius: 15px;
   padding: 10px;
-  margin-bottom: 10px;
+  margin-top: 10px;
 }
 
 .ability-header {

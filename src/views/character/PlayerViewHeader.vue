@@ -32,7 +32,7 @@ onMounted(async () => {
 </script>
 
 <template :style="{ marginBottom: subheaderVisible ? '200px' : '0' }">
-  <ion-toolbar style="--background: transparent">
+  <ion-toolbar color="dark">
     <ion-buttons slot="start">
       <ion-back-button/>
     </ion-buttons>

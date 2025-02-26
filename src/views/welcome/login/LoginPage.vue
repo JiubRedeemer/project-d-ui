@@ -107,6 +107,7 @@ const login = async () => {
       baseURL: GATEWAY_INTEGRATION_ROUTES.baseURL,
       headers: {
         "Content-type": "application/json",
+        "Access-Control-Allow-Origin": "*",
       },
     });
 

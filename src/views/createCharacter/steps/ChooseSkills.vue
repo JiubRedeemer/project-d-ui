@@ -33,7 +33,7 @@
 </template>
 
 <script setup lang="ts">
-import {IonFab, IonFabButton, IonIcon, IonItem, IonList, IonSelect, IonSelectOption} from "@ionic/vue";
+import {IonFab, IonFabButton, IonIcon, IonItem, IonList, IonSelect, IonSelectOption, useIonRouter} from "@ionic/vue";
 import {checkmarkOutline} from "ionicons/icons";
 import {computed, ref, watch} from "vue";
 import axios from "axios";
@@ -41,6 +41,7 @@ import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {useRoute} from "vue-router";
 
 const route = useRoute();
+const ionRouter = useIonRouter();
 
 const props = defineProps({
   characterData: Object,
@@ -102,6 +103,7 @@ function onChooseSkills() {
     // eslint-disable-next-line vue/no-mutating-props
     props.currentStep.current = props.currentStep.current + 1;
   }
+  ionRouter.navigate('/rooms/' + route.params.roomId + '/characters', 'forward', 'push')
 }
 </script>
 

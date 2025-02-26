@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {IonContent, IonHeader, IonPage} from "@ionic/vue";
+import {IonContent, IonHeader, IonIcon, IonPage, IonTabs, IonTab, IonTabBar, IonTabButton} from "@ionic/vue";
 import PlayerViewHeader from "@/views/character/PlayerViewHeader.vue";
 import AbilitiesView from "@/views/character/tabs/abilities/AbilitiesView.vue";
 import PlayerViewSubheader from "@/views/character/PlayerViewSubheader.vue";
@@ -12,6 +12,8 @@ import {Character} from "@/components/models/response/Character";
 import EditArmoryClassValueModal from "@/views/character/tabs/bonus/EditArmoryClassValueModal.vue";
 import EditInitiativeValueModal from "@/views/character/tabs/bonus/EditInitiativeValueModal.vue";
 import HpModal from "@/views/character/tabs/HpModal.vue";
+import {search} from "ionicons/icons";
+import abilitiesTabIcon from "../../static/icons/AbilitiesTab.svg"
 
 const route = useRoute();
 
@@ -89,7 +91,7 @@ const openSubheader = () => {
 
 <template>
   <ion-page>
-    <ion-header>
+    <ion-header :transluent="false">
       <PlayerViewHeader/>
       <div class="subheader-block" :class="{ openSubheader: subheaderVisible }">
         <PlayerViewSubheader @speed-selected="openEditSpeedModal"
@@ -101,17 +103,30 @@ const openSubheader = () => {
         />
       </div>
     </ion-header>
-    <ion-content class="ion-padding"
-                 color="dark"
-                 :scrollEvents="true"
-                 @ionScroll="handleScroll"
-                 direction="y"
-                 :scroll-x="false"
-                 :force-overscroll="true">
-      <div class="abilities" :class="{ openSubheader: subheaderVisible }">
-        <AbilitiesView @ability-selected="openEditAbilityModal"/>
-      </div>
-    </ion-content>
+    <IonTabs>
+      <ion-tab tab="abilities">
+        <ion-content class="ion-padding"
+                     :fullscreen="true"
+                     color="dark"
+                     :scrollEvents="true"
+                     @ionScroll="handleScroll"
+                     direction="y"
+                     :scroll-x="false"
+                     :force-overscroll="true">
+          <div class="abilities" :class="{ openSubheader: subheaderVisible }">
+            <AbilitiesView @ability-selected="openEditAbilityModal"/>
+          </div>
+        </ion-content>
+      </ion-tab>
+      <ion-tab-bar slot="bottom" color="dark" class="tab-bar" :transluent="true">
+        <ion-tab-button tab="abilities">
+          <div class="tab-icon-wrapper">
+            <ion-icon :icon="abilitiesTabIcon"/>
+          </div>
+        </ion-tab-button>
+      </ion-tab-bar>
+    </IonTabs>
+
 
     <!-- Модалка -->
     <EditAbilityValueModal v-if="selectedAbility"
@@ -154,11 +169,37 @@ const openSubheader = () => {
 
 <style scoped>
 
+.tab-bar, .tab-bar ion-tab-button {
+  background: var(--ion-color-medium);
+  border-radius: 15px;
+  margin: 10px;
+}
+
+/* Обертка для иконки */
+.tab-bar ion-tab-button .tab-icon-wrapper {
+  width: 50px; /* Размер круга */
+  height: 50px;
+  border: 1px solid var(--ion-color-primary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Размер иконки внутри круга */
+.tab-bar ion-tab-button ion-icon {
+  width: 35px;
+  height: 35px;
+  color: white; /* Цвет иконки */
+}
+
 .abilities.openSubheader {
-  margin-top: 17%;
+  margin-top: 30%;
 }
 
 .abilities {
+  margin-top: 15%;
   transition: margin-top 0.3s ease;
 }
 

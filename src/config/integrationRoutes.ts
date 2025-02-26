@@ -1,5 +1,6 @@
 export const GATEWAY_INTEGRATION_ROUTES = {
     baseURL: "http://localhost:8080",
+    // baseURL: "http://192.168.0.73:8080",
 
     auth: "/auth",
     registration: "/auth/registration",
@@ -37,6 +38,7 @@ export const GATEWAY_INTEGRATION_ROUTES = {
 
 export const FILE_STORAGE_INTEGRATION_ROUTES = {
     baseURL: "http://localhost:8079",
+    // baseURL: "http://192.168.0.73:8079",
     api: "/files",
 
     other_bucket: "/other",
