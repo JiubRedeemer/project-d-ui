@@ -1,7 +1,6 @@
 <script setup lang="ts">
 
-import {menu} from "ionicons/icons";
-import {IonButton, IonButtons, IonIcon, IonTitle, IonToolbar} from "@ionic/vue";
+import {IonBackButton, IonButtons, IonTitle, IonToolbar} from "@ionic/vue";
 import LogOutButton from "@/views/common/LogOutButton.vue";
 import {onMounted, ref} from "vue";
 import axios from "axios";
@@ -35,9 +34,7 @@ onMounted(async () => {
 <template :style="{ marginBottom: subheaderVisible ? '200px' : '0' }">
   <ion-toolbar style="--background: transparent">
     <ion-buttons slot="start">
-      <ion-button>
-        <ion-icon slot="icon-only" :icon="menu"></ion-icon>
-      </ion-button>
+      <ion-back-button/>
     </ion-buttons>
 
     <ion-title slot="start">

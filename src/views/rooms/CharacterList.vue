@@ -65,12 +65,12 @@ const goToCharacter = (characterId: string) => {
       <ion-list v-show="characters.length != 0" class="character-list">
         <ion-item v-for="(character, index) in characters" :key="index" :button="true" color="dark"
                   @click="goToCharacter(character.id)">
-          <ion-avatar aria-hidden="true" slot="start">
+          <ion-avatar aria-hidden="false" slot="start">
             <img width="64" height="64"
                  src="https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png"
                  alt="external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2"/>
           </ion-avatar>
-          <ion-icon aria-hidden="true" :icon="chevronForwardOutline" slot="end"></ion-icon>
+          <ion-icon aria-hidden="false" :icon="chevronForwardOutline" slot="end"></ion-icon>
           <ion-label>
             <h1 class="character-name">{{ character.name }}</h1>
             <p class="character-description">{{ character.raceInfo.name }} - {{ character.clazzInfo.name }}</p>

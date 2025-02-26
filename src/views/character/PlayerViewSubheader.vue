@@ -14,7 +14,7 @@ import {HEADERS} from "@/config/localisations";
 
 const characterDto = ref<Character>();
 const route = useRoute()
-
+const closed = ref<boolean>();
 
 onMounted(async () => {
   try {
@@ -34,7 +34,7 @@ onMounted(async () => {
   }
 });
 
-const emits = defineEmits(["close-subheader", "speed-selected", "armory-class-selected", "initiative-selected", "health-selected"]);
+const emits = defineEmits(["open-subheader", "close-subheader", "speed-selected", "armory-class-selected", "initiative-selected", "health-selected"]);
 
 const selectSpeed = (character: Character) => {
   emits("speed-selected", character);
@@ -53,7 +53,12 @@ const selectHealth = (character: Character) => {
 };
 
 const closeSubheader = () => {
-  emits("close-subheader")
+  closed.value = !closed.value
+  if (!closed.value) {
+    emits("open-subheader");
+  } else {
+    emits("close-subheader")
+  }
 }
 
 </script>
@@ -61,7 +66,7 @@ const closeSubheader = () => {
 <template>
 
   <div class="subheader">
-    <div class="start-icons">
+    <div class="start-icons" v-show="!closed">
       <div class="armory-class" @click="selectArmoryClass(characterDto!!)">
         <ion-icon class="armory-class-icon" slot="icon-only" :src="armorIcon"></ion-icon>
         <div
@@ -78,7 +83,7 @@ const closeSubheader = () => {
         </div>
       </div>
     </div>
-    <div class="center-icons">
+    <div class="center-icons" v-show="!closed">
       <div class="inspiration">
         <div class="subheader-chip">
         </div>
@@ -95,7 +100,7 @@ const closeSubheader = () => {
         </div>
       </div>
     </div>
-    <div class="end-icons">
+    <div class="end-icons" v-show="!closed">
       <div class="rest">
         <ion-icon class="rest-icon" slot="icon-only" :src="restIcon" color="light">
         </ion-icon>

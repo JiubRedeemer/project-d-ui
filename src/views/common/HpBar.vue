@@ -45,7 +45,7 @@ export default {
     maxHp: {
       type: Number,
       required: true,
-      validator: (value) => value > 0,
+      validator: (value) => value >= 0,
     },
     tempHp: {
       type: Number,

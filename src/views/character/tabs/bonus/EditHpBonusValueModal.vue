@@ -17,7 +17,7 @@ const props = defineProps({
 });
 
 
-const emit = defineEmits(["closeEditHealthModal"]); // Добавляем событие закрытия
+const emit = defineEmits(["closeBonusValueHpModal"]); // Добавляем событие закрытия
 const inputValue = ref();
 inputValue.value = props.character?.value?.health.bonusValue;
 
@@ -40,7 +40,7 @@ async function onSubmit() {
   }
   props.character!.value!.health.bonusValue! = Number(inputValue.value);
   console.log(inputValue);
-  emit('closeEditHealthModal');
+  emit('closeBonusValueHpModal');
 }
 
 </script>
@@ -48,7 +48,7 @@ async function onSubmit() {
 <template>
   <ion-modal
       :is-open="isOpen"
-      @didDismiss="emit('closeEditHealthModal')"
+      @didDismiss="emit('closeBonusValueHpModal')"
       :initial-breakpoint="1"
       :breakpoints="[0, 0.5, 1]"
   >

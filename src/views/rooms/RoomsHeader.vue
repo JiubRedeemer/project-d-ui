@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {IonBadge, IonButton, IonButtons, IonHeader, IonIcon, IonTitle, IonToolbar, useIonRouter} from "@ionic/vue";
+import {IonBadge, IonBackButton, IonButton, IonButtons, IonHeader, IonIcon, IonTitle, IonToolbar, useIonRouter} from "@ionic/vue";
 import {notificationsOutline, searchOutline} from "ionicons/icons";
 import {onBeforeMount, ref} from "vue";
 import axios from "axios";
@@ -41,6 +41,7 @@ onBeforeMount(() => {
       <ion-toolbar style="--background: transparent">
         <ion-title>{{ props.headerName }}</ion-title>
         <ion-buttons slot="start">
+          <ion-back-button/>
           <ion-button size="small">
             <ion-icon slot="icon-only" :ios="searchOutline" :md="searchOutline"></ion-icon>
           </ion-button>

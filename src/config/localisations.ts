@@ -80,6 +80,7 @@ export const TEXTS = {
 };
 
 export const HEADERS = {
+    menu: {rus: 'Project-D', eng: 'Project-D'},
     rooms: {rus: 'Комнаты', eng: 'Rooms'},
     characters: {rus: 'Персонажи', eng: 'Characters'},
     invites: {rus: 'Приглашения', eng: 'Invites'},

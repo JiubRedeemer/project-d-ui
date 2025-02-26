@@ -37,7 +37,6 @@ const setupRooms = async () => {
 
   if (res.status == 200) {
     rooms.value = res.data
-    console.log(rooms.value)
   }
 }
 onIonViewDidEnter(() => {
@@ -52,10 +51,6 @@ const goToCreateRoom = () => {
   ionRouter.navigate('rooms/create', 'forward', 'push')
 }
 
-const getRoomImage = (filePath: String) => {
-
-}
-
 
 </script>
 
@@ -66,7 +61,7 @@ const getRoomImage = (filePath: String) => {
 
       <ion-list v-show="rooms.length != 0" class="room-list">
         <ion-item v-for="(room, index) in rooms" :key="index" :button="true" color="dark" @click="goToRoom(room.id)">
-          <ion-avatar aria-hidden="true" slot="start">
+          <ion-avatar aria-hidden="false" slot="start">
             <img width="64" height="64"
                  :src="room.filePath ? FILE_STORAGE_INTEGRATION_ROUTES.baseURL +
                  FILE_STORAGE_INTEGRATION_ROUTES.api +
@@ -75,7 +70,7 @@ const getRoomImage = (filePath: String) => {
                  'https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"
                  alt="external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2"/>
           </ion-avatar>
-          <ion-icon aria-hidden="true" :icon="chevronForwardOutline" slot="end"></ion-icon>
+          <ion-icon aria-hidden="false" :icon="chevronForwardOutline" slot="end"></ion-icon>
           <ion-label>
             <h1 class="room-name">{{ room.name }}</h1>
             <p class="room-description">{{ room.description }}</p>

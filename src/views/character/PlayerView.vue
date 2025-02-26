@@ -81,6 +81,10 @@ const closeSubheader = () => {
   subheaderVisible.value = false; // Закрываем модалку
 };
 
+const openSubheader = () => {
+  subheaderVisible.value = true; // Закрываем модалку
+};
+
 </script>
 
 <template>
@@ -93,6 +97,7 @@ const closeSubheader = () => {
                              @initiative-selected="openEditInitiativeModal"
                              @health-selected="openHealthModal"
                              @close-subheader="closeSubheader"
+                             @open-subheader="openSubheader"
         />
       </div>
     </ion-header>
@@ -163,8 +168,8 @@ const closeSubheader = () => {
   left: 0;
   width: 100%;
   background-color: var(--ion-color-dark);
-  max-height: 0;
-  overflow: hidden;
+  max-height: 1vh;
+  overflow: clip;
   transition: max-height 0.3s ease;
 }
 

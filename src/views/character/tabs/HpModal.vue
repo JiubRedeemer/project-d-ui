@@ -8,7 +8,7 @@ import {checkmarkOutline} from "ionicons/icons";
 import {Character} from "@/components/models/response/Character";
 import {HEADERS} from "@/config/localisations";
 import HpEditBlock from "@/views/character/tabs/HpEditBlock.vue";
-import EditHpValueModal from "@/views/character/tabs/bonus/EditHpValueModal.vue";
+import EditHpBonusValueModal from "@/views/character/tabs/bonus/EditHpBonusValueModal.vue";
 
 const route = useRoute();
 
@@ -81,12 +81,12 @@ const closeEditHpModal = () => {
         </ion-button>
       </div>
     </div>
-    <EditHpValueModal v-if="showEditHpModal"
+    <EditHpBonusValueModal v-if="showEditHpModal"
                       :character="character"
                       :isOpen="showEditHpModal"
                       :character-id="String(route.params.characterId)"
                       :url="String(GATEWAY_INTEGRATION_ROUTES.health)"
-                      @closeHpModal="closeEditHpModal"/>
+                      @closeBonusValueHpModal="closeEditHpModal"/>
   </ion-modal>
 </template>
 
