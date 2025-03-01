@@ -125,8 +125,8 @@ const closeSubheader = () => {
   width: 100%;
   border-bottom-right-radius: 100px;
   border-bottom-left-radius: 100px;
-  padding-left: 10px;
-  padding-right: 10px;
+  padding-left: 20px;
+  padding-right: 20px;
   margin-bottom: 10px;
 }
 
@@ -137,8 +137,8 @@ const closeSubheader = () => {
 .armory-class {
   position: relative;
   display: inline-block;
-  width: 50px;
-  height: 50px;
+  width: 40px;
+  height: 40px;
 }
 
 .armory-class-icon {
@@ -153,7 +153,7 @@ const closeSubheader = () => {
   left: 50%;
   transform: translate(-50%, -50%);
   color: white;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: bold;
   pointer-events: none;
 }
@@ -161,8 +161,8 @@ const closeSubheader = () => {
 .speed {
   position: relative;
   display: inline-block;
-  width: 50px;
-  height: 50px;
+  width: 40px;
+  height: 40px;
 }
 
 .speed-icon {
@@ -174,9 +174,9 @@ const closeSubheader = () => {
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, 50%);
+  transform: translate(-50%, 40%);
   color: var(--ion-color-light-contrast);
-  font-size: 14px;
+  font-size: 12px;
   font-weight: bold;
   pointer-events: none;
 }
@@ -184,8 +184,8 @@ const closeSubheader = () => {
 .hp {
   position: relative;
   display: inline-block;
-  width: 50px;
-  height: 50px;
+  width: 40px;
+  height: 40px;
 }
 
 .hp-icon {
@@ -196,8 +196,8 @@ const closeSubheader = () => {
 .rest {
   position: relative;
   display: inline-block;
-  width: 50px;
-  height: 50px;
+  width: 40px;
+  height: 40px;
 }
 
 .rest-icon {
@@ -216,7 +216,7 @@ const closeSubheader = () => {
 .subheader-chip {
   background-color: var(--ion-color-medium-tint);
   border-radius: 10px;
-  width: 10vh;
+  width: 20vw;
   height: 18px;
   margin-bottom: 0;
   display: flex;
@@ -226,7 +226,7 @@ const closeSubheader = () => {
 }
 
 .subheader-chip-name {
-  font-size: 10pt;
+  font-size: 10px;
 }
 
 .initiative,
@@ -234,8 +234,6 @@ const closeSubheader = () => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0;
-  margin-bottom: 5px;
 }
 
 .subheader-show-arrow {

@@ -29,6 +29,7 @@
     <div class="hp-value">
       {{ currentHp }}
       {{ maxHp }}
+      <br>
       <span v-if="tempHp > 0">(+{{ tempHp }})</span>
     </div>
   </div>
@@ -84,16 +85,10 @@ export default {
   height: 100%;
 }
 
-.circle-bg {
-  fill: none;
-  stroke: #e6e6e6;
-  stroke-width: 3.8;
-}
-
 .circle-hp {
   fill: none;
   stroke:  var(--ion-color-danger);
-  stroke-width: 4;
+  stroke-width: 2;
   stroke-linecap: round;
   transition: stroke-dashoffset 2s;
 }
@@ -101,7 +96,7 @@ export default {
 .circle-temp-hp {
   fill: none;
   stroke: var(--ion-color-warning);
-  stroke-width: 4;
+  stroke-width: 3;
   stroke-linecap: round;
   transition: stroke-dashoffset 2s;
 }
@@ -110,9 +105,9 @@ export default {
   position: absolute;
   top: 50%;
   left: 50%;
+  width: 100%;
   transform: translate(-50%, -50%);
   font-size: 10px;
-  font-weight: bold;
   text-align: center;
 }
 </style>

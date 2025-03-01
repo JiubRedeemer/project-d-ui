@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import {IonContent, IonHeader, IonIcon, IonPage, IonTabs, IonTab, IonTabBar, IonTabButton} from "@ionic/vue";
+import {IonContent, IonHeader, IonIcon, IonPage, IonTab, IonTabBar, IonTabButton, IonTabs} from "@ionic/vue";
 import PlayerViewHeader from "@/views/character/PlayerViewHeader.vue";
 import AbilitiesView from "@/views/character/tabs/abilities/AbilitiesView.vue";
+import PersonalityView from "@/views/character/tabs/bio/BioView.vue";
 import PlayerViewSubheader from "@/views/character/PlayerViewSubheader.vue";
 import {ref} from "vue";
 import EditAbilityValueModal from "@/views/character/tabs/bonus/EditAbilityValueModal.vue";
@@ -12,8 +13,8 @@ import {Character} from "@/components/models/response/Character";
 import EditArmoryClassValueModal from "@/views/character/tabs/bonus/EditArmoryClassValueModal.vue";
 import EditInitiativeValueModal from "@/views/character/tabs/bonus/EditInitiativeValueModal.vue";
 import HpModal from "@/views/character/tabs/HpModal.vue";
-import {search} from "ionicons/icons";
 import abilitiesTabIcon from "../../static/icons/AbilitiesTab.svg"
+import personalityTabIcon from "../../static/icons/PersonalityTab.svg"
 
 const route = useRoute();
 
@@ -26,12 +27,6 @@ const showEditInitiativeBonusModal = ref(false); // Управляем види�
 const showEditHealthModal = ref(false); // Управляем видимостью модалки
 const selectedCharacter = ref<Character>();
 
-const handleScroll = (event: any) => {
-  const scrollTop = event.detail.scrollTop;
-  if (scrollTop <= 0) { // Чем больше число, тем сильнее надо тянуть вниз
-    subheaderVisible.value = true;
-  }
-};
 
 const openEditAbilityModal = (ability: AbilityDto) => {
   selectedAbility.value = ability;
@@ -108,13 +103,23 @@ const openSubheader = () => {
         <ion-content class="ion-padding"
                      :fullscreen="true"
                      color="dark"
-                     :scrollEvents="true"
-                     @ionScroll="handleScroll"
                      direction="y"
-                     :scroll-x="false"
-                     :force-overscroll="true">
+                     :scroll-x="false">
           <div class="abilities" :class="{ openSubheader: subheaderVisible }">
             <AbilitiesView @ability-selected="openEditAbilityModal"/>
+          </div>
+        </ion-content>
+      </ion-tab>
+      <ion-tab tab="personality">
+        <ion-content class="ion-padding"
+                     :fullscreen="true"
+                     color="dark"
+                     direction="y"
+                     :scroll-x="false">
+          <div class="personality" :class="{ openSubheader: subheaderVisible }">
+            <Suspense>
+              <PersonalityView/>
+            </Suspense>
           </div>
         </ion-content>
       </ion-tab>
@@ -122,6 +127,11 @@ const openSubheader = () => {
         <ion-tab-button tab="abilities">
           <div class="tab-icon-wrapper">
             <ion-icon :icon="abilitiesTabIcon"/>
+          </div>
+        </ion-tab-button>
+        <ion-tab-button tab="personality">
+          <div class="tab-icon-wrapper">
+            <ion-icon :icon="personalityTabIcon"/>
           </div>
         </ion-tab-button>
       </ion-tab-bar>
@@ -198,7 +208,16 @@ const openSubheader = () => {
   margin-top: 30%;
 }
 
+.personality.openSubheader {
+  margin-top: 30%;
+}
+
 .abilities {
+  margin-top: 15%;
+  transition: margin-top 0.3s ease;
+}
+
+.personality {
   margin-top: 15%;
   transition: margin-top 0.3s ease;
 }

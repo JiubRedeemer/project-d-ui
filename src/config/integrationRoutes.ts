@@ -24,6 +24,7 @@ export const GATEWAY_INTEGRATION_ROUTES = {
     charactersHeader: "/header",
     charactersSubheader: "/subheader",
     characterAbilities: "/abilities",
+    bio: "/bio",
 
     health: "/health",
     updateCurrent: "/updateCurrent",

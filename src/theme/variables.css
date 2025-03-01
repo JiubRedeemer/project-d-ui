@@ -7,6 +7,7 @@
     --ion-color-primary-tint: #d5c3fe;
 
     --ion-color-secondary: #65558F;
+    --ion-color-secondary-opacity-40: rgba(101, 85, 143, 40%);
     --ion-color-secondary-rgb: 101,85,143;
     --ion-color-secondary-contrast: #ffffff;
     --ion-color-secondary-contrast-rgb: 255,255,255;
@@ -49,6 +50,7 @@
     --ion-color-light-tint: #f7f9fc;
 
     --ion-color-medium: #292432;
+    --ion-color-medium-opacity-40: rgba(41,36,50, 40%);
     --ion-color-medium-rgb: 41,36,50;
     --ion-color-medium-contrast: #ffffff;
     --ion-color-medium-contrast-rgb: 255,255,255;
