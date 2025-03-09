@@ -44,6 +44,7 @@ export const FILE_STORAGE_INTEGRATION_ROUTES = {
 
     other_bucket: "/other",
     room_images_bucket: "/roomImages",
+    avatar_images_bucket: "/avatarImages",
     upload: "/upload",
     download: "/download"
 }

@@ -38,10 +38,6 @@ const triggerFileInput = () => {
 };
 
 const uploadToMinio = async (file: File) => {
-  // const res = await axios.put(FILE_STORAGE_INTEGRATION_ROUTES.baseURL +
-  //     FILE_STORAGE_INTEGRATION_ROUTES.api +
-  //     FILE_STORAGE_INTEGRATION_ROUTES.room_images_bucket,
-  //     file);
 
   const res = await axios.put(
       `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL +

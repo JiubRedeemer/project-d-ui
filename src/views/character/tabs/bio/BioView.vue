@@ -3,39 +3,59 @@ import {ref} from "vue";
 import {Character} from "@/components/models/response/Character";
 import {useRoute} from "vue-router";
 import axios from "axios";
-import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
-import {TEXTS} from "../../../../config/localisations";
+import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {TEXTS} from "@/config/localisations";
 import {marked} from "marked";
-import {saveOutline} from "ionicons/icons";
+import {add, saveOutline} from "ionicons/icons";
 import {IonButton, IonButtons, IonIcon} from "@ionic/vue";
 
+const fileInput = ref<HTMLInputElement | null>(null);
 
 const route = useRoute();
 const character = ref<Character | null>(null);
+const editedValues = ref({});
 const isBlockExpanded = ref<string | null>(null);
 const inputSectionText = ref<string | null>(null);
-try {
-  const response = await axios.get(
-      `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${route.params.characterId}${GATEWAY_INTEGRATION_ROUTES.bio}`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-        },
-      }
-  );
+const avatarImage = ref<File | null>(null);
+const previewImage = ref<string | null>(null);
+const allowedFormats = ["image/jpeg", "image/png", "image/gif", "image/bmp", "image/webp", "image/tiff", "image/svg+xml"];
+const filePath = ref<string>("");
 
-  character.value = response.data;
-} catch (error) {
-  console.error("Ошибка при получении данных:", error);
-}
+const fetchCharacter = async () => {
+  try {
+    const response = await axios.get(
+        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${route.params.characterId}${GATEWAY_INTEGRATION_ROUTES.bio}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          },
+        }
+    );
+    character.value = response.data;
+    console.log("avatar:", response.data?.characterBio?.avatar);
+  } catch (error) {
+    console.error("Ошибка при получении данных:", error);
+  }
+};
+
+fetchCharacter();
+
+const startEditing = (field: string) => {
+  editedValues.value[field] = character.value?.characterBio[field];
+};
+
+const updateFieldValue = (field, text) => {
+  editedValues.value[field] = text;
+};
+
 
 // Функция для конвертации текста в HTML
 const renderMarkdown = (text: string | undefined) => {
   return text ? marked(text) : "";
 };
 
-const expandBlock = (name: string) => {
+const expandBlock = (name: any) => {
   isBlockExpanded.value = name;
   inputSectionText.value = character.value?.characterBio[name];
 }
@@ -65,24 +85,102 @@ const saveSectionText = async (name: string) => {
 
 };
 
+
+const saveField = async (field, text : string) => {
+  const newValue = text;
+  if (newValue === character.value?.characterBio[field]) return;
+  console.log(field);
+  console.log(newValue)
+  try {
+    const response = await axios.patch(
+        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${route.params.characterId}${GATEWAY_INTEGRATION_ROUTES.bio}/${field}`,
+        {value: newValue},
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          },
+        }
+    );
+    character.value = response.data;
+  } catch (error) {
+    console.error("Ошибка при сохранении данных:", error);
+  }
+};
+
 const updateInputSectionText = (event: Event) => {
   inputSectionText.value = (event.target as HTMLElement).innerHTML;
 }
 
+const triggerFileInput = () => {
+  fileInput.value?.click();
+};
+
+const handleFileUpload = async (event: Event) => {
+  const file = (event.target as HTMLInputElement).files?.[0] || null;
+  if (file && allowedFormats.includes(file.type)) {
+    avatarImage.value = file;
+    const reader = new FileReader();
+    reader.onload = () => {
+      previewImage.value = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+
+    filePath.value = await uploadToMinio(avatarImage.value);
+    await saveField("avatar", filePath.value)
+
+  } else {
+    alert("Формат файла не поддерживается. Разрешены: JPG, PNG, GIF, BMP, WEBP, TIFF, SVG.");
+  }
+};
+
+const uploadToMinio = async (file: File) => {
+
+  const res = await axios.put(
+      `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL +
+      FILE_STORAGE_INTEGRATION_ROUTES.api +
+      FILE_STORAGE_INTEGRATION_ROUTES.avatar_images_bucket +
+      FILE_STORAGE_INTEGRATION_ROUTES.upload}`,
+      {
+        file: file,
+        userFilename: character.value?.id
+      },
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        }
+      }
+  );
+  return res.data;
+
+};
 </script>
 
 <template>
   <div class="container">
     <div class="header" v-show="isBlockExpanded == null">
-      <div class="avatar">
-        <img :src="`src/static/images/backgrounds/image_SELECT_AGE.png`" class="avatar-img"
-             alt="Фоновое изображение"/>
+      <div class="avatar" @click="triggerFileInput">
+        <img v-if="previewImage" :src="previewImage" class="avatar-img" alt="Room Image"/>
+        <img v-else-if="character?.characterBio.avatar" :src="FILE_STORAGE_INTEGRATION_ROUTES.baseURL +
+                 FILE_STORAGE_INTEGRATION_ROUTES.api +
+                 FILE_STORAGE_INTEGRATION_ROUTES.avatar_images_bucket +
+                 FILE_STORAGE_INTEGRATION_ROUTES.download + '/' + character.characterBio.avatar" class="avatar-img" alt="avatar"/>
+        <div v-else class="avatar-img">
+          <ion-icon :icon="add" class="placeholder-icon"></ion-icon>
+        </div>
+        <input type="file" ref="fileInput" @change="handleFileUpload" accept="image/*" style="display: none;"/>
       </div>
       <div class="stats">
-        <div class="stat">{{ TEXTS.age.rus }} :<span class="stat-value">{{ character?.characterBio.age }}</span></div>
-        <div class="stat">{{ TEXTS.height.rus }} :<span class="stat-value">{{ character?.characterBio.height }}</span>
-        </div>
-        <div class="stat">{{ TEXTS.weight.rus }} :<span class="stat-value">{{ character?.characterBio.weight }}</span>
+        <div class="stat" v-for="field in ['age', 'height', 'weight']" :key="field">
+          {{ TEXTS[field].rus }} :
+          <span
+              class="stat-value"
+              contenteditable="true"
+              @focus="startEditing(field)"
+              @blur="saveField(field, $event.target?.innerText)"
+              @input="updateFieldValue(field, $event.target?.innerText)"
+              @keydown.enter.prevent="saveField(field, $event.target?.innerText)"
+          >{{ character?.characterBio[field] }}</span>
         </div>
       </div>
     </div>
@@ -179,6 +277,9 @@ const updateInputSectionText = (event: Event) => {
   width: 180px;
   height: 180px;
   border-radius: 25px;
+  align-content: center;
+  justify-content: center;
+  display: flex;
 }
 
 .stats {
@@ -217,6 +318,13 @@ const updateInputSectionText = (event: Event) => {
   align-items: center;
   justify-content: center;
   font-size: 10pt;
+}
+
+.placeholder-icon {
+  align-self: center;
+  justify-self: center;
+  font-size: 48px;
+  color: white;
 }
 
 .section {

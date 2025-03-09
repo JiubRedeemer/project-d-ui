@@ -49,6 +49,7 @@ export interface Skill {
 
 export interface CharacterBio {
     characterId: string;
+    avatar: any;
     age: number;
     height: number;
     weight: number;
