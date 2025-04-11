@@ -35,43 +35,32 @@
   </div>
 </template>
 
-<script>
-export default {
-  props: {
-    currentHp: {
-      type: Number,
-      required: true,
-      validator: (value) => value >= 0,
-    },
-    maxHp: {
-      type: Number,
-      required: true,
-      validator: (value) => value >= 0,
-    },
-    tempHp: {
-      type: Number,
-      default: 0,
-      validator: (value) => value >= 0,
-    },
-  },
-  computed: {
-    dashArray() {
-      return "100, 100";
-    },
-    dashOffset() {
-      const percentage = (this.currentHp / this.maxHp) * 100;
-      return 100 - percentage;
-    },
-    tempDashArray() {
-      const percentage = (this.tempHp / this.maxHp) * 100;
-      return `${percentage}, 100`;
-    },
-    tempDashOffset() {
-      return (this.currentHp / this.maxHp) * -100;
-    },
-  },
-};
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useCharacterStore } from '@/stores/CharacterStore'
+
+const characterStore = useCharacterStore()
+
+const currentHp = computed(() => characterStore.character?.health?.currentHp ?? 0)
+const maxHp = computed(() => characterStore.character?.health?.maxHp + characterStore.character?.health?.bonusValue)
+const tempHp = computed(() => characterStore.character?.health?.tempHp ?? 0)
+
+const dashArray = computed(() => "100, 100")
+const dashOffset = computed(() => {
+  const percentage = (currentHp.value / maxHp.value) * 100
+  return 100 - percentage
+})
+
+const tempDashArray = computed(() => {
+  const percentage = (tempHp.value / maxHp.value) * 100
+  return `${percentage}, 100`
+})
+
+const tempDashOffset = computed(() => {
+  return (currentHp.value / maxHp.value) * -100
+})
 </script>
+
 
 <style scoped>
 .hp-bar {

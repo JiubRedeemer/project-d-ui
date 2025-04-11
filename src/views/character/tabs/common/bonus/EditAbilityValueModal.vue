@@ -5,15 +5,19 @@ import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {useRoute} from "vue-router";
 import {ref} from "vue";
 import {checkmarkOutline} from "ionicons/icons";
+import {useCharacterStore} from "@/stores/CharacterStore";
 
 const route = useRoute();
 
 const props = defineProps({
   ability: ref<AbilityDto>,
-  characterId: String,
+  // characterId: String,
   url: String,
   isOpen: Boolean, // Принимаем видимость модалки
 });
+
+const characterStore = useCharacterStore()
+
 
 
 const emit = defineEmits(["closeEditAbilityModal"]); // Добавляем событие закрытия
@@ -23,7 +27,7 @@ inputValue.value = props.ability?.value?.bonusValue
 async function onSubmit() {
   try {
     await axios.patch(
-        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${props.characterId}${props.url}${GATEWAY_INTEGRATION_ROUTES.bonus}`,
+        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${characterStore.character.id}${props.url}${GATEWAY_INTEGRATION_ROUTES.bonus}`,
         {
           bonusValue: inputValue.value,
         },

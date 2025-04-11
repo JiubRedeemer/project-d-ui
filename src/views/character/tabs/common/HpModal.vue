@@ -5,15 +5,15 @@ import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {useRoute} from "vue-router";
 import {ref} from "vue";
 import {checkmarkOutline} from "ionicons/icons";
-import {Character} from "@/components/models/response/Character";
 import {HEADERS} from "@/config/localisations";
 import HpEditBlock from "@/views/character/tabs/common/HpEditBlock.vue";
 import EditHpBonusValueModal from "@/views/character/tabs/common/bonus/EditHpBonusValueModal.vue";
+import {useCharacterStore} from "@/stores/CharacterStore";
 
 const route = useRoute();
+const characterStore = useCharacterStore()
 
 const props = defineProps({
-  character: ref<Character>,
   url: String,
   isOpen: Boolean, // Принимаем видимость модалки
 });
@@ -22,27 +22,9 @@ const props = defineProps({
 const emit = defineEmits(["closeHpModal"]); // Добавляем событие закрытия
 const showEditHpModal = ref(false); // Управляем видимостью модалки
 const inputValue = ref();
-inputValue.value = props.character?.value?.bonusSpeed;
+inputValue.value = characterStore.character.bonusSpeed;
 
 async function onSubmit() {
-  try {
-    await axios.patch(
-        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${props.character?.value?.id}${props.url}${GATEWAY_INTEGRATION_ROUTES.bonus}`,
-        {
-          bonusValue: inputValue.value,
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-          },
-        }
-    );
-  } catch (error) {
-    console.error("Ошибка при получении данных:", error);
-  }
-  props.character!.value!.bonusSpeed! = Number(inputValue.value);
-  console.log(inputValue);
   emit('closeHpModal');
 }
 
@@ -67,13 +49,13 @@ const closeEditHpModal = () => {
         <div class="name">{{ HEADERS.health.rus }}
         </div>
         <div class="value">
-          {{ character?.value?.health.currentHp }}/{{
-            character?.value?.health.maxHp + character?.value?.health.bonusValue
-          }}({{ character?.value?.health.tempHp }})
+          {{ characterStore.character.health.currentHp }}/{{
+            characterStore.character.health.maxHp + characterStore.character.health.bonusValue
+          }}({{ characterStore.character.health.tempHp }})
         </div>
       </div>
       <div class="input-block">
-        <HpEditBlock :character="character" @editHpSelect="openEditHpModal()"/>
+        <HpEditBlock @editHpSelect="openEditHpModal()"/>
       </div>
       <div class="footer">
         <ion-button size="large" shape="round" @click="onSubmit">
@@ -82,7 +64,6 @@ const closeEditHpModal = () => {
       </div>
     </div>
     <EditHpBonusValueModal v-if="showEditHpModal"
-                      :character="character"
                       :isOpen="showEditHpModal"
                       :character-id="String(route.params.characterId)"
                       :url="String(GATEWAY_INTEGRATION_ROUTES.health)"

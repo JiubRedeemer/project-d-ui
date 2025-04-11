@@ -2,32 +2,15 @@
 
 import {IonBackButton, IonButtons, IonTitle, IonToolbar} from "@ionic/vue";
 import LogOutButton from "@/views/common/LogOutButton.vue";
-import {onMounted, ref} from "vue";
-import axios from "axios";
-import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
-import {Character} from "@/components/models/response/Character";
+import {onMounted} from "vue";
 import {useRoute} from "vue-router";
+import {useCharacterStore} from "@/stores/CharacterStore"
 
-const characterDto = ref<Character>();
-const route = useRoute()
 
-onMounted(async () => {
-  try {
-    const response = await axios.get(
-        GATEWAY_INTEGRATION_ROUTES.baseURL + GATEWAY_INTEGRATION_ROUTES.api + GATEWAY_INTEGRATION_ROUTES.rooms + '/' + route.params.roomId + GATEWAY_INTEGRATION_ROUTES.characters + '/' + route.params.characterId + GATEWAY_INTEGRATION_ROUTES.charactersHeader,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: "Bearer " + localStorage.getItem("accessToken"),
-          },
-        }
-    );
-    characterDto.value = response.data;
-  } catch (error) {
+const characterStore = useCharacterStore()
 
-    console.error("Ошибка при получении данных:", error);
-  }
-});
+
+
 
 </script>
 
@@ -38,17 +21,22 @@ onMounted(async () => {
     </ion-buttons>
 
     <ion-title slot="start">
-      <div class="header-content">
-        <div class="name-block">{{ characterDto?.name }}</div>
-        <div class="race-class-block">{{ characterDto?.raceInfo.name }} - {{ characterDto?.clazzInfo.name }}</div>
+      <div class="header-content" v-if="characterStore.character">
+        <div class="name-block">{{ characterStore.character?.name }}</div>
+        <div class="race-class-block">{{ characterStore.character?.raceInfo?.name }} -
+          {{ characterStore.character?.clazzInfo?.name }}
+        </div>
       </div>
     </ion-title>
 
     <ion-buttons slot="end">
       <div class="level-container">
         <div class="level-circle">
-          <div class="level">{{ characterDto?.level.level }}</div>
-          <div class="experience">{{ characterDto?.level.xp }}/{{ characterDto?.level.nextLevelXp }}</div>
+          <div class="level">{{ characterStore.character?.level?.level }}</div>
+          <div class="experience">{{
+              characterStore.character?.level?.xp
+            }}/{{ characterStore.character?.level?.nextLevelXp }}
+          </div>
         </div>
       </div>
       <LogOutButton/>

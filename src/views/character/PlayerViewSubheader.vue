@@ -5,34 +5,15 @@ import HpBar from "@/views/common/HpBar.vue";
 import restIcon from "../../static/icons/rest.svg"
 import armorIcon from "../../static/icons/Armor.svg"
 import speedIcon from "../../static/icons/Speed.svg"
-import {onMounted, ref} from "vue";
-import axios from "axios";
-import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {ref} from "vue";
 import {Character} from "@/components/models/response/Character";
-import {useRoute} from "vue-router";
 import {HEADERS} from "@/config/localisations";
+import {useCharacterStore} from "@/stores/CharacterStore";
 
-const characterDto = ref<Character>();
-const route = useRoute()
 const closed = ref<boolean>();
+const characterStore = useCharacterStore()
 
-onMounted(async () => {
-  try {
-    const response = await axios.get(
-        GATEWAY_INTEGRATION_ROUTES.baseURL + GATEWAY_INTEGRATION_ROUTES.api + GATEWAY_INTEGRATION_ROUTES.rooms + '/' + route.params.roomId + GATEWAY_INTEGRATION_ROUTES.characters + '/' + route.params.characterId + GATEWAY_INTEGRATION_ROUTES.charactersSubheader,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: "Bearer " + localStorage.getItem("accessToken"),
-          },
-        }
-    );
-    characterDto.value = response.data;
-  } catch (error) {
 
-    console.error("Ошибка при получении данных:", error);
-  }
-});
 
 const emits = defineEmits(["open-subheader", "close-subheader", "speed-selected", "armory-class-selected", "initiative-selected", "health-selected"]);
 
@@ -67,18 +48,18 @@ const closeSubheader = () => {
 
   <div class="subheader">
     <div class="start-icons" v-show="!closed">
-      <div class="armory-class" @click="selectArmoryClass(characterDto!!)">
+      <div class="armory-class" @click="selectArmoryClass(characterStore.character!!)">
         <ion-icon class="armory-class-icon" slot="icon-only" :src="armorIcon"></ion-icon>
         <div
             class="armory-class-value">{{
-            characterDto != null ? (characterDto?.armoryClass + characterDto?.bonusArmoryClass) : 0
+            characterStore.character != null ? (characterStore.character?.armoryClass + characterStore.character?.bonusArmoryClass) : 0
           }}
         </div>
       </div>
-      <div class="speed" @click="selectSpeed(characterDto!!)">
+      <div class="speed" @click="selectSpeed(characterStore.character!!)">
         <ion-icon class="speed-icon" slot="icon-only" :src="speedIcon" color="light"></ion-icon>
         <div class="speed-value">{{
-            characterDto != null ? (characterDto?.speed + characterDto?.bonusSpeed) : 0
+            characterStore.character != null ? (characterStore.character?.speed + characterStore.character?.bonusSpeed) : 0
           }}
         </div>
       </div>
@@ -91,9 +72,9 @@ const closeSubheader = () => {
           {{ HEADERS.inspiration.rus }}
         </div>
       </div>
-      <div class="initiative" @click="selectInitiative(characterDto!!)">
+      <div class="initiative" @click="selectInitiative(characterStore.character!!)">
         <div class="subheader-chip">
-          {{ characterDto != null ? (characterDto?.initiative + characterDto?.bonusInitiative) : 0 }}
+          {{ characterStore.character != null ? (characterStore.character?.initiative + characterStore.character?.bonusInitiative) : 0 }}
         </div>
         <div class="subheader-chip-name">
           {{ HEADERS.initiative.rus }}
@@ -105,10 +86,8 @@ const closeSubheader = () => {
         <ion-icon class="rest-icon" slot="icon-only" :src="restIcon" color="light">
         </ion-icon>
       </div>
-      <div class="hp" @click="selectHealth(characterDto!!)">
-        <hp-bar class="hp-icon" :currentHp="characterDto?.health.currentHp ? characterDto?.health.currentHp : 0"
-                :maxHp="characterDto?.health.maxHp != null ? characterDto?.health.maxHp + characterDto.health.bonusValue: 0"
-                :tempHp="characterDto?.health.tempHp ? characterDto?.health.tempHp : 0"/>
+      <div class="hp" @click="selectHealth(characterStore.character!!)">
+        <hp-bar class="hp-icon"/>
       </div>
     </div>
   </div>

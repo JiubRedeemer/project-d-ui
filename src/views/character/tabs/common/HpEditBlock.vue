@@ -2,7 +2,7 @@
   <ion-grid>
     <ion-row>
       <ion-col>
-        <ion-button expand="block" class="settings-button" @click="selectEditHp(character?.value!!)">
+        <ion-button expand="block" class="settings-button" @click="selectEditHp(characterStore.character)">
           <ion-icon :icon="settingsOutline"></ion-icon>
         </ion-button>
       </ion-col>
@@ -34,15 +34,14 @@ import axios from "axios";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {useRoute} from "vue-router";
 import {Character} from "@/components/models/response/Character";
+import {useCharacterStore} from "@/stores/CharacterStore";
+const characterStore = useCharacterStore()
 
 const emits = defineEmits(["edit-hp-select"]);
 
 const route = useRoute();
 const inputValue = ref<string>('');
 
-const props = defineProps({
-  character: ref<Character>
-});
 
 interface Button {
   label: string;
@@ -98,24 +97,24 @@ const updateCurrentHealth = async (type: string, value: number) => {
         }
     );
 
-    if (props.character?.value) {
+    if (characterStore.character) {
       if (type === "HEAL") {
         // eslint-disable-next-line vue/no-mutating-props
-        props.character.value.health.currentHp = Math.min(props.character.value.health.currentHp + value, props.character.value.health.maxHp + props.character.value.health.bonusValue);
+        characterStore.character.health.currentHp = Math.min(characterStore.character.health.currentHp + value, characterStore.character.health.maxHp + characterStore.character.health.bonusValue);
       } else if (type === "DAMAGE") {
-        if (props.character.value.health.tempHp >= value) {
+        if (characterStore.character.health.tempHp >= value) {
           // eslint-disable-next-line vue/no-mutating-props
-          props.character.value.health.tempHp -= value;
+          characterStore.character.health.tempHp -= value;
         } else {
-          const remainingDamage = value - props.character.value.health.tempHp;
+          const remainingDamage = value - characterStore.character.health.tempHp;
           // eslint-disable-next-line vue/no-mutating-props
-          props.character.value.health.currentHp = Math.max(0, props.character.value.health.currentHp - remainingDamage);
+          characterStore.character.health.currentHp = Math.max(0, characterStore.character.health.currentHp - remainingDamage);
           // eslint-disable-next-line vue/no-mutating-props
-          props.character.value.health.tempHp = 0;
+          characterStore.character.health.tempHp = 0;
         }
       } else if (type === "TEMP") {
         // eslint-disable-next-line vue/no-mutating-props
-        props.character.value.health.tempHp += value;
+        characterStore.character.health.tempHp += value;
       }
 
     }

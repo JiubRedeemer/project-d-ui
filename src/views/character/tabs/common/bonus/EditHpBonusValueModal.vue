@@ -5,13 +5,13 @@ import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {useRoute} from "vue-router";
 import {ref} from "vue";
 import {checkmarkOutline} from "ionicons/icons";
-import {Character} from "@/components/models/response/Character";
 import {HEADERS} from "@/config/localisations";
+import {useCharacterStore} from "@/stores/CharacterStore";
 
 const route = useRoute();
+const characterStore = useCharacterStore()
 
 const props = defineProps({
-  character: ref<Character>,
   url: String,
   isOpen: Boolean, // Принимаем видимость модалки
 });
@@ -19,12 +19,13 @@ const props = defineProps({
 
 const emit = defineEmits(["closeBonusValueHpModal"]); // Добавляем событие закрытия
 const inputValue = ref();
-inputValue.value = props.character?.value?.health.bonusValue;
+inputValue.value = characterStore.character.health.bonusValue;
 
 async function onSubmit() {
   try {
+    console.log(inputValue.value)
     await axios.patch(
-        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${props.character?.value?.id}${props.url}${GATEWAY_INTEGRATION_ROUTES.bonus}`,
+        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${characterStore.character.id}${props.url}${GATEWAY_INTEGRATION_ROUTES.bonus}`,
         {
           bonusValue: inputValue.value,
         },
@@ -38,7 +39,7 @@ async function onSubmit() {
   } catch (error) {
     console.error("Ошибка при получении данных:", error);
   }
-  props.character!.value!.health.bonusValue! = Number(inputValue.value);
+  characterStore.character.health.bonusValue! = Number(inputValue.value);
   console.log(inputValue);
   emit('closeBonusValueHpModal');
 }
@@ -55,7 +56,7 @@ async function onSubmit() {
     <div class="block">
       <div class="header">
         <div class="name">{{
-            HEADERS.health.rus + " (" + (props.character!.value!.health!.maxHp! + props.character!.value!.health!.bonusValue!) + ")"
+            HEADERS.health.rus + " (" + (characterStore.character.health!.maxHp! + characterStore.character.health!.bonusValue!) + ")"
           }}
         </div>
       </div>
@@ -66,7 +67,7 @@ async function onSubmit() {
             color="primary"
             :clear-input="false"
             v-model="inputValue"
-            :value="props.character!.value!.health!.bonusValue"
+            :value="characterStore.character.health!.bonusValue"
             label-placement="floating"
             label="Бонусное значение"
             class="input-block"

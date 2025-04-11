@@ -5,13 +5,14 @@ import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {useRoute} from "vue-router";
 import {ref} from "vue";
 import {checkmarkOutline} from "ionicons/icons";
-import {Character} from "@/components/models/response/Character";
 import {HEADERS} from "@/config/localisations";
+import {useCharacterStore} from "@/stores/CharacterStore";
 
 const route = useRoute();
 
+const characterStore = useCharacterStore()
+
 const props = defineProps({
-  character: ref<Character>,
   url: String,
   isOpen: Boolean, // Принимаем видимость модалки
 });
@@ -19,12 +20,12 @@ const props = defineProps({
 
 const emit = defineEmits(["closeEditInitiativeModal"]); // Добавляем событие закрытия
 const inputValue = ref();
-inputValue.value = props.character?.value?.bonusInitiative;
+inputValue.value = characterStore.character.bonusInitiative;
 
 async function onSubmit() {
   try {
     await axios.patch(
-        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${props.character?.value?.id}${props.url}${GATEWAY_INTEGRATION_ROUTES.bonus}`,
+        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${characterStore.character.id}${props.url}${GATEWAY_INTEGRATION_ROUTES.bonus}`,
         {
           bonusValue: inputValue.value,
         },
@@ -38,7 +39,7 @@ async function onSubmit() {
   } catch (error) {
     console.error("Ошибка при получении данных:", error);
   }
-  props.character!.value!.bonusInitiative! = Number(inputValue.value);
+  characterStore.character.bonusInitiative! = Number(inputValue.value);
   console.log(inputValue);
   emit('closeEditInitiativeModal');
 }
@@ -55,7 +56,7 @@ async function onSubmit() {
     <div class="block">
       <div class="header">
         <div class="name">{{
-            HEADERS.initiative.rus + " (" + (props.character!.value!.initiative! + props.character!.value!.bonusInitiative!) + ")"
+            HEADERS.initiative.rus + " (" + (characterStore.character.initiative! + characterStore.character.bonusInitiative!) + ")"
           }}
         </div>
       </div>
@@ -66,7 +67,7 @@ async function onSubmit() {
             color="primary"
             :clear-input="false"
             v-model="inputValue"
-            :value="props.character!.value!.bonusInitiative!"
+            :value="characterStore.character.bonusInitiative!"
             label-placement="floating"
             label="Бонусное значение"
             class="input-block"

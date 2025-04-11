@@ -1,73 +1,52 @@
 <script setup lang="ts">
-import {ref} from "vue";
-import {Character} from "@/components/models/response/Character";
-import {useRoute} from "vue-router";
+import { ref } from "vue";
+import { useRoute } from "vue-router";
 import axios from "axios";
-import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
-import {TEXTS} from "@/config/localisations";
-import {marked} from "marked";
-import {add, saveOutline} from "ionicons/icons";
-import {IonButton, IonButtons, IonIcon} from "@ionic/vue";
+import { FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES } from "@/config/integrationRoutes";
+import { TEXTS } from "@/config/localisations";
+import { marked } from "marked";
+import { add, saveOutline } from "ionicons/icons";
+import { IonButton, IonButtons, IonIcon } from "@ionic/vue";
+import { useCharacterStore } from "@/stores/CharacterStore";
 
 const fileInput = ref<HTMLInputElement | null>(null);
 
 const route = useRoute();
-const character = ref<Character | null>(null);
-const editedValues = ref({});
+const editedValues = ref<Record<string, string>>({});
 const isBlockExpanded = ref<string | null>(null);
 const inputSectionText = ref<string | null>(null);
 const avatarImage = ref<File | null>(null);
 const previewImage = ref<string | null>(null);
 const allowedFormats = ["image/jpeg", "image/png", "image/gif", "image/bmp", "image/webp", "image/tiff", "image/svg+xml"];
 const filePath = ref<string>("");
-
-const fetchCharacter = async () => {
-  try {
-    const response = await axios.get(
-        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${route.params.characterId}${GATEWAY_INTEGRATION_ROUTES.bio}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-          },
-        }
-    );
-    character.value = response.data;
-    console.log("avatar:", response.data?.characterBio?.avatar);
-  } catch (error) {
-    console.error("Ошибка при получении данных:", error);
-  }
-};
-
-fetchCharacter();
+const characterStore = useCharacterStore()
 
 const startEditing = (field: string) => {
-  editedValues.value[field] = character.value?.characterBio[field];
+  editedValues.value[field] = characterStore.character.characterBio[field];
 };
 
-const updateFieldValue = (field, text) => {
+const updateFieldValue = (field: string, text: string) => {
   editedValues.value[field] = text;
 };
 
-
 // Функция для конвертации текста в HTML
-const renderMarkdown = (text: string | undefined) => {
+const renderMarkdown = (text: string | undefined): string => {
   return text ? marked(text) : "";
 };
 
-const expandBlock = (name: any) => {
+const expandBlock = (name: string) => {
   isBlockExpanded.value = name;
-  inputSectionText.value = character.value?.characterBio[name];
-}
+  inputSectionText.value = characterStore.character.characterBio[name];
+};
 
 const saveSectionText = async (name: string) => {
-
   try {
-    const response = await axios.patch(
-        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${route.params.characterId}${GATEWAY_INTEGRATION_ROUTES.bio}/${name}`,
-        {
-          value: inputSectionText.value
-        },
+    const roomId = route.params.roomId as string;
+    const characterId = route.params.characterId as string;
+
+    await axios.patch(
+        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${characterId}${GATEWAY_INTEGRATION_ROUTES.bio}/${name}`,
+        { value: inputSectionText.value },
         {
           headers: {
             "Content-Type": "application/json",
@@ -76,25 +55,25 @@ const saveSectionText = async (name: string) => {
         }
     );
 
-    character.value = response.data;
+    await characterStore.updateCharacterInStoreById(roomId, characterId);
   } catch (error) {
     console.error("Ошибка при получении данных:", error);
   }
   inputSectionText.value = null; // Закрываем все секции
   isBlockExpanded.value = null; // Закрываем все секции
-
 };
 
-
-const saveField = async (field, text : string) => {
+const saveField = async (field: string, text: string) => {
   const newValue = text;
-  if (newValue === character.value?.characterBio[field]) return;
-  console.log(field);
-  console.log(newValue)
+  if (newValue === characterStore.character.characterBio[field]) return;
+
   try {
-    const response = await axios.patch(
-        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${route.params.characterId}${GATEWAY_INTEGRATION_ROUTES.bio}/${field}`,
-        {value: newValue},
+    const roomId = route.params.roomId as string;
+    const characterId = route.params.characterId as string;
+
+    await axios.patch(
+        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${characterId}${GATEWAY_INTEGRATION_ROUTES.bio}/${field}`,
+        { value: newValue },
         {
           headers: {
             "Content-Type": "application/json",
@@ -102,15 +81,16 @@ const saveField = async (field, text : string) => {
           },
         }
     );
-    character.value = response.data;
+    await characterStore.updateCharacterInStoreById(roomId, characterId);
   } catch (error) {
     console.error("Ошибка при сохранении данных:", error);
   }
 };
 
 const updateInputSectionText = (event: Event) => {
-  inputSectionText.value = (event.target as HTMLElement).innerHTML;
-}
+  const target = event.target as HTMLElement;
+  inputSectionText.value = target.innerText;
+};
 
 const triggerFileInput = () => {
   fileInput.value?.click();
@@ -127,32 +107,27 @@ const handleFileUpload = async (event: Event) => {
     reader.readAsDataURL(file);
 
     filePath.value = await uploadToMinio(avatarImage.value);
-    await saveField("avatar", filePath.value)
-
+    await saveField("avatar", filePath.value);
   } else {
     alert("Формат файла не поддерживается. Разрешены: JPG, PNG, GIF, BMP, WEBP, TIFF, SVG.");
   }
 };
 
-const uploadToMinio = async (file: File) => {
+const uploadToMinio = async (file: File): Promise<string> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("userFilename", characterStore.character.id);
 
   const res = await axios.put(
-      `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL +
-      FILE_STORAGE_INTEGRATION_ROUTES.api +
-      FILE_STORAGE_INTEGRATION_ROUTES.avatar_images_bucket +
-      FILE_STORAGE_INTEGRATION_ROUTES.upload}`,
-      {
-        file: file,
-        userFilename: character.value?.id
-      },
+      `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.avatar_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.upload}`,
+      formData,
       {
         headers: {
           "Content-Type": "multipart/form-data",
-        }
+        },
       }
   );
   return res.data;
-
 };
 </script>
 
@@ -161,10 +136,10 @@ const uploadToMinio = async (file: File) => {
     <div class="header" v-show="isBlockExpanded == null">
       <div class="avatar" @click="triggerFileInput">
         <img v-if="previewImage" :src="previewImage" class="avatar-img" alt="Room Image"/>
-        <img v-else-if="character?.characterBio.avatar" :src="FILE_STORAGE_INTEGRATION_ROUTES.baseURL +
+        <img v-else-if="characterStore.character.characterBio.avatar" :src="FILE_STORAGE_INTEGRATION_ROUTES.baseURL +
                  FILE_STORAGE_INTEGRATION_ROUTES.api +
                  FILE_STORAGE_INTEGRATION_ROUTES.avatar_images_bucket +
-                 FILE_STORAGE_INTEGRATION_ROUTES.download + '/' + character.characterBio.avatar" class="avatar-img" alt="avatar"/>
+                 FILE_STORAGE_INTEGRATION_ROUTES.download + '/' + characterStore.character.characterBio.avatar" class="avatar-img" alt="avatar"/>
         <div v-else class="avatar-img">
           <ion-icon :icon="add" class="placeholder-icon"></ion-icon>
         </div>
@@ -180,7 +155,7 @@ const uploadToMinio = async (file: File) => {
               @blur="saveField(field, $event.target?.innerText)"
               @input="updateFieldValue(field, $event.target?.innerText)"
               @keydown.enter.prevent="saveField(field, $event.target?.innerText)"
-          >{{ character?.characterBio[field] }}</span>
+          >{{ characterStore.character.characterBio[field] }}</span>
         </div>
       </div>
     </div>
@@ -196,7 +171,7 @@ const uploadToMinio = async (file: File) => {
       <h1 class="sectionHeader">{{ TEXTS[section].rus }}:</h1>
       <p
           contenteditable="true"
-          v-html="isBlockExpanded === section ? character?.characterBio[section] : renderMarkdown(character?.characterBio[section])"
+          v-html="isBlockExpanded === section ? characterStore.character.characterBio[section] : renderMarkdown(characterStore.character.characterBio[section])"
           @input="updateInputSectionText($event)"
       ></p>
       <ion-buttons slot="end" class="sectionButtons">

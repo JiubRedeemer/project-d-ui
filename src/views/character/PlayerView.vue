@@ -4,7 +4,7 @@ import PlayerViewHeader from "@/views/character/PlayerViewHeader.vue";
 import AbilitiesView from "@/views/character/tabs/abilities/AbilitiesView.vue";
 import PersonalityView from "@/views/character/tabs/bio/BioView.vue";
 import PlayerViewSubheader from "@/views/character/PlayerViewSubheader.vue";
-import {ref} from "vue";
+import {onMounted, ref} from "vue";
 import EditAbilityValueModal from "@/views/character/tabs/common/bonus/EditAbilityValueModal.vue";
 import {useRoute} from "vue-router";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
@@ -17,9 +17,11 @@ import abilitiesTabIcon from "../../static/icons/AbilitiesTab.svg"
 import bioTabIcon from "../../static/icons/PersonalityTab.svg"
 import inventoryTabIcon from "../../static/icons/InventoryTab.svg"
 import InventoryView from "@/views/character/tabs/inventory/InventoryView.vue";
+import {useCharacterStore} from "@/stores/CharacterStore";
 
 const route = useRoute();
-
+const characterStore = useCharacterStore()
+const asyncDone = ref<boolean>(false)
 const subheaderVisible = ref(true);
 const showEditAbilityBonusModal = ref(false); // Управляем видимостью модалки
 const selectedAbility = ref<AbilityDto>();
@@ -28,6 +30,13 @@ const showEditArmoryClassBonusModal = ref(false); // Управляем види
 const showEditInitiativeBonusModal = ref(false); // Управляем видимостью модалки
 const showEditHealthModal = ref(false); // Управляем видимостью модалки
 const selectedCharacter = ref<Character>();
+
+onMounted(async () => {
+  if (characterStore.character != null) {
+    await characterStore.updateCharacterInStoreById(route.params.roomId, route.params.characterId)
+  }
+  asyncDone.value = true;
+})
 
 
 const openEditAbilityModal = (ability: AbilityDto) => {
@@ -89,9 +98,9 @@ const openSubheader = () => {
 <template>
   <ion-page>
     <ion-header :transluent="false">
-      <PlayerViewHeader/>
+      <PlayerViewHeader v-if="asyncDone"/>
       <div class="subheader-block" :class="{ openSubheader: subheaderVisible }">
-        <PlayerViewSubheader @speed-selected="openEditSpeedModal"
+        <PlayerViewSubheader v-if="asyncDone" @speed-selected="openEditSpeedModal"
                              @armory-class-selected="openEditArmoryClassModal"
                              @initiative-selected="openEditInitiativeModal"
                              @health-selected="openHealthModal"
@@ -108,7 +117,7 @@ const openSubheader = () => {
                      direction="y"
                      :scroll-x="false">
           <div class="abilities" :class="{ openSubheader: subheaderVisible }">
-            <AbilitiesView @ability-selected="openEditAbilityModal"/>
+            <AbilitiesView v-if="asyncDone" @ability-selected="openEditAbilityModal"/>
           </div>
         </ion-content>
       </ion-tab>
@@ -120,7 +129,7 @@ const openSubheader = () => {
                      :scroll-x="false">
           <div class="bio" :class="{ openSubheader: subheaderVisible }">
             <Suspense>
-              <PersonalityView/>
+              <PersonalityView v-if="asyncDone"/>
             </Suspense>
           </div>
         </ion-content>
@@ -133,7 +142,7 @@ const openSubheader = () => {
                      :scroll-x="false">
           <div class="inventory" :class="{ openSubheader: subheaderVisible }">
             <Suspense>
-              <InventoryView/>
+              <InventoryView v-if="asyncDone"/>
             </Suspense>
           </div>
         </ion-content>
@@ -159,7 +168,7 @@ const openSubheader = () => {
 
 
     <!-- Модалка -->
-    <EditAbilityValueModal v-if="selectedAbility"
+    <EditAbilityValueModal  v-if="selectedAbility"
                            :ability="ref(selectedAbility)"
                            :isOpen="showEditAbilityBonusModal"
                            :character-id="String(route.params.characterId)"
@@ -167,28 +176,24 @@ const openSubheader = () => {
                            @closeEditAbilityModal="closeEditAbilityModal"/>
 
     <EditSpeedValueModal v-if="showEditSpeedBonusModal"
-                         :character="ref(selectedCharacter)"
                          :isOpen="showEditSpeedBonusModal"
                          :character-id="String(route.params.characterId)"
                          :url="String(GATEWAY_INTEGRATION_ROUTES.speed)"
                          @closeEditSpeedModal="closeEditSpeedModal"/>
 
     <EditArmoryClassValueModal v-if="showEditArmoryClassBonusModal"
-                               :character="ref(selectedCharacter)"
                                :isOpen="showEditArmoryClassBonusModal"
                                :character-id="String(route.params.characterId)"
                                :url="String(GATEWAY_INTEGRATION_ROUTES.armoryClass)"
                                @closeEditArmoryClassModal="closeEditArmoryClassModal"/>
 
     <EditInitiativeValueModal v-if="showEditInitiativeBonusModal"
-                              :character="ref(selectedCharacter)"
                               :isOpen="showEditInitiativeBonusModal"
                               :character-id="String(route.params.characterId)"
                               :url="String(GATEWAY_INTEGRATION_ROUTES.initiative)"
                               @closeEditInitiativeModal="closeEditInitiativeModal"/>
 
     <HpModal v-if="showEditHealthModal"
-             :character="ref(selectedCharacter)"
              :isOpen="showEditHealthModal"
              :character-id="String(route.params.characterId)"
              :url="String(GATEWAY_INTEGRATION_ROUTES.health)"

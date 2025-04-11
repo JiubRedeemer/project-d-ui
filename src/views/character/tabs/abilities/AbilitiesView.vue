@@ -1,16 +1,16 @@
 <script setup lang="ts">
-
 import SkillUp from "@/views/common/SkillUp.vue";
 import axios from "axios";
 import {useRoute} from "vue-router";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {onMounted, ref} from "vue";
-import {Ability, Character} from "@/components/models/response/Character";
+import {Ability} from "@/components/models/response/Character";
+import {useCharacterStore} from "@/stores/CharacterStore";
 
 const route = useRoute();
+const characterStore = useCharacterStore();
 
 const abilities = ref<AbilityResponse[]>([]);
-const character = ref<Character>();
 let ruleBookAbilityCodeMap: Map<string, AbilityResponse>;
 let characterAbilityCodeMap: Map<string, Ability>;
 const resultAbilities = ref<Record<string, AbilityDto>>();
@@ -18,7 +18,7 @@ const resultAbilities = ref<Record<string, AbilityDto>>();
 const emits = defineEmits(["ability-selected"]);
 
 const selectAbility = (ability: AbilityDto) => {
-  emits("ability-selected", ability); // Отправляем событие вверх
+  emits("ability-selected", ability);
 };
 
 onMounted(async () => {
@@ -32,59 +32,40 @@ onMounted(async () => {
           },
         }
     );
-
     abilities.value = response.data;
     ruleBookAbilityCodeMap = buildAbilityCodeMap(abilities.value);
   } catch (error) {
-    console.error("Ошибка при получении данных:", error);
+    console.error("Ошибка при получении способностей:", error);
   }
 
   try {
-    const response = await axios.get(
-        GATEWAY_INTEGRATION_ROUTES.baseURL + GATEWAY_INTEGRATION_ROUTES.api + GATEWAY_INTEGRATION_ROUTES.rooms + '/' + route.params.roomId + GATEWAY_INTEGRATION_ROUTES.characters + '/' + route.params.characterId + GATEWAY_INTEGRATION_ROUTES.characterAbilities,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-          },
-        }
-    );
-
-    character.value = response.data;
-    characterAbilityCodeMap = buildCharacterAbilityCodeMap(character.value);
+    characterAbilityCodeMap = buildCharacterAbilityCodeMap(characterStore.character);
     characterAbilityCodeMap = buildCharacterAbilitiesWithNameAndValue(characterAbilityCodeMap);
-    resultAbilities.value = Object.fromEntries(characterAbilityCodeMap)
+    resultAbilities.value = Object.fromEntries(characterAbilityCodeMap);
   } catch (error) {
-    console.error("Ошибка при получении данных:", error);
+    console.error("Ошибка при получении персонажа:", error);
   }
 });
 
 function buildAbilityCodeMap(abilities: AbilityResponse[]): Map<string, AbilityResponse> {
   const codeMap = new Map<string, AbilityResponse>();
-
   abilities.forEach((ability) => {
     codeMap.set(ability.code, ability);
   });
-
   return codeMap;
 }
 
-function buildCharacterAbilityCodeMap(character: Character | undefined): Map<string, Ability> {
-  if (character == undefined) return new Map;
+function buildCharacterAbilityCodeMap(character): Map<string, Ability> {
+  if (!character) return new Map();
   const codeMap = new Map<string, Ability>();
-
   character.abilities.forEach((ability) => {
     codeMap.set(ability.code, ability);
   });
-
   return codeMap;
 }
 
-function buildCharacterAbilitiesWithNameAndValue(characterAbilityCodeMap: Map<string, Ability>):
-    Map<string, Ability> {
-
+function buildCharacterAbilitiesWithNameAndValue(characterAbilityCodeMap: Map<string, Ability>): Map<string, Ability> {
   characterAbilityCodeMap.forEach(enrichCharacterAbility);
-
   return characterAbilityCodeMap;
 }
 
@@ -96,10 +77,8 @@ function enrichCharacterAbility(value: Ability, key: string, map: Map<string, Ab
 
   if (!ruleBookAbility.skills) return;
 
-  if (character.value) {
-    const characterSkillCodes = new Set(
-        character.value.skills.map((characterSkill) => characterSkill.code)
-    );
+  if (characterStore.character) {
+    const characterSkillCodes = new Set(characterStore.character.skills.map(skill => skill.code));
     value.skills = ruleBookAbility.skills.map((skill) => ({
       name: skill.name,
       code: skill.code,
@@ -108,14 +87,11 @@ function enrichCharacterAbility(value: Ability, key: string, map: Map<string, Ab
   }
 }
 
-
 async function updateMastery(skill: any) {
   try {
     await axios.patch(
-        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${character.value?.id}${GATEWAY_INTEGRATION_ROUTES.skills}/${skill.code}${GATEWAY_INTEGRATION_ROUTES.mastery}`,
-        {
-          isMastery: skill.up,
-        },
+        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${characterStore.character.id}${GATEWAY_INTEGRATION_ROUTES.skills}/${skill.code}${GATEWAY_INTEGRATION_ROUTES.mastery}`,
+        { isMastery: skill.up },
         {
           headers: {
             "Content-Type": "application/json",
@@ -124,34 +100,32 @@ async function updateMastery(skill: any) {
         }
     );
   } catch (error) {
-    console.error("Ошибка при получении данных:", error);
+    console.error("Ошибка при обновлении мастерства:", error);
   }
 }
 
 function changeChecked(skill: any) {
-  console.log(skill)
-  skill.up = !skill.up; // Переключение состояния
-  updateMastery(skill)
+  skill.up = !skill.up;
+  updateMastery(skill);
 }
 
 function calculateSkillValue(value: any, skill: any) {
   let result = Math.floor((value - 10) / 2);
-  if (skill.up) {
-    if (character.value?.proficiencyBonus)
-      result += character.value?.proficiencyBonus
+  if (skill.up && characterStore.character?.proficiencyBonus) {
+    result += characterStore.character.proficiencyBonus;
   }
-  return result; // Пример расчёта
+  return result;
 }
 
 function calculateSavingThrow(value: any) {
-  return Math.floor((value - 10) / 2); // Пример расчёта
+  return Math.floor((value - 10) / 2);
 }
 
 function calculateCheckValue(value: any) {
-  return Math.floor((value - 10) / 2); // Пример расчёта
+  return Math.floor((value - 10) / 2);
 }
-
 </script>
+
 
 <template>
   <!--  <ion-content class="ion-padding" color="dark">-->
