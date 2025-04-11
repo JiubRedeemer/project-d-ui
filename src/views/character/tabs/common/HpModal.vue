@@ -7,8 +7,8 @@ import {ref} from "vue";
 import {checkmarkOutline} from "ionicons/icons";
 import {Character} from "@/components/models/response/Character";
 import {HEADERS} from "@/config/localisations";
-import HpEditBlock from "@/views/character/tabs/HpEditBlock.vue";
-import EditHpBonusValueModal from "@/views/character/tabs/bonus/EditHpBonusValueModal.vue";
+import HpEditBlock from "@/views/character/tabs/common/HpEditBlock.vue";
+import EditHpBonusValueModal from "@/views/character/tabs/common/bonus/EditHpBonusValueModal.vue";
 
 const route = useRoute();
 

@@ -25,6 +25,8 @@ export const GATEWAY_INTEGRATION_ROUTES = {
     charactersSubheader: "/subheader",
     characterAbilities: "/abilities",
     bio: "/bio",
+    inventory: "/inventory",
+    equip: "/equip",
 
     health: "/health",
     updateCurrent: "/updateCurrent",
@@ -45,6 +47,7 @@ export const FILE_STORAGE_INTEGRATION_ROUTES = {
     other_bucket: "/other",
     room_images_bucket: "/roomImages",
     avatar_images_bucket: "/avatarImages",
+    items_images_bucket: "/itemImages",
     upload: "/upload",
     download: "/download"
 }
