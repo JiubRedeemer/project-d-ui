@@ -102,17 +102,47 @@ export const TEXTS = {
         eng: 'Height'
     },
     heightEI: {
-        rus: 'см',
-        eng: 'cm'
+        rus: 'См',
+        eng: 'Cm'
     },
     weight: {
         rus: 'Вес',
         eng: 'Weight'
     },
     weightEI: {
-        rus: 'кг',
-        eng: 'kg'
-    }
+        rus: 'Кг',
+        eng: 'Kg'
+    },
+    type: {
+        rus: 'Тип',
+        eng: 'Type'
+    },
+
+
+    ac: {
+        rus: 'КД',
+        eng: 'AC'
+    },
+    damage: {
+        rus: 'Урон',
+        eng: 'Damage'
+    },
+    dexterity: {
+        rus: 'Ловкость',
+        eng: 'Dexterity'
+    },
+    itemType: {
+        rus: 'Тип предмета',
+        eng: 'Item type'
+    },
+    armorType: {
+        rus: 'Тип доспеха',
+        eng: 'Armor type'
+    },
+    weaponType: {
+        rus: 'Тип оружия',
+        eng: 'Weapon type'
+    },
 };
 
 export const HEADERS = {
@@ -138,5 +168,17 @@ export const HEADERS = {
     armoryClass: {rus: 'Класс брони', eng: 'Armory class'},
     initiative: {rus: 'Инициатива', eng: 'Initiative'},
     health: {rus: 'Здоровье', eng: 'Health'},
-    inspiration: {rus: 'Вдохновение', eng: 'Inspiration'}
+    inspiration: {rus: 'Вдохновение', eng: 'Inspiration'},
+    equipped: {rus: 'Снаряжено', eng: 'Equipped'},
+    armor: {rus: 'Доспехи', eng: 'Armor'},
+    weapon: {rus: 'Оружие', eng: 'Weapon'},
+    magic_items: {rus: 'Магические предметы', eng: 'Magic items'},
+    other: {rus: 'Прочее', eng: 'Other'},
+    max_dex_bonus: {rus: 'Максимальный бонус от ловкости', eng: 'Maximum Dexterity Bonus'},
+    force_requirements: {rus: 'Требование к силе', eng: 'Force requirement'},
+    need_customization: {rus: 'Требуется настройка', eng: 'Need customization'},
+    default_price: {rus: 'Средняя цена у торговцев', eng: 'Default price'},
+    edit: {rus: 'Редактировать', eng: 'Edit'},
+    delete_from_inventory: {rus: 'Удалить предмет из инвентаря', eng: 'Remove an item from the inventory'},
+    wallet: {rus: 'Кошель', eng: 'Wallet'},
 }

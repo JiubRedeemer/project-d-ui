@@ -9,6 +9,7 @@ import CreateCharacter from "@/views/createCharacter/CreateCharacter.vue";
 import PlayerView from "@/views/character/PlayerView.vue";
 import CharacterList from "@/views/rooms/CharacterList.vue";
 import CreateRoom from "@/views/rooms/CreateRoom.vue";
+import InventoryItemView from "@/views/character/tabs/inventory/InventoryItemView.vue";
 
 const routes: Array<RouteRecordRaw> = [
     {
@@ -59,6 +60,11 @@ const routes: Array<RouteRecordRaw> = [
         path: '/rooms/:roomId/characters/:characterId',
         component: PlayerView,
         name: 'playerView'
+    },
+    {
+        path: '/rooms/:roomId/characters/:characterId/inventory/:itemId',
+        component: InventoryItemView,
+        name: 'inventoryItemView'
     }
 ]
 

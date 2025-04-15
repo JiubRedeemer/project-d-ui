@@ -57,3 +57,11 @@ export interface InventoryResponse {
     totalWeight: number;
     items: InventoryItem[];
 }
+
+export interface MoneyDto {
+    id: string;
+    inventoryId: string;
+    goldenCount: number;
+    silverCount: number;
+    copperCount: number;
+}

@@ -230,29 +230,29 @@ const openSubheader = () => {
 }
 
 .abilities.openSubheader {
-  margin-top: 30%;
+  margin-top: 120px;
 }
 
 .bio.openSubheader {
-  margin-top: 30%;
+  margin-top: 120px;
 }
 
 .inventory.openSubheader {
-  margin-top: 30%;
+  margin-top: 120px;
 }
 
 .abilities {
-  margin-top: 15%;
+  margin-top: 64px;
   transition: margin-top 0.3s ease;
 }
 
 .bio {
-  margin-top: 15%;
+  margin-top: 64px;
   transition: margin-top 0.3s ease;
 }
 
 .inventory {
-  margin-top: 15%;
+  margin-top: 64px;
   transition: margin-top 0.3s ease;
 }
 

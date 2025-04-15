@@ -1,0 +1,302 @@
+<script setup lang="ts">
+
+import {FILE_STORAGE_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {HEADERS, TEXTS} from "@/config/localisations";
+import {IonButton, IonToggle, IonLabel, IonChip, IonBackButton, IonButtons, IonContent, IonHeader, IonIcon, IonPage, IonToolbar} from "@ionic/vue";
+import {useInventoryItemStore} from "@/stores/InventoryItemStore";
+import armorIcon from "@/static/icons/Armor.svg";
+import {marked} from "marked";
+
+const inventoryItemStore = useInventoryItemStore()
+
+
+function isLetter(str: string) {
+  const regExp = /[0-9]/
+  if (!regExp.test(str) && str.length >= 3) {
+    return str
+  }
+}
+
+
+function getAbbreviation(str: string | undefined): string {
+  if (!str) {
+    return "";
+  }
+  if (isLetter(str)) {
+    return str.split(/\s+/).map(word => word[0].toUpperCase()).join('')
+  } else {
+    return 'Bad name'
+  }
+}
+
+const renderMarkdown = (text: string | undefined): string | Promise<string> => {
+  return text ? marked(text) : "";
+};
+
+function getCoinType(coinType: string | undefined) {
+  switch (coinType) {
+    case 'GOLDEN':
+      return {rus: 'зм.', golden: 'gc.'};
+    case 'SILVER':
+      return {rus: 'см.', golden: 'sc.'};
+    case 'COPPER':
+      return {rus: 'мм.', golden: 'cc.'};
+    default:
+      return {rus: '', golden: ''};
+  }
+}
+
+const getItemImageUrl = (imgUrl: string | undefined) => {
+  return imgUrl != null
+      ? `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.items_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.download}/${imgUrl}`
+      : 'https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png';
+};
+
+</script>
+
+<template>
+  <ion-page>
+    <ion-header>
+      <ion-toolbar color="dark">
+        <ion-buttons slot="start">
+          <ion-back-button/>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+    <ion-content class="ion-padding">
+      <div class="container">
+        <div class="header">
+          <div class="avatar">
+            <img :src="getItemImageUrl(inventoryItemStore.inventoryItem.item.imgUrl)"
+                 class="avatar-img"
+                 alt="avatar"/>
+          </div>
+          <div class="stats">
+            <div class="stat">
+              {{ TEXTS.itemType.rus }} :
+              <span
+                  class="stat-value"
+              >{{ getAbbreviation(inventoryItemStore.inventoryItem?.item?.typeName) }}</span>
+            </div>
+            <div class="stat"
+                 v-if="inventoryItemStore.inventoryItem?.item?.type && ['WEAPON', 'ARMOR'].includes(inventoryItemStore.inventoryItem?.item?.type)">
+              {{ inventoryItemStore.inventoryItem.item.type == 'ARMOR' ? TEXTS.armorType.rus : TEXTS.weaponType.rus }} :
+              <span
+                  class="stat-value"
+              >{{ getAbbreviation(inventoryItemStore.inventoryItem?.item.subtypeName) }}</span>
+            </div>
+            <div class="stat" v-if="inventoryItemStore.inventoryItem.item.stats.weight">
+              {{ TEXTS.weight.rus }} :
+              <span
+                  class="stat-value"
+              >{{ inventoryItemStore.inventoryItem?.item?.stats.weight }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="item-body">
+          <div class="item-name">{{ inventoryItemStore.inventoryItem?.item?.name.rus }}</div>
+          <div class="item-main-stat">
+            <div class="armory-class" v-if="inventoryItemStore.inventoryItem?.item?.type == 'ARMOR'">
+              <div class="armory-class">
+                <ion-icon class="armory-class-icon" slot="icon-only" :src="armorIcon"></ion-icon>
+                <div class="armory-class-value">
+                  {{ inventoryItemStore.inventoryItem.item.stats.armorClass }}
+                </div>
+              </div>
+            </div>
+            <div class="damage" v-if="inventoryItemStore.inventoryItem.item?.type == 'WEAPON'">
+              {{ inventoryItemStore.inventoryItem.item.stats.damage?.value }}
+              ({{ inventoryItemStore.inventoryItem.item.stats.damage?.damageTypeName }})
+            </div>
+          </div>
+          <div class="simple-stat" v-if="inventoryItemStore.inventoryItem.item?.type == 'ARMOR'">
+            <div class="simple-stat-text">{{ HEADERS.max_dex_bonus.rus }}:</div>
+            <div class="simple-stat-value">
+              {{ inventoryItemStore.inventoryItem.item.stats.armorClassMaxDexterityBonus }}
+            </div>
+          </div>
+          <div class="simple-stat" v-if="inventoryItemStore.inventoryItem.item?.type == 'ARMOR'">
+            <div class="simple-stat-text">{{ HEADERS.force_requirements.rus }}:</div>
+            <div class="simple-stat-value">
+              {{ inventoryItemStore.inventoryItem.item.stats.requirement }}
+            </div>
+          </div>
+          <div class="simple-stat">
+            <div class="simple-stat-text">{{ HEADERS.need_customization.rus }}:</div>
+            <div class="simple-stat-value">
+              <ion-toggle :checked="inventoryItemStore.inventoryItem.item?.customization" :disabled="true"></ion-toggle>
+            </div>
+          </div>
+          <div class="simple-stat">
+            <div class="simple-stat-text">{{ HEADERS.default_price.rus }}:</div>
+            <div class="simple-stat-value">
+              {{ inventoryItemStore.inventoryItem.item?.stats.defaultPrice[0].value }}
+              {{ getCoinType(inventoryItemStore.inventoryItem.item?.stats.defaultPrice[0].coinType).rus }}
+            </div>
+          </div>
+          <div class="tags">
+            <div class="tag" :key="idx" v-for="(tag, idx) in inventoryItemStore.inventoryItem.item?.stats.tags">
+              <ion-chip>
+                <ion-label>{{ tag }}</ion-label>
+              </ion-chip>
+            </div>
+          </div>
+          <div class="section" v-if="inventoryItemStore.inventoryItem.item.description">
+            <p v-html="renderMarkdown(inventoryItemStore.inventoryItem.item?.description)">
+            </p>
+          </div>
+        </div>
+        <div class="buttons">
+          <ion-button expand="block" shape="round" color="secondary" fill="outline">
+            {{ HEADERS.edit.rus }}
+          </ion-button>
+          <ion-button expand="block" shape="round" color="danger" fill="outline">
+            {{ HEADERS.delete_from_inventory.rus }}
+          </ion-button>
+        </div>
+      </div>
+    </ion-content>
+  </ion-page>
+</template>
+
+<style scoped>
+.container {
+  background-color: var(--ion-color-dark);
+}
+
+.header {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+
+.item-body {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+}
+
+.item-name {
+  font-size: 24px;
+}
+
+.avatar-img {
+  width: 180px;
+  height: 180px;
+  border-radius: 25px;
+  align-content: center;
+  justify-content: center;
+  display: flex;
+}
+
+.stats {
+  border-radius: 25px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  background-color: var(--ion-color-medium);
+  width: 180px;
+  height: 180px;
+}
+
+.stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--ion-color-secondary-opacity-40);
+  margin-bottom: 3%;
+  height: 23%;
+  border-radius: 15px;
+  padding-left: 5%;
+  padding-right: 5%;
+  margin-right: 5%;
+  margin-left: 5%;
+  font-weight: bold;
+  font-size: 10pt;
+}
+
+.stat-value {
+  display: flex;
+  background-color: var(--ion-color-primary);
+  color: var(--ion-color-primary-contrast);
+  border-radius: 50%;
+  height: 30px;
+  width: 30px;
+  align-items: center;
+  justify-content: center;
+  font-size: 10pt;
+}
+
+.placeholder-icon {
+  align-self: center;
+  justify-self: center;
+  font-size: 48px;
+  color: white;
+}
+
+.armory-class {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 40px;
+}
+
+.armory-class-icon {
+  width: 100%;
+  height: 100%;
+  fill: var(--ion-color-light);
+}
+
+.armory-class-value {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+  pointer-events: none;
+}
+
+.simple-stat {
+  font-size: 18px;
+  padding-left: 10px;
+  padding-right: 10px;
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.tags {
+  padding: 10px;
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  justify-content: start;
+}
+
+.section {
+  background-color: var(--ion-color-medium);
+  border-radius: 15px;
+  padding: 10px;
+  overflow: hidden;
+  transition: max-height 4s ease;
+}
+
+.buttons{
+  margin-top: 10px;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-direction: column;
+}
+</style>

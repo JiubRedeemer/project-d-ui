@@ -36,7 +36,9 @@ export const GATEWAY_INTEGRATION_ROUTES = {
     skills: "/skills",
 
     bonus: "/bonus",
-    mastery: "/mastery"
+    mastery: "/mastery",
+    count: "/count",
+    money: "/money"
 };
 
 export const FILE_STORAGE_INTEGRATION_ROUTES = {
