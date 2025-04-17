@@ -67,6 +67,7 @@ const tempDashOffset = computed(() => {
   position: relative;
   width: 100%;
   height: 100%;
+  background-color: transparent;
 }
 
 .circular-chart {
@@ -75,7 +76,7 @@ const tempDashOffset = computed(() => {
 }
 
 .circle-hp {
-  fill: none;
+  fill: var(--ion-color-dark);
   stroke:  var(--ion-color-danger);
   stroke-width: 2;
   stroke-linecap: round;
@@ -83,7 +84,7 @@ const tempDashOffset = computed(() => {
 }
 
 .circle-temp-hp {
-  fill: none;
+  fill: var(--ion-color-dark);
   stroke: var(--ion-color-warning);
   stroke-width: 3;
   stroke-linecap: round;

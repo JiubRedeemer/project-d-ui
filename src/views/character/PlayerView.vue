@@ -18,11 +18,12 @@ import bioTabIcon from "../../static/icons/PersonalityTab.svg"
 import inventoryTabIcon from "../../static/icons/InventoryTab.svg"
 import InventoryView from "@/views/character/tabs/inventory/InventoryView.vue";
 import {useCharacterStore} from "@/stores/CharacterStore";
+import {useSubheaderStore} from "@/stores/SubheaderStore";
 
 const route = useRoute();
 const characterStore = useCharacterStore()
 const asyncDone = ref<boolean>(false)
-const subheaderVisible = ref(true);
+// const subheaderVisible = ref(true);
 const showEditAbilityBonusModal = ref(false); // Управляем видимостью модалки
 const selectedAbility = ref<AbilityDto>();
 const showEditSpeedBonusModal = ref(false); // Управляем видимостью модалки
@@ -30,6 +31,7 @@ const showEditArmoryClassBonusModal = ref(false); // Управляем види
 const showEditInitiativeBonusModal = ref(false); // Управляем видимостью модалки
 const showEditHealthModal = ref(false); // Управляем видимостью модалки
 const selectedCharacter = ref<Character>();
+const subheaderStore = useSubheaderStore();
 
 onMounted(async () => {
   if (characterStore.character != null) {
@@ -86,11 +88,11 @@ const closeEditHealthModal = () => {
 };
 
 const closeSubheader = () => {
-  subheaderVisible.value = false; // Закрываем модалку
+  subheaderStore.subheaderOpened = false; // Закрываем модалку
 };
 
 const openSubheader = () => {
-  subheaderVisible.value = true; // Закрываем модалку
+  subheaderStore.subheaderOpened = true; // Закрываем модалку
 };
 
 </script>
@@ -99,7 +101,7 @@ const openSubheader = () => {
   <ion-page>
     <ion-header :transluent="false">
       <PlayerViewHeader v-if="asyncDone"/>
-      <div class="subheader-block" :class="{ openSubheader: subheaderVisible }">
+      <div class="subheader-block" :class="{ openSubheader: subheaderStore.subheaderOpened }">
         <PlayerViewSubheader v-if="asyncDone" @speed-selected="openEditSpeedModal"
                              @armory-class-selected="openEditArmoryClassModal"
                              @initiative-selected="openEditInitiativeModal"
@@ -116,7 +118,7 @@ const openSubheader = () => {
                      color="dark"
                      direction="y"
                      :scroll-x="false">
-          <div class="abilities" :class="{ openSubheader: subheaderVisible }">
+          <div class="abilities" :class="{ openSubheader: subheaderStore.subheaderOpened }">
             <AbilitiesView v-if="asyncDone" @ability-selected="openEditAbilityModal"/>
           </div>
         </ion-content>
@@ -127,7 +129,7 @@ const openSubheader = () => {
                      color="dark"
                      direction="y"
                      :scroll-x="false">
-          <div class="bio" :class="{ openSubheader: subheaderVisible }">
+          <div class="bio" :class="{ openSubheader: subheaderStore.subheaderOpened }">
             <Suspense>
               <PersonalityView v-if="asyncDone"/>
             </Suspense>
@@ -140,7 +142,7 @@ const openSubheader = () => {
                      color="dark"
                      direction="y"
                      :scroll-x="false">
-          <div class="inventory" :class="{ openSubheader: subheaderVisible }">
+          <div class="inventory" :class="{ openSubheader: subheaderStore.subheaderOpened }">
             <Suspense>
               <InventoryView v-if="asyncDone"/>
             </Suspense>

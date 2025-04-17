@@ -1,23 +1,41 @@
 <script setup lang="ts">
 
-import {IonButtons, IonLabel, IonButton, IonIcon, IonProgressBar, useIonRouter} from "@ionic/vue";
+import {IonButton, IonButtons, IonIcon, IonLabel, IonProgressBar, useIonRouter, useKeyboard} from "@ionic/vue";
 import axios from "axios";
 import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {useRoute} from "vue-router";
-import {computed, onMounted, ref} from "vue";
-import {InventoryItem, InventoryResponse, MoneyDto} from "@/components/models/response/InventoryResponse";
-import {add, manOutline, remove} from "ionicons/icons";
+import {computed, onMounted, ref, watch} from "vue";
+import {InventoryItem, InventoryResponse} from "@/components/models/response/InventoryResponse";
+import {add, caretUpCircleOutline, manOutline, remove} from "ionicons/icons";
 import {useInventoryItemStore} from "@/stores/InventoryItemStore";
 import {HEADERS, TEXTS} from "@/config/localisations";
 import {useCharacterStore} from "@/stores/CharacterStore";
+import WalletView from "@/views/character/tabs/inventory/WalletView.vue";
+import {useWalletStore} from "@/stores/WalletStore";
+import {useSubheaderStore} from "@/stores/SubheaderStore";
 
 const ionRouter = useIonRouter();
 
 const route = useRoute();
 const inventory = ref<InventoryResponse>();
-const money = ref<MoneyDto>();
+// const money = ref<MoneyDto>();
 const inventoryItemStore = useInventoryItemStore()
 const characterStore = useCharacterStore()
+const subheaderStore = useSubheaderStore();
+const walletStore = useWalletStore();
+const {isOpen, keyboardHeight} = useKeyboard();
+
+const moneyRootMaxHeight = computed(() => {
+  if (isOpen.value && keyboardHeight.value > 0) {
+    // Высота окна - высота клавиатуры - отступы (например, 10px для верхнего отступа)
+    return `${window.innerHeight - keyboardHeight.value - 10}px`;
+  }
+  // По умолчанию, если клавиатура не открыта, используем фиксированную высоту
+  return '1150px';
+});
+watch(keyboardHeight, () => {
+  console.log(`Is Keyboard Open: ${isOpen.value}, Keyboard Height: ${keyboardHeight.value}`);
+});
 
 onMounted(async () => {
   await fetchInventory();
@@ -36,7 +54,6 @@ const fetchInventory = async () => {
         }
     );
     inventory.value = response.data;
-    console.log("avatar:", response.data?.characterBio?.avatar);
   } catch (error) {
     console.error("Ошибка при получении данных:", error);
   }
@@ -53,8 +70,7 @@ const fetchMoney = async () => {
           },
         }
     );
-    money.value = response.data;
-    console.log("avatar:", response.data?.characterBio?.avatar);
+    walletStore.userMoney = response.data;
   } catch (error) {
     console.error("Ошибка при получении данных:", error);
   }
@@ -178,28 +194,121 @@ async function changeItemCount(item: InventoryItem, option: string) {
   }
 }
 
+function expandMoneyBlock() {
+  walletStore.moneyExpanded = true;
+  subheaderStore.subheaderOpened = false;
+}
+
+async function exchangeMoneyRequest() {
+  try {
+    await axios.patch(
+        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.inventory}/${route.params.characterId}${GATEWAY_INTEGRATION_ROUTES.money}`,
+        {
+          "id": walletStore.userMoney.id,
+          "inventoryId": walletStore.userMoney.inventoryId,
+          "goldenCount": walletStore.userMoney.goldenCount,
+          "silverCount": walletStore.userMoney.silverCount,
+          "copperCount": walletStore.userMoney.copperCount,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          },
+        }
+    );
+    walletStore.wallet.count = undefined;
+  } catch (error) {
+    console.error("Ошибка при получении данных:", error);
+  }
+}
+
+async function giveMoney() {
+  if (!(walletStore.userMoney && walletStore && walletStore.wallet && walletStore.wallet.count)) {
+    return;
+  }
+
+  switch (walletStore.wallet.type) {
+    case "golden_coin":
+      if ((walletStore.userMoney.goldenCount - walletStore.wallet.count as number) >= 0) {
+        walletStore.userMoney.goldenCount = walletStore.userMoney.goldenCount as number - walletStore.wallet.count as number;
+      }
+      break;
+
+    case "silver_coin":
+      if ((walletStore.userMoney.silverCount as number - walletStore.wallet.count as number) >= 0) {
+        walletStore.userMoney.silverCount = walletStore.userMoney.silverCount as number - walletStore.wallet.count as number;
+      }
+      break;
+
+    case "copper_coin":
+      if ((walletStore.userMoney.copperCount as number - walletStore.wallet.count as number) >= 0) {
+        walletStore.userMoney.copperCount = walletStore.userMoney.copperCount as number - walletStore.wallet.count as number;
+      }
+      break;
+  }
+  await exchangeMoneyRequest();
+}
+
+async function takeMoney() {
+  if (!(walletStore.userMoney && walletStore && walletStore.wallet && walletStore.wallet.count)) {
+    return;
+  }
+  switch (walletStore.wallet.type) {
+    case "golden_coin":
+      walletStore.userMoney.goldenCount = parseInt(walletStore.userMoney.goldenCount) + parseInt(walletStore.wallet.count);
+      break;
+    case "silver_coin":
+      walletStore.userMoney.silverCount = parseInt(walletStore.userMoney.silverCount) + parseInt(walletStore.wallet.count);
+      break;
+    case "copper_coin":
+      walletStore.userMoney.copperCount = parseInt(walletStore.userMoney.copperCount) + parseInt(walletStore.wallet.count);
+      break;
+  }
+  await exchangeMoneyRequest();
+}
 </script>
 
 <template>
-  <div class="inventory-header">
+  <div class="inventory-header" :style="walletStore.moneyExpanded ? {marginTop: '-10px', paddingTop: '0px'}:''">
     <div class="weight">{{ totalWeight }}/{{ weightLimit }}</div>
     <ion-progress-bar :value="totalWeight / weightLimit"
                       :color="((totalWeight/weightLimit)>=1)?'danger':'primary'"></ion-progress-bar>
-    <div class="money">
-      <div class="money-title">{{ HEADERS.wallet.rus }}:</div>
-      <div class="coin">
-        <div class="coin-count">{{money?.copperCount}}</div>
-        <div class="coin-img copper"></div>
+    <div class="money-root" :class="{ openMoney: walletStore.moneyExpanded }"
+         :style="{ maxHeight: walletStore.moneyExpanded ? moneyRootMaxHeight : '40px' }">
+      <div class="money" @click="expandMoneyBlock()">
+        <div class="money-title">{{ HEADERS.wallet.rus }}:</div>
+        <div class="coin">
+          <div class="coin-count">{{ walletStore.userMoney?.copperCount }}</div>
+          <div class="coin-img copper" @click="walletStore.wallet.type='copper_coin'"></div>
+        </div>
+        <div class="coin">
+          <div class="coin-count">{{ walletStore.userMoney?.silverCount }}</div>
+          <div class="coin-img silver" @click="walletStore.wallet.type='silver_coin'"></div>
+        </div>
+        <div class="coin">
+          <div class="coin-count">{{ walletStore.userMoney?.goldenCount }}</div>
+          <div class="coin-img golden" @click="walletStore.wallet.type='golden_coin'"></div>
+        </div>
       </div>
-      <div class="coin">
-        <div class="coin-count">{{money?.silverCount}}</div>
-        <div class="coin-img silver"></div>
+      <div class="money-input">
+        <WalletView/>
       </div>
-      <div class="coin">
-        <div class="coin-count">{{money?.goldenCount}}</div>
-        <div class="coin-img golden"></div>
+      <div class="money-submit-buttons">
+        <div class="button-hide">
+          <ion-button shape="round" size="small" @click="walletStore.moneyExpanded = false">
+            <ion-icon slot="icon-only" :icon="caretUpCircleOutline"></ion-icon>
+          </ion-button>
+        </div>
+        <div class="submit-buttons">
+          <ion-button shape="round" size="default" color="primary" fill="outline" @click="giveMoney()">
+            <span class="give-money-button">Отдать</span>
+          </ion-button>
+          <ion-button shape="round" size="default" color="primary" fill="outline" @click="takeMoney()">
+            <span>Взять</span>
+          </ion-button>
+        </div>
       </div>
-
     </div>
   </div>
   <div class="inventory-body">
@@ -286,7 +395,7 @@ async function changeItemCount(item: InventoryItem, option: string) {
         <div class="buttons-block">
           <ion-button @click="changeInUseForItem(item.id)" size="small" shape="round" class="equip-button"
                       :fill="item.inUse ? 'outline' : 'solid'">
-            <ion-icon slot="icon-only" :icon="manOutline"></ion-icon>
+            <ion-icon size="small" slot="icon-only" :icon="manOutline"></ion-icon>
           </ion-button>
           <ion-buttons class="counter-buttons">
             <ion-button size="small" @click="changeItemCount(item, 'remove')">
@@ -378,6 +487,7 @@ async function changeItemCount(item: InventoryItem, option: string) {
 
 <style scoped>
 .inventory-header {
+  transition: padding-top, margin-top 0.5s ease-in-out;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -386,9 +496,9 @@ async function changeItemCount(item: InventoryItem, option: string) {
 }
 
 .sectionHeader {
-  color: var(--ion-color-primary);
-  font-size: 16pt;
-  font-weight: bold;
+  color: var(--ion-color-light);
+  font-size: 18px;
+  font-weight: normal;
   margin-top: 10px;
 }
 
@@ -446,49 +556,83 @@ async function changeItemCount(item: InventoryItem, option: string) {
   border: 2px solid transparent;
 }
 
-.money{
+.money-root {
+  transition: max-height 0.5s ease-in-out;
+  width: 100%;
+  min-height: 40px;
+  margin-top: 10px;
   background-color: var(--ion-color-medium);
-  height: 40px;
   border-radius: 20px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+}
+
+.money-root.openMoney {
+  width: 100%;
+  min-height: 40px;
+  overflow: hidden;
+}
+
+.money {
+  min-height: 40px;
   width: 100%;
   display: flex;
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  margin-top: 10px;
   padding-left: 10px;
   padding-right: 10px;
   font-size: 14px;
 }
 
-.coin{
+.money-input {
+  padding-left: 15px;
+  padding-right: 15px;
+  width: 100%;
+}
+
+.money-submit-buttons {
+  width: 100%;
+  padding-left: 10px;
+  padding-right: 10px;
+  margin-top: 10px;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.coin {
   display: flex;
   flex-direction: row;
   gap: 10px;
   align-items: center;
+  font-weight: bold;
 }
 
-.money-title{
+.money-title {
   font-size: 16px;
+  font-weight: bold;
 }
 
-.coin-img{
+.coin-img {
   width: 20px;
   height: 20px;
   border-radius: 50%; /* делает круг */
   display: inline-block;
 }
 
-.copper.coin-img{
-  background-color: chocolate;
+.copper.coin-img {
+  background-color: var(--coin-color-copper);
 }
 
-.silver.coin-img{
-  background-color: silver;
+.silver.coin-img {
+  background-color: var(--coin-color-silver);
 }
 
-.golden.coin-img{
-  background-color: darkgoldenrod;
+.golden.coin-img {
+  background-color: var(--coin-color-gold);
 }
 
 .rarity-common {

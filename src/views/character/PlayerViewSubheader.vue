@@ -5,14 +5,13 @@ import HpBar from "@/views/common/HpBar.vue";
 import restIcon from "../../static/icons/rest.svg"
 import armorIcon from "../../static/icons/Armor.svg"
 import speedIcon from "../../static/icons/Speed.svg"
-import {ref} from "vue";
 import {Character} from "@/components/models/response/Character";
 import {HEADERS} from "@/config/localisations";
 import {useCharacterStore} from "@/stores/CharacterStore";
+import {useSubheaderStore} from "@/stores/SubheaderStore";
 
-const closed = ref<boolean>();
 const characterStore = useCharacterStore()
-
+const subheaderStore = useSubheaderStore();
 
 
 const emits = defineEmits(["open-subheader", "close-subheader", "speed-selected", "armory-class-selected", "initiative-selected", "health-selected"]);
@@ -34,8 +33,8 @@ const selectHealth = (character: Character) => {
 };
 
 const closeSubheader = () => {
-  closed.value = !closed.value
-  if (!closed.value) {
+  subheaderStore.subheaderOpened = !subheaderStore.subheaderOpened
+  if (subheaderStore.subheaderOpened) {
     emits("open-subheader");
   } else {
     emits("close-subheader")
@@ -47,7 +46,7 @@ const closeSubheader = () => {
 <template>
 
   <div class="subheader">
-    <div class="start-icons" v-show="!closed">
+    <div class="start-icons" v-show="subheaderStore.subheaderOpened">
       <div class="armory-class" @click="selectArmoryClass(characterStore.character!!)">
         <ion-icon class="armory-class-icon" slot="icon-only" :src="armorIcon"></ion-icon>
         <div
@@ -64,7 +63,7 @@ const closeSubheader = () => {
         </div>
       </div>
     </div>
-    <div class="center-icons" v-show="!closed">
+    <div class="center-icons" v-show="subheaderStore.subheaderOpened">
       <div class="inspiration">
         <div class="subheader-chip">
         </div>
@@ -74,14 +73,16 @@ const closeSubheader = () => {
       </div>
       <div class="initiative" @click="selectInitiative(characterStore.character!!)">
         <div class="subheader-chip">
-          {{ characterStore.character != null ? (characterStore.character?.initiative + characterStore.character?.bonusInitiative) : 0 }}
+          {{
+            characterStore.character != null ? (characterStore.character?.initiative + characterStore.character?.bonusInitiative) : 0
+          }}
         </div>
         <div class="subheader-chip-name">
           {{ HEADERS.initiative.rus }}
         </div>
       </div>
     </div>
-    <div class="end-icons" v-show="!closed">
+    <div class="end-icons" v-show="subheaderStore.subheaderOpened">
       <div class="rest">
         <ion-icon class="rest-icon" slot="icon-only" :src="restIcon" color="light">
         </ion-icon>

@@ -65,3 +65,8 @@ export interface MoneyDto {
     silverCount: number;
     copperCount: number;
 }
+
+export interface WalletStoreDto {
+    count: number | undefined;
+    type: string;
+}

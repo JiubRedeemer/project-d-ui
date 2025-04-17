@@ -2,8 +2,6 @@
 
 import {IonBackButton, IonButtons, IonTitle, IonToolbar} from "@ionic/vue";
 import LogOutButton from "@/views/common/LogOutButton.vue";
-import {onMounted} from "vue";
-import {useRoute} from "vue-router";
 import {useCharacterStore} from "@/stores/CharacterStore"
 
 
