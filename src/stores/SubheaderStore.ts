@@ -1,6 +1,6 @@
 import {defineStore} from "pinia";
 
-export const useSubheaderStore = defineStore('subheaderStore', {
+export const useSubheaderOpenedStore = defineStore('subheaderStore', {
     state: () => ({
         subheaderOpened: Boolean(true)
     })

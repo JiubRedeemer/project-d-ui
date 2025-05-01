@@ -18,7 +18,7 @@ import bioTabIcon from "../../static/icons/PersonalityTab.svg"
 import inventoryTabIcon from "../../static/icons/InventoryTab.svg"
 import InventoryView from "@/views/character/tabs/inventory/InventoryView.vue";
 import {useCharacterStore} from "@/stores/CharacterStore";
-import {useSubheaderStore} from "@/stores/SubheaderStore";
+import {useSubheaderOpenedStore} from "@/stores/SubheaderStore";
 
 const route = useRoute();
 const characterStore = useCharacterStore()
@@ -31,7 +31,7 @@ const showEditArmoryClassBonusModal = ref(false); // Управляем види
 const showEditInitiativeBonusModal = ref(false); // Управляем видимостью модалки
 const showEditHealthModal = ref(false); // Управляем видимостью модалки
 const selectedCharacter = ref<Character>();
-const subheaderStore = useSubheaderStore();
+const subheaderStore = useSubheaderOpenedStore();
 
 onMounted(async () => {
   if (characterStore.character != null) {

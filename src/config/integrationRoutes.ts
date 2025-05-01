@@ -38,7 +38,8 @@ export const GATEWAY_INTEGRATION_ROUTES = {
     bonus: "/bonus",
     mastery: "/mastery",
     count: "/count",
-    money: "/money"
+    money: "/money",
+    items: "/items"
 };
 
 export const FILE_STORAGE_INTEGRATION_ROUTES = {
@@ -47,9 +48,9 @@ export const FILE_STORAGE_INTEGRATION_ROUTES = {
     api: "/files",
 
     other_bucket: "/other",
-    room_images_bucket: "/roomImages",
-    avatar_images_bucket: "/avatarImages",
-    items_images_bucket: "/itemImages",
+    room_images_bucket: "/room-images",
+    avatar_images_bucket: "/avatar-images",
+    items_images_bucket: "/item-images",
     upload: "/upload",
     download: "/download"
 }

@@ -1,14 +1,39 @@
 <script setup lang="ts">
 
-import {FILE_STORAGE_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {HEADERS, TEXTS} from "@/config/localisations";
-import {IonButton, IonToggle, IonLabel, IonChip, IonBackButton, IonButtons, IonContent, IonHeader, IonIcon, IonPage, IonToolbar} from "@ionic/vue";
+import {
+  IonBackButton,
+  IonButton,
+  IonButtons,
+  IonChip,
+  IonContent,
+  IonHeader,
+  IonIcon,
+  IonLabel,
+  IonPage,
+  IonToggle,
+  IonToolbar, useIonRouter
+} from "@ionic/vue";
 import {useInventoryItemStore} from "@/stores/InventoryItemStore";
 import armorIcon from "@/static/icons/Armor.svg";
 import {marked} from "marked";
+import axios from "axios";
+import {useRoute} from "vue-router";
+import {useInventoryStore} from "@/stores/InventoryStore";
+import {onMounted} from "vue";
 
-const inventoryItemStore = useInventoryItemStore()
+const route = useRoute();
+const ionRouter = useIonRouter();
+const inventoryItemStore = useInventoryItemStore();
+const inventoryStore = useInventoryStore();
 
+onMounted(async () => {
+  console.log(inventoryItemStore.inventoryItem.itemId);
+  if (!inventoryItemStore.inventoryItem.itemId) {
+    inventoryItemStore.updateInventoryItemInStoreById(route.params.roomId, route.params.characterId, route.params.itemId);
+  }
+});
 
 function isLetter(str: string) {
   const regExp = /[0-9]/
@@ -52,6 +77,24 @@ const getItemImageUrl = (imgUrl: string | undefined) => {
       : 'https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png';
 };
 
+async function deleteItemFromInventory() {
+  try {
+    const response = await axios.delete(
+        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.inventory}/${route.params.characterId}/${inventoryItemStore.inventoryItem.id.trim()}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          },
+        }
+    );
+    inventoryStore.inventory = response.data;
+    ionRouter.back();
+  } catch (error) {
+    console.error("Ошибка при получении данных:", error);
+  }
+}
+
 </script>
 
 <template>
@@ -67,7 +110,7 @@ const getItemImageUrl = (imgUrl: string | undefined) => {
       <div class="container">
         <div class="header">
           <div class="avatar">
-            <img :src="getItemImageUrl(inventoryItemStore.inventoryItem.item.imgUrl)"
+            <img :src="getItemImageUrl(inventoryItemStore.inventoryItem.item?.imgUrl)"
                  class="avatar-img"
                  alt="avatar"/>
           </div>
@@ -85,7 +128,7 @@ const getItemImageUrl = (imgUrl: string | undefined) => {
                   class="stat-value"
               >{{ getAbbreviation(inventoryItemStore.inventoryItem?.item.subtypeName) }}</span>
             </div>
-            <div class="stat" v-if="inventoryItemStore.inventoryItem.item.stats.weight">
+            <div class="stat" v-if="inventoryItemStore?.inventoryItem.item?.stats?.weight">
               {{ TEXTS.weight.rus }} :
               <span
                   class="stat-value"
@@ -141,7 +184,7 @@ const getItemImageUrl = (imgUrl: string | undefined) => {
               </ion-chip>
             </div>
           </div>
-          <div class="section" v-if="inventoryItemStore.inventoryItem.item.description">
+          <div class="section" v-if="inventoryItemStore?.inventoryItem?.item?.description">
             <p v-html="renderMarkdown(inventoryItemStore.inventoryItem.item?.description)">
             </p>
           </div>
@@ -150,7 +193,7 @@ const getItemImageUrl = (imgUrl: string | undefined) => {
           <ion-button expand="block" shape="round" color="secondary" fill="outline">
             {{ HEADERS.edit.rus }}
           </ion-button>
-          <ion-button expand="block" shape="round" color="danger" fill="outline">
+          <ion-button expand="block" shape="round" color="danger" fill="outline" @click="deleteItemFromInventory">
             {{ HEADERS.delete_from_inventory.rus }}
           </ion-button>
         </div>
@@ -292,7 +335,7 @@ const getItemImageUrl = (imgUrl: string | undefined) => {
   transition: max-height 4s ease;
 }
 
-.buttons{
+.buttons {
   margin-top: 10px;
   display: flex;
   justify-content: center;

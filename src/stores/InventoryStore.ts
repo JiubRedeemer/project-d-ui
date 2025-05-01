@@ -1,17 +1,17 @@
 import {defineStore} from "pinia";
-import {InventoryItem} from "@/components/models/response/InventoryResponse";
+import {InventoryResponse} from "@/components/models/response/InventoryResponse";
 import axios from "axios";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 
-export const useInventoryItemStore = defineStore('inventoryItemStore', {
+export const useInventoryStore = defineStore('inventoryStore', {
     state: () => ({
-        inventoryItem: {} as InventoryItem
+        inventory: {} as InventoryResponse
     }),
     actions: {
-        async updateInventoryItemInStoreById(roomId: any, characterId: any, itemId: any): Promise<void> {
+        async updateInventoryInStoreById(roomId: any, characterId: any): Promise<void> {
             try {
                 const response = await axios.get(
-                    `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${roomId}${GATEWAY_INTEGRATION_ROUTES.inventory}/${characterId}${GATEWAY_INTEGRATION_ROUTES.items}/${itemId}`,
+                    `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${roomId}${GATEWAY_INTEGRATION_ROUTES.inventory}/${characterId}`,
                     {
                         headers: {
                             "Content-Type": "application/json",
@@ -19,7 +19,7 @@ export const useInventoryItemStore = defineStore('inventoryItemStore', {
                         },
                     }
                 );
-                this.inventoryItem  = response.data;
+                this.inventory = response.data;
             } catch (error) {
                 console.error("Ошибка при получении данных:", error);
             }

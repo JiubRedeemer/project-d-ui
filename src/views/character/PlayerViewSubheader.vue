@@ -8,10 +8,10 @@ import speedIcon from "../../static/icons/Speed.svg"
 import {Character} from "@/components/models/response/Character";
 import {HEADERS} from "@/config/localisations";
 import {useCharacterStore} from "@/stores/CharacterStore";
-import {useSubheaderStore} from "@/stores/SubheaderStore";
+import {useSubheaderOpenedStore} from "@/stores/SubheaderStore";
 
 const characterStore = useCharacterStore()
-const subheaderStore = useSubheaderStore();
+const subheaderStore = useSubheaderOpenedStore();
 
 
 const emits = defineEmits(["open-subheader", "close-subheader", "speed-selected", "armory-class-selected", "initiative-selected", "health-selected"]);

@@ -4,24 +4,26 @@ import {IonButton, IonButtons, IonIcon, IonLabel, IonProgressBar, useIonRouter, 
 import axios from "axios";
 import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {useRoute} from "vue-router";
-import {computed, onMounted, ref, watch} from "vue";
-import {InventoryItem, InventoryResponse} from "@/components/models/response/InventoryResponse";
+import {computed, onMounted, watch} from "vue";
+import {InventoryItem} from "@/components/models/response/InventoryResponse";
 import {add, caretUpCircleOutline, manOutline, remove} from "ionicons/icons";
 import {useInventoryItemStore} from "@/stores/InventoryItemStore";
 import {HEADERS, TEXTS} from "@/config/localisations";
 import {useCharacterStore} from "@/stores/CharacterStore";
 import WalletView from "@/views/character/tabs/inventory/WalletView.vue";
 import {useWalletStore} from "@/stores/WalletStore";
-import {useSubheaderStore} from "@/stores/SubheaderStore";
+import {useSubheaderOpenedStore} from "@/stores/SubheaderStore";
+import {useInventoryStore} from "@/stores/InventoryStore";
 
 const ionRouter = useIonRouter();
 
 const route = useRoute();
-const inventory = ref<InventoryResponse>();
+// const inventory = ref<InventoryResponse>();
+const inventoryStore = useInventoryStore();
 // const money = ref<MoneyDto>();
-const inventoryItemStore = useInventoryItemStore()
-const characterStore = useCharacterStore()
-const subheaderStore = useSubheaderStore();
+const inventoryItemStore = useInventoryItemStore();
+const characterStore = useCharacterStore();
+const subheaderOpenedStore = useSubheaderOpenedStore();
 const walletStore = useWalletStore();
 const {isOpen, keyboardHeight} = useKeyboard();
 
@@ -43,20 +45,7 @@ onMounted(async () => {
 });
 
 const fetchInventory = async () => {
-  try {
-    const response = await axios.get(
-        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.inventory}/${route.params.characterId}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-          },
-        }
-    );
-    inventory.value = response.data;
-  } catch (error) {
-    console.error("Ошибка при получении данных:", error);
-  }
+  await inventoryStore.updateInventoryInStoreById(route.params.roomId, route.params.characterId)
 };
 
 const fetchMoney = async () => {
@@ -88,18 +77,18 @@ const changeInUseForItem = async (itemId: string) => {
           },
         }
     );
-    inventory.value = response.data;
+    inventoryStore.inventory = response.data;
   } catch (error) {
     console.error("Ошибка при получении данных:", error);
   }
 }
 
-const equippedItems = computed(() => inventory.value?.items?.filter(item => item.inUse));
-const armorItems = computed(() => inventory.value?.items?.filter(item => item.item.type === "ARMOR"));
-const weaponItems = computed(() => inventory.value?.items?.filter(item => item.item.type === "WEAPON"));
-const magicItems = computed(() => inventory.value?.items?.filter(item => item.item.type === "MAGIC_ITEM"));
-const otherItems = computed(() => inventory.value?.items?.filter(item => item.item.type === "OTHER"));
-const totalWeight = computed(() => inventory.value?.totalWeight || 0);
+const equippedItems = computed(() => inventoryStore.inventory?.items?.filter(item => item.inUse));
+const armorItems = computed(() => inventoryStore.inventory?.items?.filter(item => item.item.type === "ARMOR"));
+const weaponItems = computed(() => inventoryStore.inventory?.items?.filter(item => item.item.type === "WEAPON"));
+const magicItems = computed(() => inventoryStore.inventory?.items?.filter(item => item.item.type === "MAGIC_ITEM"));
+const otherItems = computed(() => inventoryStore.inventory?.items?.filter(item => item.item.type === "OTHER"));
+const totalWeight = computed(() => inventoryStore.inventory?.totalWeight || 0);
 
 const weightLimit = characterStore.character.abilities.filter(ability => ability.code === "STR")[0].value * 10;
 
@@ -188,7 +177,7 @@ async function changeItemCount(item: InventoryItem, option: string) {
           },
         }
     );
-    inventory.value = response.data;
+    inventoryStore.inventory = response.data;
   } catch (error) {
     console.error("Ошибка при получении данных:", error);
   }
@@ -196,7 +185,7 @@ async function changeItemCount(item: InventoryItem, option: string) {
 
 function expandMoneyBlock() {
   walletStore.moneyExpanded = true;
-  subheaderStore.subheaderOpened = false;
+  subheaderOpenedStore.subheaderOpened = false;
 }
 
 async function exchangeMoneyRequest() {
@@ -338,8 +327,8 @@ async function takeMoney() {
         </div>
       </div>
     </div>
-    <h1 class="sectionHeader">{{ HEADERS.armor.rus }}</h1>
-    <div class="armor">
+    <h1 class="sectionHeader" v-if="armorItems?.length! > 0">{{ HEADERS.armor.rus }}</h1>
+    <div class="armor" v-if="armorItems?.length! > 0">
       <div class="section" v-for="item in armorItems" :key="item.id">
         <div class="section-start-block" @click="openInventoryItem(item)">
           <div class="image-block">
@@ -374,8 +363,8 @@ async function takeMoney() {
         </div>
       </div>
     </div>
-    <h1 class="sectionHeader">{{ HEADERS.weapon.rus }}</h1>
-    <div class="weapon">
+    <h1 class="sectionHeader" v-if="weaponItems?.length! > 0">{{ HEADERS.weapon.rus }}</h1>
+    <div class="weapon" v-if="weaponItems?.length! > 0">
       <div class="section" v-for="item in weaponItems" :key="item.id">
         <div class="section-start-block" @click="openInventoryItem(item)">
           <div class="image-block">
@@ -410,8 +399,8 @@ async function takeMoney() {
         </div>
       </div>
     </div>
-    <h1 class="sectionHeader">{{ HEADERS.magic_items.rus }}</h1>
-    <div class="magic-items">
+    <h1 class="sectionHeader" v-if="magicItems?.length! > 0">{{ HEADERS.magic_items.rus }}</h1>
+    <div class="magic-items" v-if="magicItems?.length! > 0">
       <div class="section" v-for="item in magicItems" :key="item.id">
         <div class="section-start-block" @click="openInventoryItem(item)">
           <div class="image-block">
@@ -446,8 +435,8 @@ async function takeMoney() {
         </div>
       </div>
     </div>
-    <h1 class="sectionHeader">{{ HEADERS.other.rus }}</h1>
-    <div class="other">
+    <h1 class="sectionHeader" v-if="otherItems?.length! > 0">{{ HEADERS.other.rus }}</h1>
+    <div class="other" v-if="otherItems?.length! > 0">
       <div class="section" v-for="item in otherItems" :key="item.id">
         <div class="section-start-block" @click="openInventoryItem(item)">
           <div class="image-block">
