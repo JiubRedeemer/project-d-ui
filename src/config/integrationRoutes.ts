@@ -1,6 +1,6 @@
 export const GATEWAY_INTEGRATION_ROUTES = {
-    // baseURL: "http://localhost:8080",
-    baseURL: "http://192.168.0.73:8080",
+    baseURL: "http://localhost:8080",
+    // baseURL: "http://192.168.0.74:8080",
 
     auth: "/auth",
     registration: "/auth/registration",
@@ -39,12 +39,13 @@ export const GATEWAY_INTEGRATION_ROUTES = {
     mastery: "/mastery",
     count: "/count",
     money: "/money",
-    items: "/items"
+    items: "/items",
+    search: "/search"
 };
 
 export const FILE_STORAGE_INTEGRATION_ROUTES = {
-    // baseURL: "http://localhost:8079",
-    baseURL: "http://192.168.0.73:8079",
+    baseURL: "http://localhost:8079",
+    // baseURL: "http://192.168.0.74:8079",
     api: "/files",
 
     other_bucket: "/other",

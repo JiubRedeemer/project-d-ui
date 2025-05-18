@@ -150,6 +150,10 @@ function openInventoryItem(item: InventoryItem) {
   ionRouter.navigate('/rooms/' + route.params.roomId + '/characters/' + route.params.characterId + '/inventory/' + item.id, 'forward', 'push')
 }
 
+function openSearchView() {
+  ionRouter.navigate('/rooms/' + route.params.roomId + '/characters/' + route.params.characterId + '/inventory/search', 'forward', 'push')
+}
+
 async function changeItemCount(item: InventoryItem, option: string) {
   let count: number;
   switch (option) {
@@ -359,7 +363,6 @@ async function takeMoney() {
               <ion-icon slot="icon-only" size="small" :icon="add"></ion-icon>
             </ion-button>
           </ion-buttons>
-
         </div>
       </div>
     </div>
@@ -472,9 +475,29 @@ async function takeMoney() {
       </div>
     </div>
   </div>
+  <div class="add-new-button">
+    <ion-button size="large" shape="round" color="secondary" @click="openSearchView">
+      <ion-icon slot="icon-only" :icon="add"/>
+    </ion-button>
+  </div>
 </template>
 
 <style scoped>
+.add-new-button {
+  position: fixed;
+  bottom: -10px; /* расстояние от нижнего края */
+  width: 100%;
+  background: transparent; /* или нужный фон */
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  margin-left: -15px;
+}
+
+.inventory-body {
+}
+
 .inventory-header {
   transition: padding-top, margin-top 0.5s ease-in-out;
   display: flex;

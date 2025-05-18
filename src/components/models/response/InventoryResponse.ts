@@ -39,6 +39,7 @@ export interface Item {
     roomId?: string;
     creatorId?: string;
     imgUrl?: string;
+    count?: number;
 }
 
 export interface InventoryItem {
