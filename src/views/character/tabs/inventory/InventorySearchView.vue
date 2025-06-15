@@ -5,12 +5,18 @@ import {
   IonButton,
   IonButtons,
   IonContent,
+  IonFab,
+  IonFabButton,
   IonHeader,
   IonIcon,
   IonLabel,
   IonPage,
   IonToolbar,
-  toastController
+  toastController,
+  useIonRouter,
+  IonInfiniteScroll,
+  IonSearchbar,
+  IonInfiniteScrollContent
 } from "@ionic/vue";
 import {ref} from "vue";
 import {Item} from "@/components/models/response/InventoryResponse";
@@ -18,11 +24,12 @@ import axios from "axios";
 import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {useRoute} from "vue-router";
 import {TEXTS} from "@/config/localisations";
-import {add, addOutline, remove} from "ionicons/icons";
+import {add, addOutline, arrowBack, remove} from "ionicons/icons";
 import {useInventoryStore} from "@/stores/InventoryStore";
 
 const inventoryStore = useInventoryStore();
 const route = useRoute();
+const ionRouter = useIonRouter();
 const findItems = ref<Item[]>([]);
 const queryString = ref<string>();
 const hasMoreItems = ref(true); // Для бесконечной прокрутки
@@ -182,6 +189,10 @@ async function presentToast() {
   await toast.present();
 }
 
+function openAddView() {
+  ionRouter.navigate('/rooms/' + route.params.roomId + '/characters/' + route.params.characterId + '/inventory/add', 'forward', 'push')
+}
+
 </script>
 
 <template>
@@ -235,12 +246,26 @@ async function presentToast() {
         </ion-infinite-scroll-content>
       </ion-infinite-scroll>
     </ion-content>
+    <ion-fab slot="fixed" vertical="bottom" horizontal="start">
+      <ion-fab-button color="primary" @click="ionRouter.back">
+        <ion-icon :icon="arrowBack" color="dark"></ion-icon>
+      </ion-fab-button>
+    </ion-fab>
+    <ion-fab slot="fixed" vertical="bottom" horizontal="end">
+      <ion-fab-button color="primary" @click="openAddView">
+        <ion-icon :icon="add" color="dark"></ion-icon>
+      </ion-fab-button>
+    </ion-fab>
   </ion-page>
 </template>
 
 <style scoped>
 .found, ion-toolbar, ion-content {
   --background: var(--ion-color-dark);
+}
+
+.found {
+  margin-bottom: 70px;
 }
 
 .section {

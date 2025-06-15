@@ -11,6 +11,7 @@ import CharacterList from "@/views/rooms/CharacterList.vue";
 import CreateRoom from "@/views/rooms/CreateRoom.vue";
 import InventoryItemView from "@/views/character/tabs/inventory/InventoryItemView.vue";
 import InventorySearchView from "@/views/character/tabs/inventory/InventorySearchView.vue";
+import InventoryItemAddView from "@/views/character/tabs/inventory/InventoryItemAddView.vue";
 
 const routes: Array<RouteRecordRaw> = [
     {
@@ -71,6 +72,11 @@ const routes: Array<RouteRecordRaw> = [
         path: '/rooms/:roomId/characters/:characterId/inventory/search',
         component: InventorySearchView,
         name: 'inventorySearchView'
+    },
+    {
+        path: '/rooms/:roomId/characters/:characterId/inventory/add',
+        component: InventoryItemAddView,
+        name: 'inventoryItemAddView'
     }
 ]
 
