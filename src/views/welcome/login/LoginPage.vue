@@ -174,7 +174,7 @@ const login = async () => {
           <h1 class="input-header">{{ currentLabel }}</h1>
           <div class="button-block">
             <ion-input
-                :type="step === 2 || step === 3 ? 'password' : 'text'"
+                :type="step === 1 || step === 2 ? 'password' : 'text'"
                 fill="outline"
                 color="primary"
                 :placeholder="currentPlaceholder"

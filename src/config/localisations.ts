@@ -1,4 +1,5 @@
 export const TEXTS = {
+    enterTag: {rus: 'Введите метку', eng: 'Enter tag'},
     enterEmail: {rus: 'Введите email', eng: 'Enter email'},
     enterPassword: {rus: 'Введите пароль', eng: 'Enter password'},
     enterPasswordAlready: {rus: 'Введите пароль снова', eng: 'Enter password already'},
@@ -23,6 +24,10 @@ export const TEXTS = {
         eng: 'Internal server error, try again later'
     },
     fieldCantBeEmpty: {rus: 'Поле не может быть пустым', eng: 'Field can`t be empty'},
+    fieldCantBeEmptyRoom: {
+        rus: 'Не заполнены обязательные поля или изображение',
+        eng: 'Required fields or images are not filled in'
+    },
 
 
     roomName: {rus: 'Название', eng: 'Name'},
@@ -143,6 +148,56 @@ export const TEXTS = {
         rus: 'Тип оружия',
         eng: 'Weapon type'
     },
+
+
+    armor: {
+        rus: 'Доспех',
+        eng: 'Armor'
+    },
+    weapon: {
+        rus: 'Оружие',
+        eng: 'Weapon'
+    },
+    magic_item: {
+        rus: 'Магический предмет',
+        eng: 'Magic item'
+    },
+    other: {
+        rus: 'Другое',
+        eng: 'Other'
+    },
+    rus_armor_name: {
+        rus: 'Название доспеха (рус)',
+        eng: 'Armor name (rus)'
+    },
+    eng_armor_name: {
+        rus: 'Название доспеха (eng)',
+        eng: 'Armor name (eng)'
+    },
+    rus_weapon_name: {
+        rus: 'Название оружия (рус)',
+        eng: 'Weapon name (rus)'
+    },
+    eng_weapon_name: {
+        rus: 'Название оружия (eng)',
+        eng: 'Weapon name (eng)'
+    },
+    rus_other_name: {
+        rus: 'Название предмета (рус)',
+        eng: 'Item name (rus)'
+    },
+    eng_other_name: {
+        rus: 'Название предмета (eng)',
+        eng: 'Item name (eng)'
+    },
+    armory_class: {
+        rus: 'Класс брони',
+        eng: 'Armory class'
+    },
+    max_dex_bonus: {
+        rus: 'Класс брони',
+        eng: 'Armory class'
+    }
 };
 
 export const HEADERS = {
@@ -166,19 +221,24 @@ export const HEADERS = {
     skills: {rus: 'Навыки', eng: 'Skills'},
     speed: {rus: 'Скорость', eng: 'Speed'},
     armoryClass: {rus: 'Класс брони', eng: 'Armory class'},
+    damage: {rus: 'Урон', eng: 'Damage'},
+    damageType: {rus: 'Тип урона', eng: 'Damage type'},
     initiative: {rus: 'Инициатива', eng: 'Initiative'},
     health: {rus: 'Здоровье', eng: 'Health'},
     inspiration: {rus: 'Вдохновение', eng: 'Inspiration'},
     equipped: {rus: 'Снаряжено', eng: 'Equipped'},
-    armor: {rus: 'Доспехи', eng: 'Armor'},
+    armor: {rus: 'Доспех', eng: 'Armor'},
     weapon: {rus: 'Оружие', eng: 'Weapon'},
     magic_items: {rus: 'Магические предметы', eng: 'Magic items'},
     other: {rus: 'Прочее', eng: 'Other'},
     max_dex_bonus: {rus: 'Максимальный бонус от ловкости', eng: 'Maximum Dexterity Bonus'},
     force_requirements: {rus: 'Требование к силе', eng: 'Force requirement'},
     need_customization: {rus: 'Требуется настройка', eng: 'Need customization'},
+    description: {rus: 'Описание', eng: 'Description'},
     default_price: {rus: 'Средняя цена у торговцев', eng: 'Default price'},
     edit: {rus: 'Редактировать', eng: 'Edit'},
     delete_from_inventory: {rus: 'Удалить предмет из инвентаря', eng: 'Remove an item from the inventory'},
     wallet: {rus: 'Кошель', eng: 'Wallet'},
+    tags: {rus: 'Метки', eng: 'Tags'},
+    gm_access: {rus: 'Виден игроками при поиске', eng: 'Visible to players when searching'},
 }

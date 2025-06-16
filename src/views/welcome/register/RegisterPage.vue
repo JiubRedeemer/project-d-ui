@@ -21,6 +21,7 @@ import '@ionic/vue/css/ionic-swiper.css';
 import {arrowBack} from "ionicons/icons";
 import axios from "axios";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+const ionRouter = useIonRouter();
 
 // Управление шагами
 const step = ref(0);
@@ -137,7 +138,7 @@ const register = async () => {
       sessionStorage.setItem("accessToken", res.data.accessToken);
       sessionStorage.setItem("refreshToken", res.data.refreshToken);
 
-      useIonRouter().navigate('rooms', 'forward', 'replace');
+      ionRouter.navigate('/rooms', 'forward', 'replace');
     }
   } catch (error) {
     if (error.response?.status == 406) {

@@ -14,8 +14,6 @@ import {
   IonToolbar,
   toastController,
   useIonRouter,
-  IonInfiniteScroll,
-  IonSearchbar,
   IonInfiniteScrollContent
 } from "@ionic/vue";
 import {ref} from "vue";

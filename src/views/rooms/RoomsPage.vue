@@ -16,7 +16,7 @@ import {
 import {add, chevronForwardOutline} from "ionicons/icons";
 import {HEADERS, TEXTS} from "@/config/localisations";
 import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
-import {ref} from "vue";
+import {onMounted, ref} from "vue";
 import axios from "axios";
 import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 
@@ -40,6 +40,10 @@ const setupRooms = async () => {
   }
 }
 onIonViewDidEnter(() => {
+  setupRooms()
+})
+
+onMounted(() => {
   setupRooms()
 })
 

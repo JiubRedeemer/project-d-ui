@@ -11,11 +11,11 @@ export interface Price {
 export interface Damage {
     value: string;
     damageType: string;
-    damageTypeName: string;
+    damageTypeName?: string;
 }
 
 export interface Stats {
-    defaultPrice: Price[];
+    defaultPrice?: Price[];
     weight?: number;
     armorClass?: string;
     armorClassMaxDexterityBonus?: string;
@@ -40,6 +40,8 @@ export interface Item {
     creatorId?: string;
     imgUrl?: string;
     count?: number;
+    visibleForPlayers?: boolean;
+    creator?: string;
 }
 
 export interface InventoryItem {

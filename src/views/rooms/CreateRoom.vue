@@ -1,5 +1,15 @@
 <script setup lang="ts">
-import {IonContent, IonFab, IonFabButton, IonIcon, IonInput, IonItem, IonPage, useIonRouter} from "@ionic/vue";
+import {
+  IonContent,
+  IonFab,
+  IonFabButton,
+  IonIcon,
+  IonInput,
+  IonItem,
+  IonPage,
+  toastController,
+  useIonRouter
+} from "@ionic/vue";
 import {HEADERS, TEXTS} from "@/config/localisations";
 import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
 import {ref} from "vue";
@@ -57,9 +67,20 @@ const uploadToMinio = async (file: File) => {
 
 };
 
+async function showValidationErrorToast() {
+  const toast = await toastController.create({
+    message: TEXTS.fieldCantBeEmptyRoom.rus,
+    duration: 1500,
+    position: 'top'
+  })
+  await toast.present();
+}
 
 const createRoom = async () => {
-  if (!roomName.value.trim() || !roomImage.value) return;
+  if (!roomName.value.trim() || !roomImage.value) {
+    await showValidationErrorToast();
+    return;
+  }
 
   filePath.value = await uploadToMinio(roomImage.value);
 
