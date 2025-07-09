@@ -51,6 +51,7 @@ export interface InventoryItem {
     item: Item;
     count: number;
     inUse: boolean;
+    requirementsOk: boolean;
 }
 
 export interface InventoryResponse {

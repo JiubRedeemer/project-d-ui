@@ -316,7 +316,12 @@ async function takeMoney() {
           </div>
           <div class="stats-block">
             <div class="item-name">
-              {{ item.item.name.rus }}
+              <span>
+                {{ item.item.name.rus }}
+              <span
+                v-if="characterStore.character.abilities.find(ability => ability.code === 'STR')?.value < Number(item.item.stats.requirement)"
+                style="color: red;">*</span>
+            </span>
             </div>
             <div class="item-stats" v-for="(stat, index) in getItemStats(item)" :key="index">
               {{ stat }}

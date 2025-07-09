@@ -10,7 +10,7 @@ export const useCharacterStore = defineStore('characterStore', {
     actions: {
         async updateCharacterInStoreById(roomId: any, characterId: any): Promise<void> {
             try {
-                const response = await axios.get(
+                const characterResponse = await axios.get(
                     GATEWAY_INTEGRATION_ROUTES.baseURL + GATEWAY_INTEGRATION_ROUTES.api + GATEWAY_INTEGRATION_ROUTES.rooms + '/' + roomId + GATEWAY_INTEGRATION_ROUTES.characters + '/' + characterId,
                     {
                         headers: {
@@ -19,7 +19,7 @@ export const useCharacterStore = defineStore('characterStore', {
                         },
                     }
                 );
-                this.character = response.data;
+                this.character = characterResponse.data;
             } catch (error) {
                 console.error("Ошибка при получении данных:", error);
             }

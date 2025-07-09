@@ -29,7 +29,6 @@ const inventoryItemStore = useInventoryItemStore();
 const inventoryStore = useInventoryStore();
 
 onMounted(async () => {
-  console.log(inventoryItemStore.inventoryItem.itemId);
   if (!inventoryItemStore.inventoryItem.itemId) {
     inventoryItemStore.updateInventoryItemInStoreById(route.params.roomId, route.params.characterId, route.params.itemId);
   }
@@ -61,13 +60,13 @@ const renderMarkdown = (text: string | undefined): string | Promise<string> => {
 function getCoinType(coinType: string | undefined) {
   switch (coinType) {
     case 'GOLDEN':
-      return {rus: 'зм.', golden: 'gc.'};
+      return {rus: 'зм.', eng: 'gc.', emoji: '🪙'};
     case 'SILVER':
-      return {rus: 'см.', golden: 'sc.'};
+      return {rus: 'см.', eng: 'sc.', emoji: '⚪'};
     case 'COPPER':
-      return {rus: 'мм.', golden: 'cc.'};
+      return {rus: 'мм.', eng: 'cc.', emoji: '🟠'};
     default:
-      return {rus: '', golden: ''};
+      return {rus: '', eng: '', emoji: ''};
   }
 }
 
@@ -174,7 +173,7 @@ async function deleteItemFromInventory() {
             <div class="simple-stat-text">{{ HEADERS.default_price.rus }}:</div>
             <div class="simple-stat-value">
               {{ inventoryItemStore.inventoryItem.item?.stats.defaultPrice[0].value }}
-              {{ getCoinType(inventoryItemStore.inventoryItem.item?.stats.defaultPrice[0].coinType).rus }}
+              {{ getCoinType(inventoryItemStore.inventoryItem.item?.stats.defaultPrice[0].coinType).emoji }}
             </div>
           </div>
           <div class="tags">
@@ -333,6 +332,7 @@ async function deleteItemFromInventory() {
   padding: 10px;
   overflow: hidden;
   transition: max-height 4s ease;
+  width: 100%;
 }
 
 .buttons {

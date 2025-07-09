@@ -7,6 +7,7 @@ import {ref} from "vue";
 import {checkmarkOutline} from "ionicons/icons";
 import {HEADERS} from "@/config/localisations";
 import {useCharacterStore} from "@/stores/CharacterStore";
+import {EquippedItemsStatsResponse} from "@/components/models/response/Character";
 
 const route = useRoute();
 const characterStore = useCharacterStore()
@@ -43,6 +44,15 @@ async function onSubmit() {
   emit('closeEditSpeedModal');
 }
 
+function getSpeedBonusSum(itemStats: EquippedItemsStatsResponse | null): number {
+  if(!itemStats) return 0;
+  if (!itemStats.speedBonus) return 0;
+
+  return itemStats.speedBonus.reduce((sum, stat) => {
+    const value = typeof stat.value === 'number' ? stat.value : Number(stat.value);
+    return sum + (isNaN(value) ? 0 : value);
+  }, 0);
+}
 </script>
 
 <template>
@@ -55,7 +65,7 @@ async function onSubmit() {
     <div class="block">
       <div class="header">
         <div class="name">{{
-            HEADERS.speed.rus + " (" + (characterStore.character.speed! + characterStore.character.bonusSpeed!) + ")"
+            HEADERS.speed.rus + " (" + (characterStore.character.speed! + characterStore.character.bonusSpeed!) + (getSpeedBonusSum(characterStore.character.itemStats) > 0 ? (") + " + getSpeedBonusSum(characterStore.character.itemStats)) : ")")
           }}
         </div>
       </div>

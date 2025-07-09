@@ -5,7 +5,7 @@ import HpBar from "@/views/common/HpBar.vue";
 import restIcon from "../../static/icons/rest.svg"
 import armorIcon from "../../static/icons/Armor.svg"
 import speedIcon from "../../static/icons/Speed.svg"
-import {Character} from "@/components/models/response/Character";
+import {Character, EquippedItemsStatsResponse} from "@/components/models/response/Character";
 import {HEADERS} from "@/config/localisations";
 import {useCharacterStore} from "@/stores/CharacterStore";
 import {useSubheaderOpenedStore} from "@/stores/SubheaderStore";
@@ -13,6 +13,25 @@ import {useSubheaderOpenedStore} from "@/stores/SubheaderStore";
 const characterStore = useCharacterStore()
 const subheaderStore = useSubheaderOpenedStore();
 
+function getArmoryClassBonusSum(itemStats: EquippedItemsStatsResponse | null): number {
+  if(!itemStats) return 0;
+  if (!itemStats.armoryClassBonus) return 0;
+
+  return itemStats.armoryClassBonus.reduce((sum, stat) => {
+    const value = typeof stat.value === 'number' ? stat.value : Number(stat.value);
+    return sum + (isNaN(value) ? 0 : value);
+  }, 0);
+}
+
+function getSpeedBonusSum(itemStats: EquippedItemsStatsResponse | null): number {
+  if(!itemStats) return 0;
+  if (!itemStats.speedBonus) return 0;
+
+  return itemStats.speedBonus.reduce((sum, stat) => {
+    const value = typeof stat.value === 'number' ? stat.value : Number(stat.value);
+    return sum + (isNaN(value) ? 0 : value);
+  }, 0);
+}
 
 const emits = defineEmits(["open-subheader", "close-subheader", "speed-selected", "armory-class-selected", "initiative-selected", "health-selected"]);
 
@@ -51,14 +70,14 @@ const closeSubheader = () => {
         <ion-icon class="armory-class-icon" slot="icon-only" :src="armorIcon"></ion-icon>
         <div
             class="armory-class-value">{{
-            characterStore.character != null ? (characterStore.character?.armoryClass + characterStore.character?.bonusArmoryClass) : 0
+            characterStore.character != null ? (characterStore.character?.armoryClass + characterStore.character?.bonusArmoryClass + getArmoryClassBonusSum(characterStore.character?.itemStats)) : 0
           }}
         </div>
       </div>
       <div class="speed" @click="selectSpeed(characterStore.character!!)">
         <ion-icon class="speed-icon" slot="icon-only" :src="speedIcon" color="light"></ion-icon>
         <div class="speed-value">{{
-            characterStore.character != null ? (characterStore.character?.speed + characterStore.character?.bonusSpeed) : 0
+            characterStore.character != null ? (characterStore.character?.speed + characterStore.character?.bonusSpeed + getSpeedBonusSum(characterStore.character?.itemStats)) : 0
           }}
         </div>
       </div>

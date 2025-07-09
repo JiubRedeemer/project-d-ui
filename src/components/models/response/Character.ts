@@ -20,6 +20,7 @@ export interface Character {
     characterBio: CharacterBio;
     health: Health;
     level: Level;
+    itemStats: EquippedItemsStatsResponse | null;
 }
 
 export interface ClassInfo {
@@ -74,4 +75,33 @@ export interface Level {
     level: number;
     xp: number;
     nextLevelXp: number;
+}
+export interface EquippedItemsStatsResponse {
+    armoryClassBonus: StatsDto[] | null;
+    speedBonus: (StatsDto[] | null);
+    hpBonus: StatsDto[] | null;
+}
+
+export interface StatsDto {
+    name: ItemStatsEnum | null;
+    options: string[] | null;
+    value: any;
+}
+
+export enum ItemStatsEnum {
+    ARMORY_CLASS = "ARMORY_CLASS",
+    SPEED = "SPEED",
+    HP = "HP",
+    SAVING_THROW = "SAVING_THROW",
+    ADVANTAGE = "ADVANTAGE",
+    INTERFERENCE = "INTERFERENCE",
+    RESISTANCE = "RESISTANCE",
+    VULNERABILITY = "VULNERABILITY",
+    IMMUNITY = "IMMUNITY",
+    ABILITY_SCORE = "ABILITY_SCORE",
+    PROFICIENCY_SKILL = "PROFICIENCY_SKILL",
+    ATTACK_BONUS = "ATTACK_BONUS",
+    DAMAGE_BONUS = "DAMAGE_BONUS",
+    ON_HIT_CONDITION = "ON_HIT_CONDITION",
+    LIMITATION = "LIMITATION"
 }

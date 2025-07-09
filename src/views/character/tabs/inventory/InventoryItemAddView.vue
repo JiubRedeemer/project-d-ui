@@ -14,17 +14,21 @@ import {
   IonTextarea,
   IonToggle,
   IonToolbar,
-  toastController
+  toastController,
+  useIonRouter
 } from "@ionic/vue";
 import {HEADERS, TEXTS} from "@/config/localisations";
-import {FILE_STORAGE_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {add, addOutline, close, closeCircleOutline, saveOutline} from "ionicons/icons";
 import {onBeforeMount, ref, watch} from "vue";
 import {useCreateInventoryItemStore} from "@/stores/CreateInventoryItemStore";
 import axios from "axios";
 import {v4 as uuidv4} from 'uuid';
 import {Price} from "@/components/models/response/InventoryResponse";
+import {useRoute} from "vue-router";
 
+const ionRouter = useIonRouter();
+const route = useRoute();
 const previewImage = ref<string | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
 const createInventoryItemStore = useCreateInventoryItemStore();
@@ -222,266 +226,284 @@ function mapSubTypeToValue(name: string): string {
   }
 }
 
-  const triggerFileInput = () => {
-    fileInput.value?.click();
-  };
+const triggerFileInput = () => {
+  fileInput.value?.click();
+};
 
-  const handleFileUpload = async (event: Event) => {
-    const file = (event.target as HTMLInputElement).files?.[0] || null;
-    if (file && allowedFormats.includes(file.type)) {
-      avatarImage.value = file;
-      const reader = new FileReader();
-      reader.onload = () => {
-        previewImage.value = reader.result as string;
-      };
-      reader.readAsDataURL(file);
-      filePath.value = await uploadToMinio(avatarImage.value);
-      createInventoryItemStore.item.imgUrl = filePath.value;
-    } else {
-      alert("Формат файла не поддерживается. Разрешены: JPG, PNG, GIF, BMP, WEBP, TIFF, SVG.");
-    }
-  };
+const handleFileUpload = async (event: Event) => {
+  const file = (event.target as HTMLInputElement).files?.[0] || null;
+  if (file && allowedFormats.includes(file.type)) {
+    avatarImage.value = file;
+    const reader = new FileReader();
+    reader.onload = () => {
+      previewImage.value = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+    filePath.value = await uploadToMinio(avatarImage.value);
+    createInventoryItemStore.item.imgUrl = filePath.value;
+  } else {
+    alert("Формат файла не поддерживается. Разрешены: JPG, PNG, GIF, BMP, WEBP, TIFF, SVG.");
+  }
+};
 
-  const uploadToMinio = async (file: File): Promise<string> => {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("userFilename", createInventoryItemStore.item.id);
-    const res = await axios.put(
-        `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.items_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.upload}`,
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
+const uploadToMinio = async (file: File): Promise<string> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("userFilename", createInventoryItemStore.item.id);
+  const res = await axios.put(
+      `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.items_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.upload}`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+  );
+  return res.data;
+};
+
+function getAbbreviation(str: string | undefined): string {
+  if (!str) {
+    return "";
+  }
+  if (isLetter(str)) {
+    return str.split(/\s+/).map(word => word[0].toUpperCase()).join('');
+  } else {
+    return 'Bad name';
+  }
+}
+
+function isLetter(str: string) {
+  const regExp = /[0-9]/;
+  if (!regExp.test(str) && str.length >= 3) {
+    return str;
+  }
+}
+
+const startEditing = () => {
+  editedValues.value = createInventoryItemStore.item.stats.weight;
+};
+
+const updateFieldValue = (number: number) => {
+  editedValues.value = number;
+};
+
+const saveField = (number: number) => {
+  createInventoryItemStore.item.stats.weight = number;
+  if (number >= 0) {
+    invalidFields.value = invalidFields.value.filter(field => field !== 'weight');
+  }
+};
+
+const newTag = ref<string>("");
+
+function addTag() {
+  const tag = newTag.value.trim();
+  if (tag && !createInventoryItemStore?.item?.stats?.tags?.includes(tag)) {
+    createInventoryItemStore?.item?.stats?.tags?.push(tag);
+    newTag.value = "";
+  }
+}
+
+function removeTag(tag: string) {
+  createInventoryItemStore.item.stats.tags = createInventoryItemStore?.item?.stats?.tags?.filter(t => t !== tag);
+}
+
+async function saveItem() {
+  if (viewType.value == "WEAPON") {
+    createInventoryItemStore.item.stats.damage = {
+      damageType: damageType.value,
+      value: damageValue.value
+    };
+    createInventoryItemStore.item.stats.armorClass = undefined;
+    createInventoryItemStore.item.stats.requirement = undefined;
+    createInventoryItemStore.item.stats.armorClassMaxDexterityBonus = undefined;
+  } else if (viewType.value == "ARMOR") {
+    createInventoryItemStore.item.stats.damage = undefined;
+  } else {
+    createInventoryItemStore.item.stats.damage = undefined;
+    createInventoryItemStore.item.stats.armorClass = undefined;
+    createInventoryItemStore.item.stats.requirement = undefined;
+    createInventoryItemStore.item.stats.armorClassMaxDexterityBonus = undefined;
+  }
+
+  createInventoryItemStore.item.rarity = itemRarity.value;
+  createInventoryItemStore.item.visibleForPlayers = visibleForPlayers.value;
+  createInventoryItemStore.item.customization = customization.value;
+  createInventoryItemStore.item.stats.defaultPrice = [{
+    coinType: defaultPriceCoinType.value,
+    value: defaultPriceValue.value
+  }];
+
+  if (validateItem(viewType.value)) {
+    console.log(createInventoryItemStore.item);
+    invalidFields.value = []; // Clear invalid fields on successful save
+
+
+    try {
+      await axios.put(
+          `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.items}`,
+          createInventoryItemStore.item
+          , {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+            },
           },
-        }
-    );
-    return res.data;
-  };
+      );
+      ionRouter.back();
+    } catch (error) {
+      console.error("Ошибка при получении данных:", error);
+    }
 
-  function getAbbreviation(str: string | undefined): string {
-    if (!str) {
-      return "";
-    }
-    if (isLetter(str)) {
-      return str.split(/\s+/).map(word => word[0].toUpperCase()).join('');
-    } else {
-      return 'Bad name';
-    }
+  } else {
+    const toast = await toastController.create({
+      message: 'Заполните обязательные поля',
+      duration: 1000,
+      position: 'top'
+    });
+    await toast.present();
+  }
+}
+
+const validRarities = ['COMMON', 'UNCOMMON', 'RARE', 'VERY_RARE', 'LEGENDARY'];
+
+function validateItem(type: string): boolean {
+  invalidFields.value = []; // Reset invalid fields
+  const errors: string[] = [];
+
+  if (!createInventoryItemStore.item) {
+    errors.push("Отсутствует объект предмета");
+    console.error("Валидация не пройдена: Отсутствует объект предмета");
+    return false;
   }
 
-  function isLetter(str: string) {
-    const regExp = /[0-9]/;
-    if (!regExp.test(str) && str.length >= 3) {
-      return str;
-    }
+  const {item} = createInventoryItemStore;
+
+  // Validate basic required fields
+  if (!item.typeName) {
+    errors.push("Не указан тип предмета (typeName)");
+    invalidFields.value.push('selectedType');
+  }
+  if (!item.type) {
+    errors.push("Не указан тип предмета (type)");
+    invalidFields.value.push('selectedType');
+  }
+  if (!item.rarity) {
+    errors.push("Не указана редкость предмета (rarity)");
+    invalidFields.value.push('itemRarity');
+  }
+  if (!item.name?.rus?.trim()) {
+    errors.push("Не указано русское название предмета");
+    invalidFields.value.push('nameRus');
+  }
+  if (!item.name?.eng?.trim()) {
+    errors.push("Не указано английское название предмета");
+    invalidFields.value.push('nameEng');
   }
 
-  const startEditing = () => {
-    editedValues.value = createInventoryItemStore.item.stats.weight;
-  };
-
-  const updateFieldValue = (number: number) => {
-    editedValues.value = number;
-  };
-
-  const saveField = (number: number) => {
-    createInventoryItemStore.item.stats.weight = number;
-    if (number >= 0) {
-      invalidFields.value = invalidFields.value.filter(field => field !== 'weight');
-    }
-  };
-
-  const newTag = ref<string>("");
-
-  function addTag() {
-    const tag = newTag.value.trim();
-    if (tag && !createInventoryItemStore?.item?.stats?.tags?.includes(tag)) {
-      createInventoryItemStore?.item?.stats?.tags?.push(tag);
-      newTag.value = "";
-    }
+  // Validate stats object
+  if (!item.stats) {
+    errors.push("Отсутствует объект характеристик (stats)");
+    console.error("Валидация не пройдена: Отсутствует объект характеристик (stats)");
+    return false;
   }
 
-  function removeTag(tag: string) {
-    createInventoryItemStore.item.stats.tags = createInventoryItemStore?.item?.stats?.tags?.filter(t => t !== tag);
-  }
-
-  async function saveItem() {
-    if (viewType.value == "WEAPON") {
-      createInventoryItemStore.item.stats.damage = {
-        damageType: damageType.value,
-        value: damageValue.value
-      };
-      createInventoryItemStore.item.stats.armorClass = undefined;
-      createInventoryItemStore.item.stats.requirement = undefined;
-      createInventoryItemStore.item.stats.armorClassMaxDexterityBonus = undefined;
-    } else if (viewType.value == "ARMOR") {
-      createInventoryItemStore.item.stats.damage = undefined;
-    } else {
-      createInventoryItemStore.item.stats.damage = undefined;
-      createInventoryItemStore.item.stats.armorClass = undefined;
-      createInventoryItemStore.item.stats.requirement = undefined;
-      createInventoryItemStore.item.stats.armorClassMaxDexterityBonus = undefined;
-    }
-
-    createInventoryItemStore.item.rarity = itemRarity.value;
-    createInventoryItemStore.item.visibleForPlayers = visibleForPlayers.value;
-    createInventoryItemStore.item.customization = customization.value;
-    createInventoryItemStore.item.stats.defaultPrice = [{
-      coinType: defaultPriceCoinType.value,
-      value: defaultPriceValue.value
-    }];
-
-    if (validateItem(viewType.value)) {
-      console.log(createInventoryItemStore.item);
-      invalidFields.value = []; // Clear invalid fields on successful save
-    } else {
-      const toast = await toastController.create({
-        message: 'Заполните обязательные поля',
-        duration: 1000,
-        position: 'top'
-      });
-      await toast.present();
-    }
-  }
-
-  const validRarities = ['COMMON', 'UNCOMMON', 'RARE', 'VERY_RARE', 'LEGENDARY'];
-
-  function validateItem(type: string): boolean {
-    invalidFields.value = []; // Reset invalid fields
-    const errors: string[] = [];
-
-    if (!createInventoryItemStore.item) {
-      errors.push("Отсутствует объект предмета");
-      console.error("Валидация не пройдена: Отсутствует объект предмета");
-      return false;
-    }
-
-    const {item} = createInventoryItemStore;
-
-    // Validate basic required fields
-    if (!item.typeName) {
-      errors.push("Не указан тип предмета (typeName)");
-      invalidFields.value.push('selectedType');
-    }
-    if (!item.type) {
-      errors.push("Не указан тип предмета (type)");
-      invalidFields.value.push('selectedType');
-    }
-    if (!item.rarity) {
-      errors.push("Не указана редкость предмета (rarity)");
-      invalidFields.value.push('itemRarity');
-    }
-    if (!item.name?.rus?.trim()) {
-      errors.push("Не указано русское название предмета");
-      invalidFields.value.push('nameRus');
-    }
-    if (!item.name?.eng?.trim()) {
-      errors.push("Не указано английское название предмета");
-      invalidFields.value.push('nameEng');
-    }
-
-    // Validate stats object
-    if (!item.stats) {
-      errors.push("Отсутствует объект характеристик (stats)");
-      console.error("Валидация не пройдена: Отсутствует объект характеристик (stats)");
-      return false;
-    }
-
-    // Validate price
-    if (!item.stats.defaultPrice?.length) {
-      errors.push("Не указана цена (defaultPrice)");
+  // Validate price
+  if (!item.stats.defaultPrice?.length) {
+    errors.push("Не указана цена (defaultPrice)");
+    invalidFields.value.push('defaultPriceValue');
+  } else {
+    if (!item.stats.defaultPrice[0]?.value) {
+      errors.push("Не указано значение цены (defaultPrice.value)");
       invalidFields.value.push('defaultPriceValue');
-    } else {
-      if (!item.stats.defaultPrice[0]?.value) {
-        errors.push("Не указано значение цены (defaultPrice.value)");
-        invalidFields.value.push('defaultPriceValue');
-      } else if (item.stats.defaultPrice[0].value < 0) {
-        errors.push("Значение цены не может быть отрицательным");
-        invalidFields.value.push('defaultPriceValue');
-      }
-      if (!item.stats.defaultPrice[0]?.coinType) {
-        errors.push("Не указан тип валюты (defaultPrice.coinType)");
-        invalidFields.value.push('defaultPriceCoinType');
-      }
+    } else if (item.stats.defaultPrice[0].value < 0) {
+      errors.push("Значение цены не может быть отрицательным");
+      invalidFields.value.push('defaultPriceValue');
     }
-
-    // Validate rarity
-    if (!validRarities.includes(item.rarity!)) {
-      errors.push(`Недопустимое значение редкости. Допустимые значения: ${validRarities.join(', ')}`);
-      invalidFields.value.push('itemRarity');
+    if (!item.stats.defaultPrice[0]?.coinType) {
+      errors.push("Не указан тип валюты (defaultPrice.coinType)");
+      invalidFields.value.push('defaultPriceCoinType');
     }
-
-    // Type-specific validations
-    if (type === "ARMOR") {
-      if (item.subtypeName && !getSubtypesByType('ARMOR').some(sub => sub.label === item.subtypeName)) {
-        errors.push(`Недопустимый подтип доспеха: ${item.subtypeName}`);
-        invalidFields.value.push('selectedSubtype');
-      }
-      if (!item.stats.weight && item.stats.weight !== 0) {
-        errors.push("Не указан вес доспеха (weight)");
-        invalidFields.value.push('weight');
-      } else if (item.stats.weight < 0) {
-        errors.push("Вес доспеха не может быть отрицательным");
-        invalidFields.value.push('weight');
-      }
-      if (!item.stats.armorClass?.trim()) {
-        errors.push("Не указан класс брони (armorClass)");
-        invalidFields.value.push('armorClass');
-      }
-      if (!item.stats.armorClassMaxDexterityBonus?.trim()) {
-        errors.push("Не указан максимальный бонус ловкости (armorClassMaxDexterityBonus)");
-        invalidFields.value.push('armorClassMaxDexterityBonus');
-      }
-      if (!item.stats.requirement?.trim()) {
-        errors.push("Не указано требование силы (requirement)");
-        invalidFields.value.push('requirement');
-      }
-    }
-
-    if (type === "WEAPON") {
-      if (item.subtypeName && !getSubtypesByType('WEAPON').some(sub => sub.label === item.subtypeName)) {
-        errors.push(`Недопустимый подтип оружия: ${item.subtypeName}`);
-        invalidFields.value.push('selectedSubtype');
-      }
-      if (!item.stats.damage) {
-        errors.push("Отсутствует объект урона (damage)");
-        invalidFields.value.push('damageValue');
-      } else {
-        if (!item.stats.damage.damageType?.trim()) {
-          errors.push("Не указан тип урона (damage.damageType)");
-          invalidFields.value.push('damageType');
-        }
-        if (!item.stats.damage.value?.trim()) {
-          errors.push("Не указано значение урона (damage.value)");
-          invalidFields.value.push('damageValue');
-        }
-      }
-    }
-
-    if (type === "OTHER" || type === "MAGIC") {
-      if (!item.stats.weight && item.stats.weight !== 0) {
-        errors.push("Не указан вес предмета (weight)");
-        invalidFields.value.push('weight');
-      } else if (item.stats.weight < 0) {
-        errors.push("Вес предмета не может быть отрицательным");
-        invalidFields.value.push('weight');
-      }
-    }
-
-    if (errors.length > 0) {
-      console.error("Валидация не пройдена. Ошибки:", errors.join("; "));
-      return false;
-    }
-
-    if (type !== "ARMOR" && type !== "WEAPON" && type !== "OTHER" && type !== "MAGIC") {
-      errors.push(`Недопустимый тип предмета: ${type}`);
-      console.error(`Валидация не пройдена: Недопустимый тип предмета: ${type}`);
-      invalidFields.value.push('selectedType');
-      return false;
-    }
-
-    return true;
   }
+
+  // Validate rarity
+  if (!validRarities.includes(item.rarity!)) {
+    errors.push(`Недопустимое значение редкости. Допустимые значения: ${validRarities.join(', ')}`);
+    invalidFields.value.push('itemRarity');
+  }
+
+  // Type-specific validations
+  if (type === "ARMOR") {
+    if (item.subtypeName && !getSubtypesByType('ARMOR').some(sub => sub.label === item.subtypeName)) {
+      errors.push(`Недопустимый подтип доспеха: ${item.subtypeName}`);
+      invalidFields.value.push('selectedSubtype');
+    }
+    if (!item.stats.weight && item.stats.weight !== 0) {
+      errors.push("Не указан вес доспеха (weight)");
+      invalidFields.value.push('weight');
+    } else if (item.stats.weight < 0) {
+      errors.push("Вес доспеха не может быть отрицательным");
+      invalidFields.value.push('weight');
+    }
+    if (!item.stats.armorClass?.trim()) {
+      errors.push("Не указан класс брони (armorClass)");
+      invalidFields.value.push('armorClass');
+    }
+    if (!item.stats.armorClassMaxDexterityBonus?.trim()) {
+      errors.push("Не указан максимальный бонус ловкости (armorClassMaxDexterityBonus)");
+      invalidFields.value.push('armorClassMaxDexterityBonus');
+    }
+    if (!item.stats.requirement?.trim()) {
+      errors.push("Не указано требование силы (requirement)");
+      invalidFields.value.push('requirement');
+    }
+  }
+
+  if (type === "WEAPON") {
+    if (item.subtypeName && !getSubtypesByType('WEAPON').some(sub => sub.label === item.subtypeName)) {
+      errors.push(`Недопустимый подтип оружия: ${item.subtypeName}`);
+      invalidFields.value.push('selectedSubtype');
+    }
+    if (!item.stats.damage) {
+      errors.push("Отсутствует объект урона (damage)");
+      invalidFields.value.push('damageValue');
+    } else {
+      if (!item.stats.damage.damageType?.trim()) {
+        errors.push("Не указан тип урона (damage.damageType)");
+        invalidFields.value.push('damageType');
+      }
+      if (!item.stats.damage.value?.trim()) {
+        errors.push("Не указано значение урона (damage.value)");
+        invalidFields.value.push('damageValue');
+      }
+    }
+  }
+
+  if (type === "OTHER" || type === "MAGIC") {
+    if (!item.stats.weight && item.stats.weight !== 0) {
+      errors.push("Не указан вес предмета (weight)");
+      invalidFields.value.push('weight');
+    } else if (item.stats.weight < 0) {
+      errors.push("Вес предмета не может быть отрицательным");
+      invalidFields.value.push('weight');
+    }
+  }
+
+  if (errors.length > 0) {
+    console.error("Валидация не пройдена. Ошибки:", errors.join("; "));
+    return false;
+  }
+
+  if (type !== "ARMOR" && type !== "WEAPON" && type !== "OTHER" && type !== "MAGIC") {
+    errors.push(`Недопустимый тип предмета: ${type}`);
+    console.error(`Валидация не пройдена: Недопустимый тип предмета: ${type}`);
+    invalidFields.value.push('selectedType');
+    return false;
+  }
+
+  return true;
+}
 </script>
 
 <template>
