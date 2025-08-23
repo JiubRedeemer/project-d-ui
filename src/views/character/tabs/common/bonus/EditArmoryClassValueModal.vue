@@ -8,9 +8,11 @@ import {checkmarkOutline} from "ionicons/icons";
 import {HEADERS} from "@/config/localisations";
 import {useCharacterStore} from "@/stores/CharacterStore";
 import {EquippedItemsStatsResponse} from "@/components/models/response/Character";
+import {useInventoryStore} from "@/stores/InventoryStore";
 
 const route = useRoute();
 const characterStore = useCharacterStore()
+const inventoryStore = useInventoryStore();
 
 const props = defineProps({
   url: String,
@@ -53,6 +55,32 @@ function getArmoryClassBonusSum(itemStats: EquippedItemsStatsResponse | null): n
     return sum + (isNaN(value) ? 0 : value);
   }, 0);
 }
+
+const getBaseArmoryClass = () : number => {
+  if (characterStore.character != null && inventoryStore.inventory != null) {
+    const equippedArmor = inventoryStore.inventory.items.filter(item => item.inUse && item.item.type === 'ARMOR')[0];
+    if (equippedArmor)
+      return Number(equippedArmor.item.stats.armorClass)
+    else return characterStore.character?.armoryClass;
+  }
+  return 0;
+}
+
+function calculateCheckValue(value: any) {
+  return Math.floor((value - 10) / 2);
+}
+
+const getDexArmoryClass = () : number => {
+  const equippedArmor = inventoryStore.inventory.items.filter(item => item.inUse && item.item.type === 'ARMOR')[0];
+  const dexAbility = characterStore.character.abilities.filter(ability => ability.code == 'DEX')[0];
+  const dexAbilityCheck = calculateCheckValue(dexAbility.value + dexAbility.bonusValue)
+  if(equippedArmor && equippedArmor.item.subtype == 'HEAVY_ARMOR') return 0;
+  else if (equippedArmor && equippedArmor.item.subtype == 'MEDIUM_ARMOR') {
+    return dexAbilityCheck >= 2 ? 2 : dexAbilityCheck
+  }
+  else if (equippedArmor && equippedArmor.item.subtype == 'LIGHT_ARMOR') return dexAbilityCheck
+  else return 0;
+}
 </script>
 
 <template>
@@ -65,8 +93,11 @@ function getArmoryClassBonusSum(itemStats: EquippedItemsStatsResponse | null): n
     <div class="block">
       <div class="header">
         <div class="name">{{
-            HEADERS.armoryClass.rus + " (" + (characterStore.character.armoryClass! + characterStore.character.bonusArmoryClass!) + (getArmoryClassBonusSum(characterStore.character.itemStats) > 0 ? (") + " + getArmoryClassBonusSum(characterStore.character.itemStats)) : ")")
+            HEADERS.armoryClass.rus + " (" + (getBaseArmoryClass()! + characterStore.character.bonusArmoryClass!) + (getDexArmoryClass() != 0 ? (" + " + getDexArmoryClass()) : "") + (getArmoryClassBonusSum(characterStore.character.itemStats) > 0 ? (") + " + getArmoryClassBonusSum(characterStore.character.itemStats)) : ")")
           }}
+        </div>
+        <div class="description">
+
         </div>
       </div>
       <div class="input-block">

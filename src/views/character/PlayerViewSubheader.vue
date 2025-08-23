@@ -9,12 +9,14 @@ import {Character, EquippedItemsStatsResponse} from "@/components/models/respons
 import {HEADERS} from "@/config/localisations";
 import {useCharacterStore} from "@/stores/CharacterStore";
 import {useSubheaderOpenedStore} from "@/stores/SubheaderStore";
+import {useInventoryStore} from "@/stores/InventoryStore";
 
 const characterStore = useCharacterStore()
 const subheaderStore = useSubheaderOpenedStore();
+const inventoryStore = useInventoryStore();
 
 function getArmoryClassBonusSum(itemStats: EquippedItemsStatsResponse | null): number {
-  if(!itemStats) return 0;
+  if (!itemStats) return 0;
   if (!itemStats.armoryClassBonus) return 0;
 
   return itemStats.armoryClassBonus.reduce((sum, stat) => {
@@ -24,7 +26,7 @@ function getArmoryClassBonusSum(itemStats: EquippedItemsStatsResponse | null): n
 }
 
 function getSpeedBonusSum(itemStats: EquippedItemsStatsResponse | null): number {
-  if(!itemStats) return 0;
+  if (!itemStats) return 0;
   if (!itemStats.speedBonus) return 0;
 
   return itemStats.speedBonus.reduce((sum, stat) => {
@@ -60,6 +62,31 @@ const closeSubheader = () => {
   }
 }
 
+const getBaseArmoryClass = () : number => {
+  if (characterStore.character != null && inventoryStore.inventory != null) {
+    const equippedArmor = inventoryStore.inventory.items.filter(item => item.inUse && item.item.type === 'ARMOR')[0];
+    if (equippedArmor)
+      return Number(equippedArmor.item.stats.armorClass)
+    else return characterStore.character?.armoryClass;
+  }
+  return 0;
+}
+
+function calculateCheckValue(value: any) {
+  return Math.floor((value - 10) / 2);
+}
+
+const getDexArmoryClass = () : number => {
+  const equippedArmor = inventoryStore.inventory.items.filter(item => item.inUse && item.item.type === 'ARMOR')[0];
+  const dexAbility = characterStore.character.abilities.filter(ability => ability.code == 'DEX')[0];
+  const dexAbilityCheck = calculateCheckValue(dexAbility.value + dexAbility.bonusValue)
+  if(equippedArmor && equippedArmor.item.subtype == 'HEAVY_ARMOR') return 0;
+  else if (equippedArmor && equippedArmor.item.subtype == 'MEDIUM_ARMOR') {
+    return dexAbilityCheck >= 2 ? 2 : dexAbilityCheck
+  }
+  else if (equippedArmor && equippedArmor.item.subtype == 'LIGHT_ARMOR') return dexAbilityCheck
+  else return 0;
+}
 </script>
 
 <template>
@@ -70,7 +97,7 @@ const closeSubheader = () => {
         <ion-icon class="armory-class-icon" slot="icon-only" :src="armorIcon"></ion-icon>
         <div
             class="armory-class-value">{{
-            characterStore.character != null ? (characterStore.character?.armoryClass + characterStore.character?.bonusArmoryClass + getArmoryClassBonusSum(characterStore.character?.itemStats)) : 0
+            getBaseArmoryClass() != null ? (getBaseArmoryClass() + getDexArmoryClass() + characterStore.character?.bonusArmoryClass + getArmoryClassBonusSum(characterStore.character?.itemStats)) : 0
           }}
         </div>
       </div>

@@ -8,6 +8,7 @@ import { marked } from "marked";
 import { add, saveOutline } from "ionicons/icons";
 import { IonButton, IonButtons, IonIcon } from "@ionic/vue";
 import { useCharacterStore } from "@/stores/CharacterStore";
+import {useInventoryStore} from "@/stores/InventoryStore";
 
 const fileInput = ref<HTMLInputElement | null>(null);
 
@@ -20,6 +21,7 @@ const previewImage = ref<string | null>(null);
 const allowedFormats = ["image/jpeg", "image/png", "image/gif", "image/bmp", "image/webp", "image/tiff", "image/svg+xml"];
 const filePath = ref<string>("");
 const characterStore = useCharacterStore()
+const inventoryStore = useInventoryStore()
 
 const startEditing = (field: string) => {
   editedValues.value[field] = characterStore.character.characterBio[field];
@@ -56,6 +58,7 @@ const saveSectionText = async (name: string) => {
     );
 
     await characterStore.updateCharacterInStoreById(roomId, characterId);
+    await inventoryStore.updateInventoryInStoreById(route.params.roomId, route.params.characterId)
   } catch (error) {
     console.error("Ошибка при получении данных:", error);
   }
@@ -82,6 +85,7 @@ const saveField = async (field: string, text: string) => {
         }
     );
     await characterStore.updateCharacterInStoreById(roomId, characterId);
+    await inventoryStore.updateInventoryInStoreById(route.params.roomId, route.params.characterId)
   } catch (error) {
     console.error("Ошибка при сохранении данных:", error);
   }

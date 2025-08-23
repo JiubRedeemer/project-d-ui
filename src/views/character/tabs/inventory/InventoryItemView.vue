@@ -151,7 +151,7 @@ async function deleteItemFromInventory() {
               ({{ inventoryItemStore.inventoryItem.item.stats.damage?.damageTypeName }})
             </div>
           </div>
-          <div class="simple-stat" v-if="inventoryItemStore.inventoryItem.item?.type == 'ARMOR'">
+          <div class="simple-stat" v-if="inventoryItemStore.inventoryItem.item?.type == 'ARMOR' && inventoryItemStore.inventoryItem.item.stats.armorClassMaxDexterityBonus > 0">
             <div class="simple-stat-text">{{ HEADERS.max_dex_bonus.rus }}:</div>
             <div class="simple-stat-value">
               {{ inventoryItemStore.inventoryItem.item.stats.armorClassMaxDexterityBonus }}

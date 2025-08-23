@@ -19,9 +19,11 @@ import inventoryTabIcon from "../../static/icons/InventoryTab.svg"
 import InventoryView from "@/views/character/tabs/inventory/InventoryView.vue";
 import {useCharacterStore} from "@/stores/CharacterStore";
 import {useSubheaderOpenedStore} from "@/stores/SubheaderStore";
+import {useInventoryStore} from "@/stores/InventoryStore";
 
 const route = useRoute();
 const characterStore = useCharacterStore()
+const inventoryStore = useInventoryStore()
 const asyncDone = ref<boolean>(false)
 // const subheaderVisible = ref(true);
 const showEditAbilityBonusModal = ref(false); // Управляем видимостью модалки
@@ -36,6 +38,7 @@ const subheaderStore = useSubheaderOpenedStore();
 onMounted(async () => {
   if (characterStore.character != null) {
     await characterStore.updateCharacterInStoreById(route.params.roomId, route.params.characterId)
+    await inventoryStore.updateInventoryInStoreById(route.params.roomId, route.params.characterId)
   }
   asyncDone.value = true;
 })
