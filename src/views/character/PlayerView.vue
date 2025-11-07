@@ -16,10 +16,12 @@ import HpModal from "@/views/character/tabs/common/HpModal.vue";
 import abilitiesTabIcon from "../../static/icons/AbilitiesTab.svg"
 import bioTabIcon from "../../static/icons/PersonalityTab.svg"
 import inventoryTabIcon from "../../static/icons/InventoryTab.svg"
+import notesTabIcon from "../../static/icons/NotesTab.svg"
 import InventoryView from "@/views/character/tabs/inventory/InventoryView.vue";
 import {useCharacterStore} from "@/stores/CharacterStore";
 import {useSubheaderOpenedStore} from "@/stores/SubheaderStore";
 import {useInventoryStore} from "@/stores/InventoryStore";
+import NotesView from "@/views/character/tabs/notes/NotesView.vue";
 
 const route = useRoute();
 const characterStore = useCharacterStore()
@@ -152,6 +154,19 @@ const openSubheader = () => {
           </div>
         </ion-content>
       </ion-tab>
+      <ion-tab tab="notes">
+        <ion-content class="ion-padding"
+                     :fullscreen="true"
+                     color="dark"
+                     direction="y"
+                     :scroll-x="false">
+          <div class="notes" :class="{ openSubheader: subheaderStore.subheaderOpened }">
+            <Suspense>
+              <NotesView v-if="asyncDone"/>
+            </Suspense>
+          </div>
+        </ion-content>
+      </ion-tab>
       <ion-tab-bar slot="bottom" color="dark" class="tab-bar" :transluent="true">
         <ion-tab-button tab="abilities">
           <div class="tab-icon-wrapper">
@@ -166,6 +181,11 @@ const openSubheader = () => {
         <ion-tab-button tab="inventory">
           <div class="tab-icon-wrapper">
             <ion-icon :icon="inventoryTabIcon"/>
+          </div>
+        </ion-tab-button>
+        <ion-tab-button tab="notes">
+          <div class="tab-icon-wrapper">
+            <ion-icon :icon="notesTabIcon"/>
           </div>
         </ion-tab-button>
       </ion-tab-bar>
@@ -246,6 +266,10 @@ const openSubheader = () => {
   margin-top: 120px;
 }
 
+.notes.openSubheader {
+  margin-top: 120px;
+}
+
 .abilities {
   margin-top: 64px;
   transition: margin-top 0.3s ease;
@@ -257,6 +281,11 @@ const openSubheader = () => {
 }
 
 .inventory {
+  margin-top: 64px;
+  transition: margin-top 0.3s ease;
+}
+
+.notes {
   margin-top: 64px;
   transition: margin-top 0.3s ease;
 }

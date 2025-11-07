@@ -50,7 +50,7 @@ const characterStore = useCharacterStore()
 }
 
 .name-block {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: bold;
 }
 

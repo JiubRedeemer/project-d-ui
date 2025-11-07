@@ -40,7 +40,9 @@ export const GATEWAY_INTEGRATION_ROUTES = {
     count: "/count",
     money: "/money",
     items: "/items",
-    search: "/search"
+    search: "/search",
+
+    notes: "/notes"
 };
 
 export const FILE_STORAGE_INTEGRATION_ROUTES = {

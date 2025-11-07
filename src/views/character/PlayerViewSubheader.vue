@@ -189,6 +189,7 @@ const getDexArmoryClass = () : number => {
   display: inline-block;
   width: 40px;
   height: 40px;
+  margin-left: 10px;
 }
 
 .speed-icon {
@@ -224,6 +225,7 @@ const getDexArmoryClass = () : number => {
   display: inline-block;
   width: 40px;
   height: 40px;
+  margin-right: 10px;
 }
 
 .rest-icon {
