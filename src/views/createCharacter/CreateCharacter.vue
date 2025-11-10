@@ -39,8 +39,8 @@ const step = ref({
     HEADERS.flaws.rus,
     HEADERS.relationships.rus,
     HEADERS.class.rus,
-    HEADERS.abilities.rus,
-    HEADERS.skills.rus
+    HEADERS.characteristics.rus,
+    HEADERS.abilities.rus
   ]
 });
 

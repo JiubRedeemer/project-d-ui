@@ -22,11 +22,13 @@ import axios from "axios";
 import {useRoute} from "vue-router";
 import {useInventoryStore} from "@/stores/InventoryStore";
 import {onMounted} from "vue";
+import {useCreateInventoryItemStore} from "@/stores/CreateInventoryItemStore";
 
 const route = useRoute();
 const ionRouter = useIonRouter();
 const inventoryItemStore = useInventoryItemStore();
 const inventoryStore = useInventoryStore();
+const createInventoryItemStore = useCreateInventoryItemStore();
 
 onMounted(async () => {
   if (!inventoryItemStore.inventoryItem.itemId) {
@@ -94,6 +96,14 @@ async function deleteItemFromInventory() {
   }
 }
 
+async function editItem(){
+  createInventoryItemStore.item = inventoryItemStore.inventoryItem.item;
+  createInventoryItemStore.item.roomId = route.params.roomId;
+  ionRouter.navigate('/rooms/' + route.params.roomId + '/characters/' + route.params.characterId + '/inventory/add', 'forward', 'push')
+  console.log("Edit Item")
+  console.log(createInventoryItemStore.item)
+}
+
 </script>
 
 <template>
@@ -105,7 +115,7 @@ async function deleteItemFromInventory() {
         </ion-buttons>
       </ion-toolbar>
     </ion-header>
-    <ion-content class="ion-padding">
+    <ion-content class="ion-padding" color="dark">
       <div class="container">
         <div class="header">
           <div class="avatar">
@@ -189,7 +199,7 @@ async function deleteItemFromInventory() {
           </div>
         </div>
         <div class="buttons">
-          <ion-button expand="block" shape="round" color="secondary" fill="outline">
+          <ion-button expand="block" shape="round" color="secondary" fill="outline" @click="editItem">
             {{ HEADERS.edit.rus }}
           </ion-button>
           <ion-button expand="block" shape="round" color="danger" fill="outline" @click="deleteItemFromInventory">
@@ -203,7 +213,7 @@ async function deleteItemFromInventory() {
 
 <style scoped>
 .container {
-  background-color: var(--ion-color-dark);
+  background-color: var(--ion-color-dark, #222428) !important;;
 }
 
 .header {

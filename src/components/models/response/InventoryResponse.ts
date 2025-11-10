@@ -24,6 +24,24 @@ export interface Stats {
     tags?: string[];
 }
 
+/**
+ * Перечисление типов восстановления зарядов навыка
+ * соответствует enum ChargesRefillEnum (Java)
+ */
+export type ChargesRefill = 'SHORT_REST' | 'LONG_REST';
+
+/**
+ * Навык предмета (ItemSkillDto)
+ */
+export interface ItemSkill {
+    id: string;
+    itemId: string;
+    name: Name;
+    description: string;
+    charges: number;
+    chargesRefill: ChargesRefill;
+}
+
 export interface Item {
     id: string;
     name: Name;
@@ -35,6 +53,12 @@ export interface Item {
     rarity?: string;
     description?: string;
     stats: Stats;
+
+    /**
+     * Новое поле — список навыков предмета
+     */
+    skills?: ItemSkill[];
+
     createdAt: string;
     roomId?: string;
     creatorId?: string;

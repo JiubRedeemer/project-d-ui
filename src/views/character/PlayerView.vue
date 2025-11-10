@@ -14,6 +14,7 @@ import EditArmoryClassValueModal from "@/views/character/tabs/common/bonus/EditA
 import EditInitiativeValueModal from "@/views/character/tabs/common/bonus/EditInitiativeValueModal.vue";
 import HpModal from "@/views/character/tabs/common/HpModal.vue";
 import abilitiesTabIcon from "../../static/icons/AbilitiesTab.svg"
+import attacksTabIcon from "../../static/icons/AbilitiesTab.svg"
 import bioTabIcon from "../../static/icons/PersonalityTab.svg"
 import inventoryTabIcon from "../../static/icons/InventoryTab.svg"
 import notesTabIcon from "../../static/icons/NotesTab.svg"
@@ -22,6 +23,7 @@ import {useCharacterStore} from "@/stores/CharacterStore";
 import {useSubheaderOpenedStore} from "@/stores/SubheaderStore";
 import {useInventoryStore} from "@/stores/InventoryStore";
 import NotesView from "@/views/character/tabs/notes/NotesView.vue";
+import AttacksAndSkillsView from "@/views/character/tabs/attacksAndSkills/AttacksAndSkillsView.vue";
 
 const route = useRoute();
 const characterStore = useCharacterStore()
@@ -44,7 +46,6 @@ onMounted(async () => {
   }
   asyncDone.value = true;
 })
-
 
 const openEditAbilityModal = (ability: AbilityDto) => {
   selectedAbility.value = ability;
@@ -128,6 +129,17 @@ const openSubheader = () => {
           </div>
         </ion-content>
       </ion-tab>
+      <ion-tab tab="attacks">
+        <ion-content class="ion-padding"
+                     :fullscreen="true"
+                     color="dark"
+                     direction="y"
+                     :scroll-x="false">
+          <div class="attacks" :class="{ openSubheader: subheaderStore.subheaderOpened }">
+            <AttacksAndSkillsView v-if="asyncDone" @ability-selected="openEditAbilityModal"/>
+          </div>
+        </ion-content>
+      </ion-tab>
       <ion-tab tab="bio">
         <ion-content class="ion-padding"
                      :fullscreen="true"
@@ -173,6 +185,11 @@ const openSubheader = () => {
             <ion-icon :icon="abilitiesTabIcon"/>
           </div>
         </ion-tab-button>
+        <ion-tab-button tab="attacks">
+          <div class="tab-icon-wrapper">
+            <ion-icon :icon="attacksTabIcon"/>
+          </div>
+        </ion-tab-button>
         <ion-tab-button tab="bio">
           <div class="tab-icon-wrapper">
             <ion-icon :icon="bioTabIcon"/>
@@ -193,7 +210,7 @@ const openSubheader = () => {
 
 
     <!-- Модалка -->
-    <EditAbilityValueModal  v-if="selectedAbility"
+    <EditAbilityValueModal v-if="selectedAbility"
                            :ability="ref(selectedAbility)"
                            :isOpen="showEditAbilityBonusModal"
                            :character-id="String(route.params.characterId)"
@@ -231,14 +248,37 @@ const openSubheader = () => {
 
 .tab-bar, .tab-bar ion-tab-button {
   background: var(--ion-color-medium);
-  border-radius: 15px;
-  margin: 10px;
 }
 
 /* Обертка для иконки */
 .tab-bar ion-tab-button .tab-icon-wrapper {
-  width: 50px; /* Размер круга */
-  height: 50px;
+  border: 1px solid var(--ion-color-primary);
+}
+
+
+.tab-bar {
+  background: var(--ion-color-medium);
+  border-radius: 20px;
+  margin: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 0;
+}
+
+/* Каждая кнопка таба занимает равную ширину */
+.tab-bar ion-tab-button {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  --background: transparent;
+}
+
+/* Обертка для иконки */
+.tab-bar ion-tab-button .tab-icon-wrapper {
+  width: 45px;
+  height: 45px;
   border: 1px solid var(--ion-color-primary);
   border-radius: 50%;
   display: flex;
@@ -249,12 +289,16 @@ const openSubheader = () => {
 
 /* Размер иконки внутри круга */
 .tab-bar ion-tab-button ion-icon {
-  width: 35px;
-  height: 35px;
-  color: white; /* Цвет иконки */
+  width: 28px;
+  height: 28px;
+  color: white;
 }
 
 .abilities.openSubheader {
+  margin-top: 120px;
+}
+
+.attacks.openSubheader {
   margin-top: 120px;
 }
 
@@ -271,6 +315,11 @@ const openSubheader = () => {
 }
 
 .abilities {
+  margin-top: 64px;
+  transition: margin-top 0.3s ease;
+}
+
+.attacks {
   margin-top: 64px;
   transition: margin-top 0.3s ease;
 }

@@ -3,10 +3,11 @@ import {onMounted, ref} from "vue";
 import {useRoute} from "vue-router";
 import axios from "axios";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
-import {IonButton, IonButtons, IonChip, IonIcon, IonLabel} from "@ionic/vue";
-import {addOutline, saveOutline, trashOutline, createOutline} from "ionicons/icons";
+import {IonButton, IonButtons, IonChip, IonIcon, IonLabel, IonTextarea, IonInput} from "@ionic/vue";
+import {addOutline, createOutline, saveOutline, trashOutline} from "ionicons/icons";
 
 import {marked} from "marked";
+
 marked.setOptions({
   breaks: true, // переносы строк сохраняются
 });
@@ -66,7 +67,7 @@ const loadNotebook = async () => {
 };
 
 const addNewTagField = (target: "new" | "edit") => {
-  const tag = { name: "", color: "#8888ff" };
+  const tag = {name: "", color: "#8888ff"};
   if (target === "new") newTags.value.push(tag);
   else editTags.value.push(tag);
 };
@@ -416,36 +417,32 @@ const autoGrow = (event: Event) => {
 <style scoped>
 
 .section {
+  position: relative;
   margin-top: 20px;
   background-color: var(--ion-color-medium);
   border-radius: 15px;
   padding: 10px;
   overflow: hidden;
-  max-height: 150px;
-  transition: max-height 4s ease;
-
+  max-height: 130px;
+  transition: max-height 0.4s ease;
 }
 
 .section.expand {
   height: fit-content;
   max-height: 10000px;
   transition: max-height 4s ease;
-
 }
 
 .section h1 {
   font-size: 16pt; /* Размер для h1 */
-  font-weight: bold;
 }
 
 .section h2 {
   font-size: 14pt; /* Размер для h2 */
-  font-weight: bold;
 }
 
 .section h3 {
   font-size: 12pt; /* Размер для h3 */
-  font-weight: bold;
 }
 
 .section h4 {
@@ -461,9 +458,8 @@ const autoGrow = (event: Event) => {
 }
 
 .sectionHeader {
-  margin-top: 10px;
-  color: var(--ion-color-primary);
-  font-size: 16pt;
+  margin-top: 0;
+  color: var(--ion-color-light);
 }
 
 .sectionButtons {
@@ -569,18 +565,6 @@ p[contenteditable="true"]:focus {
 .expanded-tags {
   margin-top: 8px;
   justify-content: flex-start;
-}
-
-/* Для самого блока заметки добавим position: relative */
-.section {
-  position: relative;
-  margin-top: 20px;
-  background-color: var(--ion-color-medium);
-  border-radius: 15px;
-  padding: 10px;
-  overflow: hidden;
-  max-height: 150px;
-  transition: max-height 0.4s ease;
 }
 
 .note-tag-chip {

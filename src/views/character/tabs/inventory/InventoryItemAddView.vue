@@ -46,24 +46,45 @@ const viewType = ref<string>("ARMOR");
 const visibleForPlayers = ref<boolean>(true);
 const customization = ref<boolean>(false);
 const invalidFields = ref<string[]>([]); // Track invalid fields
+const damageType = ref<string>("CRUSHING");
+const damageValue = ref<string>("");
+const defaultPriceValue = ref<number>(0);
+const defaultPriceCoinType = ref<string>("GOLDEN");
+const defaultPrice = ref<Price>({value: 0, coinType: "GOLDEN"});
 
 onBeforeMount(() => {
-  createInventoryItemStore.item.id = itemId;
-  createInventoryItemStore.item.typeName = "Доспех";
-  createInventoryItemStore.item.type = "ARMOR";
-  createInventoryItemStore.item.stats = {
-    weight: 0,
-    armorClassMaxDexterityBonus: "",
-    requirement: "",
-    tags: []
-  };
-  createInventoryItemStore.item.stats.weight = 0;
-  createInventoryItemStore.item.name = {
-    rus: '',
-    eng: ''
-  };
-  createInventoryItemStore.item.description = "";
-  createInventoryItemStore.item.rarity = "COMMON";
+  if (!createInventoryItemStore.item.type) {
+    createInventoryItemStore.item.id = itemId;
+    createInventoryItemStore.item.typeName = "Доспех";
+    createInventoryItemStore.item.type = "ARMOR";
+    createInventoryItemStore.item.stats = {
+      weight: 0,
+      armorClassMaxDexterityBonus: "",
+      requirement: "",
+      tags: []
+    };
+    createInventoryItemStore.item.stats.weight = 0;
+    createInventoryItemStore.item.name = {
+      rus: '',
+      eng: ''
+    };
+    createInventoryItemStore.item.description = "";
+    createInventoryItemStore.item.rarity = "COMMON";
+  } else {
+    viewType.value = createInventoryItemStore.item.type;
+    damageType.value = createInventoryItemStore.item.stats.damage?.damageType;
+    damageValue.value = createInventoryItemStore.item.stats.damage?.value;
+    defaultPrice.value = createInventoryItemStore.item.stats.defaultPrice[0];
+    defaultPriceCoinType.value = createInventoryItemStore.item.stats.defaultPrice[0].coinType
+    defaultPriceValue.value = createInventoryItemStore.item.stats.defaultPrice[0].value
+    itemRarity.value = createInventoryItemStore.item.rarity ? createInventoryItemStore.item.rarity : 'COMMON';
+
+    if (!(createInventoryItemStore.item.creatorId == (route.params.characterId as string))) {
+      createInventoryItemStore.item.creatorId = route.params.characterId;
+      createInventoryItemStore.item.id = uuidv4();
+      createInventoryItemStore.item.creator = "user";
+    }
+  }
 });
 
 function openTypeSelect() {
@@ -98,9 +119,6 @@ watch(() => createInventoryItemStore.item.type, (newType) => {
   invalidFields.value = []; // Reset invalid fields on type change
 });
 
-const defaultPriceValue = ref<number>(0);
-const defaultPriceCoinType = ref<string>("GOLDEN");
-const defaultPrice = ref<Price>({value: 0, coinType: "GOLDEN"});
 
 watch(defaultPriceValue, (newValue) => {
   defaultPrice.value.value = newValue;
@@ -116,8 +134,6 @@ watch(defaultPriceCoinType, (newValue) => {
   }
 });
 
-const damageType = ref<string>("CRUSHING");
-const damageValue = ref<string>("");
 
 watch(damageValue, (newValue) => {
   if (newValue?.trim()) {
@@ -515,7 +531,7 @@ function validateItem(type: string): boolean {
         </ion-buttons>
       </ion-toolbar>
     </ion-header>
-    <ion-content class="ion-padding">
+    <ion-content class="ion-padding" color="dark">
       <div class="container">
         <div class="header">
           <div class="avatar" @click="triggerFileInput" :class="`rarity-${itemRarity.toLowerCase()}`">
