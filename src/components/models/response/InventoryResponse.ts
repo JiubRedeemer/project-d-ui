@@ -37,9 +37,13 @@ export interface ItemSkill {
     id: string;
     itemId: string;
     name: Name;
+    castTime:string;
+    distance:string;
     description: string;
+    shortDescription: string;
     charges: number;
     chargesRefill: ChargesRefill;
+    imgUrl: string;
 }
 
 export interface Item {

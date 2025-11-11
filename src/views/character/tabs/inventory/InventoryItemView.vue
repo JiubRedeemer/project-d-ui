@@ -13,7 +13,8 @@ import {
   IonLabel,
   IonPage,
   IonToggle,
-  IonToolbar, useIonRouter
+  IonToolbar,
+  useIonRouter
 } from "@ionic/vue";
 import {useInventoryItemStore} from "@/stores/InventoryItemStore";
 import armorIcon from "@/static/icons/Armor.svg";
@@ -21,14 +22,34 @@ import {marked} from "marked";
 import axios from "axios";
 import {useRoute} from "vue-router";
 import {useInventoryStore} from "@/stores/InventoryStore";
-import {onMounted} from "vue";
+import {onMounted, ref} from "vue";
 import {useCreateInventoryItemStore} from "@/stores/CreateInventoryItemStore";
+import {searchOutline} from "ionicons/icons";
+import type {ItemSkill} from "@/components/models/response/InventoryResponse";
+import EditItemSkillValueModal from "@/views/character/tabs/inventory/EditItemSkillValueModal.vue";
 
 const route = useRoute();
 const ionRouter = useIonRouter();
 const inventoryItemStore = useInventoryItemStore();
 const inventoryStore = useInventoryStore();
 const createInventoryItemStore = useCreateInventoryItemStore();
+
+const showEditItemSkillModal = ref(false);
+const isEditingItemSkill = ref(false);
+const editingItemSkill = ref<ItemSkill>();
+
+
+const closeEditItemSkillModal = () => {
+  showEditItemSkillModal.value = false; // Закрываем модалку
+};
+
+function openViewItemSkillModal(isEditing: boolean, itemSkill: ItemSkill | undefined) {
+  isEditingItemSkill.value = isEditing;
+  if (!isEditing) {
+    editingItemSkill.value = itemSkill;
+  }
+  showEditItemSkillModal.value = true;
+};
 
 onMounted(async () => {
   if (!inventoryItemStore.inventoryItem.itemId) {
@@ -96,13 +117,19 @@ async function deleteItemFromInventory() {
   }
 }
 
-async function editItem(){
+async function editItem() {
   createInventoryItemStore.item = inventoryItemStore.inventoryItem.item;
   createInventoryItemStore.item.roomId = route.params.roomId;
   ionRouter.navigate('/rooms/' + route.params.roomId + '/characters/' + route.params.characterId + '/inventory/add', 'forward', 'push')
   console.log("Edit Item")
   console.log(createInventoryItemStore.item)
 }
+
+const getSkillImageUrl = (imgUrl: string | undefined) => {
+  return imgUrl != null
+      ? `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.skills_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.download}/${imgUrl}`
+      : 'https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png';
+};
 
 </script>
 
@@ -161,7 +188,8 @@ async function editItem(){
               ({{ inventoryItemStore.inventoryItem.item.stats.damage?.damageTypeName }})
             </div>
           </div>
-          <div class="simple-stat" v-if="inventoryItemStore.inventoryItem.item?.type == 'ARMOR' && inventoryItemStore.inventoryItem.item.stats.armorClassMaxDexterityBonus > 0">
+          <div class="simple-stat"
+               v-if="inventoryItemStore.inventoryItem.item?.type == 'ARMOR' && inventoryItemStore.inventoryItem.item.stats.armorClassMaxDexterityBonus > 0">
             <div class="simple-stat-text">{{ HEADERS.max_dex_bonus.rus }}:</div>
             <div class="simple-stat-value">
               {{ inventoryItemStore.inventoryItem.item.stats.armorClassMaxDexterityBonus }}
@@ -193,11 +221,50 @@ async function editItem(){
               </ion-chip>
             </div>
           </div>
-          <div class="section" v-if="inventoryItemStore?.inventoryItem?.item?.description">
+          <div class="section-description" v-if="inventoryItemStore?.inventoryItem?.item?.description">
             <p v-html="renderMarkdown(inventoryItemStore.inventoryItem.item?.description)">
             </p>
           </div>
         </div>
+        <div class="item-skills">
+          <div class="section" v-for="item in inventoryItemStore?.inventoryItem?.item?.skills" :key="item.id">
+            <div class="section-start-block" @click="">
+              <div class="image-block">
+                <img v-if="item.imgUrl" width="55px" height="55px" class="skill-image"
+                     :src="getSkillImageUrl(item.imgUrl)"
+                     :alt="item.name.rus"/>
+                <img v-else width="55px" height="55px" class="skill-image"
+                     :src="'https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"
+                     :alt="item.name.rus"/>
+              </div>
+              <div class="stats-block">
+                <div class="skill-stats-block">
+                  <div class="skill-name">
+                    {{ item.name.rus }}
+                  </div>
+                  <div class="skill-short-description">
+                    {{ item.shortDescription }}
+                  </div>
+                  <div class="skill-limitations">
+                    Зарядов: {{ item.charges }} ({{
+                      item.chargesRefill === "SHORT_REST"
+                          ? "короткий отдых"
+                          : "долгий отдых"
+                    }})
+                  </div>
+                </div>
+              </div>
+            </div>
+            <ion-buttons class="skill-buttons-block">
+              <ion-buttons>
+                <ion-button size="small" shape="round" @click="openViewItemSkillModal(false, item)">
+                  <ion-icon slot="icon-only" :icon="searchOutline"></ion-icon>
+                </ion-button>
+              </ion-buttons>
+            </ion-buttons>
+          </div>
+        </div>
+
         <div class="buttons">
           <ion-button expand="block" shape="round" color="secondary" fill="outline" @click="editItem">
             {{ HEADERS.edit.rus }}
@@ -208,6 +275,13 @@ async function editItem(){
         </div>
       </div>
     </ion-content>
+    <EditItemSkillValueModal v-if="showEditItemSkillModal"
+                             :isOpen="showEditItemSkillModal"
+                             :character-id="String(route.params.characterId)"
+                             :is-editing="isEditingItemSkill"
+                             :item-skill="editingItemSkill"
+                             @closeEditItemSkillModal="closeEditItemSkillModal"
+                             :is-read-only="true"/>
   </ion-page>
 </template>
 
@@ -235,7 +309,7 @@ async function editItem(){
   justify-content: center;
 }
 
-.item-name {
+.skill-name {
   font-size: 24px;
 }
 
@@ -336,7 +410,7 @@ async function editItem(){
   justify-content: start;
 }
 
-.section {
+.section-description {
   background-color: var(--ion-color-medium);
   border-radius: 15px;
   padding: 10px;
@@ -352,4 +426,82 @@ async function editItem(){
   gap: 10px;
   flex-direction: column;
 }
+
+.section {
+  margin-top: 10px;
+  background-color: var(--ion-color-medium);
+  border-radius: 25px;
+  padding: 10px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  min-height: 75px;
+}
+
+.section-start-block {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.image-block {
+  flex-shrink: 0;
+}
+
+.skill-image {
+  border-radius: 15px;
+  border: 2px solid transparent;
+  width: 55px;
+  height: 55px;
+  object-fit: cover;
+}
+
+.stats-block {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+  min-width: 0;
+  flex: 1;
+}
+
+.skill-stats-block {
+  min-width: 0;
+}
+
+.skill-name {
+  font-size: 16px;
+  font-weight: bold;
+  white-space: nowrap;
+  overflow: scroll;
+}
+
+.skill-short-description,
+.skill-limitations {
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: scroll;
+}
+
+.skill-buttons-block {
+  display: flex;
+  justify-content: end;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 5px;
+}
+
+.add-skill-button {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 </style>

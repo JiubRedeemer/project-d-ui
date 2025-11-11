@@ -54,6 +54,7 @@ export const FILE_STORAGE_INTEGRATION_ROUTES = {
     room_images_bucket: "/room-images",
     avatar_images_bucket: "/avatar-images",
     items_images_bucket: "/item-images",
+    skills_images_bucket: "/skills-images",
     upload: "/upload",
     download: "/download"
 }
