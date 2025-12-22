@@ -242,4 +242,6 @@ export const HEADERS = {
     wallet: {rus: 'Кошель', eng: 'Wallet'},
     tags: {rus: 'Метки', eng: 'Tags'},
     gm_access: {rus: 'Виден игроками при поиске', eng: 'Visible to players when searching'},
+    item_skills: {rus: 'Навыки от предметов', eng: 'Item\'s skills'},
+    character_skills: {rus: 'Навыки персонажа', eng: 'Character\'s skills'},
 }

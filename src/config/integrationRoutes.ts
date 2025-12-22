@@ -34,6 +34,8 @@ export const GATEWAY_INTEGRATION_ROUTES = {
     speed: "/speed",
     initiative: "/initiative",
     skills: "/skills",
+    use: "/use",
+    characterSkills: "/character-skills",
 
     bonus: "/bonus",
     mastery: "/mastery",

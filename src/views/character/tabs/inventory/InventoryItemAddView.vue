@@ -66,6 +66,8 @@ const openEditItemSkillModal = (isEditing: boolean, itemSkill: ItemSkill | undef
   isEditingItemSkill.value = isEditing;
   if (!isEditing) {
     editingItemSkill.value = itemSkill;
+  } else if (isEditing && !itemSkill) {
+    editingItemSkill.value = undefined;
   }
   showEditItemSkillModal.value = true;
 };

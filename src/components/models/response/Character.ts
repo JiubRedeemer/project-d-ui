@@ -1,3 +1,5 @@
+import {ChargesRefill} from "@/components/models/response/InventoryResponse";
+
 export interface Character {
     id: string;
     roomId: string;
@@ -76,6 +78,7 @@ export interface Level {
     xp: number;
     nextLevelXp: number;
 }
+
 export interface EquippedItemsStatsResponse {
     armoryClassBonus: StatsDto[] | null;
     speedBonus: (StatsDto[] | null);
@@ -86,6 +89,20 @@ export interface StatsDto {
     name: ItemStatsEnum | null;
     options: string[] | null;
     value: any;
+}
+
+export interface CharacterSkill {
+    id: string;
+    characterId: string;
+    name: string;
+    currentCharges: number | undefined;
+    castTime: string | undefined;
+    distance: string | undefined;
+    description: string;
+    shortDescription: string;
+    charges: number | undefined;
+    chargesRefill: ChargesRefill;
+    imgUrl: string;
 }
 
 export enum ItemStatsEnum {

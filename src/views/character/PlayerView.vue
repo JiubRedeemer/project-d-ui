@@ -24,6 +24,7 @@ import {useSubheaderOpenedStore} from "@/stores/SubheaderStore";
 import {useInventoryStore} from "@/stores/InventoryStore";
 import NotesView from "@/views/character/tabs/notes/NotesView.vue";
 import AttacksAndSkillsView from "@/views/character/tabs/attacksAndSkills/AttacksAndSkillsView.vue";
+import {useCharacterSkillsStore} from "@/stores/CharacterSkillsStore";
 
 const route = useRoute();
 const characterStore = useCharacterStore()
@@ -38,11 +39,13 @@ const showEditInitiativeBonusModal = ref(false); // Управляем види�
 const showEditHealthModal = ref(false); // Управляем видимостью модалки
 const selectedCharacter = ref<Character>();
 const subheaderStore = useSubheaderOpenedStore();
+const characterSkillsStore = useCharacterSkillsStore();
 
 onMounted(async () => {
   if (characterStore.character != null) {
     await characterStore.updateCharacterInStoreById(route.params.roomId, route.params.characterId)
     await inventoryStore.updateInventoryInStoreById(route.params.roomId, route.params.characterId)
+    await characterSkillsStore.updateCharacterSkills(route.params.roomId, route.params.characterId)
   }
   asyncDone.value = true;
 })

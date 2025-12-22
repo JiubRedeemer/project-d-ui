@@ -275,13 +275,13 @@ const getSkillImageUrl = (imgUrl: string | undefined) => {
         </div>
       </div>
     </ion-content>
-    <EditItemSkillValueModal v-if="showEditItemSkillModal"
-                             :isOpen="showEditItemSkillModal"
+    <EditItemSkillValueModal :isOpen="showEditItemSkillModal"
                              :character-id="String(route.params.characterId)"
                              :is-editing="isEditingItemSkill"
                              :item-skill="editingItemSkill"
                              @closeEditItemSkillModal="closeEditItemSkillModal"
-                             :is-read-only="true"/>
+                             :is-read-only="true"
+                             :isCharacterSkill="false"/>
   </ion-page>
 </template>
 

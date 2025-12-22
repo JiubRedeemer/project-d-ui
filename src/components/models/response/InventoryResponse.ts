@@ -72,6 +72,14 @@ export interface Item {
     creator?: string;
 }
 
+export interface InventoryItemSkill {
+    id: string;
+    inventoryItemId: string;
+    itemSkillId: string;
+    currentCharges: number;
+    skill: ItemSkill;
+}
+
 export interface InventoryItem {
     id: string;
     inventoryId: string;
@@ -80,6 +88,7 @@ export interface InventoryItem {
     count: number;
     inUse: boolean;
     requirementsOk: boolean;
+    skills?: InventoryItemSkill[];
 }
 
 export interface InventoryResponse {
