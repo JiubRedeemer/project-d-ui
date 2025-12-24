@@ -18,7 +18,6 @@ import {onBeforeMount, ref, watch} from "vue";
 import {useRoute} from "vue-router";
 import {add, closeCircleOutline, pencilOutline, saveOutline, trashOutline} from "ionicons/icons";
 import {useCharacterStore} from "@/stores/CharacterStore";
-import type {ItemSkill} from "@/components/models/response/InventoryResponse";
 import {FILE_STORAGE_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import axios from "axios";
 import {v4 as uuidv4} from "uuid";
@@ -50,14 +49,14 @@ onBeforeMount(() => {
       id: uuidv4(),
       characterId: "",
       name: "",
-      castTime: "",
-      distance: "",
+      castTime: undefined,
+      distance: undefined,
       description: "",
       shortDescription: "",
-      charges: 0,
-      currentCharges: 0,
-      chargesRefill: "LONG_REST",
-      imgUrl: ""
+      charges: undefined,
+      currentCharges: undefined,
+      chargesRefill: undefined,
+      imgUrl: undefined
     });
   }
 })

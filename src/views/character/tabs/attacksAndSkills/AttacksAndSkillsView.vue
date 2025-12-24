@@ -15,6 +15,7 @@ import {useInventoryItemStore} from "@/stores/InventoryItemStore";
 import {CharacterSkill} from "@/components/models/response/Character";
 import {useCharacterSkillsStore} from "@/stores/CharacterSkillsStore";
 import EditCharacterSkillValueModal from "@/views/character/tabs/attacksAndSkills/EditCharacterSkillValueModal.vue";
+import {storeToRefs} from "pinia";
 
 const route = useRoute();
 
@@ -27,7 +28,7 @@ const dex = Math.floor((characterStore.character.abilities.filter(ability => abi
 
 const equippedItems = computed(() => inventoryStore.inventory?.items?.filter(item => item.inUse && (item.item.type === "WEAPON")));
 
-const characterSkills = characterSkillsStore.characterSkills
+const { characterSkills } = storeToRefs(characterSkillsStore)
 
 const skills = computed(() =>
     inventoryStore.inventory?.items?.flatMap(invItem =>
@@ -169,7 +170,20 @@ function openInventoryItem(item: InventoryItem) {
 async function saveCharacterSkill(characterSkill: CharacterSkill) {
   await axios.put(
       `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${route.params.characterId}${GATEWAY_INTEGRATION_ROUTES.characterSkills}`,
-      {characterSkill},
+      characterSkill,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        }
+      }
+  );
+  await characterSkillsStore.updateCharacterSkills(route.params.roomId, route.params.characterId)
+}
+
+async function deleteCharacterSkill(id: string) {
+  await axios.delete(
+      `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${route.params.characterId}${GATEWAY_INTEGRATION_ROUTES.characterSkills}/${id}`,
       {
         headers: {
           "Content-Type": "application/json",
@@ -324,7 +338,8 @@ async function saveCharacterSkill(characterSkill: CharacterSkill) {
                                 :is-editing="isEditingCharacterSkill"
                                 :character-skill="editingCharacterSkill"
                                 @closeEditCharacterSkillModal="closeEditCharacterSkillModal"
-                                @saveCharacterSkill="(characterSkill : CharacterSkill) => addCharacterSkill(itemSkill)"/>
+                                @saveCharacterSkill="(characterSkill : CharacterSkill) => saveCharacterSkill(characterSkill)"
+                                @deleteCharacterSkill="(skillId : string) => deleteCharacterSkill(skillId)"/>
 
 
 </template>
