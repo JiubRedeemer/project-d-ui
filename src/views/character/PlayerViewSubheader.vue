@@ -35,7 +35,7 @@ function getSpeedBonusSum(itemStats: EquippedItemsStatsResponse | null): number 
   }, 0);
 }
 
-const emits = defineEmits(["open-subheader", "close-subheader", "speed-selected", "armory-class-selected", "initiative-selected", "health-selected"]);
+const emits = defineEmits(["open-subheader", "close-subheader", "speed-selected", "armory-class-selected", "initiative-selected", "health-selected", "open-rest-modal"]);
 
 const selectSpeed = (character: Character) => {
   emits("speed-selected", character);
@@ -52,6 +52,10 @@ const selectInitiative = (character: Character) => {
 const selectHealth = (character: Character) => {
   emits("health-selected", character);
 };
+
+const openRestModal = (character: Character) => {
+  emits("open-rest-modal", character);
+}
 
 const closeSubheader = () => {
   subheaderStore.subheaderOpened = !subheaderStore.subheaderOpened
@@ -129,7 +133,7 @@ const getDexArmoryClass = () : number => {
       </div>
     </div>
     <div class="end-icons" v-show="subheaderStore.subheaderOpened">
-      <div class="rest">
+      <div class="rest" @click="openRestModal(characterStore.character!!)">
         <ion-icon class="rest-icon" slot="icon-only" :src="restIcon" color="light">
         </ion-icon>
       </div>

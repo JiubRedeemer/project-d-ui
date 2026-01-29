@@ -25,6 +25,7 @@ import {useInventoryStore} from "@/stores/InventoryStore";
 import NotesView from "@/views/character/tabs/notes/NotesView.vue";
 import AttacksAndSkillsView from "@/views/character/tabs/attacksAndSkills/AttacksAndSkillsView.vue";
 import {useCharacterSkillsStore} from "@/stores/CharacterSkillsStore";
+import RestViewModal from "@/views/character/tabs/rest/RestViewModal.vue";
 
 const route = useRoute();
 const characterStore = useCharacterStore()
@@ -37,6 +38,7 @@ const showEditSpeedBonusModal = ref(false); // Управляем видимос
 const showEditArmoryClassBonusModal = ref(false); // Управляем видимостью модалки
 const showEditInitiativeBonusModal = ref(false); // Управляем видимостью модалки
 const showEditHealthModal = ref(false); // Управляем видимостью модалки
+const showRestModal = ref(false);
 const selectedCharacter = ref<Character>();
 const subheaderStore = useSubheaderOpenedStore();
 const characterSkillsStore = useCharacterSkillsStore();
@@ -74,6 +76,11 @@ const openHealthModal = (character: Character) => {
   selectedCharacter.value = character;
   showEditHealthModal.value = true;
 };
+
+const openRestModal = (character: Character) => {
+  selectedCharacter.value = character;
+  showRestModal.value = true;
+}
 
 
 const closeEditAbilityModal = () => {
@@ -117,6 +124,7 @@ const openSubheader = () => {
                              @health-selected="openHealthModal"
                              @close-subheader="closeSubheader"
                              @open-subheader="openSubheader"
+                             @open-rest-modal="openRestModal"
         />
       </div>
     </ion-header>
@@ -237,6 +245,10 @@ const openSubheader = () => {
                               :character-id="String(route.params.characterId)"
                               :url="String(GATEWAY_INTEGRATION_ROUTES.initiative)"
                               @closeEditInitiativeModal="closeEditInitiativeModal"/>
+
+    <RestViewModal v-if="showRestModal"
+                   :isOpen="showRestModal"
+    />
 
     <HpModal v-if="showEditHealthModal"
              :isOpen="showEditHealthModal"
