@@ -38,7 +38,7 @@ export interface RaceInfo {
 export interface Ability {
     name: string;
     code: string;
-    value: number;
+    value: number | undefined;
     bonusValue: number;
     skills: Skill[]
 }

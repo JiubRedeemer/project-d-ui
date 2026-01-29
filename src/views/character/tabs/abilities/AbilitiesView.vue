@@ -4,7 +4,7 @@ import axios from "axios";
 import {useRoute} from "vue-router";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {onMounted, ref} from "vue";
-import {Ability} from "@/components/models/response/Character";
+import {Ability, Character} from "@/components/models/response/Character";
 import {useCharacterStore} from "@/stores/CharacterStore";
 
 const route = useRoute();
@@ -55,10 +55,10 @@ function buildAbilityCodeMap(abilities: AbilityResponse[]): Map<string, AbilityR
   return codeMap;
 }
 
-function buildCharacterAbilityCodeMap(character): Map<string, Ability> {
+function buildCharacterAbilityCodeMap(character: Character): Map<string, Ability> {
   if (!character) return new Map();
   const codeMap = new Map<string, Ability>();
-  character.abilities.forEach((ability) => {
+  character.abilities.forEach((ability: Ability) => {
     codeMap.set(ability.code, ability);
   });
   return codeMap;
@@ -91,7 +91,7 @@ async function updateMastery(skill: any) {
   try {
     await axios.patch(
         `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${characterStore.character.id}${GATEWAY_INTEGRATION_ROUTES.skills}/${skill.code}${GATEWAY_INTEGRATION_ROUTES.mastery}`,
-        { isMastery: skill.up },
+        {isMastery: skill.up},
         {
           headers: {
             "Content-Type": "application/json",
