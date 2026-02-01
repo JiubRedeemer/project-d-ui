@@ -23,6 +23,7 @@ export interface Character {
     health: Health;
     level: Level;
     itemStats: EquippedItemsStatsResponse | null;
+    currentHpDiceCount: number;
 }
 
 export interface ClassInfo {
