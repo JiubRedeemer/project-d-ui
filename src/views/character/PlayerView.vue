@@ -107,6 +107,11 @@ const closeSubheader = () => {
   subheaderStore.subheaderOpened = false; // Закрываем модалку
 };
 
+const closeRestModal = () => {
+  showRestModal.value = false; // Закрываем модалку
+};
+
+
 const openSubheader = () => {
   subheaderStore.subheaderOpened = true; // Закрываем модалку
 };
@@ -248,6 +253,7 @@ const openSubheader = () => {
 
     <RestViewModal v-if="showRestModal"
                    :isOpen="showRestModal"
+                   @closeRestModal="closeRestModal"
     />
 
     <HpModal v-if="showEditHealthModal"

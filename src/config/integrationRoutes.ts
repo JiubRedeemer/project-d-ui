@@ -36,6 +36,7 @@ export const GATEWAY_INTEGRATION_ROUTES = {
     skills: "/skills",
     use: "/use",
     characterSkills: "/character-skills",
+    rest: "/rest",
 
     bonus: "/bonus",
     mastery: "/mastery",

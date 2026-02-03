@@ -3,6 +3,12 @@ import { IonButton, IonRange, createAnimation, IonToggle } from "@ionic/vue";
 import TopModal from "@/views/common/TopModal.vue";
 import { onMounted, ref } from "vue";
 import { useCharacterStore } from "@/stores/CharacterStore";
+import { GATEWAY_INTEGRATION_ROUTES } from "@/config/integrationRoutes";
+import axios from "axios";
+import { useRoute } from "vue-router";
+
+const route = useRoute();
+
 
 const props = defineProps({
   isOpen: Boolean,
@@ -13,6 +19,28 @@ const characterStore = useCharacterStore()
 
 
 const longRest = ref(true);
+
+async function onSubmit() {
+  try {
+    await axios.post(
+      `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${characterStore.character.id}${GATEWAY_INTEGRATION_ROUTES.rest}/${longRest ? 'LONG_REST' : 'SHORT_REST'}`,
+      {},
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+      }
+    );
+  } catch (error) {
+    console.error("Ошибка при получении данных:", error);
+  }
+
+
+  characterStore.updateCharacterInStoreById(route.params.roomId, route.params.characterId)
+  emit('closeRestModal');
+}
+
 </script>
 
 
@@ -40,7 +68,7 @@ const longRest = ref(true);
 
       <!-- Кнопка -->
       <div class="rest-button">
-        <IonButton shape="round" color="secondary" fill="solid">
+        <IonButton shape="round" color="secondary" fill="solid" @click="onSubmit">
           Отдохнуть
         </IonButton>
       </div>
