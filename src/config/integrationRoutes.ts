@@ -45,7 +45,15 @@ export const GATEWAY_INTEGRATION_ROUTES = {
     items: "/items",
     search: "/search",
 
-    notes: "/notes"
+    notes: "/notes",
+
+    // Magic API (under /api, not room-scoped)
+    spells: "/spells",
+    spellsImport: "/spells/import",
+    spellBooks: "/spell-books",
+    spellBooksByRoomCharacter: "/spell-books/by-room-character",
+    spellBookItems: "/spell-book-items",
+    spellCells: "/spell-cells"
 };
 
 export const FILE_STORAGE_INTEGRATION_ROUTES = {
