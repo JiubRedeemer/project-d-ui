@@ -14,7 +14,6 @@ import {
   IonToggle,
   IonToolbar,
   toastController,
-  useIonRouter,
 } from "@ionic/vue";
 import { add } from "ionicons/icons";
 import { onMounted, onUnmounted, ref } from "vue";
@@ -29,9 +28,10 @@ import type { SpellClass } from "@/components/models/response/MagicApi";
 import { FILE_STORAGE_INTEGRATION_ROUTES } from "@/config/integrationRoutes";
 import { useMagicStore } from "@/stores/MagicStore";
 import axios from "axios";
+import { useAppRouter } from "@/composables/useAppRouter";
 
 const route = useRoute();
-const ionRouter = useIonRouter();
+const { ionRouter, appPath, isDesktop } = useAppRouter();
 const magicStore = useMagicStore();
 
 const roomId = ref(String(route.params.roomId));
@@ -258,12 +258,12 @@ onUnmounted(() => {
     <ion-header>
       <ion-toolbar color="dark">
         <ion-buttons slot="start">
-          <ion-back-button :default-href="`/rooms/${roomId}/characters/${characterId}/magic/search`"/>
+          <ion-back-button :default-href="appPath(`/rooms/${roomId}/characters/${characterId}/magic/search`)"/>
         </ion-buttons>
       </ion-toolbar>
     </ion-header>
-    <ion-content class="ion-padding" color="dark">
-      <div class="container">
+    <ion-content class="ion-padding" color="dark" :fullscreen="!isDesktop">
+      <div class="container" :class="{ 'desktop-content': isDesktop }">
         <div class="header">
           <div class="avatar" @click="triggerFileInput">
             <img
@@ -426,6 +426,12 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.container.desktop-content {
+  max-width: var(--desktop-content-max-width);
+  margin: 0 auto;
+  padding: var(--desktop-content-padding);
+}
+
 .container {
   display: flex;
   flex-direction: column;

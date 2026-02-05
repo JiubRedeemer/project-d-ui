@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import {IonBadge, IonBackButton, IonButton, IonButtons, IonHeader, IonIcon, IonTitle, IonToolbar, useIonRouter} from "@ionic/vue";
+import {IonBadge, IonBackButton, IonButton, IonButtons, IonHeader, IonIcon, IonTitle, IonToolbar} from "@ionic/vue";
 import {notificationsOutline, searchOutline} from "ionicons/icons";
 import {onBeforeMount, ref} from "vue";
 import axios from "axios";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import LogOutButton from "@/views/common/LogOutButton.vue";
+import {useAppRouter} from "@/composables/useAppRouter";
 
 const notifications = ref<{ count: number; }>({count: 0});
-const ionRouter = useIonRouter();
+const { navigate } = useAppRouter();
 
 const props = defineProps({
   headerName: String
@@ -47,7 +48,7 @@ onBeforeMount(() => {
           </ion-button>
         </ion-buttons>
         <ion-buttons slot="end">
-          <ion-button size="small" @click="ionRouter.navigate('invites', 'forward', 'push')">
+          <ion-button size="small" @click="navigate('invites', 'forward', 'push')">
             <ion-icon slot="icon-only" :ios="notificationsOutline" :md="notificationsOutline">
             </ion-icon>
             <ion-badge color="primary" v-show="notifications.count > 0">{{ notifications.count }}</ion-badge>

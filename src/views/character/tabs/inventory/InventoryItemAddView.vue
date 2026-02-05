@@ -15,7 +15,6 @@ import {
   IonToggle,
   IonToolbar,
   toastController,
-  useIonRouter
 } from "@ionic/vue";
 import {HEADERS, TEXTS} from "@/config/localisations";
 import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
@@ -27,8 +26,9 @@ import {v4 as uuidv4} from 'uuid';
 import {type ItemSkill, Price} from "@/components/models/response/InventoryResponse";
 import {useRoute} from "vue-router";
 import EditItemSkillValueModal from "@/views/character/tabs/inventory/EditItemSkillValueModal.vue";
+import {useAppRouter} from "@/composables/useAppRouter";
 
-const ionRouter = useIonRouter();
+const { ionRouter, isDesktop } = useAppRouter();
 const route = useRoute();
 const previewImage = ref<string | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
@@ -569,8 +569,8 @@ const getSkillImageUrl = (imgUrl: string | undefined) => {
         </ion-buttons>
       </ion-toolbar>
     </ion-header>
-    <ion-content class="ion-padding" color="dark">
-      <div class="container">
+    <ion-content class="ion-padding" color="dark" :fullscreen="!isDesktop">
+      <div class="container" :class="{ 'desktop-content': isDesktop }">
         <div class="header">
           <div class="avatar" @click="triggerFileInput" :class="`rarity-${itemRarity.toLowerCase()}`">
             <img v-if="previewImage" :src="previewImage" class="avatar-img" alt="Room Image"/>
@@ -1416,6 +1416,12 @@ ion-modal {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.container.desktop-content {
+  max-width: var(--desktop-content-max-width);
+  margin: 0 auto;
+  padding: var(--desktop-content-padding);
 }
 
 </style>

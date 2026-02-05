@@ -67,5 +67,11 @@
 
     --coin-color-gold: #C0C700;
     --coin-color-silver: #979797;
-    --coin-color-copper: #593A00
+    --coin-color-copper: #593A00;
+
+    /* Desktop layout */
+    --desktop-content-max-width: 960px;
+    --desktop-content-padding: 24px;
+    --desktop-card-max-width: 480px;
+    --desktop-grid-gap: 20px;
 }

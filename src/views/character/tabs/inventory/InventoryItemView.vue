@@ -13,8 +13,7 @@ import {
   IonLabel,
   IonPage,
   IonToggle,
-  IonToolbar,
-  useIonRouter
+  IonToolbar
 } from "@ionic/vue";
 import {useInventoryItemStore} from "@/stores/InventoryItemStore";
 import armorIcon from "@/static/icons/Armor.svg";
@@ -27,9 +26,10 @@ import {useCreateInventoryItemStore} from "@/stores/CreateInventoryItemStore";
 import {searchOutline} from "ionicons/icons";
 import type {ItemSkill} from "@/components/models/response/InventoryResponse";
 import EditItemSkillValueModal from "@/views/character/tabs/inventory/EditItemSkillValueModal.vue";
+import {useAppRouter} from "@/composables/useAppRouter";
 
 const route = useRoute();
-const ionRouter = useIonRouter();
+const { navigate, ionRouter, isDesktop } = useAppRouter();
 const inventoryItemStore = useInventoryItemStore();
 const inventoryStore = useInventoryStore();
 const createInventoryItemStore = useCreateInventoryItemStore();
@@ -120,7 +120,7 @@ async function deleteItemFromInventory() {
 async function editItem() {
   createInventoryItemStore.item = inventoryItemStore.inventoryItem.item;
   createInventoryItemStore.item.roomId = route.params.roomId;
-  ionRouter.navigate('/rooms/' + route.params.roomId + '/characters/' + route.params.characterId + '/inventory/add', 'forward', 'push')
+  navigate('/rooms/' + route.params.roomId + '/characters/' + route.params.characterId + '/inventory/add', 'forward', 'push')
   console.log("Edit Item")
   console.log(createInventoryItemStore.item)
 }
@@ -142,8 +142,8 @@ const getSkillImageUrl = (imgUrl: string | undefined) => {
         </ion-buttons>
       </ion-toolbar>
     </ion-header>
-    <ion-content class="ion-padding" color="dark">
-      <div class="container">
+    <ion-content class="ion-padding" color="dark" :fullscreen="!isDesktop">
+      <div class="container" :class="{ 'desktop-content': isDesktop }">
         <div class="header">
           <div class="avatar">
             <img :src="getItemImageUrl(inventoryItemStore.inventoryItem.item?.imgUrl)"
@@ -502,6 +502,12 @@ const getSkillImageUrl = (imgUrl: string | undefined) => {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.container.desktop-content {
+  max-width: var(--desktop-content-max-width);
+  margin: 0 auto;
+  padding: var(--desktop-content-padding);
 }
 
 </style>

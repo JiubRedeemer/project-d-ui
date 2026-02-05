@@ -9,11 +9,11 @@ import { closeCircleOutline, createOutline, star, trashOutline } from "ionicons/
 
 import { computed } from "vue";
 import { useRoute } from "vue-router";
-import { useIonRouter } from "@ionic/vue";
 import { deleteSpellBookItem, setSpellInUse } from "@/api/magicApi";
 import type { SpellBookItemDto, SpellDto } from "@/components/models/response/MagicApi";
 import { FILE_STORAGE_INTEGRATION_ROUTES, SPELL_IMAGE_PLACEHOLDER } from "@/config/integrationRoutes";
 import { useMagicStore } from "@/stores/MagicStore";
+import { useAppRouter } from "@/composables/useAppRouter";
 
 const props = defineProps<{
   isOpen: boolean;
@@ -25,7 +25,7 @@ const emit = defineEmits<{ (e: "closeSpellInfoModal"): void }>();
 
 const magicStore = useMagicStore();
 const route = useRoute();
-const ionRouter = useIonRouter();
+const { navigate } = useAppRouter();
 
 const spell = computed(() => props.item?.spell);
 
@@ -77,7 +77,7 @@ function onEdit() {
   };
   magicStore.setEditingSpell(spellData);
   emit("closeSpellInfoModal");
-  ionRouter.navigate(
+  navigate(
     `/rooms/${route.params.roomId}/characters/${route.params.characterId}/magic/add`,
     "forward",
     "push"

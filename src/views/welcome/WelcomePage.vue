@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import {IonButton, IonContent, IonPage, useIonRouter} from "@ionic/vue";
+import {IonButton, IonContent, IonPage} from "@ionic/vue";
 import {TEXTS} from "@/config/localisations";
 import {onBeforeMount} from "vue";
 import axios from "axios";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {useAppRouter} from "@/composables/useAppRouter";
 
-const ionRouter = useIonRouter();
+const { navigate, replace, isDesktop } = useAppRouter();
 
 const setupRooms = async () => {
   try {
@@ -20,7 +21,7 @@ const setupRooms = async () => {
     const res = await http.get(GATEWAY_INTEGRATION_ROUTES.api + GATEWAY_INTEGRATION_ROUTES.rooms);
 
     if (res.status == 200) {
-      ionRouter.replace('/rooms');
+      replace('/rooms');
     }
   } catch (error) {
     console.debug("No auth:", error);
@@ -35,21 +36,43 @@ onBeforeMount(() => {
 
 <template>
   <ion-page>
-    <ion-content :fullscreen="true" color="dark">
-      <div class="wrapper">
+    <ion-content :fullscreen="!isDesktop" color="dark">
+      <!-- Desktop template -->
+      <div v-if="isDesktop" class="desktop-wrapper">
+        <div class="desktop-card">
+          <h1 class="desktop-title">Project-D</h1>
+          <div class="desktop-actions">
+            <ion-button expand="block" shape="round" color="primary" @click="navigate('welcome/login', 'forward', 'push')">
+              {{ TEXTS.login.rus }}
+            </ion-button>
+            <ion-button expand="block" shape="round" color="primary" @click="navigate('welcome/register', 'forward', 'push')">
+              {{ TEXTS.register.rus }}
+            </ion-button>
+          </div>
+        </div>
+      </div>
+      <!-- Mobile template -->
+      <div v-else class="wrapper">
         <h1 class="title">Project-D</h1>
         <div class="button-block">
           <ion-button shape="round"
                       class="button-list-element"
                       color="primary"
-                      @click="ionRouter.navigate('welcome/login', 'forward', 'push')">
+                      @click="navigate('welcome/login', 'forward', 'push')">
             {{ TEXTS.login.rus }}
           </ion-button>
           <ion-button shape="round"
                       class="button-list-element"
                       color="primary"
-                      @click="ionRouter.navigate('welcome/register', 'forward', 'push')">
+                      @click="navigate('welcome/register', 'forward', 'push')">
             {{ TEXTS.register.rus }}
+          </ion-button>
+          <ion-button shape="round"
+                      class="button-list-element desktop-link"
+                      fill="outline"
+                      color="primary"
+                      @click="navigate('/desktop/welcome', 'forward', 'push')">
+            Десктоп
           </ion-button>
         </div>
       </div>
@@ -88,6 +111,37 @@ onBeforeMount(() => {
   min-width: fit-content;
 }
 
+.desktop-link {
+  margin-top: 0.5rem;
+}
+
+/* Desktop template */
+.desktop-wrapper {
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--desktop-content-padding);
+}
+.desktop-card {
+  max-width: var(--desktop-card-max-width);
+  width: 100%;
+  background: var(--ion-color-medium);
+  border-radius: 12px;
+  padding: 32px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+.desktop-title {
+  text-align: center;
+  margin: 0 0 24px 0;
+  font-size: 1.75rem;
+}
+.desktop-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 @media (min-width: 768px) {
   .wrapper {
     flex-direction: row;
@@ -99,6 +153,10 @@ onBeforeMount(() => {
     width: 50%;
     margin-top: 0;
     margin-left: 25%;
+  }
+
+  .desktop-link {
+    margin-top: 0;
   }
 }
 

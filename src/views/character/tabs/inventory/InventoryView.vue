@@ -1,6 +1,6 @@
 <script setup lang="ts">
 
-import {IonButton, IonButtons, IonIcon, IonLabel, IonProgressBar, useIonRouter, useKeyboard} from "@ionic/vue";
+import {IonButton, IonButtons, IonIcon, IonLabel, IonProgressBar, useKeyboard} from "@ionic/vue";
 import axios from "axios";
 import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {useRoute} from "vue-router";
@@ -14,9 +14,9 @@ import WalletView from "@/views/character/tabs/inventory/WalletView.vue";
 import {useWalletStore} from "@/stores/WalletStore";
 import {useSubheaderOpenedStore} from "@/stores/SubheaderStore";
 import {useInventoryStore} from "@/stores/InventoryStore";
+import {useAppRouter} from "@/composables/useAppRouter";
 
-const ionRouter = useIonRouter();
-
+const { navigate } = useAppRouter();
 const route = useRoute();
 // const inventory = ref<InventoryResponse>();
 const inventoryStore = useInventoryStore();
@@ -147,11 +147,11 @@ function getRarityClass(rarity: string | undefined) {
 
 function openInventoryItem(item: InventoryItem) {
   inventoryItemStore.inventoryItem = item;
-  ionRouter.navigate('/rooms/' + route.params.roomId + '/characters/' + route.params.characterId + '/inventory/' + item.id, 'forward', 'push')
+  navigate('/rooms/' + route.params.roomId + '/characters/' + route.params.characterId + '/inventory/' + item.id, 'forward', 'push')
 }
 
 function openSearchView() {
-  ionRouter.navigate('/rooms/' + route.params.roomId + '/characters/' + route.params.characterId + '/inventory/search', 'forward', 'push')
+  navigate('/rooms/' + route.params.roomId + '/characters/' + route.params.characterId + '/inventory/search', 'forward', 'push')
 }
 
 async function changeItemCount(item: InventoryItem, option: string) {

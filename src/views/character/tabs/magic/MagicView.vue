@@ -11,10 +11,10 @@ import {
     SPELL_IMAGE_PLACEHOLDER,
 } from "@/config/integrationRoutes";
 import {useMagicStore} from "@/stores/MagicStore";
-import {useIonRouter} from "@ionic/vue";
+import {useAppRouter} from "@/composables/useAppRouter";
 
 const route = useRoute();
-const ionRouter = useIonRouter();
+const { navigate, isDesktop } = useAppRouter();
 const magicStore = useMagicStore();
 
 const spellBook = computed(() => magicStore.spellBook);
@@ -95,7 +95,7 @@ async function togglePrepared(item: SpellBookItemDto) {
 }
 
 function openSearchView() {
-    ionRouter.navigate(
+    navigate(
         "/rooms/" + route.params.roomId + "/characters/" + route.params.characterId + "/magic/search",
         "forward",
         "push"
@@ -135,7 +135,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="magic-body">
+  <div class="magic-body" :class="{ 'desktop-content': isDesktop }">
     <div v-if="loading" class="loading">Загрузка...</div>
     <div v-else-if="error" class="error">{{ error }}</div>
     <template v-else>
@@ -229,6 +229,12 @@ onMounted(async () => {
 
 <style scoped>
 .magic-body {
+}
+
+.magic-body.desktop-content {
+  max-width: var(--desktop-content-max-width);
+  margin: 0 auto;
+  padding: var(--desktop-content-padding);
 }
 
 .loading,

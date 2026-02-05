@@ -14,6 +14,7 @@ import InventorySearchView from "@/views/character/tabs/inventory/InventorySearc
 import InventoryItemAddView from "@/views/character/tabs/inventory/InventoryItemAddView.vue";
 import MagicSearchView from "@/views/character/tabs/magic/MagicSearchView.vue";
 import SpellAddView from "@/views/character/tabs/magic/SpellAddView.vue";
+import DesktopLayout from "@/views/desktop/DesktopLayout.vue";
 
 const routes: Array<RouteRecordRaw> = [
     {
@@ -89,6 +90,27 @@ const routes: Array<RouteRecordRaw> = [
         path: '/rooms/:roomId/characters/:characterId/magic/add',
         component: SpellAddView,
         name: 'spellAddView'
+    },
+    {
+        path: '/desktop',
+        component: DesktopLayout,
+        redirect: '/desktop/welcome',
+        children: [
+            { path: 'welcome', component: WelcomePage, name: 'desktopWelcomePage' },
+            { path: 'welcome/login', component: LoginPage, name: 'desktopLoginPage' },
+            { path: 'welcome/register', component: RegisterPage, name: 'desktopRegisterPage' },
+            { path: 'rooms', component: RoomsPage, name: 'desktopRoomsPage' },
+            { path: 'rooms/create', component: CreateRoom, name: 'desktopCreateRoom' },
+            { path: 'invites', component: InvitesPage, name: 'desktopInvitesPage' },
+            { path: 'rooms/:roomId/create-character', component: CreateCharacter, name: 'desktopCreateCharacter' },
+            { path: 'rooms/:roomId/characters', component: CharacterList, name: 'desktopCharacterList' },
+            { path: 'rooms/:roomId/characters/:characterId', component: PlayerView, name: 'desktopPlayerView' },
+            { path: 'rooms/:roomId/characters/:characterId/inventory/:itemId', component: InventoryItemView, name: 'desktopInventoryItemView' },
+            { path: 'rooms/:roomId/characters/:characterId/inventory/search', component: InventorySearchView, name: 'desktopInventorySearchView' },
+            { path: 'rooms/:roomId/characters/:characterId/inventory/add', component: InventoryItemAddView, name: 'desktopInventoryItemAddView' },
+            { path: 'rooms/:roomId/characters/:characterId/magic/search', component: MagicSearchView, name: 'desktopMagicSearchView' },
+            { path: 'rooms/:roomId/characters/:characterId/magic/add', component: SpellAddView, name: 'desktopSpellAddView' }
+        ]
     }
 ]
 

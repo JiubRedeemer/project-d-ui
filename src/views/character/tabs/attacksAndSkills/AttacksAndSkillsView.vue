@@ -7,7 +7,7 @@ import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/con
 import {useCharacterStore} from "@/stores/CharacterStore";
 import {InventoryItem, InventoryItemSkill, ItemSkill} from "@/components/models/response/InventoryResponse";
 import {addOutline, handRightOutline} from "ionicons/icons";
-import {IonButton, IonIcon, IonProgressBar, useIonRouter} from "@ionic/vue";
+import {IonButton, IonIcon, IonProgressBar} from "@ionic/vue";
 import axios from "axios";
 import {useRoute} from "vue-router";
 import EditItemSkillValueModal from "@/views/character/tabs/inventory/EditItemSkillValueModal.vue";
@@ -16,8 +16,10 @@ import {CharacterSkill} from "@/components/models/response/Character";
 import {useCharacterSkillsStore} from "@/stores/CharacterSkillsStore";
 import EditCharacterSkillValueModal from "@/views/character/tabs/attacksAndSkills/EditCharacterSkillValueModal.vue";
 import {storeToRefs} from "pinia";
+import {useAppRouter} from "@/composables/useAppRouter";
 
 const route = useRoute();
+const { navigate } = useAppRouter();
 
 const inventoryStore = useInventoryStore();
 const characterStore = useCharacterStore();
@@ -133,7 +135,6 @@ const isEditingCharacterSkill = ref(false); // Управляем видимос
 const editingCharacterSkill = ref<CharacterSkill>(); // Управляем видимостью модалки
 
 const inventoryItemStore = useInventoryItemStore();
-const ionRouter = useIonRouter();
 
 const closeEditItemSkillModal = () => {
   showEditItemSkillModal.value = false; // Закрываем модалку
@@ -164,7 +165,7 @@ const openEditCharacterSkillModal = (isEditing: boolean, characterSkill: Charact
 
 function openInventoryItem(item: InventoryItem) {
   inventoryItemStore.inventoryItem = item;
-  ionRouter.navigate('/rooms/' + route.params.roomId + '/characters/' + route.params.characterId + '/inventory/' + item.id, 'forward', 'push')
+  navigate('/rooms/' + route.params.roomId + '/characters/' + route.params.characterId + '/inventory/' + item.id, 'forward', 'push')
 }
 
 async function saveCharacterSkill(characterSkill: CharacterSkill) {

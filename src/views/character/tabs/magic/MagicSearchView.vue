@@ -13,7 +13,6 @@ import {
     IonToggle,
     IonToolbar,
     toastController,
-    useIonRouter,
 } from "@ionic/vue";
 import { add, addOutline, arrowBack } from "ionicons/icons";
 import { computed, onMounted, ref, watch } from "vue";
@@ -31,9 +30,10 @@ import {
 } from "@/config/integrationRoutes";
 import { useCharacterStore } from "@/stores/CharacterStore";
 import { useMagicStore } from "@/stores/MagicStore";
+import { useAppRouter } from "@/composables/useAppRouter";
 
 const route = useRoute();
-const ionRouter = useIonRouter();
+const { navigate, appPath, isDesktop, ionRouter } = useAppRouter();
 const characterStore = useCharacterStore();
 const magicStore = useMagicStore();
 
@@ -190,7 +190,7 @@ watch(forMyClass, () => {
 });
 
 function openAddSpellView() {
-    ionRouter.navigate(
+    navigate(
         `/rooms/${roomId.value}/characters/${characterId.value}/magic/add`,
         "forward",
         "push"
@@ -203,7 +203,7 @@ function openAddSpellView() {
     <ion-header class="search-header">
       <ion-toolbar>
         <ion-buttons slot="start">
-          <ion-back-button :default-href="`/rooms/${roomId}/characters/${characterId}`"/>
+          <ion-back-button :default-href="appPath(`/rooms/${roomId}/characters/${characterId}`)"/>
         </ion-buttons>
         <ion-searchbar
           v-model="searchQuery"
@@ -220,7 +220,8 @@ function openAddSpellView() {
         </ion-toggle>
       </div>
     </ion-header>
-    <ion-content>
+    <ion-content :fullscreen="!isDesktop">
+      <div :class="{ 'desktop-content': isDesktop }">
       <div v-if="loading" class="loading">Загрузка...</div>
       <div v-else class="found" :class="{ 'has-content': filteredSpells.length > 0 }">
         <template v-for="[level, spells] in spellsByLevel" :key="level">
@@ -260,6 +261,7 @@ function openAddSpellView() {
         <div v-if="!loading && filteredSpells.length === 0" class="empty">
           Заклинания не найдены
         </div>
+      </div>
       </div>
     </ion-content>
     <ion-fab slot="fixed" vertical="bottom" horizontal="start">
@@ -384,5 +386,11 @@ ion-content {
 ion-searchbar {
   --border-radius: 20px;
   --background: #2b2930;
+}
+
+.desktop-content {
+  max-width: var(--desktop-content-max-width);
+  margin: 0 auto;
+  padding: var(--desktop-content-padding);
 }
 </style>

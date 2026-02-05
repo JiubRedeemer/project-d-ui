@@ -8,16 +8,16 @@ import {
   IonItem,
   IonPage,
   toastController,
-  useIonRouter
-} from "@ionic/vue";
+  } from "@ionic/vue";
 import {HEADERS, TEXTS} from "@/config/localisations";
 import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
 import {ref} from "vue";
 import axios from "axios";
 import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {add, checkmark} from "ionicons/icons";
+import {useAppRouter} from "@/composables/useAppRouter";
 
-const ionRouter = useIonRouter();
+const { navigate, isDesktop } = useAppRouter();
 
 const roomName = ref("");
 const roomDescription = ref("");
@@ -100,7 +100,7 @@ const createRoom = async () => {
     });
 
     if (res.status == 200) {
-      ionRouter.navigate("/rooms", "forward", "push");
+      navigate("/rooms", "forward", "push");
     }
   } catch (error) {
     console.error("Ошибка создания комнаты", error);
@@ -111,9 +111,48 @@ const createRoom = async () => {
 
 <template>
   <ion-page>
-    <RoomsHeader :header-name="HEADERS.rooms.rus"></RoomsHeader>
-    <ion-content :fullscreen="true" color="dark">
-      <div class="form-wrapper">
+    <RoomsHeader v-if="!isDesktop" :header-name="HEADERS.rooms.rus"></RoomsHeader>
+    <ion-content :fullscreen="!isDesktop" color="dark">
+      <!-- Desktop template -->
+      <div v-if="isDesktop" class="desktop-content">
+        <div class="desktop-card">
+          <h1 class="desktop-title">Создать комнату</h1>
+          <div class="desktop-image-wrapper" @click="triggerFileInput">
+            <img v-if="previewImage" :src="previewImage" class="desktop-preview-img" alt="Room Image"/>
+            <div v-else class="desktop-placeholder-img">
+              <ion-icon :icon="add" class="placeholder-icon"></ion-icon>
+            </div>
+          </div>
+          <input type="file" ref="fileInput" @change="handleFileUpload" accept="image/*" style="display: none;"/>
+          <ion-item color="dark" class="desktop-input-item" lines="none">
+            <ion-input
+                :label="TEXTS.roomName.rus"
+                label-placement="floating"
+                fill="outline"
+                color="primary"
+                :placeholder="TEXTS.enterRoomName.rus"
+                :clear-input="true"
+                v-model="roomName"
+            ></ion-input>
+          </ion-item>
+          <ion-item color="dark" class="desktop-input-item" lines="none">
+            <ion-input
+                :label="TEXTS.roomDescription.rus"
+                label-placement="floating"
+                fill="outline"
+                color="primary"
+                :placeholder="TEXTS.enterRoomDescription.rus"
+                v-model="roomDescription"
+            ></ion-input>
+          </ion-item>
+          <ion-button expand="block" color="primary" @click="createRoom" class="desktop-submit">
+            <ion-icon :icon="checkmark" slot="start"></ion-icon>
+            Создать
+          </ion-button>
+        </div>
+      </div>
+      <!-- Mobile template -->
+      <div v-else class="form-wrapper">
         <div class="image-wrapper" @click="triggerFileInput">
           <img v-if="previewImage" :src="previewImage" class="background-large-image" alt="Room Image"/>
           <div v-else class="placeholder-container">
@@ -121,10 +160,7 @@ const createRoom = async () => {
           </div>
           <div class="background-large-image-overlay"></div>
         </div>
-
         <input type="file" ref="fileInput" @change="handleFileUpload" accept="image/*" style="display: none;"/>
-
-
         <ion-item color="dark" class="input-block">
           <ion-input
               :label="TEXTS.roomName.rus"
@@ -136,7 +172,6 @@ const createRoom = async () => {
               v-model="roomName"
           ></ion-input>
         </ion-item>
-
         <ion-item color="dark" class="input-block">
           <ion-input
               :label="TEXTS.roomDescription.rus"
@@ -147,7 +182,6 @@ const createRoom = async () => {
               v-model="roomDescription"
           ></ion-input>
         </ion-item>
-
         <ion-fab slot="fixed" vertical="bottom" horizontal="end">
           <ion-fab-button color="primary" @click="createRoom">
             <ion-icon :icon="checkmark" color="dark"></ion-icon>
@@ -215,5 +249,58 @@ const createRoom = async () => {
   display: flex;
   flex-direction: column;
   width: 100%;
+}
+
+/* Desktop template */
+.desktop-content {
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--desktop-content-padding);
+}
+.desktop-card {
+  max-width: var(--desktop-card-max-width);
+  width: 100%;
+  background: var(--ion-color-medium);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+.desktop-title {
+  margin: 0 0 20px 0;
+  font-size: 1.25rem;
+}
+.desktop-image-wrapper {
+  width: 100%;
+  height: 200px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+.desktop-preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.desktop-placeholder-img {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+.desktop-input-item {
+  margin-bottom: 8px;
+  --padding-start: 0;
+  --inner-padding-end: 0;
+}
+.desktop-submit {
+  margin-top: 16px;
 }
 </style>

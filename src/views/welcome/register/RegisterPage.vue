@@ -10,8 +10,7 @@ import {
   IonInput,
   IonPage,
   IonToolbar,
-  toastController,
-  useIonRouter
+  toastController
 } from "@ionic/vue";
 
 import {TEXTS} from "@/config/localisations";
@@ -21,7 +20,9 @@ import '@ionic/vue/css/ionic-swiper.css';
 import {arrowBack} from "ionicons/icons";
 import axios from "axios";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
-const ionRouter = useIonRouter();
+import {useAppRouter} from "@/composables/useAppRouter";
+
+const { navigate, isDesktop } = useAppRouter();
 
 // Управление шагами
 const step = ref(0);
@@ -138,7 +139,7 @@ const register = async () => {
       sessionStorage.setItem("accessToken", res.data.accessToken);
       sessionStorage.setItem("refreshToken", res.data.refreshToken);
 
-      ionRouter.navigate('/rooms', 'forward', 'replace');
+      navigate('/rooms', 'forward', 'replace');
     }
   } catch (error) {
     if (error.response?.status == 406) {
@@ -174,40 +175,73 @@ const register = async () => {
 <template>
   <ion-page>
     <ion-content class="ion-padding" color="dark">
-      <ion-header>
-        <ion-toolbar style="--background: transparent">
-          <ion-buttons slot="start">
-            <ion-back-button v-show="step === 0"></ion-back-button>
-            <ion-button v-show="step !== 0" size="small" @click="previousStep">
-              <ion-icon slot="icon-only" :icon="arrowBack"></ion-icon>
-            </ion-button>
-          </ion-buttons>
-        </ion-toolbar>
-      </ion-header>
-
-      <div class="wrapper">
-        <div class="input-block">
-          <h1 class="input-header">{{ currentLabel }}</h1>
-          <div class="button-block">
-            <ion-input
-                :type="step === 2 || step === 3 ? 'password' : 'text'"
-                fill="outline"
-                color="primary"
-                :placeholder="currentPlaceholder"
-                :clear-input="true"
-                v-model="inputValue"
-            ></ion-input>
-            <div class="alerts" v-if="errors.length > 0">
-              <ion-chip :color="error.color" v-for="(error, index) in errors" :key="index">
-                {{ error.text }}
-              </ion-chip>
-            </div>
-            <ion-button shape="round" class="button-list-element" color="primary" @click="nextStep">
-              {{ TEXTS.next.rus }}
-            </ion-button>
+      <!-- Desktop template -->
+      <div v-if="isDesktop" class="desktop-wrapper">
+        <div class="desktop-card">
+          <ion-toolbar style="--background: transparent; --padding-start: 0; --padding-end: 0">
+            <ion-buttons slot="start">
+              <ion-back-button v-show="step === 0"></ion-back-button>
+              <ion-button v-show="step !== 0" size="small" @click="previousStep">
+                <ion-icon slot="icon-only" :icon="arrowBack"></ion-icon>
+              </ion-button>
+            </ion-buttons>
+          </ion-toolbar>
+          <h1 class="desktop-header">{{ currentLabel }}</h1>
+          <ion-input
+              :type="step === 2 || step === 3 ? 'password' : 'text'"
+              fill="outline"
+              color="primary"
+              :placeholder="currentPlaceholder"
+              :clear-input="true"
+              v-model="inputValue"
+              class="desktop-input"
+          ></ion-input>
+          <div class="alerts" v-if="errors.length > 0">
+            <ion-chip :color="error.color" v-for="(error, index) in errors" :key="index">
+              {{ error.text }}
+            </ion-chip>
           </div>
+          <ion-button expand="block" shape="round" color="primary" @click="nextStep" class="desktop-submit">
+            {{ TEXTS.next.rus }}
+          </ion-button>
         </div>
       </div>
+      <!-- Mobile template -->
+      <template v-else>
+        <ion-header>
+          <ion-toolbar style="--background: transparent">
+            <ion-buttons slot="start">
+              <ion-back-button v-show="step === 0"></ion-back-button>
+              <ion-button v-show="step !== 0" size="small" @click="previousStep">
+                <ion-icon slot="icon-only" :icon="arrowBack"></ion-icon>
+              </ion-button>
+            </ion-buttons>
+          </ion-toolbar>
+        </ion-header>
+        <div class="wrapper">
+          <div class="input-block">
+            <h1 class="input-header">{{ currentLabel }}</h1>
+            <div class="button-block">
+              <ion-input
+                  :type="step === 2 || step === 3 ? 'password' : 'text'"
+                  fill="outline"
+                  color="primary"
+                  :placeholder="currentPlaceholder"
+                  :clear-input="true"
+                  v-model="inputValue"
+              ></ion-input>
+              <div class="alerts" v-if="errors.length > 0">
+                <ion-chip :color="error.color" v-for="(error, index) in errors" :key="index">
+                  {{ error.text }}
+                </ion-chip>
+              </div>
+              <ion-button shape="round" class="button-list-element" color="primary" @click="nextStep">
+                {{ TEXTS.next.rus }}
+              </ion-button>
+            </div>
+          </div>
+        </div>
+      </template>
     </ion-content>
   </ion-page>
 </template>
@@ -250,6 +284,33 @@ ion-back-button {
   height: 20%;
   min-width: fit-content;
   margin-top: 30px;
+}
+
+/* Desktop template */
+.desktop-wrapper {
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--desktop-content-padding);
+}
+.desktop-card {
+  max-width: var(--desktop-card-max-width);
+  width: 100%;
+  background: var(--ion-color-medium);
+  border-radius: 12px;
+  padding: 32px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+.desktop-header {
+  margin: 0 0 20px 0;
+  font-size: 1.25rem;
+}
+.desktop-input {
+  margin-bottom: 16px;
+}
+.desktop-submit {
+  margin-top: 8px;
 }
 
 @media (min-width: 768px) {

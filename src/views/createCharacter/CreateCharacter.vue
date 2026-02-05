@@ -20,8 +20,10 @@ import ChooseSkills from "@/views/createCharacter/steps/ChooseSkills.vue";
 import {useRoute} from "vue-router";
 import axios from "axios";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {useAppRouter} from "@/composables/useAppRouter";
 
 const route = useRoute();
+const { isDesktop } = useAppRouter();
 
 // Константы для шагов
 const step = ref({
@@ -122,10 +124,11 @@ function convertCharacterData() {
 
 <template>
   <ion-page>
-    <ion-content class="ion-padding" color="dark">
-      <div class="header-block">
+    <ion-content class="ion-padding" color="dark" :fullscreen="!isDesktop">
+      <div :class="['header-block', { 'desktop-content': isDesktop }]">
         <CreateCharacterHeader :header-text="step.names[step.current]" :step="step"/>
       </div>
+      <div :class="{ 'desktop-step-content': isDesktop }">
       <div v-show="step.current == 0">
         <ChooseRace :characterData="characterData" :currentStep="step"/>
       </div>
@@ -168,12 +171,22 @@ function convertCharacterData() {
       <div v-show="step.current == 13">
         <ChooseSkills :characterData="characterData" :currentStep="step"/>
       </div>
+      </div>
     </ion-content>
   </ion-page>
 </template>
 
-<style>
+<style scoped>
 .header-block {
   padding-bottom: 3%;
+}
+.desktop-content {
+  max-width: var(--desktop-content-max-width);
+  margin: 0 auto;
+  padding: var(--desktop-content-padding);
+}
+.desktop-step-content {
+  max-width: var(--desktop-content-max-width);
+  margin: 0 auto;
 }
 </style>

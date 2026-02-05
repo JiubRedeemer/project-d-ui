@@ -27,8 +27,11 @@ import MagicView from "@/views/character/tabs/magic/MagicView.vue";
 import AttacksAndSkillsView from "@/views/character/tabs/attacksAndSkills/AttacksAndSkillsView.vue";
 import {useCharacterSkillsStore} from "@/stores/CharacterSkillsStore";
 import RestViewModal from "@/views/character/tabs/rest/RestViewModal.vue";
+import {useAppRouter} from "@/composables/useAppRouter";
 
 const route = useRoute();
+const { isDesktop } = useAppRouter();
+const desktopTab = ref<string>('abilities');
 const characterStore = useCharacterStore()
 const inventoryStore = useInventoryStore()
 const asyncDone = ref<boolean>(false)
@@ -52,6 +55,7 @@ onMounted(async () => {
   }
   asyncDone.value = true;
 })
+
 
 const openEditAbilityModal = (ability: AbilityDto) => {
   selectedAbility.value = ability;
@@ -117,10 +121,83 @@ const openSubheader = () => {
   subheaderStore.subheaderOpened = true; // Закрываем модалку
 };
 
+const desktopTabs = [
+  { id: 'abilities', label: 'Характеристики' },
+  { id: 'attacks', label: 'Атаки' },
+  { id: 'bio', label: 'Биография' },
+  { id: 'inventory', label: 'Инвентарь' },
+  { id: 'notes', label: 'Заметки' },
+  { id: 'magic', label: 'Магия' },
+];
+
 </script>
 
 <template>
-  <ion-page>
+  <ion-page :class="{ 'desktop-player-view': isDesktop }">
+    <!-- Desktop template: header + subheader + side tabs + content -->
+    <template v-if="isDesktop">
+      <ion-header :transluent="false" class="desktop-player-header">
+        <div class="desktop-header-content" v-if="characterStore.character">
+          <div class="desktop-header-title">
+            <div class="desktop-name">{{ characterStore.character.name }}</div>
+            <div class="desktop-subtitle">
+              {{ characterStore.character.raceInfo?.name }} — {{ characterStore.character.clazzInfo?.name }}
+            </div>
+          </div>
+          <div class="desktop-header-stats">
+            <button class="desktop-stat-chip" type="button" @click="openEditArmoryClassModal(characterStore.character)">
+              <span class="desktop-stat-label">КД</span>
+              <span class="desktop-stat-value">{{ characterStore.character.armoryClass }}</span>
+            </button>
+            <button class="desktop-stat-chip" type="button" @click="openEditSpeedModal(characterStore.character)">
+              <span class="desktop-stat-label">Скорость</span>
+              <span class="desktop-stat-value">{{ characterStore.character.speed }}</span>
+            </button>
+            <button class="desktop-stat-chip" type="button" @click="openEditInitiativeModal(characterStore.character)">
+              <span class="desktop-stat-label">Инициатива</span>
+              <span class="desktop-stat-value">{{ characterStore.character.initiative }}</span>
+            </button>
+            <button class="desktop-stat-chip" type="button" @click="openHealthModal(characterStore.character)">
+              <span class="desktop-stat-label">HP</span>
+              <span class="desktop-stat-value">
+                {{ characterStore.character.health?.current }}/{{ characterStore.character.health?.max }}
+              </span>
+            </button>
+          </div>
+        </div>
+      </ion-header>
+      <div class="desktop-player-body">
+        <nav class="desktop-tab-bar">
+          <button v-for="t in desktopTabs" :key="t.id" type="button"
+                  class="desktop-tab-btn" :class="{ active: desktopTab === t.id }"
+                  @click="desktopTab = t.id">
+            <span class="desktop-tab-label">{{ t.label }}</span>
+          </button>
+        </nav>
+        <main class="desktop-tab-content">
+          <div v-show="desktopTab === 'abilities'" class="desktop-tab-pane">
+            <AbilitiesView v-if="asyncDone" @ability-selected="openEditAbilityModal"/>
+          </div>
+          <div v-show="desktopTab === 'attacks'" class="desktop-tab-pane">
+            <AttacksAndSkillsView v-if="asyncDone" @ability-selected="openEditAbilityModal"/>
+          </div>
+          <div v-show="desktopTab === 'bio'" class="desktop-tab-pane">
+            <Suspense><PersonalityView v-if="asyncDone"/></Suspense>
+          </div>
+          <div v-show="desktopTab === 'inventory'" class="desktop-tab-pane">
+            <Suspense><InventoryView v-if="asyncDone"/></Suspense>
+          </div>
+          <div v-show="desktopTab === 'notes'" class="desktop-tab-pane">
+            <Suspense><NotesView v-if="asyncDone"/></Suspense>
+          </div>
+          <div v-show="desktopTab === 'magic'" class="desktop-tab-pane">
+            <Suspense><MagicView v-if="asyncDone"/></Suspense>
+          </div>
+        </main>
+      </div>
+    </template>
+    <!-- Mobile template: original IonTabs -->
+    <template v-else>
     <ion-header :transluent="false">
       <PlayerViewHeader v-if="asyncDone"/>
       <div class="subheader-block" :class="{ openSubheader: subheaderStore.subheaderOpened }">
@@ -242,7 +319,7 @@ const openSubheader = () => {
         </ion-tab-button>
       </ion-tab-bar>
     </IonTabs>
-
+    </template>
 
     <!-- Модалка -->
     <EditAbilityValueModal v-if="selectedAbility"
@@ -401,5 +478,115 @@ const openSubheader = () => {
 
 .subheader-block.openSubheader {
   max-height: 140%; /* Высота в развернутом состоянии */
+}
+
+/* Desktop template */
+.desktop-player-view.desktop-player-view {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+.desktop-player-header {
+  flex-shrink: 0;
+}
+.desktop-header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 16px 24px;
+  background: var(--ion-color-medium);
+  border-bottom: 1px solid var(--ion-color-medium-shade);
+}
+.desktop-header-title {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.desktop-name {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+.desktop-subtitle {
+  font-size: 0.9rem;
+  color: var(--ion-color-primary);
+}
+.desktop-header-stats {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.desktop-stat-chip {
+  background: var(--ion-color-dark);
+  color: var(--ion-color-light);
+  border: 1px solid var(--ion-color-primary);
+  border-radius: 999px;
+  padding: 6px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.desktop-stat-chip:hover {
+  background: var(--ion-color-medium-tint);
+}
+.desktop-stat-label {
+  font-size: 0.75rem;
+  opacity: 0.85;
+}
+.desktop-stat-value {
+  font-weight: 600;
+}
+.desktop-subheader-inline {
+  max-height: none;
+  overflow: visible;
+}
+.desktop-player-body {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  min-height: 0;
+}
+.desktop-tab-bar {
+  width: 200px;
+  flex-shrink: 0;
+  background: var(--ion-color-medium);
+  border-right: 1px solid var(--ion-color-medium-shade);
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0;
+}
+.desktop-tab-btn {
+  background: none;
+  border: none;
+  color: var(--ion-color-medium-contrast);
+  padding: 12px 20px;
+  text-align: left;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.15s ease;
+}
+.desktop-tab-btn:hover {
+  background: var(--ion-color-medium-tint);
+}
+.desktop-tab-btn.active {
+  background: var(--ion-color-primary);
+  color: var(--ion-color-primary-contrast);
+}
+.desktop-tab-content {
+  flex: 1;
+  overflow: auto;
+  padding: 24px 32px;
+  max-width: none;
+  margin: 0;
+  width: 100%;
+}
+.desktop-tab-pane {
+  min-height: 100%;
+}
+
+.desktop-player-view :deep(.subheader-show-arrow) {
+  display: none;
 }
 </style>

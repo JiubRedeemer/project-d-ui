@@ -16,6 +16,9 @@ import {ref} from "vue";
 import InvitesHeader from "@/views/invites/InvitesHeader.vue";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import axios from "axios";
+import {useAppRouter} from "@/composables/useAppRouter";
+
+const { isDesktop } = useAppRouter();
 
 // Описание модели данных для приглашений
 interface Owner {
@@ -114,28 +117,51 @@ onIonViewDidEnter(() => {
 
 <template>
   <ion-page>
-    <InvitesHeader></InvitesHeader>
-    <ion-content :fullscreen="true" color="dark">
-      <ion-list v-show="invites.length !== 0" class="invite-room-list">
-        <ion-item v-for="(invite, index) in invites" :key="index" :button="true" color="dark">
-          <ion-buttons slot="end">
-            <ion-button size="large" @click="declineInvite(invite.id)">
-              <ion-icon aria-hidden="false" color="danger" :icon="closeCircleOutline" slot="icon-only"></ion-icon>
-            </ion-button>
-            <ion-button size="large" @click="acceptInvite(invite.id)">
-              <ion-icon aria-hidden="false" color="success" :icon="checkmarkCircleOutline" slot="icon-only"></ion-icon>
-            </ion-button>
-          </ion-buttons>
-          <ion-label>
-            <h1 class="invite-room-name">{{ invite.room.name }}</h1>
-            <p class="invite-room-description">{{ invite.room.description }}</p>
-          </ion-label>
-        </ion-item>
-      </ion-list>
-
-      <div class="invite-room-list-placeholder-wrapper" v-show="invites.length === 0">
-        <div class="invite-room-list-placeholder">{{ TEXTS.emptyInviteList.rus }}</div>
+    <InvitesHeader v-if="!isDesktop"></InvitesHeader>
+    <ion-content :fullscreen="!isDesktop" color="dark">
+      <!-- Desktop template -->
+      <div v-if="isDesktop" class="desktop-content">
+        <h1 class="desktop-title">Приглашения</h1>
+        <div v-show="invites.length !== 0" class="desktop-invite-list">
+          <div v-for="(invite, index) in invites" :key="index" class="desktop-invite-card">
+            <div class="desktop-invite-info">
+              <h2 class="desktop-invite-name">{{ invite.room.name }}</h2>
+              <p class="desktop-invite-desc">{{ invite.room.description }}</p>
+            </div>
+            <div class="desktop-invite-actions">
+              <ion-button fill="clear" color="danger" @click="declineInvite(invite.id)">
+                <ion-icon :icon="closeCircleOutline"></ion-icon>
+              </ion-button>
+              <ion-button fill="clear" color="success" @click="acceptInvite(invite.id)">
+                <ion-icon :icon="checkmarkCircleOutline"></ion-icon>
+              </ion-button>
+            </div>
+          </div>
+        </div>
+        <div v-show="invites.length === 0" class="desktop-placeholder">{{ TEXTS.emptyInviteList.rus }}</div>
       </div>
+      <!-- Mobile template -->
+      <template v-else>
+        <ion-list v-show="invites.length !== 0" class="invite-room-list">
+          <ion-item v-for="(invite, index) in invites" :key="index" :button="true" color="dark">
+            <ion-buttons slot="end">
+              <ion-button size="large" @click="declineInvite(invite.id)">
+                <ion-icon aria-hidden="false" color="danger" :icon="closeCircleOutline" slot="icon-only"></ion-icon>
+              </ion-button>
+              <ion-button size="large" @click="acceptInvite(invite.id)">
+                <ion-icon aria-hidden="false" color="success" :icon="checkmarkCircleOutline" slot="icon-only"></ion-icon>
+              </ion-button>
+            </ion-buttons>
+            <ion-label>
+              <h1 class="invite-room-name">{{ invite.room.name }}</h1>
+              <p class="invite-room-description">{{ invite.room.description }}</p>
+            </ion-label>
+          </ion-item>
+        </ion-list>
+        <div class="invite-room-list-placeholder-wrapper" v-show="invites.length === 0">
+          <div class="invite-room-list-placeholder">{{ TEXTS.emptyInviteList.rus }}</div>
+        </div>
+      </template>
     </ion-content>
   </ion-page>
 </template>
@@ -156,5 +182,51 @@ onIonViewDidEnter(() => {
   align-content: center;
   justify-content: center;
   overflow: auto;
+}
+
+/* Desktop template */
+.desktop-content {
+  max-width: var(--desktop-content-max-width);
+  margin: 0 auto;
+  padding: var(--desktop-content-padding);
+}
+.desktop-title {
+  margin: 0 0 24px 0;
+  font-size: 1.5rem;
+}
+.desktop-invite-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.desktop-invite-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--ion-color-medium);
+  border-radius: 12px;
+  padding: 16px 20px;
+}
+.desktop-invite-info {
+  flex: 1;
+  min-width: 0;
+}
+.desktop-invite-name {
+  margin: 0 0 4px 0;
+  font-size: 1rem;
+}
+.desktop-invite-desc {
+  margin: 0;
+  font-size: 0.875rem;
+  opacity: 0.85;
+}
+.desktop-invite-actions {
+  display: flex;
+  gap: 4px;
+}
+.desktop-placeholder {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--ion-color-medium-contrast);
 }
 </style>

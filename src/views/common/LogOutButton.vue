@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import {IonButton, IonIcon, useIonRouter} from "@ionic/vue";
-
+import {IonButton, IonIcon} from "@ionic/vue";
 import {logOutOutline} from "ionicons/icons";
+import {useAppRouter} from "@/composables/useAppRouter";
 
-const ionRouter = useIonRouter();
-
+const { replace } = useAppRouter();
 
 function logout() {
   localStorage.removeItem("accessToken");
@@ -12,7 +11,7 @@ function logout() {
   sessionStorage.removeItem("accessToken");
   sessionStorage.removeItem("refreshToken");
 
-  ionRouter.replace('/welcome');
+  replace('/welcome');
 }
 
 </script>

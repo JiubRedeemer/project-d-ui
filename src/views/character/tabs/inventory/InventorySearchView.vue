@@ -13,7 +13,6 @@ import {
   IonPage,
   IonToolbar,
   toastController,
-  useIonRouter,
   IonInfiniteScrollContent
 } from "@ionic/vue";
 import {ref} from "vue";
@@ -24,10 +23,11 @@ import {useRoute} from "vue-router";
 import {TEXTS} from "@/config/localisations";
 import {add, addOutline, arrowBack, remove} from "ionicons/icons";
 import {useInventoryStore} from "@/stores/InventoryStore";
+import {useAppRouter} from "@/composables/useAppRouter";
 
 const inventoryStore = useInventoryStore();
 const route = useRoute();
-const ionRouter = useIonRouter();
+const { navigate, isDesktop } = useAppRouter();
 const findItems = ref<Item[]>([]);
 const queryString = ref<string>();
 const hasMoreItems = ref(true); // Для бесконечной прокрутки
@@ -188,7 +188,7 @@ async function presentToast() {
 }
 
 function openAddView() {
-  ionRouter.navigate('/rooms/' + route.params.roomId + '/characters/' + route.params.characterId + '/inventory/add', 'forward', 'push')
+  navigate('/rooms/' + route.params.roomId + '/characters/' + route.params.characterId + '/inventory/add', 'forward', 'push')
 }
 
 </script>
@@ -204,7 +204,8 @@ function openAddView() {
                        @ionInput="handleInput($event)"></ion-searchbar>
       </ion-toolbar>
     </ion-header>
-    <ion-content>
+    <ion-content :fullscreen="!isDesktop">
+      <div :class="{ 'desktop-content': isDesktop }">
       <ion-infinite-scroll @ionInfinite="ionInfinite">
         <ion-infinite-scroll-content>
           <div class="found" v-if="findItems?.length! > 0">
@@ -243,6 +244,7 @@ function openAddView() {
           </div>
         </ion-infinite-scroll-content>
       </ion-infinite-scroll>
+      </div>
     </ion-content>
     <ion-fab slot="fixed" vertical="bottom" horizontal="start">
       <ion-fab-button color="primary" @click="ionRouter.back">
@@ -353,6 +355,12 @@ ion-searchbar {
 
 .rarity-legendary {
   border-color: orange;
+}
+
+.desktop-content {
+  max-width: var(--desktop-content-max-width);
+  margin: 0 auto;
+  padding: var(--desktop-content-padding);
 }
 
 </style>
