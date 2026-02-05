@@ -6,10 +6,9 @@ import { useCharacterStore } from "@/stores/CharacterStore";
 import { GATEWAY_INTEGRATION_ROUTES } from "@/config/integrationRoutes";
 import axios from "axios";
 import { useRoute } from "vue-router";
-import * as magicApi from "@/api/magicApi";
 
 const route = useRoute();
-const spells = magicApi;
+
 
 const props = defineProps({
   isOpen: Boolean,
@@ -48,6 +47,7 @@ async function onSubmit() {
 <template>
   <TopModal :isOpen="isOpen" @close="emit('closeRestModal')">
     <div class="rest">
+
       <!-- Блок с кубами здоровья 
       <div v-if="!longRest" class="rest-section">
         <div class="rest-section__title">

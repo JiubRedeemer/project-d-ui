@@ -12,6 +12,8 @@ import CreateRoom from "@/views/rooms/CreateRoom.vue";
 import InventoryItemView from "@/views/character/tabs/inventory/InventoryItemView.vue";
 import InventorySearchView from "@/views/character/tabs/inventory/InventorySearchView.vue";
 import InventoryItemAddView from "@/views/character/tabs/inventory/InventoryItemAddView.vue";
+import MagicSearchView from "@/views/character/tabs/magic/MagicSearchView.vue";
+import SpellAddView from "@/views/character/tabs/magic/SpellAddView.vue";
 
 const routes: Array<RouteRecordRaw> = [
     {
@@ -77,6 +79,16 @@ const routes: Array<RouteRecordRaw> = [
         path: '/rooms/:roomId/characters/:characterId/inventory/add',
         component: InventoryItemAddView,
         name: 'inventoryItemAddView'
+    },
+    {
+        path: '/rooms/:roomId/characters/:characterId/magic/search',
+        component: MagicSearchView,
+        name: 'magicSearchView'
+    },
+    {
+        path: '/rooms/:roomId/characters/:characterId/magic/add',
+        component: SpellAddView,
+        name: 'spellAddView'
     }
 ]
 

@@ -1,6 +1,8 @@
 import axios from "axios";
 import { GATEWAY_INTEGRATION_ROUTES } from "@/config/integrationRoutes";
 import type {
+    ChargesRefillEnum,
+    RefillRestRequest,
     SpellDto,
     SpellBookDto,
     SpellBookItemDto,
@@ -165,6 +167,43 @@ export async function setSpellInUse(
     return data;
 }
 
+export async function createSpellCellForBook(
+    spellBookId: string,
+    body: SpellCellDto
+): Promise<SpellCellDto> {
+    const { data } = await axios.post<SpellCellDto>(
+        `${baseUrl()}${GATEWAY_INTEGRATION_ROUTES.spellBooks}/${spellBookId}/spell-cells`,
+        body,
+        { headers: authHeaders() }
+    );
+    return data;
+}
+
+export async function refillRest(
+    spellBookId: string,
+    body: RefillRestRequest
+): Promise<SpellBookDto> {
+    const { data } = await axios.post<SpellBookDto>(
+        `${baseUrl()}${GATEWAY_INTEGRATION_ROUTES.spellBooks}/${spellBookId}/rest`,
+        body,
+        { headers: authHeaders() }
+    );
+    return data;
+}
+
+export async function refillRestByCharacter(
+    roomId: string,
+    characterId: string,
+    restType: ChargesRefillEnum
+): Promise<SpellBookDto> {
+    const { data } = await axios.post<SpellBookDto>(
+        `${baseUrl()}${GATEWAY_INTEGRATION_ROUTES.spellBooksByRoomCharacter}/rest`,
+        undefined,
+        { headers: authHeaders(), params: { roomId, characterId, restType } }
+    );
+    return data;
+}
+
 // ——— Spell Book Items ———
 
 export async function listSpellBookItems(): Promise<SpellBookItemDto[]> {
@@ -269,4 +308,14 @@ export async function deleteSpellCell(id: string): Promise<void> {
         `${baseUrl()}${GATEWAY_INTEGRATION_ROUTES.spellCells}/${id}`,
         { headers: authHeaders() }
     );
+}
+
+/** Use one charge from spell cell (currentCount - 1). Returns 400 if no charges left. */
+export async function useSpellCell(id: string): Promise<SpellCellDto> {
+    const { data } = await axios.post<SpellCellDto>(
+        `${baseUrl()}${GATEWAY_INTEGRATION_ROUTES.spellCells}/${id}/use`,
+        undefined,
+        { headers: authHeaders() }
+    );
+    return data;
 }

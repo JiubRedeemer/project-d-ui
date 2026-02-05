@@ -1,5 +1,5 @@
 /**
- * Magic API DTOs and types (OpenAPI Magic API).
+ * Magic API DTOs and types (OpenAPI Magic API v0.0.1-SNAPSHOT).
  */
 
 /** Filter spells by class (listSpells query param) */
@@ -18,12 +18,12 @@ export type SpellClass =
     | "RANGER"
     | "SORCERER";
 
-/** Localized names (locale -> name) */
+/** Localized spell names (locale -> name) */
 export type LocalizedNames = Record<string, string>;
 
 export interface SpellDto {
     id?: string;
-    /** Локализованные названия заклинаний (locale -> name) */
+    /** Localized spell names (locale -> name) */
     name?: LocalizedNames;
     level?: string;
     spellClass?: string;
@@ -39,10 +39,19 @@ export interface SpellDto {
     components?: string;
     description?: string;
     createdAt?: string;
+    /** When creating a spell, set to the character ID; stored as createdBy */
+    characterId?: string;
+    /** Who created the spell (e.g. TTG for imported, or character ID for user-created) */
+    createdBy?: string;
     imgUrl?: string;
 }
 
-export type ChargesRefillEnum = "SHORT_REST" | "LONG_REST";
+export type ChargesRefillEnum = "SHORT_REST" | "LONG_REST" | "REST";
+
+/** Request body for refill rest endpoints */
+export interface RefillRestRequest {
+    restType: ChargesRefillEnum;
+}
 
 export interface SpellCellDto {
     id?: string;
@@ -68,17 +77,17 @@ export interface SpellBookDto {
     manaMax?: number;
     manaCurrent?: number;
     spells?: SpellBookItemDto[];
-    /** Уровень заклинания -> ячейка (ключи — строки) */
+    /** Map of spell level to spell cell (keys as strings) */
     spellCells?: Record<string, SpellCellDto>;
 }
 
 export interface ImportResult {
-    /** Всего обработано заклинаний */
+    /** Total number of spells processed */
     total: number;
-    /** Импортировано новых */
+    /** Number of newly imported spells */
     imported: number;
-    /** Обновлено */
+    /** Number of updated spells */
     updated: number;
-    /** Ошибок импорта */
+    /** Number of failed imports */
     failed: number;
 }

@@ -56,6 +56,9 @@ export const GATEWAY_INTEGRATION_ROUTES = {
     spellCells: "/spell-cells"
 };
 
+export const SPELL_IMAGE_PLACEHOLDER =
+    "https://img.icons8.com/fluency/96/sparkling.png";
+
 export const FILE_STORAGE_INTEGRATION_ROUTES = {
     baseURL: "http://localhost:8079",
     // baseURL: "http://192.168.0.73:8079",

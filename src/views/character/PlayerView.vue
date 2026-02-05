@@ -23,6 +23,7 @@ import {useCharacterStore} from "@/stores/CharacterStore";
 import {useSubheaderOpenedStore} from "@/stores/SubheaderStore";
 import {useInventoryStore} from "@/stores/InventoryStore";
 import NotesView from "@/views/character/tabs/notes/NotesView.vue";
+import MagicView from "@/views/character/tabs/magic/MagicView.vue";
 import AttacksAndSkillsView from "@/views/character/tabs/attacksAndSkills/AttacksAndSkillsView.vue";
 import {useCharacterSkillsStore} from "@/stores/CharacterSkillsStore";
 import RestViewModal from "@/views/character/tabs/rest/RestViewModal.vue";
@@ -195,6 +196,19 @@ const openSubheader = () => {
           </div>
         </ion-content>
       </ion-tab>
+      <ion-tab tab="magic">
+        <ion-content class="ion-padding"
+                     :fullscreen="true"
+                     color="dark"
+                     direction="y"
+                     :scroll-x="false">
+          <div class="magic" :class="{ openSubheader: subheaderStore.subheaderOpened }">
+            <Suspense>
+              <MagicView v-if="asyncDone"/>
+            </Suspense>
+          </div>
+        </ion-content>
+      </ion-tab>
       <ion-tab-bar slot="bottom" color="dark" class="tab-bar" :transluent="true">
         <ion-tab-button tab="abilities">
           <div class="tab-icon-wrapper">
@@ -219,6 +233,11 @@ const openSubheader = () => {
         <ion-tab-button tab="notes">
           <div class="tab-icon-wrapper">
             <ion-icon :icon="notesTabIcon"/>
+          </div>
+        </ion-tab-button>
+        <ion-tab-button tab="magic">
+          <div class="tab-icon-wrapper">
+            <ion-icon :icon="attacksTabIcon"/>
           </div>
         </ion-tab-button>
       </ion-tab-bar>
@@ -290,7 +309,7 @@ const openSubheader = () => {
 /* Каждая кнопка таба занимает равную ширину */
 .tab-bar ion-tab-button {
   flex: 1;
-  display: flex;
+  display: grid;
   justify-content: center;
   align-items: center;
   --background: transparent;
@@ -298,8 +317,8 @@ const openSubheader = () => {
 
 /* Обертка для иконки */
 .tab-bar ion-tab-button .tab-icon-wrapper {
-  width: 45px;
-  height: 45px;
+  width: 40px;
+  height: 40px;
   border: 1px solid var(--ion-color-primary);
   border-radius: 50%;
   display: flex;
@@ -335,6 +354,10 @@ const openSubheader = () => {
   margin-top: 120px;
 }
 
+.magic.openSubheader {
+  margin-top: 120px;
+}
+
 .abilities {
   margin-top: 64px;
   transition: margin-top 0.3s ease;
@@ -356,6 +379,11 @@ const openSubheader = () => {
 }
 
 .notes {
+  margin-top: 64px;
+  transition: margin-top 0.3s ease;
+}
+
+.magic {
   margin-top: 64px;
   transition: margin-top 0.3s ease;
 }
