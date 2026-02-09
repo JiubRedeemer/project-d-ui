@@ -1,6 +1,15 @@
 <script setup lang="ts">
 
-import {IonButton, IonButtons, IonIcon, IonLabel, IonProgressBar, useIonRouter, useKeyboard} from "@ionic/vue";
+import {
+  IonButton,
+  IonButtons,
+  IonIcon,
+  IonLabel,
+  IonProgressBar,
+  onIonViewDidEnter,
+  useIonRouter,
+  useKeyboard
+} from "@ionic/vue";
 import axios from "axios";
 import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {useRoute} from "vue-router";
@@ -39,10 +48,13 @@ watch(keyboardHeight, () => {
   console.log(`Is Keyboard Open: ${isOpen.value}, Keyboard Height: ${keyboardHeight.value}`);
 });
 
-onMounted(async () => {
+const loadInventoryData = async () => {
   await fetchInventory();
   await fetchMoney();
-});
+};
+
+onMounted(loadInventoryData);
+onIonViewDidEnter(loadInventoryData);
 
 const fetchInventory = async () => {
   await inventoryStore.updateInventoryInStoreById(route.params.roomId, route.params.characterId)

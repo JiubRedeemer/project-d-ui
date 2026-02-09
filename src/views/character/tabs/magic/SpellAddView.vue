@@ -13,11 +13,12 @@ import {
   IonTextarea,
   IonToggle,
   IonToolbar,
+  onIonViewDidEnter,
   toastController,
   useIonRouter,
 } from "@ionic/vue";
 import { add } from "ionicons/icons";
-import { onMounted, onUnmounted, ref } from "vue";
+import { onUnmounted, ref } from "vue";
 import { useRoute } from "vue-router";
 import {
   addSpellToBook,
@@ -230,7 +231,7 @@ function loadEditingSpell(s: SpellDto) {
   }
 }
 
-onMounted(async () => {
+onIonViewDidEnter(async () => {
   if (!magicStore.spellBook?.id) {
     try {
       const book = await getSpellBookByRoomAndCharacter(

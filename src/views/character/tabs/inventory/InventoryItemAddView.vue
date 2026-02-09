@@ -228,7 +228,7 @@ function mapTypeToValue(display: string): string {
     case 'Оружие':
       return 'WEAPON';
     case 'Магический предмет':
-      return 'MAGIC';
+      return 'MAGIC_ITEM';
     case 'Другое':
       return 'OTHER';
     default:
@@ -258,8 +258,10 @@ function mapSubTypeToValue(name: string): string {
       return 'LIGHT_ARMOR'
     case 'Щит':
       return 'SHIELD'
+    case 'Магический предмет':
+      return 'MAGIC_ITEM'
     default:
-      return 'None'
+      return null
   }
 }
 
@@ -520,7 +522,7 @@ function validateItem(type: string): boolean {
     }
   }
 
-  if (type === "OTHER" || type === "MAGIC") {
+  if (type === "OTHER" || type === "MAGIC" || type === "MAGIC_ITEM") {
     if (!item.stats.weight && item.stats.weight !== 0) {
       errors.push("Не указан вес предмета (weight)");
       invalidFields.value.push('weight');
@@ -535,7 +537,7 @@ function validateItem(type: string): boolean {
     return false;
   }
 
-  if (type !== "ARMOR" && type !== "WEAPON" && type !== "OTHER" && type !== "MAGIC") {
+  if (type !== "ARMOR" && type !== "WEAPON" && type !== "OTHER" && type !== "MAGIC" && type !== "MAGIC_ITEM") {
     errors.push(`Недопустимый тип предмета: ${type}`);
     console.error(`Валидация не пройдена: Недопустимый тип предмета: ${type}`);
     invalidFields.value.push('selectedType');

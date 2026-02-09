@@ -10,8 +10,7 @@ import {
   IonInput,
   IonPage,
   IonToolbar,
-  toastController,
-  useIonRouter
+  toastController
 } from "@ionic/vue";
 
 import {TEXTS} from "@/config/localisations";
@@ -21,8 +20,9 @@ import '@ionic/vue/css/ionic-swiper.css';
 import {arrowBack} from "ionicons/icons";
 import axios from "axios";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {useRouter} from "vue-router";
 
-const ionRouter = useIonRouter();
+const router = useRouter();
 
 // Управление шагами
 const step = ref(0);
@@ -116,13 +116,13 @@ const login = async () => {
       password: password.value,
     });
 
-    if (res.status == 200) {
+    if (res.status >= 200 && res.status < 300) {
       localStorage.setItem("accessToken", res.data.accessToken);
       localStorage.setItem("refreshToken", res.data.refreshToken);
       sessionStorage.setItem("accessToken", res.data.accessToken);
       sessionStorage.setItem("refreshToken", res.data.refreshToken);
 
-      ionRouter.replace('/rooms');
+      await router.replace('/rooms');
     }
   } catch (error) {
     if (error.response?.status == 406) {

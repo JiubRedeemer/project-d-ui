@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import SkillUp from "@/views/common/SkillUp.vue";
 import axios from "axios";
-import {useRoute} from "vue-router";
-import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
-import {onMounted, ref} from "vue";
-import {Ability, Character} from "@/components/models/response/Character";
-import {useCharacterStore} from "@/stores/CharacterStore";
+import { useRoute } from "vue-router";
+import { GATEWAY_INTEGRATION_ROUTES } from "@/config/integrationRoutes";
+import { onMounted, ref } from "vue";
+import { onIonViewDidEnter } from "@ionic/vue";
+import { Ability, Character } from "@/components/models/response/Character";
+import { useCharacterStore } from "@/stores/CharacterStore";
 
 const route = useRoute();
 const characterStore = useCharacterStore();
@@ -15,22 +16,27 @@ let ruleBookAbilityCodeMap: Map<string, AbilityResponse>;
 let characterAbilityCodeMap: Map<string, Ability>;
 const resultAbilities = ref<Record<string, AbilityDto>>();
 
-const emits = defineEmits(["ability-selected"]);
+const emits = defineEmits(["ability-selected", "skill-selected"]);
 
 const selectAbility = (ability: AbilityDto) => {
   emits("ability-selected", ability);
 };
 
-onMounted(async () => {
+
+const selectSkill = (skill: SkillDto) => {
+  emits("skill-selected", skill);
+};
+
+const loadAbilitiesData = async () => {
   try {
     const response = await axios.get(
-        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.roomAbilities}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-          },
-        }
+      `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.roomAbilities}`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+      }
     );
     abilities.value = response.data;
     ruleBookAbilityCodeMap = buildAbilityCodeMap(abilities.value);
@@ -45,7 +51,10 @@ onMounted(async () => {
   } catch (error) {
     console.error("Ошибка при получении персонажа:", error);
   }
-});
+};
+
+onMounted(loadAbilitiesData);
+onIonViewDidEnter(loadAbilitiesData);
 
 function buildAbilityCodeMap(abilities: AbilityResponse[]): Map<string, AbilityResponse> {
   const codeMap = new Map<string, AbilityResponse>();
@@ -83,6 +92,8 @@ function enrichCharacterAbility(value: Ability, key: string, map: Map<string, Ab
       name: skill.name,
       code: skill.code,
       up: characterSkillCodes.has(skill.code),
+      bonusValue: characterStore.character?.skills.filter(s => s.code === skill.code)[0]?.bonusValue || 0,
+      masteryValue: characterStore.character?.skills.filter(s => s.code === skill.code)[0]?.masteryValue || 0
     }));
   }
 }
@@ -90,14 +101,14 @@ function enrichCharacterAbility(value: Ability, key: string, map: Map<string, Ab
 async function updateMastery(skill: any) {
   try {
     await axios.patch(
-        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${characterStore.character.id}${GATEWAY_INTEGRATION_ROUTES.skills}/${skill.code}${GATEWAY_INTEGRATION_ROUTES.mastery}`,
-        {isMastery: skill.up},
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-          },
-        }
+      `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${characterStore.character.id}${GATEWAY_INTEGRATION_ROUTES.skills}/${skill.code}${GATEWAY_INTEGRATION_ROUTES.mastery}`,
+      { isMastery: skill.up, masteryValue: skill.masteryValue },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+      }
     );
   } catch (error) {
     console.error("Ошибка при обновлении мастерства:", error);
@@ -105,14 +116,22 @@ async function updateMastery(skill: any) {
 }
 
 function changeChecked(skill: any) {
-  skill.up = !skill.up;
+  if(skill.masteryValue == 0) {skill.up = true; skill.masteryValue = 1;}
+  else if(skill.masteryValue == 1) {skill.up = true; skill.masteryValue = 2;}
+  else if(skill.masteryValue == 2) {skill.up = false; skill.masteryValue = 0;}
   updateMastery(skill);
 }
 
 function calculateSkillValue(value: any, skill: any) {
   let result = Math.floor((value - 10) / 2);
-  if (skill.up && characterStore.character?.proficiencyBonus) {
+  if (skill.masteryValue == 1 && characterStore.character?.proficiencyBonus) {
     result += characterStore.character.proficiencyBonus;
+  }
+  if( skill.masteryValue > 1 && characterStore.character?.proficiencyBonus) {
+    result += skill.masteryValue * characterStore.character.proficiencyBonus;
+  }
+  if (skill.bonusValue) {
+    result += skill.bonusValue;
   }
   return result;
 }
@@ -130,10 +149,7 @@ function calculateCheckValue(value: any) {
 <template>
   <!--  <ion-content class="ion-padding" color="dark">-->
   <div class="abilities" v-if="resultAbilities">
-    <div
-        class="ability-item"
-        v-for="(ability, key) in Object.entries(resultAbilities)"
-        :key="key">
+    <div class="ability-item" v-for="(ability, key) in Object.entries(resultAbilities)" :key="key">
       <div class="ability-header" @click="selectAbility(ability[1])">
         <div class="ability">
           <div class="ability-name">{{ ability[1].name }}</div>
@@ -151,16 +167,12 @@ function calculateCheckValue(value: any) {
         </div>
       </div>
       <div class="skills" v-if="ability[1].skills && ability[1].skills.length">
-        <div
-            class="skill-item"
-            v-for="(skill, index) in ability[1].skills"
-            :key="index"
-        >
+        <div class="skill-item" v-for="(skill, index) in ability[1].skills" :key="index">
           <div class="skill-start-block">
             <div class="skill-up">
-              <SkillUp :checked="skill.up" @click="changeChecked(skill)"/>
+              <SkillUp :checked="skill.masteryValue > 0" :doubleChecked="skill.masteryValue > 1" @click="changeChecked(skill)" />
             </div>
-            <div class="skill-name">{{ skill.name }}</div>
+            <div class="skill-name" @click="selectSkill(skill)">{{ skill.name }}</div>
           </div>
           <div class="skill-value">{{ calculateSkillValue(ability[1].value + ability[1].bonusValue, skill) }}</div>
         </div>
@@ -301,6 +313,4 @@ ion-content {
   --padding-start: 0px;
   --padding-end: 0px;
 }
-
-
 </style>

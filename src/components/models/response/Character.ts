@@ -49,6 +49,8 @@ export interface Skill {
     name: string;
     value: string;
     up: boolean;
+    bonusValue: number;
+    masteryValue: number;
 }
 
 export interface CharacterBio {

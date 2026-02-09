@@ -2,18 +2,25 @@
 
 import {
   IonAvatar,
+  IonButton,
   IonContent,
   IonFab,
   IonFabButton,
+  IonFabList,
   IonIcon,
+  IonInput,
   IonItem,
   IonLabel,
   IonList,
+  IonModal,
   IonPage,
+  IonSelect,
+  IonSelectOption,
   onIonViewDidEnter,
+  toastController,
   useIonRouter
 } from "@ionic/vue";
-import {add, chevronForwardOutline} from "ionicons/icons";
+import {add, chevronForwardOutline, personAddOutline, sendOutline} from "ionicons/icons";
 import {HEADERS, TEXTS} from "@/config/localisations";
 import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
 import {ref} from "vue";
@@ -26,6 +33,10 @@ const ionRouter = useIonRouter();
 const route = useRoute();
 
 const characters = ref<Character[]>([]);
+const showInviteModal = ref(false);
+const inviteEmail = ref("");
+const inviteRole = ref<"PLAYER" | "MASTER">("PLAYER");
+const isSendingInvite = ref(false);
 
 const setupCharacters = async () => {
   const http = axios.create({
@@ -53,6 +64,69 @@ const createCharacter = () => {
 const goToCharacter = (characterId: string) => {
   ionRouter.navigate('/rooms/' + route.params.roomId + '/characters/' + characterId, 'forward', 'push')
 }
+
+const openInviteModal = () => {
+  showInviteModal.value = true;
+};
+
+const closeInviteModal = () => {
+  showInviteModal.value = false;
+};
+
+const sendInvite = async () => {
+  const email = inviteEmail.value.trim();
+  if (!email) {
+    const toast = await toastController.create({
+      message: "Введите email для приглашения",
+      duration: 1500,
+      position: "top"
+    });
+    await toast.present();
+    return;
+  }
+
+  isSendingInvite.value = true;
+  try {
+    const res = await axios.post(
+        GATEWAY_INTEGRATION_ROUTES.baseURL +
+        GATEWAY_INTEGRATION_ROUTES.api +
+        GATEWAY_INTEGRATION_ROUTES.invites,
+        {
+          email,
+          roomId: String(route.params.roomId),
+          role: inviteRole.value
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`
+          }
+        }
+    );
+
+    if (res.status === 200 || res.status === 201) {
+      const toast = await toastController.create({
+        message: "Приглашение отправлено",
+        duration: 1500,
+        position: "top"
+      });
+      await toast.present();
+      inviteEmail.value = "";
+      inviteRole.value = "PLAYER";
+      closeInviteModal();
+    }
+  } catch (error) {
+    console.error("Ошибка отправки приглашения", error);
+    const toast = await toastController.create({
+      message: "Не удалось отправить приглашение",
+      duration: 2000,
+      position: "top"
+    });
+    await toast.present();
+  } finally {
+    isSendingInvite.value = false;
+  }
+};
 
 
 </script>
@@ -88,6 +162,55 @@ const goToCharacter = (characterId: string) => {
         </ion-fab-button>
       </ion-fab>
 
+      <ion-fab slot="fixed" vertical="bottom" horizontal="end" class="invite-fab">
+        <ion-fab-button color="secondary" @click="openInviteModal()">
+          <ion-icon :icon="personAddOutline" color="dark"></ion-icon>
+        </ion-fab-button>
+      </ion-fab>
+
+      <ion-modal
+          :is-open="showInviteModal"
+          @didDismiss="closeInviteModal"
+          :initial-breakpoint="1"
+          :breakpoints="[0, 0.5, 1]"
+      >
+        <div class="invite-modal">
+          <div class="invite-modal__header">Пригласить участника</div>
+          <ion-item color="dark" class="input-block">
+            <ion-input
+                label="Email"
+                label-placement="floating"
+                fill="outline"
+                color="primary"
+                placeholder="name@example.com"
+                type="email"
+                v-model="inviteEmail"
+            ></ion-input>
+          </ion-item>
+          <ion-item color="dark" class="input-block">
+            <ion-select
+                label="Роль"
+                label-placement="floating"
+                fill="outline"
+                color="primary"
+                v-model="inviteRole"
+            >
+              <ion-select-option value="PLAYER">Игрок</ion-select-option>
+              <ion-select-option value="MASTER">Мастер</ion-select-option>
+            </ion-select>
+          </ion-item>
+          <div class="invite-modal__actions">
+            <ion-button fill="outline" color="medium" @click="closeInviteModal">
+              Отмена
+            </ion-button>
+            <ion-button color="primary" @click="sendInvite" :disabled="isSendingInvite">
+              <ion-icon slot="start" :icon="sendOutline"></ion-icon>
+              Отправить
+            </ion-button>
+          </div>
+        </div>
+      </ion-modal>
+
     </ion-content>
   </ion-page>
 </template>
@@ -109,5 +232,36 @@ const goToCharacter = (characterId: string) => {
   align-content: center;
   justify-content: center;
   overflow: auto;
+}
+
+.invite-fab {
+  transform: translateY(-72px);
+}
+
+.invite-modal {
+  width: 100%;
+  height: 70vh;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+}
+
+.invite-modal__header {
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.invite-modal__actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+ion-modal {
+  --border-radius: 10px;
+  --height: auto;
+  --width: 90%;
+  --background: var(--ion-color-dark);
 }
 </style>

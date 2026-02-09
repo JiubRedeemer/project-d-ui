@@ -37,7 +37,7 @@ onBeforeMount(() => {
       <ion-toolbar style="--background: transparent">
         <ion-title>{{ HEADERS.invites.rus }}</ion-title>
         <ion-buttons slot="start">
-          <ion-back-button></ion-back-button>
+          <ion-back-button default-href="/rooms"></ion-back-button>
         </ion-buttons>
         <ion-buttons slot="end">
           <ion-button size="small">

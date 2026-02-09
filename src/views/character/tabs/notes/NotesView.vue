@@ -3,7 +3,16 @@ import {onMounted, ref} from "vue";
 import {useRoute} from "vue-router";
 import axios from "axios";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
-import {IonButton, IonButtons, IonChip, IonIcon, IonLabel, IonTextarea, IonInput} from "@ionic/vue";
+import {
+  IonButton,
+  IonButtons,
+  IonChip,
+  IonIcon,
+  IonInput,
+  IonLabel,
+  IonTextarea,
+  onIonViewDidEnter
+} from "@ionic/vue";
 import {addOutline, createOutline, saveOutline, trashOutline} from "ionicons/icons";
 
 import {marked} from "marked";
@@ -78,6 +87,14 @@ const removeTagField = (target: "new" | "edit", index: number) => {
 };
 
 // === Add note ===
+const normalizeTags = (tags: { name?: string | null; color?: string | null }[]) =>
+  tags
+    .map(tag => ({
+      name: String(tag?.name ?? "").trim(),
+      color: tag?.color || "#8888ff",
+    }))
+    .filter(tag => tag.name.length > 0);
+
 const addNote = async () => {
   try {
     const roomId = route.params.roomId as string;
@@ -86,7 +103,7 @@ const addNote = async () => {
     const noteDto = {
       name: newNoteName.value,
       noteText: newNoteText.value,
-      tags: newTags.value.filter(t => t.name.trim() !== ""),
+      tags: normalizeTags(newTags.value),
     };
 
     console.log(noteDto)
@@ -124,7 +141,7 @@ const updateNote = async (notebookId: string, noteId: string) => {
       notebookId: notebookId,
       name: editNoteName.value,
       noteText: editNoteText.value,
-      tags: editTags.value.filter(t => t.name),
+      tags: normalizeTags(editTags.value),
     };
     console.log(noteDto)
     const res = await axios.patch(
@@ -170,16 +187,18 @@ const deleteNote = async (noteId: string) => {
   }
 };
 
-onMounted(() => {
+const loadNotesData = () => {
   loadNotebook();
-});
+};
+
+onMounted(loadNotesData);
+onIonViewDidEnter(loadNotesData);
 
 const expandBlock = (noteNumber: number, section) => {
   isBlockExpanded.value = noteNumber;
   inputSectionText.value = notes.value[noteNumber];
   editNoteName.value = section.name;
   editNoteText.value = section.noteText;
-  editTags.value = section.tags
   editTags.value = section.tags ? JSON.parse(JSON.stringify(section.tags)) : [];
 
 };
@@ -256,15 +275,13 @@ const autoGrow = (event: Event) => {
           >
             <ion-input
                 placeholder="Имя тега"
-                :value="tag.name"
-                @ionInput="(e) => tag.name = e.detail.value"
+                v-model="tag.name"
                 class="tag-input"
             ></ion-input>
 
             <input
                 type="color"
-                :value="tag.color"
-                @input="(e) => tag.color = e.target.value"
+                v-model="tag.color"
                 class="tag-color-picker"
             />
 
@@ -356,15 +373,13 @@ const autoGrow = (event: Event) => {
         >
           <ion-input
               placeholder="Имя тега"
-              :value="tag.name"
-              @ionInput="(e) => tag.name = e.detail.value"
+              v-model="tag.name"
               class="tag-input"
           ></ion-input>
 
           <input
               type="color"
-              :value="tag.color"
-              @input="(e) => tag.color = e.target.value"
+              v-model="tag.color"
               class="tag-color-picker"
           />
 

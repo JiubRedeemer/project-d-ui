@@ -2,6 +2,10 @@ interface SkillDto {
     name: string; // Название навыка (например, "Атлетика")
     code: string; // Код навыка (например, "ATHL")
     up: boolean; // Указывает, прокачан ли навык
+    masteryValue: number; // Указывает, сколько раз применяется бонус мастерства
+    bonusValue: number; // Кастомное доп значение
+
+
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

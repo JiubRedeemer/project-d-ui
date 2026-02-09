@@ -15,7 +15,7 @@
                           @click="onSmallSlideClick(i)"
             >
               <img :src="`src/static/images/races/image_${race.code}_M.png`" class="race-image"
-                   alt="Изображение расы"/>
+                   alt="Изображение расы" onerror="this.onerror=null; this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"/>
             </swiper-slide>
             <swiper-slide v-show="!racesLoaded" v-for="(i) in racesPlaceholder"
                           :key="i"
@@ -40,7 +40,7 @@
             <div class="race-container">
               <div class="image-wrapper">
                 <img :src="`src/static/images/races/image_${race.code}_M.png`" class="background-large-image"
-                     alt="Изображение расы"/>
+                     alt="Изображение расы" onerror="this.onerror=null; this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"/>
                 <div class="race-overlay">
                   <p class="race-name">{{ race.name }}</p>
                 </div>

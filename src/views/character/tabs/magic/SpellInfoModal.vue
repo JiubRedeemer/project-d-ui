@@ -4,13 +4,14 @@ import {
   IonButtons,
   IonIcon,
   IonModal,
+  toastController,
 } from "@ionic/vue";
-import { closeCircleOutline, createOutline, star, trashOutline } from "ionicons/icons";
+import { closeCircleOutline, createOutline, flashOutline, star, trashOutline } from "ionicons/icons";
 
 import { computed } from "vue";
 import { useRoute } from "vue-router";
 import { useIonRouter } from "@ionic/vue";
-import { deleteSpellBookItem, setSpellInUse } from "@/api/magicApi";
+import { deleteSpellBookItem, setSpellInUse, useSpellCell } from "@/api/magicApi";
 import type { SpellBookItemDto, SpellDto } from "@/components/models/response/MagicApi";
 import { FILE_STORAGE_INTEGRATION_ROUTES, SPELL_IMAGE_PLACEHOLDER } from "@/config/integrationRoutes";
 import { useMagicStore } from "@/stores/MagicStore";
@@ -28,6 +29,13 @@ const route = useRoute();
 const ionRouter = useIonRouter();
 
 const spell = computed(() => props.item?.spell);
+const spellLevel = computed(() => Number(spell.value?.level ?? 0));
+const canUseCell = computed(() => {
+  if (!magicStore.spellBook?.spellCells) return false;
+  if (!Number.isFinite(spellLevel.value) || spellLevel.value <= 0) return false;
+  const cell = magicStore.spellBook.spellCells[String(spellLevel.value)];
+  return Boolean(cell?.id && (cell.currentCount ?? 0) > 0);
+});
 
 function getSpellName(s: SpellDto | undefined): string {
   if (!s?.name) return "—";
@@ -66,6 +74,52 @@ async function removeSpell() {
     emit("closeSpellInfoModal");
   } catch (e) {
     console.error("Failed to remove spell:", e);
+  }
+}
+
+async function useSpell() {
+  if (!props.spellBookId) return;
+  const level = spellLevel.value;
+  if (!Number.isFinite(level) || level <= 0) return;
+  const cell = magicStore.spellBook?.spellCells?.[String(level)];
+  if (!cell?.id) {
+    const toast = await toastController.create({
+      message: "Нет ячеек для этого уровня",
+      duration: 1500,
+      position: "top",
+    });
+    await toast.present();
+    return;
+  }
+  if ((cell.currentCount ?? 0) <= 0) {
+    const toast = await toastController.create({
+      message: "Ячейки этого уровня закончились",
+      duration: 1500,
+      position: "top",
+    });
+    await toast.present();
+    return;
+  }
+  try {
+    const updated = await useSpellCell(cell.id);
+    if (magicStore.spellBook) {
+      magicStore.setSpellBook({
+        ...magicStore.spellBook,
+        spellCells: {
+          ...(magicStore.spellBook.spellCells ?? {}),
+          [String(level)]: updated,
+        },
+      });
+    }
+  } catch (e) {
+    console.error("Failed to use spell cell:", e);
+    const toast = await toastController.create({
+      message: "Ошибка использования ячейки",
+      duration: 1500,
+      position: "top",
+      color: "danger",
+    });
+    await toast.present();
   }
 }
 
@@ -169,6 +223,17 @@ function closeModal() {
           </ion-button>
 
           <div class="small-buttons">
+            <ion-button
+                size="small"
+                fill="solid"
+                shape="round"
+                color="tertiary"
+                :disabled="!canUseCell"
+                @click="useSpell"
+            >
+              <ion-icon slot="icon-only" :icon="flashOutline" color="dark"/>
+            </ion-button>
+
             <ion-button
                 size="small"
                 fill="solid"

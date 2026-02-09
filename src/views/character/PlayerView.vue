@@ -1,10 +1,20 @@
 <script setup lang="ts">
-import {IonContent, IonHeader, IonIcon, IonPage, IonTab, IonTabBar, IonTabButton, IonTabs} from "@ionic/vue";
+import {
+  IonContent,
+  IonHeader,
+  IonIcon,
+  IonPage,
+  IonTab,
+  IonTabBar,
+  IonTabButton,
+  IonTabs,
+  onIonViewDidEnter
+} from "@ionic/vue";
 import PlayerViewHeader from "@/views/character/PlayerViewHeader.vue";
 import AbilitiesView from "@/views/character/tabs/abilities/AbilitiesView.vue";
 import PersonalityView from "@/views/character/tabs/bio/BioView.vue";
 import PlayerViewSubheader from "@/views/character/PlayerViewSubheader.vue";
-import {onMounted, ref} from "vue";
+import {ref} from "vue";
 import EditAbilityValueModal from "@/views/character/tabs/common/bonus/EditAbilityValueModal.vue";
 import {useRoute} from "vue-router";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
@@ -14,10 +24,11 @@ import EditArmoryClassValueModal from "@/views/character/tabs/common/bonus/EditA
 import EditInitiativeValueModal from "@/views/character/tabs/common/bonus/EditInitiativeValueModal.vue";
 import HpModal from "@/views/character/tabs/common/HpModal.vue";
 import abilitiesTabIcon from "../../static/icons/AbilitiesTab.svg"
-import attacksTabIcon from "../../static/icons/AbilitiesTab.svg"
+import attacksTabIcon from "../../static/icons/Attack.svg"
 import bioTabIcon from "../../static/icons/PersonalityTab.svg"
 import inventoryTabIcon from "../../static/icons/InventoryTab.svg"
 import notesTabIcon from "../../static/icons/NotesTab.svg"
+import magicTabIcon from "../../static/icons/Magic.svg"
 import InventoryView from "@/views/character/tabs/inventory/InventoryView.vue";
 import {useCharacterStore} from "@/stores/CharacterStore";
 import {useSubheaderOpenedStore} from "@/stores/SubheaderStore";
@@ -27,6 +38,7 @@ import MagicView from "@/views/character/tabs/magic/MagicView.vue";
 import AttacksAndSkillsView from "@/views/character/tabs/attacksAndSkills/AttacksAndSkillsView.vue";
 import {useCharacterSkillsStore} from "@/stores/CharacterSkillsStore";
 import RestViewModal from "@/views/character/tabs/rest/RestViewModal.vue";
+import EditSkillValueModal from "./tabs/common/bonus/EditSkillValueModal.vue";
 
 const route = useRoute();
 const characterStore = useCharacterStore()
@@ -34,7 +46,9 @@ const inventoryStore = useInventoryStore()
 const asyncDone = ref<boolean>(false)
 // const subheaderVisible = ref(true);
 const showEditAbilityBonusModal = ref(false); // Управляем видимостью модалки
+const showEditSkillBonusModal = ref(false); // Управляем видимостью модалки
 const selectedAbility = ref<AbilityDto>();
+const selectedSkill = ref<SkillDto>();
 const showEditSpeedBonusModal = ref(false); // Управляем видимостью модалки
 const showEditArmoryClassBonusModal = ref(false); // Управляем видимостью модалки
 const showEditInitiativeBonusModal = ref(false); // Управляем видимостью модалки
@@ -44,18 +58,21 @@ const selectedCharacter = ref<Character>();
 const subheaderStore = useSubheaderOpenedStore();
 const characterSkillsStore = useCharacterSkillsStore();
 
-onMounted(async () => {
-  if (characterStore.character != null) {
-    await characterStore.updateCharacterInStoreById(route.params.roomId, route.params.characterId)
-    await inventoryStore.updateInventoryInStoreById(route.params.roomId, route.params.characterId)
-    await characterSkillsStore.updateCharacterSkills(route.params.roomId, route.params.characterId)
-  }
+onIonViewDidEnter(async () => {
+  await characterStore.updateCharacterInStoreById(route.params.roomId, route.params.characterId)
+  await inventoryStore.updateInventoryInStoreById(route.params.roomId, route.params.characterId)
+  await characterSkillsStore.updateCharacterSkills(route.params.roomId, route.params.characterId)
   asyncDone.value = true;
 })
 
 const openEditAbilityModal = (ability: AbilityDto) => {
   selectedAbility.value = ability;
   showEditAbilityBonusModal.value = true;
+};
+
+const openEditSkillModal = (skill: SkillDto) => {
+  selectedSkill.value = skill;
+  showEditSkillBonusModal.value = true;
 };
 
 const openEditSpeedModal = (character: Character) => {
@@ -86,6 +103,10 @@ const openRestModal = (character: Character) => {
 
 const closeEditAbilityModal = () => {
   showEditAbilityBonusModal.value = false; // Закрываем модалку
+};
+
+const closeEditSkillModal = () => {
+  showEditSkillBonusModal.value = false; // Закрываем модалку
 };
 
 const closeEditSpeedModal = () => {
@@ -142,7 +163,7 @@ const openSubheader = () => {
                      direction="y"
                      :scroll-x="false">
           <div class="abilities" :class="{ openSubheader: subheaderStore.subheaderOpened }">
-            <AbilitiesView v-if="asyncDone" @ability-selected="openEditAbilityModal"/>
+            <AbilitiesView v-if="asyncDone" @ability-selected="openEditAbilityModal" @skill-selected="openEditSkillModal"/>
           </div>
         </ion-content>
       </ion-tab>
@@ -237,7 +258,7 @@ const openSubheader = () => {
         </ion-tab-button>
         <ion-tab-button tab="magic">
           <div class="tab-icon-wrapper">
-            <ion-icon :icon="attacksTabIcon"/>
+            <ion-icon :icon="magicTabIcon"/>
           </div>
         </ion-tab-button>
       </ion-tab-bar>
@@ -251,6 +272,12 @@ const openSubheader = () => {
                            :character-id="String(route.params.characterId)"
                            :url="String(GATEWAY_INTEGRATION_ROUTES.characterAbilities + '/' + selectedAbility.code)"
                            @closeEditAbilityModal="closeEditAbilityModal"/>
+
+    <EditSkillValueModal v-if="selectedSkill"
+                           :skill="ref(selectedSkill)"
+                           :isOpen="showEditSkillBonusModal"
+                           :character-id="String(route.params.characterId)"
+                           @closeEditSkillModal="closeEditSkillModal"/>                       
 
     <EditSpeedValueModal v-if="showEditSpeedBonusModal"
                          :isOpen="showEditSpeedBonusModal"

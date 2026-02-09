@@ -1,6 +1,22 @@
+const env = import.meta.env as Record<string, string | undefined>;
+
+const normalizeBaseUrl = (value: string) => value.replace(/\/+$/, "");
+
+const getBaseUrl = (envKey: string, fallback: string) => {
+    const raw = env[envKey];
+    if (raw && raw.trim().length > 0) {
+        return normalizeBaseUrl(raw.trim());
+    }
+    return normalizeBaseUrl(fallback);
+};
+
 export const GATEWAY_INTEGRATION_ROUTES = {
-    baseURL: "http://localhost:8080",
-    // baseURL: "http://192.168.0.73:8080",
+    baseURL: getBaseUrl(
+        "VITE_GATEWAY_BASE_URL",
+        typeof window !== "undefined" && window.location?.hostname
+            ? `${window.location.protocol}//${window.location.hostname}:8080`
+            : "http://192.168.31.211:8080"
+    ),
 
     auth: "/auth",
     registration: "/auth/registration",
@@ -60,8 +76,12 @@ export const SPELL_IMAGE_PLACEHOLDER =
     "https://img.icons8.com/fluency/96/sparkling.png";
 
 export const FILE_STORAGE_INTEGRATION_ROUTES = {
-    baseURL: "http://localhost:8079",
-    // baseURL: "http://192.168.0.73:8079",
+    baseURL: getBaseUrl(
+        "VITE_FILE_STORAGE_BASE_URL",
+        typeof window !== "undefined" && window.location?.hostname
+            ? `${window.location.protocol}//${window.location.hostname}:8079`
+            : "http://192.168.31.211:8079"
+    ),
     api: "/files",
 
     other_bucket: "/other",

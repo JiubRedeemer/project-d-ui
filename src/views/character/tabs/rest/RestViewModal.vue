@@ -3,9 +3,11 @@ import { IonButton, IonRange, createAnimation, IonToggle } from "@ionic/vue";
 import TopModal from "@/views/common/TopModal.vue";
 import { onMounted, ref } from "vue";
 import { useCharacterStore } from "@/stores/CharacterStore";
+import { useMagicStore } from "@/stores/MagicStore";
 import { GATEWAY_INTEGRATION_ROUTES } from "@/config/integrationRoutes";
 import axios from "axios";
 import { useRoute } from "vue-router";
+import { refillRestByCharacter } from "@/api/magicApi";
 
 const route = useRoute();
 
@@ -16,6 +18,7 @@ const props = defineProps({
 
 const emit = defineEmits(["closeRestModal"]);
 const characterStore = useCharacterStore()
+const magicStore = useMagicStore()
 
 
 const longRest = ref(true);
@@ -36,6 +39,20 @@ async function onSubmit() {
     console.error("Ошибка при получении данных:", error);
   }
 
+  try {
+    const updatedSpellBook = await refillRestByCharacter(
+      String(route.params.roomId),
+      String(route.params.characterId),
+      longRest.value ? "LONG_REST" : "SHORT_REST"
+    );
+    magicStore.setSpellBook(updatedSpellBook);
+  } catch (error) {
+    console.error("Failed to refill spell cells:", error);
+    await magicStore.updateSpellBookInStore(
+      String(route.params.roomId),
+      String(route.params.characterId)
+    );
+  }
 
   characterStore.updateCharacterInStoreById(route.params.roomId, route.params.characterId)
   emit('closeRestModal');

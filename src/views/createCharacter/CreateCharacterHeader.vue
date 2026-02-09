@@ -1,6 +1,6 @@
 <script setup lang="ts">
 
-import {arrowBack} from "ionicons/icons";
+import { arrowBack } from "ionicons/icons";
 import {
   IonBackButton,
   IonButton,
@@ -12,8 +12,11 @@ import {
   IonToolbar
 } from "@ionic/vue";
 import LogOutButton from "@/views/common/LogOutButton.vue";
+import { useRoute } from "vue-router";
 
 const props = defineProps(['headerText', 'step'])
+const route = useRoute();
+const backHref = `/rooms/${route.params.roomId}/characters`;
 
 </script>
 
@@ -23,19 +26,17 @@ const props = defineProps(['headerText', 'step'])
       <ion-toolbar style="--background: transparent">
         <ion-title>{{ props.headerText }}</ion-title>
         <ion-buttons slot="start">
-          <ion-back-button v-if="props.step.current == 0"></ion-back-button>
-          <ion-button v-show="props.step.current != 0" size="small"
-                      @click="
-                      // eslint-disable-next-line vue/no-mutating-props
-                      props.step.current--">
+          <ion-button v-if="props.step.current != 0" size="small" @click="
+            // eslint-disable-next-line vue/no-mutating-props
+            props.step.current--">
             <ion-icon slot="icon-only" :icon="arrowBack"></ion-icon>
           </ion-button>
           <ion-button v-show="props.step.current == 0" size="small">
-            <ion-back-button></ion-back-button>
+            <ion-back-button :default-href="backHref"></ion-back-button>
           </ion-button>
         </ion-buttons>
         <ion-buttons slot="end">
-          <LogOutButton/>
+          <LogOutButton />
         </ion-buttons>
         <ion-progress-bar :value="props.step.current / props.step.names.length"></ion-progress-bar>
       </ion-toolbar>
@@ -43,6 +44,4 @@ const props = defineProps(['headerText', 'step'])
   </ion-header>
 </template>
 
-<style scoped>
-
-</style>
+<style scoped></style>

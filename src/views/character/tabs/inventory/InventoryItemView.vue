@@ -14,6 +14,7 @@ import {
   IonPage,
   IonToggle,
   IonToolbar,
+  onIonViewDidEnter,
   useIonRouter
 } from "@ionic/vue";
 import {useInventoryItemStore} from "@/stores/InventoryItemStore";
@@ -22,7 +23,7 @@ import {marked} from "marked";
 import axios from "axios";
 import {useRoute} from "vue-router";
 import {useInventoryStore} from "@/stores/InventoryStore";
-import {onMounted, ref} from "vue";
+import {ref} from "vue";
 import {useCreateInventoryItemStore} from "@/stores/CreateInventoryItemStore";
 import {searchOutline} from "ionicons/icons";
 import type {ItemSkill} from "@/components/models/response/InventoryResponse";
@@ -51,7 +52,7 @@ function openViewItemSkillModal(isEditing: boolean, itemSkill: ItemSkill | undef
   showEditItemSkillModal.value = true;
 };
 
-onMounted(async () => {
+onIonViewDidEnter(async () => {
   if (!inventoryItemStore.inventoryItem.itemId) {
     inventoryItemStore.updateInventoryItemInStoreById(route.params.roomId, route.params.characterId, route.params.itemId);
   }

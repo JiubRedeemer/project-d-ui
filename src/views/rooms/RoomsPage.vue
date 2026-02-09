@@ -48,11 +48,11 @@ onMounted(() => {
 })
 
 const goToRoom = (roomId: string) => {
-  ionRouter.navigate('rooms/' + roomId + '/characters', 'forward', 'push')
+  ionRouter.navigate('/rooms/' + roomId + '/characters', 'forward', 'push')
 }
 
 const goToCreateRoom = () => {
-  ionRouter.navigate('rooms/create', 'forward', 'push')
+  ionRouter.navigate('/rooms/create', 'forward', 'push')
 }
 
 

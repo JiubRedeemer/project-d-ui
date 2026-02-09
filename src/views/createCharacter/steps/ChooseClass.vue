@@ -15,7 +15,7 @@
                           @click="onSmallSlideClick(i)"
             >
               <img :src="`src/static/images/classes/image_${clazz.code}_M.png`" class="class-image"
-                   alt="Изображение класса"/>
+                   alt="Изображение класса" onerror="this.onerror=null; this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"/>
             </swiper-slide>
           </swiper>
         </div>
@@ -33,7 +33,7 @@
             <div class="class-container">
               <div class="image-wrapper">
                 <img :src="`src/static/images/classes/image_${clazz.code}_M.png`" class="background-large-image"
-                     alt="Изображение расы"/>
+                     alt="Изображение расы" onerror="this.onerror=null; this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"/>
                 <div class="class-overlay">
                   <p class="class-name">{{ clazz.name }}</p>
                 </div>

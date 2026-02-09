@@ -12,11 +12,12 @@ import {
     IonSearchbar,
     IonToggle,
     IonToolbar,
+    onIonViewDidEnter,
     toastController,
     useIonRouter,
 } from "@ionic/vue";
 import { add, addOutline, arrowBack } from "ionicons/icons";
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import {
     addSpellToBook,
@@ -180,7 +181,7 @@ async function loadSpellBook() {
     }
 }
 
-onMounted(async () => {
+onIonViewDidEnter(async () => {
     await loadSpellBook();
     await loadSpells();
 });

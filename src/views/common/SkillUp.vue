@@ -1,6 +1,6 @@
 <template>
   <div class="outer-circle">
-    <div class="inner-circle" :class="{ 'checked': checked }"></div>
+    <div class="inner-circle" :class="{ 'checked': checked, 'doubleChecked': doubleChecked }"></div>
   </div>
 </template>
 
@@ -9,6 +9,10 @@ export default {
   name: "CircleToggle",
   props: {
     checked: {
+      type: Boolean,
+      default: false,
+    },
+    doubleChecked: {
       type: Boolean,
       default: false,
     },
@@ -38,5 +42,9 @@ export default {
 
 .inner-circle.checked {
   background-color: var(--ion-color-primary); /* Цвет закрашивания, если checked=true */
+}
+
+.inner-circle.doubleChecked {
+  background-color: var(--ion-color-warning); /* Цвет закрашивания, если doubleChecked=true */
 }
 </style>
