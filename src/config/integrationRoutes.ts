@@ -15,7 +15,7 @@ export const GATEWAY_INTEGRATION_ROUTES = {
         "VITE_GATEWAY_BASE_URL",
         typeof window !== "undefined" && window.location?.hostname
             ? `${window.location.protocol}//${window.location.hostname}:8080`
-            : "http://192.168.31.211:8080"
+            : "http://localhost:8080"
     ),
 
     auth: "/auth",
@@ -80,7 +80,7 @@ export const FILE_STORAGE_INTEGRATION_ROUTES = {
         "VITE_FILE_STORAGE_BASE_URL",
         typeof window !== "undefined" && window.location?.hostname
             ? `${window.location.protocol}//${window.location.hostname}:8079`
-            : "http://192.168.31.211:8079"
+            : "http://localhost:8079"
     ),
     api: "/files",
 

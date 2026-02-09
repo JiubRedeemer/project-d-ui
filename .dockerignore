@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.idea/
+.cursor/
+.git/
+*.iml
+.DS_Store
+android/
+ios/
