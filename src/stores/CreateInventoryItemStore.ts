@@ -3,6 +3,7 @@ import {Item} from "@/components/models/response/InventoryResponse";
 
 export const useCreateInventoryItemStore = defineStore('createInventoryItemStore', {
     state: () => ({
-        item: {} as Item
+        item: {} as Item,
+        inventoryItemId: undefined as string | undefined,
     })
 })

@@ -3,7 +3,7 @@
   <div class="wrapper">
     <div class="image-wrapper">
 
-      <img :src="`src/static/images/backgrounds/image_SELECT_PERSONALITY.png`" class="background-large-image"
+      <img :src="backgroundImage" class="background-large-image"
            alt="Фоновое изображение"/>
       <div class="background-large-image-overlay">
       </div>
@@ -32,6 +32,7 @@
 import {IonFab, IonFabButton, IonIcon, IonTextarea} from "@ionic/vue";
 import {arrowForwardOutline} from "ionicons/icons";
 import {TEXTS} from "@/config/localisations";
+import backgroundImage from "@/static/images/backgrounds/image_SELECT_PERSONALITY.png";
 import {ref} from "vue";
 
 const inputPersonality = ref("");

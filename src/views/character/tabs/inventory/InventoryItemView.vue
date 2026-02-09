@@ -120,6 +120,7 @@ async function deleteItemFromInventory() {
 
 async function editItem() {
   createInventoryItemStore.item = inventoryItemStore.inventoryItem.item;
+  createInventoryItemStore.inventoryItemId = inventoryItemStore.inventoryItem.id;
   createInventoryItemStore.item.roomId = route.params.roomId;
   ionRouter.navigate('/rooms/' + route.params.roomId + '/characters/' + route.params.characterId + '/inventory/add', 'forward', 'push')
   console.log("Edit Item")

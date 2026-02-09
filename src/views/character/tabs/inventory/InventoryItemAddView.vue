@@ -27,12 +27,14 @@ import {v4 as uuidv4} from 'uuid';
 import {type ItemSkill, Price} from "@/components/models/response/InventoryResponse";
 import {useRoute} from "vue-router";
 import EditItemSkillValueModal from "@/views/character/tabs/inventory/EditItemSkillValueModal.vue";
+import { useInventoryStore } from "@/stores/InventoryStore";
 
 const ionRouter = useIonRouter();
 const route = useRoute();
 const previewImage = ref<string | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
 const createInventoryItemStore = useCreateInventoryItemStore();
+const inventoryStore = useInventoryStore();
 const avatarImage = ref<File | null>(null);
 const allowedFormats = ["image/jpeg", "image/png", "image/gif", "image/bmp", "image/webp", "image/tiff", "image/svg+xml"];
 const filePath = ref<string>("");
@@ -56,6 +58,9 @@ const showEditItemSkillModal = ref(false); // Управляем видимос�
 const isEditingItemSkill = ref(false); // Управляем видимостью модалки
 const editingItemSkill = ref<ItemSkill>(); // Управляем видимостью модалки
 const createItemSkills = ref<ItemSkill[]>([]);
+
+const oldItemId = ref<string>();
+const oldItemCount = ref<number | undefined>();
 
 
 const closeEditItemSkillModal = () => {
@@ -98,11 +103,12 @@ onBeforeMount(() => {
     defaultPriceCoinType.value = createInventoryItemStore.item.stats.defaultPrice[0].coinType
     defaultPriceValue.value = createInventoryItemStore.item.stats.defaultPrice[0].value
     itemRarity.value = createInventoryItemStore.item.rarity ? createInventoryItemStore.item.rarity : 'COMMON';
-
     if (!(createInventoryItemStore.item.creatorId == (route.params.characterId as string))) {
       createInventoryItemStore.item.creatorId = route.params.characterId;
       createInventoryItemStore.item.creator = "user";
     }
+    oldItemId.value = createInventoryItemStore.inventoryItemId
+    oldItemCount.value = createInventoryItemStore.item.count;
     createInventoryItemStore.item.id = itemId;
 
   }
@@ -394,6 +400,11 @@ async function saveItem() {
           },
       );
       ionRouter.back();
+
+      if(oldItemId.value && oldItemId.value !== itemId) {
+        await deleteFromInventory(oldItemId.value);
+        await addItemToInventory(itemId);
+      }
     } catch (error) {
       console.error("Ошибка при получении данных:", error);
     }
@@ -406,6 +417,43 @@ async function saveItem() {
     });
     await toast.present();
   }
+}
+
+async function deleteFromInventory(id: string) {
+  try {
+    const response = await axios.delete(
+        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.inventory}/${route.params.characterId}/${id.trim()}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          },
+        }
+    );
+    inventoryStore.inventory = response.data;
+    ionRouter.back();
+  } catch (error) {
+    console.error("Ошибка при получении данных:", error);
+  }
+}
+
+async function addItemToInventory(id: string) {
+  try {
+    const response = await axios.put(
+        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.inventory}/${route.params.characterId}/${id}/${oldItemCount.value ? oldItemCount.value : 1}`,
+        {},
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          },
+        }
+    );
+    inventoryStore.inventory = response.data
+  } catch (error) {
+    console.error("Ошибка при получении данных:", error);
+  }
+  console.log(`Добавить в инвентарь ${oldItemCount.value ? oldItemCount.value : 1} предметов с ID: ${id}`);
 }
 
 const validRarities = ['COMMON', 'UNCOMMON', 'RARE', 'VERY_RARE', 'LEGENDARY'];

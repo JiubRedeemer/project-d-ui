@@ -14,7 +14,7 @@
                           :class="{ 'selected-slide': i === selectedIndex } "
                           @click="onSmallSlideClick(i)"
             >
-              <img :src="`src/static/images/races/image_${race.code}_M.png`" class="race-image"
+              <img :src="getRaceImage(race.code)" class="race-image"
                    alt="Изображение расы" onerror="this.onerror=null; this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"/>
             </swiper-slide>
             <swiper-slide v-show="!racesLoaded" v-for="(i) in racesPlaceholder"
@@ -39,7 +39,7 @@
           <swiper-slide v-show="racesLoaded" v-for="(race, i) in races" :key="i" class="slide-content">
             <div class="race-container">
               <div class="image-wrapper">
-                <img :src="`src/static/images/races/image_${race.code}_M.png`" class="background-large-image"
+                <img :src="getRaceImage(race.code)" class="background-large-image"
                      alt="Изображение расы" onerror="this.onerror=null; this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"/>
                 <div class="race-overlay">
                   <p class="race-name">{{ race.name }}</p>
@@ -76,6 +76,11 @@ const route = useRoute()
 const races = ref<RaceResponse[]>([]);
 const racesPlaceholder = ref([1, 2, 3, 4, 5, 6, 7, 8, 9]);
 let racesLoaded = false;
+
+const raceImages = import.meta.glob("/src/static/images/races/*.png", {
+  eager: true,
+  import: "default",
+}) as Record<string, string>;
 
 const props = defineProps({
   characterData: Object,
@@ -116,6 +121,10 @@ function onSmallSlideClick(index: number) {
   if (largeSwiperInstance.value) {
     largeSwiperInstance.value.slideTo(index, 300, true);
   }
+}
+
+function getRaceImage(code: string) {
+  return raceImages[`/src/static/images/races/image_${code}_M.png`];
 }
 
 function onChooseRace(race: object) {

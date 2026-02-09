@@ -14,7 +14,7 @@
                           :class="{ 'selected-slide': i === selectedIndex } "
                           @click="onSmallSlideClick(i)"
             >
-              <img :src="`src/static/images/classes/image_${clazz.code}_M.png`" class="class-image"
+              <img :src="getClassImage(clazz.code)" class="class-image"
                    alt="Изображение класса" onerror="this.onerror=null; this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"/>
             </swiper-slide>
           </swiper>
@@ -32,7 +32,7 @@
           <swiper-slide v-for="(clazz, i) in classes" :key="i" class="slide-content">
             <div class="class-container">
               <div class="image-wrapper">
-                <img :src="`src/static/images/classes/image_${clazz.code}_M.png`" class="background-large-image"
+                <img :src="getClassImage(clazz.code)" class="background-large-image"
                      alt="Изображение расы" onerror="this.onerror=null; this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"/>
                 <div class="class-overlay">
                   <p class="class-name">{{ clazz.name }}</p>
@@ -78,6 +78,11 @@ const route = useRoute()
 
 const classes = ref<ClassResponse[]>([]);
 
+const classImages = import.meta.glob("/src/static/images/classes/*.png", {
+  eager: true,
+  import: "default",
+}) as Record<string, string>;
+
 const props = defineProps({
   characterData: Object,
   currentStep: Object,
@@ -117,6 +122,10 @@ function onSmallSlideClick(index: number) {
   if (largeSwiperInstance.value) {
     largeSwiperInstance.value.slideTo(index, 300, true);
   }
+}
+
+function getClassImage(code: string) {
+  return classImages[`/src/static/images/classes/image_${code}_M.png`];
 }
 
 function onChooseClass(clazz: object) {
