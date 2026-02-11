@@ -484,6 +484,8 @@ async function saveItem() {
       if(oldItemId.value && oldItemId.value !== itemId) {
         await deleteFromInventory(oldItemId.value);
         await addItemToInventory(itemId);
+      } else if(!oldItemId.value) {
+        await addItemToInventory(itemId);
       }
     } catch (error) {
       console.error("Ошибка при получении данных:", error);
@@ -581,8 +583,7 @@ function validateItem(type: string): boolean {
 
   // Validate price
   if (!item.stats.defaultPrice?.length) {
-    errors.push("Не указана цена (defaultPrice)");
-    invalidFields.value.push('defaultPriceValue');
+    console.warn("Отсутствует массив цен (defaultPrice), добавляем пустой объект");
   } else {
     if (!item.stats.defaultPrice[0]?.value) {
       errors.push("Не указано значение цены (defaultPrice.value)");
