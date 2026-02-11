@@ -581,22 +581,22 @@ function validateItem(type: string): boolean {
     return false;
   }
 
-  // Validate price
-  if (!item.stats.defaultPrice?.length) {
-    console.warn("Отсутствует массив цен (defaultPrice), добавляем пустой объект");
-  } else {
-    if (!item.stats.defaultPrice[0]?.value) {
-      errors.push("Не указано значение цены (defaultPrice.value)");
-      invalidFields.value.push('defaultPriceValue');
-    } else if (item.stats.defaultPrice[0].value < 0) {
-      errors.push("Значение цены не может быть отрицательным");
-      invalidFields.value.push('defaultPriceValue');
-    }
-    if (!item.stats.defaultPrice[0]?.coinType) {
-      errors.push("Не указан тип валюты (defaultPrice.coinType)");
-      invalidFields.value.push('defaultPriceCoinType');
-    }
-  }
+  // // Validate price
+  // if (!item.stats.defaultPrice?.length) {
+  //   console.warn("Отсутствует массив цен (defaultPrice), добавляем пустой объект");
+  // } else {
+  //   if (!item.stats.defaultPrice[0]?.value) {
+  //     errors.push("Не указано значение цены (defaultPrice.value)");
+  //     invalidFields.value.push('defaultPriceValue');
+  //   } else if (item.stats.defaultPrice[0].value < 0) {
+  //     errors.push("Значение цены не может быть отрицательным");
+  //     invalidFields.value.push('defaultPriceValue');
+  //   }
+  //   if (!item.stats.defaultPrice[0]?.coinType) {
+  //     errors.push("Не указан тип валюты (defaultPrice.coinType)");
+  //     invalidFields.value.push('defaultPriceCoinType');
+  //   }
+  // }
 
   // Validate rarity
   if (!validRarities.includes(item.rarity!)) {
