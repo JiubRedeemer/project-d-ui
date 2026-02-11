@@ -150,16 +150,10 @@ watch(() => createInventoryItemStore.item.type, (newType) => {
 
 watch(defaultPriceValue, (newValue) => {
   defaultPrice.value.value = newValue;
-  if (newValue >= 0) {
-    invalidFields.value = invalidFields.value.filter(field => field !== 'defaultPriceValue');
-  }
 });
 
 watch(defaultPriceCoinType, (newValue) => {
   defaultPrice.value.coinType = newValue;
-  if (newValue) {
-    invalidFields.value = invalidFields.value.filter(field => field !== 'defaultPriceCoinType');
-  }
 });
 
 
@@ -887,14 +881,10 @@ const getSkillImageUrl = (imgUrl: string | undefined) => {
                   label-placement="floating"
                   class="input-block"
                   shape=""
-                  :class="{ 'invalid-field': invalidFields.includes('defaultPriceValue') }"
-                  @ionInput="invalidFields = invalidFields.filter(field => field !== 'defaultPriceValue')"
-              >
+                  :class="{ 'invalid-field': invalidFields.includes('defaultPriceValue') }">
                 <ion-select value="GOLDEN" v-model="defaultPriceCoinType" slot="start" aria-label="Coin"
                             interface="action-sheet"
-                            :class="{ 'invalid-field': invalidFields.includes('defaultPriceCoinType') }"
-                            @ionChange="invalidFields = invalidFields.filter(field => field !== 'defaultPriceCoinType')"
-                >
+                            :class="{ 'invalid-field': invalidFields.includes('defaultPriceCoinType') }">
                   <ion-select-option value="GOLDEN">🪙</ion-select-option>
                   <ion-select-option value="SILVER">⚪</ion-select-option>
                   <ion-select-option value="COPPER">🟠</ion-select-option>
