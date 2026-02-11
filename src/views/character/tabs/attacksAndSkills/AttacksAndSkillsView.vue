@@ -140,6 +140,8 @@ const closeEditItemSkillModal = () => {
 };
 const closeEditCharacterSkillModal = () => {
   showEditCharacterSkillModal.value = false; // Закрываем модалку
+  isEditingCharacterSkill.value = false;
+  editingCharacterSkill.value = undefined;
 };
 
 const openEditItemSkillModal = (isEditing: boolean, itemSkill: ItemSkill | undefined) => {
@@ -277,8 +279,8 @@ async function deleteCharacterSkill(id: string) {
         </div>
       </div>
     </div>
-    <h1 class="sectionHeader" v-if="skills?.length! > 0">{{ HEADERS.character_skills.rus }}</h1>
-    <div class="skills" v-if="skills?.length! > 0">
+    <h1 class="sectionHeader" v-if="characterSkills?.length! > 0">{{ HEADERS.character_skills.rus }}</h1>
+    <div class="skills" v-if="characterSkills?.length! > 0">
       <div class="section" v-for="skill in characterSkills" :key="skill.id">
         <div class="image-block">
           <img width="65px" height="65px" class="item-image"
@@ -337,6 +339,7 @@ async function deleteCharacterSkill(id: string) {
                                 :character-id="String(route.params.characterId)"
                                 :is-editing="isEditingCharacterSkill"
                                 :character-skill="editingCharacterSkill"
+                                :is-read-only="false"
                                 @closeEditCharacterSkillModal="closeEditCharacterSkillModal"
                                 @saveCharacterSkill="(characterSkill : CharacterSkill) => saveCharacterSkill(characterSkill)"
                                 @deleteCharacterSkill="(skillId : string) => deleteCharacterSkill(skillId)"/>

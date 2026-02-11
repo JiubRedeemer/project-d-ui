@@ -14,7 +14,7 @@ import {
   IonText,
   IonTextarea
 } from "@ionic/vue";
-import {onBeforeMount, ref, watch} from "vue";
+import {ref, watch} from "vue";
 import {useRoute} from "vue-router";
 import {add, closeCircleOutline, pencilOutline, saveOutline, trashOutline} from "ionicons/icons";
 import {useCharacterStore} from "@/stores/CharacterStore";
@@ -41,31 +41,39 @@ const emit = defineEmits<{
 }>();
 
 const isEditing = ref(props.isEditing);
-let editableSkill = ref<CharacterSkill>({...props.characterSkill});
+const createEmptySkill = (): CharacterSkill => ({
+  id: uuidv4(),
+  characterId: "",
+  name: "",
+  castTime: undefined,
+  distance: undefined,
+  description: "",
+  shortDescription: "",
+  charges: undefined,
+  currentCharges: undefined,
+  chargesRefill: undefined,
+  imgUrl: undefined
+});
+const editableSkill = ref<CharacterSkill>(createEmptySkill());
 
-onBeforeMount(() => {
-  if (!editableSkill.value.name) {
-    editableSkill = ref<CharacterSkill>({
-      id: uuidv4(),
-      characterId: "",
-      name: "",
-      castTime: undefined,
-      distance: undefined,
-      description: "",
-      shortDescription: "",
-      charges: undefined,
-      currentCharges: undefined,
-      chargesRefill: undefined,
-      imgUrl: undefined
-    });
-  }
-})
 watch(
-    () => props.characterSkill,
+    () => props.isEditing,
     (newValue) => {
-      editableSkill.value = {...newValue};
+      if (props.isOpen) {
+        isEditing.value = newValue;
+      }
+    }
+);
+
+watch(
+    () => [props.characterSkill, props.isOpen],
+    () => {
+      if (props.isOpen) {
+        isEditing.value = props.isEditing || !props.characterSkill;
+      }
+      editableSkill.value = props.characterSkill ? {...props.characterSkill} : createEmptySkill();
     },
-    {deep: true}
+    {deep: true, immediate: true}
 );
 
 function closeModal() {

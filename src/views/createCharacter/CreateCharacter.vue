@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {IonContent, IonPage} from "@ionic/vue";
+import {IonContent, IonPage, useIonRouter} from "@ionic/vue";
 import ChooseRace from "./steps/ChooseRace.vue";
 import {ref, watch} from "vue";
 import CreateCharacterHeader from "@/views/createCharacter/CreateCharacterHeader.vue";
@@ -22,6 +22,7 @@ import axios from "axios";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 
 const route = useRoute();
+const ionRouter = useIonRouter();
 
 // Константы для шагов
 const step = ref({
@@ -88,6 +89,7 @@ watch(
         } catch (error) {
           console.error("Ошибка при сохранении персонажа:", error);
         }
+        ionRouter.navigate('/rooms/' + route.params.roomId + '/characters', 'forward', 'push')
       }
     }
 );

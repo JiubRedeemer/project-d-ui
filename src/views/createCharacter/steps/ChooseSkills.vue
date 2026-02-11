@@ -103,7 +103,6 @@ function onChooseSkills() {
     // eslint-disable-next-line vue/no-mutating-props
     props.currentStep.current = props.currentStep.current + 1;
   }
-  ionRouter.navigate('/rooms/' + route.params.roomId + '/characters', 'forward', 'push')
 }
 </script>
 

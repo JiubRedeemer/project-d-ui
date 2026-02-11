@@ -1,6 +1,6 @@
 <script setup lang="ts">
 
-import {IonIcon} from "@ionic/vue";
+import {IonIcon, onIonViewDidEnter} from "@ionic/vue";
 import HpBar from "@/views/common/HpBar.vue";
 import restIcon from "../../static/icons/rest.svg"
 import armorIcon from "../../static/icons/Armor.svg"
@@ -10,10 +10,22 @@ import {HEADERS} from "@/config/localisations";
 import {useCharacterStore} from "@/stores/CharacterStore";
 import {useSubheaderOpenedStore} from "@/stores/SubheaderStore";
 import {useInventoryStore} from "@/stores/InventoryStore";
+import { useCharacterSkillsStore } from "@/stores/CharacterSkillsStore";
+import { useRoute } from "vue-router";
+const route = useRoute();
+
+
 
 const characterStore = useCharacterStore()
 const subheaderStore = useSubheaderOpenedStore();
 const inventoryStore = useInventoryStore();
+const characterSkillsStore = useCharacterSkillsStore();
+
+onIonViewDidEnter(async () => {
+  await characterStore.updateCharacterInStoreById(route.params.roomId, route.params.characterId)
+  await inventoryStore.updateInventoryInStoreById(route.params.roomId, route.params.characterId)
+  await characterSkillsStore.updateCharacterSkills(route.params.roomId, route.params.characterId)
+})
 
 function getArmoryClassBonusSum(itemStats: EquippedItemsStatsResponse | null): number {
   if (!itemStats) return 0;

@@ -3,6 +3,8 @@ import { IonButton, IonRange, createAnimation, IonToggle } from "@ionic/vue";
 import TopModal from "@/views/common/TopModal.vue";
 import { onMounted, ref } from "vue";
 import { useCharacterStore } from "@/stores/CharacterStore";
+import { useCharacterSkillsStore } from "@/stores/CharacterSkillsStore";
+import { useInventoryStore } from "@/stores/InventoryStore";
 import { useMagicStore } from "@/stores/MagicStore";
 import { GATEWAY_INTEGRATION_ROUTES } from "@/config/integrationRoutes";
 import axios from "axios";
@@ -19,6 +21,8 @@ const props = defineProps({
 const emit = defineEmits(["closeRestModal"]);
 const characterStore = useCharacterStore()
 const magicStore = useMagicStore()
+const characterSkillsStore = useCharacterSkillsStore()
+const inventoryStore = useInventoryStore()
 
 
 const longRest = ref(true);
@@ -26,7 +30,7 @@ const longRest = ref(true);
 async function onSubmit() {
   try {
     await axios.post(
-      `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${characterStore.character.id}${GATEWAY_INTEGRATION_ROUTES.rest}/${longRest ? 'LONG_REST' : 'SHORT_REST'}`,
+      `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${characterStore.character.id}${GATEWAY_INTEGRATION_ROUTES.rest}/${longRest.value ? 'LONG_REST' : 'SHORT_REST'}`,
       {},
       {
         headers: {
@@ -54,7 +58,11 @@ async function onSubmit() {
     );
   }
 
-  characterStore.updateCharacterInStoreById(route.params.roomId, route.params.characterId)
+  await Promise.all([
+    characterStore.updateCharacterInStoreById(route.params.roomId, route.params.characterId),
+    characterSkillsStore.updateCharacterSkills(route.params.roomId, route.params.characterId),
+    inventoryStore.updateInventoryInStoreById(route.params.roomId, route.params.characterId)
+  ])
   emit('closeRestModal');
 }
 

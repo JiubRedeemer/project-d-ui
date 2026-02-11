@@ -38,33 +38,47 @@ const renderMarkdown = (text: string | undefined): string => {
 
 const expandBlock = (name: string) => {
   isBlockExpanded.value = name;
-  inputSectionText.value = characterStore.character.characterBio[name];
+  inputSectionText.value = characterStore.character.characterBio[name] ?? "";
 };
 
 const saveSectionText = async (name: string) => {
+  const originalValue =
+    characterStore.character.characterBio[name] ?? "";
+
+  const newValue = inputSectionText.value ?? "";
+
+  // 🔒 If nothing changed — do nothing
+  if (newValue.trim() === originalValue.trim()) {
+    isBlockExpanded.value = null;
+    inputSectionText.value = null;
+    return;
+  }
+
   try {
     const roomId = route.params.roomId as string;
     const characterId = route.params.characterId as string;
 
     await axios.patch(
-        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${characterId}${GATEWAY_INTEGRATION_ROUTES.bio}/${name}`,
-        { value: inputSectionText.value },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-          },
-        }
+      `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${characterId}${GATEWAY_INTEGRATION_ROUTES.bio}/${name}`,
+      { value: newValue },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+      }
     );
 
     await characterStore.updateCharacterInStoreById(roomId, characterId);
-    await inventoryStore.updateInventoryInStoreById(route.params.roomId, route.params.characterId)
+    await inventoryStore.updateInventoryInStoreById(roomId, characterId);
   } catch (error) {
-    console.error("Ошибка при получении данных:", error);
+    console.error("Ошибка при сохранении данных:", error);
+  } finally {
+    isBlockExpanded.value = null;
+    inputSectionText.value = null;
   }
-  inputSectionText.value = null; // Закрываем все секции
-  isBlockExpanded.value = null; // Закрываем все секции
 };
+
 
 const saveField = async (field: string, text: string) => {
   const newValue = text;
@@ -178,7 +192,7 @@ const uploadToMinio = async (file: File): Promise<string> => {
           v-html="isBlockExpanded === section ? characterStore.character.characterBio[section] : renderMarkdown(characterStore.character.characterBio[section])"
           @input="updateInputSectionText($event)"
       ></p>
-      <ion-buttons slot="end" class="sectionButtons">
+      <ion-buttons slot="end" class="sectionButtons" v-show="isBlockExpanded === section">
         <ion-button @click.stop="saveSectionText(section)">
           <ion-icon slot="icon-only" :icon="saveOutline"></ion-icon>
         </ion-button>
@@ -198,7 +212,8 @@ const uploadToMinio = async (file: File): Promise<string> => {
   border-radius: 15px;
   padding: 10px;
   overflow: hidden;
-  max-height: 40vh;
+  height: fit-content;
+  max-height: 200px;
   transition: max-height 4s ease;
 
 }
@@ -304,15 +319,6 @@ const uploadToMinio = async (file: File): Promise<string> => {
   justify-self: center;
   font-size: 48px;
   color: white;
-}
-
-.section {
-  margin-top: 20px;
-  background-color: var(--ion-color-medium);
-  border-radius: 15px;
-  padding: 10px;
-  overflow: hidden;
-  height: 40vh;
 }
 
 .sectionButtons {

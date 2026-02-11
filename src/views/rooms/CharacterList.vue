@@ -17,6 +17,7 @@ import {
   IonSelect,
   IonSelectOption,
   onIonViewDidEnter,
+  onIonViewWillEnter,
   toastController,
   useIonRouter
 } from "@ionic/vue";
@@ -53,7 +54,8 @@ const setupCharacters = async () => {
     characters.value = res.data
   }
 }
-onIonViewDidEnter(() => {
+
+onIonViewWillEnter(() => {
   setupCharacters()
 })
 

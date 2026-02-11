@@ -11,18 +11,18 @@ import {
   useKeyboard
 } from "@ionic/vue";
 import axios from "axios";
-import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
-import {useRoute} from "vue-router";
-import {computed, onMounted, watch} from "vue";
-import {InventoryItem} from "@/components/models/response/InventoryResponse";
-import {add, caretUpCircleOutline, manOutline, remove} from "ionicons/icons";
-import {useInventoryItemStore} from "@/stores/InventoryItemStore";
-import {HEADERS, TEXTS} from "@/config/localisations";
-import {useCharacterStore} from "@/stores/CharacterStore";
+import { FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES } from "@/config/integrationRoutes";
+import { useRoute } from "vue-router";
+import { computed, onMounted, watch } from "vue";
+import { InventoryItem } from "@/components/models/response/InventoryResponse";
+import { add, caretUpCircleOutline, manOutline, remove } from "ionicons/icons";
+import { useInventoryItemStore } from "@/stores/InventoryItemStore";
+import { HEADERS, TEXTS } from "@/config/localisations";
+import { useCharacterStore } from "@/stores/CharacterStore";
 import WalletView from "@/views/character/tabs/inventory/WalletView.vue";
-import {useWalletStore} from "@/stores/WalletStore";
-import {useSubheaderOpenedStore} from "@/stores/SubheaderStore";
-import {useInventoryStore} from "@/stores/InventoryStore";
+import { useWalletStore } from "@/stores/WalletStore";
+import { useSubheaderOpenedStore } from "@/stores/SubheaderStore";
+import { useInventoryStore } from "@/stores/InventoryStore";
 
 const ionRouter = useIonRouter();
 
@@ -34,7 +34,7 @@ const inventoryItemStore = useInventoryItemStore();
 const characterStore = useCharacterStore();
 const subheaderOpenedStore = useSubheaderOpenedStore();
 const walletStore = useWalletStore();
-const {isOpen, keyboardHeight} = useKeyboard();
+const { isOpen, keyboardHeight } = useKeyboard();
 
 const moneyRootMaxHeight = computed(() => {
   if (isOpen.value && keyboardHeight.value > 0) {
@@ -63,13 +63,13 @@ const fetchInventory = async () => {
 const fetchMoney = async () => {
   try {
     const response = await axios.get(
-        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.inventory}/${route.params.characterId}${GATEWAY_INTEGRATION_ROUTES.money}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-          },
-        }
+      `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.inventory}/${route.params.characterId}${GATEWAY_INTEGRATION_ROUTES.money}`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+      }
     );
     walletStore.userMoney = response.data;
   } catch (error) {
@@ -80,14 +80,14 @@ const fetchMoney = async () => {
 const changeInUseForItem = async (itemId: string) => {
   try {
     const response = await axios.patch(
-        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.inventory}/${route.params.characterId}${GATEWAY_INTEGRATION_ROUTES.equip}/${itemId.trim()}`,
-        {},
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-          },
-        }
+      `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.inventory}/${route.params.characterId}${GATEWAY_INTEGRATION_ROUTES.equip}/${itemId.trim()}`,
+      {},
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+      }
     );
     inventoryStore.inventory = response.data;
   } catch (error) {
@@ -106,8 +106,8 @@ const weightLimit = characterStore.character.abilities.filter(ability => ability
 
 const getItemImageUrl = (imgUrl: string | undefined) => {
   return imgUrl != null
-      ? `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.items_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.download}/${imgUrl}`
-      : 'https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png';
+    ? `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.items_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.download}/${imgUrl}`
+    : 'https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png';
 };
 
 const getItemStats = (item: InventoryItem) => {
@@ -184,14 +184,14 @@ async function changeItemCount(item: InventoryItem, option: string) {
   }
   try {
     const response = await axios.patch(
-        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.inventory}/${route.params.characterId}/${item.id.trim()}${GATEWAY_INTEGRATION_ROUTES.count}/${count}`,
-        {},
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-          },
-        }
+      `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.inventory}/${route.params.characterId}/${item.id.trim()}${GATEWAY_INTEGRATION_ROUTES.count}/${count}`,
+      {},
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+      }
     );
     inventoryStore.inventory = response.data;
   } catch (error) {
@@ -207,20 +207,20 @@ function expandMoneyBlock() {
 async function exchangeMoneyRequest() {
   try {
     await axios.patch(
-        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.inventory}/${route.params.characterId}${GATEWAY_INTEGRATION_ROUTES.money}`,
-        {
-          "id": walletStore.userMoney.id,
-          "inventoryId": walletStore.userMoney.inventoryId,
-          "goldenCount": walletStore.userMoney.goldenCount,
-          "silverCount": walletStore.userMoney.silverCount,
-          "copperCount": walletStore.userMoney.copperCount,
+      `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.inventory}/${route.params.characterId}${GATEWAY_INTEGRATION_ROUTES.money}`,
+      {
+        "id": walletStore.userMoney.id,
+        "inventoryId": walletStore.userMoney.inventoryId,
+        "goldenCount": walletStore.userMoney.goldenCount,
+        "silverCount": walletStore.userMoney.silverCount,
+        "copperCount": walletStore.userMoney.copperCount,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
         },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-          },
-        }
+      }
     );
     walletStore.wallet.count = undefined;
   } catch (error) {
@@ -275,29 +275,29 @@ async function takeMoney() {
 </script>
 
 <template>
-  <div class="inventory-header" :style="walletStore.moneyExpanded ? {marginTop: '-10px', paddingTop: '0px'}:''">
+  <div class="inventory-header" :style="walletStore.moneyExpanded ? { marginTop: '-10px', paddingTop: '0px' } : ''">
     <div class="weight">{{ totalWeight }}/{{ weightLimit }}</div>
     <ion-progress-bar :value="totalWeight / weightLimit"
-                      :color="((totalWeight/weightLimit)>=1)?'danger':'primary'"></ion-progress-bar>
+      :color="((totalWeight / weightLimit) >= 1) ? 'danger' : 'primary'"></ion-progress-bar>
     <div class="money-root" :class="{ openMoney: walletStore.moneyExpanded }"
-         :style="{ maxHeight: walletStore.moneyExpanded ? moneyRootMaxHeight : '40px' }">
+      :style="{ maxHeight: walletStore.moneyExpanded ? moneyRootMaxHeight : '40px' }">
       <div class="money" @click="expandMoneyBlock()">
         <div class="money-title">{{ HEADERS.wallet.rus }}:</div>
         <div class="coin">
           <div class="coin-count">{{ walletStore.userMoney?.copperCount }}</div>
-          <div class="coin-img copper" @click="walletStore.wallet.type='copper_coin'"></div>
+          <div class="coin-img copper" @click="walletStore.wallet.type = 'copper_coin'"></div>
         </div>
         <div class="coin">
           <div class="coin-count">{{ walletStore.userMoney?.silverCount }}</div>
-          <div class="coin-img silver" @click="walletStore.wallet.type='silver_coin'"></div>
+          <div class="coin-img silver" @click="walletStore.wallet.type = 'silver_coin'"></div>
         </div>
         <div class="coin">
           <div class="coin-count">{{ walletStore.userMoney?.goldenCount }}</div>
-          <div class="coin-img golden" @click="walletStore.wallet.type='golden_coin'"></div>
+          <div class="coin-img golden" @click="walletStore.wallet.type = 'golden_coin'"></div>
         </div>
       </div>
       <div class="money-input">
-        <WalletView/>
+        <WalletView />
       </div>
       <div class="money-submit-buttons">
         <div class="button-hide">
@@ -323,17 +323,17 @@ async function takeMoney() {
         <div class="section-start-block" @click="openInventoryItem(item)">
           <div class="image-block">
             <img width="55px" height="55px" class="item-image" :class="getRarityClass(item.item.rarity)"
-                 :src="getItemImageUrl(item.item.imgUrl)"
-                 :alt="item.item.name.rus"/>
+              :src="getItemImageUrl(item.item.imgUrl)" :alt="item.item.name.rus"
+              onerror="this.onerror=null; this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'" />
           </div>
           <div class="stats-block">
             <div class="item-name">
               <span>
                 {{ item.item.name.rus }}
-              <span
-                v-if="characterStore.character.abilities.find(ability => ability.code === 'STR')?.value < Number(item.item.stats.requirement)"
-                style="color: red;">*</span>
-            </span>
+                <span
+                  v-if="characterStore.character.abilities.find(ability => ability.code === 'STR')?.value < Number(item.item.stats.requirement)"
+                  style="color: red;">*</span>
+              </span>
             </div>
             <div class="item-stats" v-for="(stat, index) in getItemStats(item)" :key="index">
               {{ stat }}
@@ -342,7 +342,7 @@ async function takeMoney() {
         </div>
         <div class="buttons-block">
           <ion-button @click="changeInUseForItem(item.id)" size="small" shape="round" class="equip-button"
-                      :fill="item.inUse ? 'outline' : 'solid'">
+            :fill="item.inUse ? 'outline' : 'solid'">
             <ion-icon slot="icon-only" :icon="manOutline"></ion-icon>
           </ion-button>
         </div>
@@ -354,8 +354,9 @@ async function takeMoney() {
         <div class="section-start-block" @click="openInventoryItem(item)">
           <div class="image-block">
             <img width="55px" height="55px" class="item-image" :class="getRarityClass(item.item.rarity)"
-                 :src="getItemImageUrl(item.item.imgUrl)"
-                 :alt="item.item.name.rus"/>
+              :src="getItemImageUrl(item.item.imgUrl)" :alt="item.item.name.rus"
+              onerror="this.onerror=null; this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'" />
+
           </div>
           <div class="stats-block">
             <div class="item-name">
@@ -368,7 +369,7 @@ async function takeMoney() {
         </div>
         <div class="buttons-block">
           <ion-button @click="changeInUseForItem(item.id)" size="small" shape="round" class="equip-button"
-                      :fill="item.inUse ? 'outline' : 'solid'">
+            :fill="item.inUse ? 'outline' : 'solid'">
             <ion-icon slot="icon-only" :icon="manOutline"></ion-icon>
           </ion-button>
           <ion-buttons class="counter-buttons">
@@ -389,8 +390,8 @@ async function takeMoney() {
         <div class="section-start-block" @click="openInventoryItem(item)">
           <div class="image-block">
             <img width="55px" height="55px" class="item-image" :class="getRarityClass(item.item.rarity)"
-                 :src="getItemImageUrl(item.item.imgUrl)"
-                 :alt="item.item.name.rus"/>
+              :src="getItemImageUrl(item.item.imgUrl)" :alt="item.item.name.rus"
+              onerror="this.onerror=null; this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'" />
           </div>
           <div class="stats-block">
             <div class="item-name">
@@ -403,7 +404,7 @@ async function takeMoney() {
         </div>
         <div class="buttons-block">
           <ion-button @click="changeInUseForItem(item.id)" size="small" shape="round" class="equip-button"
-                      :fill="item.inUse ? 'outline' : 'solid'">
+            :fill="item.inUse ? 'outline' : 'solid'">
             <ion-icon size="small" slot="icon-only" :icon="manOutline"></ion-icon>
           </ion-button>
           <ion-buttons class="counter-buttons">
@@ -425,8 +426,8 @@ async function takeMoney() {
         <div class="section-start-block" @click="openInventoryItem(item)">
           <div class="image-block">
             <img width="55px" height="55px" class="item-image" :class="getRarityClass(item.item.rarity)"
-                 :src="getItemImageUrl(item.item.imgUrl)"
-                 :alt="item.item.name.rus"/>
+              :src="getItemImageUrl(item.item.imgUrl)" :alt="item.item.name.rus"
+              onerror="this.onerror=null; this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'" />
           </div>
           <div class="stats-block">
             <div class="item-name">
@@ -439,7 +440,7 @@ async function takeMoney() {
         </div>
         <div class="buttons-block">
           <ion-button @click="changeInUseForItem(item.id)" size="small" shape="round" class="equip-button"
-                      :fill="item.inUse ? 'outline' : 'solid'">
+            :fill="item.inUse ? 'outline' : 'solid'">
             <ion-icon slot="icon-only" :icon="manOutline"></ion-icon>
           </ion-button>
           <ion-buttons class="counter-buttons">
@@ -461,8 +462,8 @@ async function takeMoney() {
         <div class="section-start-block" @click="openInventoryItem(item)">
           <div class="image-block">
             <img width="55px" height="55px" class="item-image" :class="getRarityClass(item.item.rarity)"
-                 :src="getItemImageUrl(item.item.imgUrl)"
-                 :alt="item.item.name.rus"/>
+              :src="getItemImageUrl(item.item.imgUrl)" :alt="item.item.name.rus" 
+              onerror="this.onerror=null; this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'" />
           </div>
           <div class="stats-block">
             <div class="item-name">
@@ -475,7 +476,7 @@ async function takeMoney() {
         </div>
         <div class="buttons-block">
           <ion-button @click="changeInUseForItem(item.id)" size="small" shape="round" class="equip-button"
-                      :fill="item.inUse ? 'outline' : 'solid'">
+            :fill="item.inUse ? 'outline' : 'solid'">
             <ion-icon slot="icon-only" :icon="manOutline"></ion-icon>
           </ion-button>
           <ion-buttons class="counter-buttons">
@@ -494,7 +495,7 @@ async function takeMoney() {
   </div>
   <div class="add-new-button">
     <ion-button size="large" shape="round" color="secondary" @click="openSearchView">
-      <ion-icon slot="icon-only" :icon="add"/>
+      <ion-icon slot="icon-only" :icon="add" />
     </ion-button>
   </div>
 </template>
@@ -502,9 +503,11 @@ async function takeMoney() {
 <style scoped>
 .add-new-button {
   position: fixed;
-  bottom: -10px; /* расстояние от нижнего края */
+  bottom: -10px;
+  /* расстояние от нижнего края */
   width: 100%;
-  background: transparent; /* или нужный фон */
+  background: transparent;
+  /* или нужный фон */
   display: flex;
   flex-direction: row;
   justify-content: center;
@@ -512,8 +515,7 @@ async function takeMoney() {
   margin-left: -15px;
 }
 
-.inventory-body {
-}
+.inventory-body {}
 
 .inventory-header {
   transition: padding-top, margin-top 0.5s ease-in-out;
@@ -554,7 +556,8 @@ async function takeMoney() {
 .buttons-block {
   display: flex;
   flex-direction: column;
-  align-items: end; /* Aligns children to the top */
+  align-items: end;
+  /* Aligns children to the top */
   position: relative;
   height: 100%;
   width: 50px;
@@ -648,7 +651,8 @@ async function takeMoney() {
 .coin-img {
   width: 20px;
   height: 20px;
-  border-radius: 50%; /* делает круг */
+  border-radius: 50%;
+  /* делает круг */
   display: inline-block;
 }
 
@@ -683,6 +687,4 @@ async function takeMoney() {
 .rarity-legendary {
   border-color: orange;
 }
-
-
 </style>
