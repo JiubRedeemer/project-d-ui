@@ -86,6 +86,16 @@ const spellClasses: { value: SpellClass; label: string }[] = [
 ];
 
 const levels = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+const spellSchools = [
+  "некромантия",
+  "очарование",
+  "прорицание",
+  "иллюзия",
+  "ограждение",
+  "вызов",
+  "воплощение",
+  "преобразование",
+];
 
 const selectedSpellClasses = ref<string[]>([]);
 
@@ -125,21 +135,25 @@ function validate(): boolean {
   invalidFields.value = [];
   const nameRus = (spell.value.name as Record<string, string>)?.rus?.trim();
   const nameEn = (spell.value.name as Record<string, string>)?.en?.trim();
-  if (!nameRus && !nameEn) {
-    invalidFields.value.push("name");
-    return false;
+  if (!nameRus) {
+    invalidFields.value.push("nameRus");
+  }
+  if (!nameEn) {
+    invalidFields.value.push("nameEn");
   }
   if (!spell.value.level) {
     invalidFields.value.push("level");
-    return false;
   }
-  return true;
+  if (!spell.value.school?.trim()) {
+    invalidFields.value.push("school");
+  }
+  return invalidFields.value.length === 0;
 }
 
 async function saveSpell() {
   if (!validate()) {
     const toast = await toastController.create({
-      message: "Заполните обязательные поля (название, уровень)",
+      message: "Заполните обязательные поля (название, англ. название, уровень, школа)",
       duration: 2000,
       position: "top",
     });
@@ -300,8 +314,8 @@ onUnmounted(() => {
               color="primary"
               v-model="(spell.name as Record<string, string>).rus"
               placeholder="Введите название"
-              :class="{ 'invalid-field': invalidFields.includes('name') }"
-              @ionInput="invalidFields = invalidFields.filter((f) => f !== 'name')"
+              :class="{ 'invalid-field': invalidFields.includes('nameRus') }"
+              @ionInput="invalidFields = invalidFields.filter((f) => f !== 'nameRus')"
             />
           </div>
           <div class="stat-section">
@@ -311,8 +325,8 @@ onUnmounted(() => {
               color="primary"
               v-model="(spell.name as Record<string, string>).en"
               placeholder="Enter name"
-              :class="{ 'invalid-field': invalidFields.includes('name') }"
-              @ionInput="invalidFields = invalidFields.filter((f) => f !== 'name')"
+              :class="{ 'invalid-field': invalidFields.includes('nameEn') }"
+              @ionInput="invalidFields = invalidFields.filter((f) => f !== 'nameEn')"
             />
           </div>
           <div class="stat-section">
@@ -322,9 +336,12 @@ onUnmounted(() => {
               color="primary"
               v-model="spell.level"
               placeholder="Выберите уровень"
+              interface="popover"
+              :class="{ 'invalid-field': invalidFields.includes('level') }"
+              @ionChange="invalidFields = invalidFields.filter((f) => f !== 'level')"
             >
               <ion-select-option v-for="l in levels" :key="l" :value="l">
-                {{ l === "0" ? "Фокус" : l + " уровень" }}
+                {{ l === "0" ? "Заговор" : l + " уровень" }}
               </ion-select-option>
             </ion-select>
           </div>
@@ -333,6 +350,7 @@ onUnmounted(() => {
             <ion-select
               fill="outline"
               color="primary"
+              interface="popover"
               v-model="selectedSpellClasses"
               placeholder="Выберите классы (можно несколько или ни одного)"
               multiple
@@ -348,12 +366,23 @@ onUnmounted(() => {
           </div>
           <div class="stat-section">
             <div class="stat-section-name">Школа магии</div>
-            <ion-input
+            <ion-select
               fill="outline"
               color="primary"
               v-model="spell.school"
-              placeholder="Напр. воплощение"
-            />
+              interface="popover"
+              placeholder="Выберите школу"
+              :class="{ 'invalid-field': invalidFields.includes('school') }"
+              @ionChange="invalidFields = invalidFields.filter((f) => f !== 'school')"
+            >
+              <ion-select-option
+                v-for="school in spellSchools"
+                :key="school"
+                :value="school"
+              >
+                {{ school }}
+              </ion-select-option>
+            </ion-select>
           </div>
           <div class="stat-section">
             <div class="stat-section-name">Время каста</div>

@@ -61,6 +61,7 @@ const createItemSkills = ref<ItemSkill[]>([]);
 
 const oldItemId = ref<string>();
 const oldItemCount = ref<number | undefined>();
+const WEIGHT_MAX_LENGTH = 4;
 
 
 const closeEditItemSkillModal = () => {
@@ -325,18 +326,97 @@ function isLetter(str: string) {
   }
 }
 
-const startEditing = () => {
+const sanitizeWeightInput = (rawValue: string): string => {
+  if (!rawValue) {
+    return "";
+  }
+  let cleaned = rawValue.replace(/[^\d.]/g, "");
+  const firstDotIndex = cleaned.indexOf(".");
+  if (firstDotIndex !== -1) {
+    cleaned = cleaned.slice(0, firstDotIndex + 1) + cleaned.slice(firstDotIndex + 1).replace(/\./g, "");
+  }
+  if (cleaned.length > WEIGHT_MAX_LENGTH) {
+    cleaned = cleaned.slice(0, WEIGHT_MAX_LENGTH);
+  }
+  return cleaned;
+};
+
+const parseWeightValue = (rawValue: string): number | undefined => {
+  const cleaned = sanitizeWeightInput(rawValue);
+  if (cleaned === "" || cleaned === ".") {
+    return undefined;
+  }
+  const value = Number(cleaned);
+  if (Number.isNaN(value)) {
+    return undefined;
+  }
+  return value;
+};
+
+const startWeightEditing = () => {
   editedValues.value = createInventoryItemStore.item.stats.weight;
 };
 
-const updateFieldValue = (number: number) => {
-  editedValues.value = number;
+const updateWeightField = (event: Event) => {
+  const target = event.target as HTMLElement | null;
+  if (!target) {
+    return;
+  }
+  const cleaned = sanitizeWeightInput(target.innerText || "");
+  if (cleaned !== target.innerText) {
+    target.innerText = cleaned;
+  }
+  editedValues.value = parseWeightValue(cleaned);
 };
 
-const saveField = (number: number) => {
-  createInventoryItemStore.item.stats.weight = number;
-  if (number >= 0) {
+const saveWeightField = (event: Event) => {
+  const target = event.target as HTMLElement | null;
+  const rawValue = target?.innerText || "";
+  const cleaned = sanitizeWeightInput(rawValue);
+  if (target && cleaned !== target.innerText) {
+    target.innerText = cleaned;
+  }
+  const value = parseWeightValue(cleaned);
+  createInventoryItemStore.item.stats.weight = value;
+  if (value !== undefined && value >= 0) {
     invalidFields.value = invalidFields.value.filter(field => field !== 'weight');
+  }
+};
+
+const handleWeightKeydown = (event: KeyboardEvent) => {
+  const target = event.target as HTMLElement | null;
+  if (!target) {
+    return;
+  }
+  const key = event.key;
+  if (
+      key === "Backspace" ||
+      key === "Delete" ||
+      key === "ArrowLeft" ||
+      key === "ArrowRight" ||
+      key === "ArrowUp" ||
+      key === "ArrowDown" ||
+      key === "Tab" ||
+      key === "Home" ||
+      key === "End" ||
+      event.ctrlKey ||
+      event.metaKey
+  ) {
+    return;
+  }
+  if (!/[\d.]/.test(key)) {
+    event.preventDefault();
+    return;
+  }
+  const selection = window.getSelection();
+  const selectedLength = selection && selection.rangeCount > 0 ? selection.getRangeAt(0).toString().length : 0;
+  const currentValue = target.innerText || "";
+  if (key === "." && currentValue.includes(".") && selectedLength === 0) {
+    event.preventDefault();
+    return;
+  }
+  if (currentValue.length - selectedLength >= WEIGHT_MAX_LENGTH) {
+    event.preventDefault();
   }
 };
 
@@ -683,10 +763,11 @@ const getSkillImageUrl = (imgUrl: string | undefined) => {
               <span
                   class="stat-value"
                   contenteditable="true"
-                  @focus="startEditing()"
-                  @blur="saveField($event.target?.innerText)"
-                  @input="updateFieldValue($event.target?.innerText)"
-                  @keydown.enter.prevent="saveField($event.target?.innerText)"
+                  @focus="startWeightEditing()"
+                  @blur="saveWeightField($event)"
+                  @input="updateWeightField($event)"
+                  @keydown="handleWeightKeydown($event)"
+                  @keydown.enter.prevent="saveWeightField($event)"
                   :class="{ 'invalid-field': invalidFields.includes('weight') }"
               >{{ createInventoryItemStore.item?.stats?.weight }}</span>
             </div>

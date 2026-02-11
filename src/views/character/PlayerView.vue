@@ -142,7 +142,7 @@ const openSubheader = () => {
 
 <template>
   <ion-page>
-    <ion-header :transluent="false">
+    <ion-header :translucent="false">
       <PlayerViewHeader v-if="asyncDone"/>
       <div class="subheader-block" :class="{ openSubheader: subheaderStore.subheaderOpened }">
         <PlayerViewSubheader v-if="asyncDone" @speed-selected="openEditSpeedModal"
@@ -162,7 +162,7 @@ const openSubheader = () => {
                      color="dark"
                      direction="y"
                      :scroll-x="false">
-          <div class="abilities" :class="{ openSubheader: subheaderStore.subheaderOpened }">
+          <div class="tab-content abilities" :class="{ openSubheader: subheaderStore.subheaderOpened }">
             <AbilitiesView v-if="asyncDone" @ability-selected="openEditAbilityModal" @skill-selected="openEditSkillModal"/>
           </div>
         </ion-content>
@@ -173,7 +173,7 @@ const openSubheader = () => {
                      color="dark"
                      direction="y"
                      :scroll-x="false">
-          <div class="attacks" :class="{ openSubheader: subheaderStore.subheaderOpened }">
+          <div class="tab-content attacks" :class="{ openSubheader: subheaderStore.subheaderOpened }">
             <AttacksAndSkillsView v-if="asyncDone" @ability-selected="openEditAbilityModal"/>
           </div>
         </ion-content>
@@ -184,7 +184,7 @@ const openSubheader = () => {
                      color="dark"
                      direction="y"
                      :scroll-x="false">
-          <div class="bio" :class="{ openSubheader: subheaderStore.subheaderOpened }">
+          <div class="tab-content bio" :class="{ openSubheader: subheaderStore.subheaderOpened }">
             <Suspense>
               <PersonalityView v-if="asyncDone"/>
             </Suspense>
@@ -197,7 +197,7 @@ const openSubheader = () => {
                      color="dark"
                      direction="y"
                      :scroll-x="false">
-          <div class="inventory" :class="{ openSubheader: subheaderStore.subheaderOpened }">
+          <div class="tab-content inventory" :class="{ openSubheader: subheaderStore.subheaderOpened }">
             <Suspense>
               <InventoryView v-if="asyncDone"/>
             </Suspense>
@@ -210,7 +210,7 @@ const openSubheader = () => {
                      color="dark"
                      direction="y"
                      :scroll-x="false">
-          <div class="notes" :class="{ openSubheader: subheaderStore.subheaderOpened }">
+          <div class="tab-content notes" :class="{ openSubheader: subheaderStore.subheaderOpened }">
             <Suspense>
               <NotesView v-if="asyncDone"/>
             </Suspense>
@@ -223,14 +223,14 @@ const openSubheader = () => {
                      color="dark"
                      direction="y"
                      :scroll-x="false">
-          <div class="magic" :class="{ openSubheader: subheaderStore.subheaderOpened }">
+          <div class="tab-content magic" :class="{ openSubheader: subheaderStore.subheaderOpened }">
             <Suspense>
               <MagicView v-if="asyncDone"/>
             </Suspense>
           </div>
         </ion-content>
       </ion-tab>
-      <ion-tab-bar slot="bottom" color="dark" class="tab-bar" :transluent="true">
+      <ion-tab-bar slot="bottom" color="dark" class="tab-bar" :translucent="true">
         <ion-tab-button tab="abilities">
           <div class="tab-icon-wrapper">
             <ion-icon :icon="abilitiesTabIcon"/>

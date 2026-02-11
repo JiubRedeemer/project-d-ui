@@ -12,7 +12,7 @@ const characterStore = useCharacterStore()
 
 </script>
 
-<template :style="{ marginBottom: subheaderVisible ? '200px' : '0' }">
+<template>
   <ion-toolbar color="dark">
     <ion-buttons slot="start">
       <ion-back-button/>

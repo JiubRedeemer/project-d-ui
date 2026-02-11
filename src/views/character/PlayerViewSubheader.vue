@@ -1,6 +1,6 @@
 <script setup lang="ts">
 
-import {IonIcon, onIonViewDidEnter} from "@ionic/vue";
+import {IonIcon} from "@ionic/vue";
 import HpBar from "@/views/common/HpBar.vue";
 import restIcon from "../../static/icons/rest.svg"
 import armorIcon from "../../static/icons/Armor.svg"
@@ -10,22 +10,10 @@ import {HEADERS} from "@/config/localisations";
 import {useCharacterStore} from "@/stores/CharacterStore";
 import {useSubheaderOpenedStore} from "@/stores/SubheaderStore";
 import {useInventoryStore} from "@/stores/InventoryStore";
-import { useCharacterSkillsStore } from "@/stores/CharacterSkillsStore";
-import { useRoute } from "vue-router";
-const route = useRoute();
-
-
 
 const characterStore = useCharacterStore()
 const subheaderStore = useSubheaderOpenedStore();
 const inventoryStore = useInventoryStore();
-const characterSkillsStore = useCharacterSkillsStore();
-
-onIonViewDidEnter(async () => {
-  await characterStore.updateCharacterInStoreById(route.params.roomId, route.params.characterId)
-  await inventoryStore.updateInventoryInStoreById(route.params.roomId, route.params.characterId)
-  await characterSkillsStore.updateCharacterSkills(route.params.roomId, route.params.characterId)
-})
 
 function getArmoryClassBonusSum(itemStats: EquippedItemsStatsResponse | null): number {
   if (!itemStats) return 0;
@@ -167,9 +155,10 @@ const getDexArmoryClass = () : number => {
   width: 100%;
   border-bottom-right-radius: 100px;
   border-bottom-left-radius: 100px;
-  padding-left: 20px;
-  padding-right: 20px;
-  margin-bottom: 10px;
+  padding: 6px 16px 8px;
+  gap: 8px;
+  margin-bottom: 6px;
+  box-sizing: border-box;
 }
 
 .end-icons {
@@ -205,7 +194,7 @@ const getDexArmoryClass = () : number => {
   display: inline-block;
   width: 40px;
   height: 40px;
-  margin-left: 10px;
+  margin-left: 8px;
 }
 
 .speed-icon {
@@ -241,7 +230,7 @@ const getDexArmoryClass = () : number => {
   display: inline-block;
   width: 40px;
   height: 40px;
-  margin-right: 10px;
+  margin-right: 8px;
 }
 
 .rest-icon {
@@ -254,23 +243,27 @@ const getDexArmoryClass = () : number => {
   justify-content: center;
   align-items: center;
   flex-grow: 1;
-  flex-direction: column;
+  gap: 5px;
+  flex-direction: row;
 }
 
 .subheader-chip {
   background-color: var(--ion-color-medium-tint);
   border-radius: 10px;
-  width: 20vw;
-  height: 18px;
-  margin-bottom: 0;
+  width: 70px;
+  height: 20px;
   display: flex;
-  padding: 5px;
+  padding: 0 6px;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;
 }
 
 .subheader-chip-name {
   font-size: 10px;
+  line-height: 12px;
+  margin-top: 2px;
+  color: var(--ion-color-light);
 }
 
 .initiative,
@@ -282,9 +275,9 @@ const getDexArmoryClass = () : number => {
 
 .subheader-show-arrow {
   position: absolute;
-  bottom: -10px;
+  bottom: -8px;
   left: 50%;
-  transform: translateX(-60%);
+  transform: translateX(-50%);
   background: var(--ion-color-medium);
   border-radius: 50%;
   width: 15px;
@@ -296,7 +289,7 @@ const getDexArmoryClass = () : number => {
 }
 
 .arrow {
-  font-size: 20px;
+  font-size: 14px;
   color: white;
 }
 </style>
