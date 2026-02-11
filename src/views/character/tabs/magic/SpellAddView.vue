@@ -24,6 +24,7 @@ import {
   addSpellToBook,
   createSpell,
   getSpellBookByRoomAndCharacter,
+  updateSpell,
 } from "@/api/magicApi";
 import type { SpellDto } from "@/components/models/response/MagicApi";
 import type { SpellClass } from "@/components/models/response/MagicApi";
@@ -186,20 +187,28 @@ async function saveSpell() {
       imgUrl: spell.value.imgUrl,
     };
 
-    const created = await createSpell(body);
+    const editing = magicStore.editingSpell;
+    const isOwner = editing?.id && editing?.createdBy === characterId.value;
 
-    if (created.id && magicStore.spellBook?.id) {
-      const updated = await addSpellToBook(
-        magicStore.spellBook.id,
-        created.id
-      );
-      magicStore.setSpellBook(updated);
+    let result: SpellDto;
+    if (isOwner) {
+      result = await updateSpell(editing.id!, body);
+      await magicStore.updateSpellBookInStore(roomId.value, characterId.value);
+    } else {
+      result = await createSpell(body);
+      if (result.id && magicStore.spellBook?.id) {
+        const updated = await addSpellToBook(
+          magicStore.spellBook.id,
+          result.id
+        );
+        magicStore.setSpellBook(updated);
+      }
     }
 
     magicStore.setEditingSpell(null);
 
     const toast = await toastController.create({
-      message: "Заклинание создано",
+      message: isOwner ? "Заклинание обновлено" : "Заклинание создано",
       duration: 1000,
       position: "top",
     });
@@ -209,7 +218,7 @@ async function saveSpell() {
   } catch (e) {
     console.error("Failed to save spell:", e);
     const toast = await toastController.create({
-      message: "Ошибка при создании заклинания",
+      message: "Ошибка при сохранении заклинания",
       duration: 2000,
       position: "top",
       color: "danger",
