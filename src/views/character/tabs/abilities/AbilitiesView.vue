@@ -3,7 +3,7 @@ import SkillUp from "@/views/common/SkillUp.vue";
 import axios from "axios";
 import { useRoute } from "vue-router";
 import { GATEWAY_INTEGRATION_ROUTES } from "@/config/integrationRoutes";
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { onIonViewDidEnter } from "@ionic/vue";
 import { Ability, Character } from "@/components/models/response/Character";
 import { useCharacterStore } from "@/stores/CharacterStore";
@@ -15,6 +15,13 @@ const abilities = ref<AbilityResponse[]>([]);
 let ruleBookAbilityCodeMap: Map<string, AbilityResponse>;
 let characterAbilityCodeMap: Map<string, Ability>;
 const resultAbilities = ref<Record<string, AbilityDto>>();
+
+const orderedAbilities = computed(() => {
+  if (!resultAbilities.value || !ruleBookAbilityCodeMap) return [];
+  return Array.from(ruleBookAbilityCodeMap.keys())
+    .filter((code) => resultAbilities.value && code in resultAbilities.value)
+    .map((code) => [code, resultAbilities.value![code]] as [string, AbilityDto]);
+});
 
 const emits = defineEmits(["ability-selected", "skill-selected"]);
 
@@ -149,7 +156,7 @@ function calculateCheckValue(value: any) {
 <template>
   <!--  <ion-content class="ion-padding" color="dark">-->
   <div class="abilities" v-if="resultAbilities">
-    <div class="ability-item" v-for="(ability, key) in Object.entries(resultAbilities)" :key="key">
+    <div class="ability-item" v-for="(ability, key) in orderedAbilities" :key="key">
       <div class="ability-header" @click="selectAbility(ability[1])">
         <div class="ability">
           <div class="ability-name">{{ ability[1].name }}</div>
