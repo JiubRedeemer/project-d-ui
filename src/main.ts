@@ -1,5 +1,8 @@
 import {createApp} from 'vue'
+import { registerSW } from 'virtual:pwa-register'
 import App from './App.vue'
+
+registerSW({ immediate: true })
 import router from './router';
 import VueCookies from 'vue-cookies'
 

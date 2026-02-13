@@ -14,7 +14,7 @@ export default defineConfig({
     legacy(),
     VitePWA({
       registerType: 'autoUpdate',
-      injectRegister: 'auto',
+      injectRegister: null,
       devOptions: {
         enabled: true,
       },
@@ -28,9 +28,6 @@ export default defineConfig({
         name: 'ProjectD',
         short_name: 'ProjectD',
         description: 'Dnd app',
-        id: '.',
-        start_url: '.',
-        scope: '.',
         display: 'standalone',
         background_color: '#ffffff',
         theme_color: '#ffffff',
