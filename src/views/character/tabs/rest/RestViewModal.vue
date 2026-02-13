@@ -72,6 +72,17 @@ async function onSubmit() {
 <template>
   <TopModal :isOpen="isOpen" @close="emit('closeRestModal')">
     <div class="rest">
+      <div
+        class="rest-bg rest-bg--long"
+        :class="{ 'rest-bg--active': longRest }"
+        aria-hidden="true"
+      />
+      <div
+        class="rest-bg rest-bg--short"
+        :class="{ 'rest-bg--active': !longRest }"
+        aria-hidden="true"
+      />
+      <div class="rest-content">
 
       <!-- Блок с кубами здоровья 
       <div v-if="!longRest" class="rest-section">
@@ -98,16 +109,50 @@ async function onSubmit() {
         </IonButton>
       </div>
 
+      </div>
     </div>
   </TopModal>
 </template>
 
 <style scoped>
 .rest {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 20px;
   padding: 16px;
+  border-radius: 0 0 16px 16px;
+  overflow: hidden;
+}
+
+.rest-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0;
+  transition: opacity 0.4s ease-in-out;
+  pointer-events: none;
+}
+
+.rest-bg--long {
+  background-image: url("@/static/images/rest/REST_LONG.png");
+}
+
+.rest-bg--short {
+  background-image: url("@/static/images/rest/REST_SHORT.png");
+}
+
+.rest-bg--active {
+  opacity: 1;
+}
+
+.rest-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 /* Общая секция */
