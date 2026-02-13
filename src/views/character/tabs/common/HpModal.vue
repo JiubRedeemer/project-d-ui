@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import {IonButton, IonIcon, IonModal} from "@ionic/vue";
-import axios from "axios";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {useRoute} from "vue-router";
 import {ref} from "vue";
@@ -42,7 +41,7 @@ const closeEditHpModal = () => {
       :is-open="isOpen"
       @didDismiss="emit('closeHpModal')"
       :initial-breakpoint="1"
-      :breakpoints="[0, 0.5, 1]"
+      :breakpoints="[0, 1]"
   >
     <div class="block">
       <div class="header">
@@ -75,7 +74,7 @@ const closeEditHpModal = () => {
 <style scoped>
 .block {
   width: 100%;
-  height: 70vh;
+  height: 75vh;
   display: flex;
   justify-content: space-between;
   flex-direction: column;

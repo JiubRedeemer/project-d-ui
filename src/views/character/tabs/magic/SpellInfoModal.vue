@@ -148,7 +148,7 @@ function closeModal() {
     :is-open="props.isOpen"
     @didDismiss="closeModal"
     :initial-breakpoint="1"
-    :breakpoints="[0, 0.5, 1]"
+    :breakpoints="[0, 1]"
   >
     <div class="block" v-if="item && spell">
       <div class="header">
