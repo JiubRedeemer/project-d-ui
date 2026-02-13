@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import SkillUp from "@/views/common/SkillUp.vue";
 import axios from "axios";
-import { useRoute } from "vue-router";
-import { GATEWAY_INTEGRATION_ROUTES } from "@/config/integrationRoutes";
-import { computed, onMounted, ref } from "vue";
-import { onIonViewDidEnter } from "@ionic/vue";
-import { Ability, Character } from "@/components/models/response/Character";
-import { useCharacterStore } from "@/stores/CharacterStore";
+import {useRoute} from "vue-router";
+import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {computed, onMounted, ref} from "vue";
+import {onIonViewDidEnter} from "@ionic/vue";
+import {Ability, Character} from "@/components/models/response/Character";
+import {useCharacterStore} from "@/stores/CharacterStore";
 
 const route = useRoute();
 const characterStore = useCharacterStore();
@@ -19,8 +19,8 @@ const resultAbilities = ref<Record<string, AbilityDto>>();
 const orderedAbilities = computed(() => {
   if (!resultAbilities.value || !ruleBookAbilityCodeMap) return [];
   return Array.from(ruleBookAbilityCodeMap.keys())
-    .filter((code) => resultAbilities.value && code in resultAbilities.value)
-    .map((code) => [code, resultAbilities.value![code]] as [string, AbilityDto]);
+      .filter((code) => resultAbilities.value && code in resultAbilities.value)
+      .map((code) => [code, resultAbilities.value![code]] as [string, AbilityDto]);
 });
 
 const emits = defineEmits(["ability-selected", "skill-selected"]);
@@ -37,13 +37,13 @@ const selectSkill = (skill: SkillDto) => {
 const loadAbilitiesData = async () => {
   try {
     const response = await axios.get(
-      `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.roomAbilities}`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-        },
-      }
+        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.roomAbilities}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          },
+        }
     );
     abilities.value = response.data;
     ruleBookAbilityCodeMap = buildAbilityCodeMap(abilities.value);
@@ -108,14 +108,14 @@ function enrichCharacterAbility(value: Ability, key: string, map: Map<string, Ab
 async function updateMastery(skill: any) {
   try {
     await axios.patch(
-      `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${characterStore.character.id}${GATEWAY_INTEGRATION_ROUTES.skills}/${skill.code}${GATEWAY_INTEGRATION_ROUTES.mastery}`,
-      { isMastery: skill.up, masteryValue: skill.masteryValue },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-        },
-      }
+        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${characterStore.character.id}${GATEWAY_INTEGRATION_ROUTES.skills}/${skill.code}${GATEWAY_INTEGRATION_ROUTES.mastery}`,
+        {isMastery: skill.up, masteryValue: skill.masteryValue},
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          },
+        }
     );
   } catch (error) {
     console.error("Ошибка при обновлении мастерства:", error);
@@ -123,9 +123,16 @@ async function updateMastery(skill: any) {
 }
 
 function changeChecked(skill: any) {
-  if(skill.masteryValue == 0) {skill.up = true; skill.masteryValue = 1;}
-  else if(skill.masteryValue == 1) {skill.up = true; skill.masteryValue = 2;}
-  else if(skill.masteryValue == 2) {skill.up = false; skill.masteryValue = 0;}
+  if (skill.masteryValue == 0) {
+    skill.up = true;
+    skill.masteryValue = 1;
+  } else if (skill.masteryValue == 1) {
+    skill.up = true;
+    skill.masteryValue = 2;
+  } else if (skill.masteryValue == 2) {
+    skill.up = false;
+    skill.masteryValue = 0;
+  }
   updateMastery(skill);
 }
 
@@ -134,7 +141,7 @@ function calculateSkillValue(value: any, skill: any) {
   if (skill.masteryValue == 1 && characterStore.character?.proficiencyBonus) {
     result += characterStore.character.proficiencyBonus;
   }
-  if( skill.masteryValue > 1 && characterStore.character?.proficiencyBonus) {
+  if (skill.masteryValue > 1 && characterStore.character?.proficiencyBonus) {
     result += skill.masteryValue * characterStore.character.proficiencyBonus;
   }
   if (skill.bonusValue) {
@@ -156,6 +163,12 @@ function calculateCheckValue(value: any) {
 <template>
   <!--  <ion-content class="ion-padding" color="dark">-->
   <div class="abilities" v-if="resultAbilities">
+    <div class="ability-item">
+      <div class="skill-item" style="width: 100%; height: 27px; margin-top: 0">
+        <div class="skill-name">Бонус мастерства</div>
+        <div class="skill-value">{{ characterStore.character.proficiencyBonus }}</div>
+      </div>
+    </div>
     <div class="ability-item" v-for="(ability, key) in orderedAbilities" :key="key">
       <div class="ability-header" @click="selectAbility(ability[1])">
         <div class="ability">
@@ -177,7 +190,8 @@ function calculateCheckValue(value: any) {
         <div class="skill-item" v-for="(skill, index) in ability[1].skills" :key="index">
           <div class="skill-start-block">
             <div class="skill-up">
-              <SkillUp :checked="skill.masteryValue > 0" :doubleChecked="skill.masteryValue > 1" @click="changeChecked(skill)" />
+              <SkillUp :checked="skill.masteryValue > 0" :doubleChecked="skill.masteryValue > 1"
+                       @click="changeChecked(skill)"/>
             </div>
             <div class="skill-name" @click="selectSkill(skill)">{{ skill.name }}</div>
           </div>
