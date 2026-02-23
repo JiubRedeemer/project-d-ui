@@ -14,5 +14,7 @@ interface AbilityDto {
     value: number; // Значение способности
     bonusValue: number; // Значение способности
     name: string; // Название способности (например, "Сила")
+    masteryCheckValue: number;
+    masterySavingThrowValue: number;
     skills?: SkillDto[]; // Список навыков, связанных с этой способностью (опционально)
 }

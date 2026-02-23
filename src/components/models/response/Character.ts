@@ -41,6 +41,8 @@ export interface Ability {
     code: string;
     value: number | undefined;
     bonusValue: number;
+    masteryCheckValue: number;
+    masterySavingThrowValue: number;
     skills: Skill[]
 }
 

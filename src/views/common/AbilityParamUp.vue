@@ -1,0 +1,50 @@
+<template>
+  <div class="outer-circle">
+    <div class="inner-circle" :class="{ 'checked': checked, 'doubleChecked': doubleChecked }"></div>
+  </div>
+</template>
+
+<script>
+export default {
+  name: "CircleToggle",
+  props: {
+    checked: {
+      type: Boolean,
+      default: false,
+    },
+    doubleChecked: {
+      type: Boolean,
+      default: false,
+    },
+  },
+};
+</script>
+
+<style scoped>
+.outer-circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px; /* Задайте размер внешнего круга */
+  height: 15px;
+  border: 2px solid #ccc; /* Цвет рамки внешнего круга */
+  border-radius: 50%;
+  position: relative;
+}
+
+.inner-circle {
+  width: 50%; /* Задайте размер внутреннего круга */
+  height: 50%;
+  border-radius: 50%;
+  background-color: transparent;
+  transition: background-color 0.3s ease;
+}
+
+.inner-circle.checked {
+  background-color: var(--ion-color-primary); /* Цвет закрашивания, если checked=true */
+}
+
+.inner-circle.doubleChecked {
+  background-color: var(--ion-color-warning); /* Цвет закрашивания, если doubleChecked=true */
+}
+</style>
