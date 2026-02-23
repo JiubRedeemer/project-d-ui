@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import SkillUp from "@/views/common/SkillUp.vue";
+import AbilityParamUp from "@/views/common/AbilityParamUp.vue";
 import axios from "axios";
 import {useRoute} from "vue-router";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
@@ -102,6 +103,8 @@ function enrichCharacterAbility(value: Ability, key: string, map: Map<string, Ab
       bonusValue: characterStore.character?.skills.filter(s => s.code === skill.code)[0]?.bonusValue || 0,
       masteryValue: characterStore.character?.skills.filter(s => s.code === skill.code)[0]?.masteryValue || 0
     }));
+    value.masteryCheckValue = characterStore.character?.skills.filter(s => s.code === ("CHECK_" + value.code))[0]?.masteryValue || 0;
+    value.masterySavingThrowValue = characterStore.character?.skills.filter(s => s.code === ("SAVING_THROW_" + value.code))[0]?.masteryValue || 0;
   }
 }
 
@@ -110,6 +113,40 @@ async function updateMastery(skill: any) {
     await axios.patch(
         `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${characterStore.character.id}${GATEWAY_INTEGRATION_ROUTES.skills}/${skill.code}${GATEWAY_INTEGRATION_ROUTES.mastery}`,
         {isMastery: skill.up, masteryValue: skill.masteryValue},
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          },
+        }
+    );
+  } catch (error) {
+    console.error("Ошибка при обновлении мастерства:", error);
+  }
+}
+
+async function updateMasteryAbilityCheck(ability: AbilityDto) {
+  try {
+    await axios.patch(
+        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${characterStore.character.id}${GATEWAY_INTEGRATION_ROUTES.skills}/CHECK_${ability.code}${GATEWAY_INTEGRATION_ROUTES.mastery}`,
+        {isMastery: ability.masteryCheckValue >= 1, masteryValue: ability.masteryCheckValue},
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          },
+        }
+    );
+  } catch (error) {
+    console.error("Ошибка при обновлении мастерства:", error);
+  }
+}
+
+async function updateMasteryAbilitySavingThrow(ability: AbilityDto) {
+  try {
+    await axios.patch(
+        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${characterStore.character.id}${GATEWAY_INTEGRATION_ROUTES.skills}/SAVING_THROW_${ability.code}${GATEWAY_INTEGRATION_ROUTES.mastery}`,
+        {isMastery: ability.masterySavingThrowValue >= 1, masteryValue: ability.masterySavingThrowValue},
         {
           headers: {
             "Content-Type": "application/json",
@@ -136,6 +173,28 @@ function changeChecked(skill: any) {
   updateMastery(skill);
 }
 
+function changeCheckedAbilityCheck(ability: AbilityDto) {
+  if (ability.masteryCheckValue == 0 || !ability.masteryCheckValue) {
+    ability.masteryCheckValue = 1;
+  } else if (ability.masteryCheckValue == 1) {
+    ability.masteryCheckValue = 2;
+  } else if (ability.masteryCheckValue == 2) {
+    ability.masteryCheckValue = 0;
+  }
+  updateMasteryAbilityCheck(ability);
+}
+
+function changeCheckedAbilitySavingThrow(ability: AbilityDto) {
+  if (ability.masterySavingThrowValue == 0 || !ability.masterySavingThrowValue) {
+    ability.masterySavingThrowValue = 1;
+  } else if (ability.masterySavingThrowValue == 1) {
+    ability.masterySavingThrowValue = 2;
+  } else if (ability.masterySavingThrowValue == 2) {
+    ability.masterySavingThrowValue = 0;
+  }
+  updateMasteryAbilitySavingThrow(ability);
+}
+
 function calculateSkillValue(value: any, skill: any) {
   let result = Math.floor((value - 10) / 2);
   if (skill.masteryValue == 1 && characterStore.character?.proficiencyBonus) {
@@ -150,18 +209,31 @@ function calculateSkillValue(value: any, skill: any) {
   return result;
 }
 
-function calculateSavingThrow(value: any) {
-  return Math.floor((value - 10) / 2);
+function calculateSavingThrow(value: any, ability: AbilityDto) {
+  let result = Math.floor((value - 10) / 2);
+  if (ability.masterySavingThrowValue == 1 && characterStore.character?.proficiencyBonus) {
+    result += characterStore.character.proficiencyBonus;
+  }
+  if (ability.masterySavingThrowValue > 1 && characterStore.character?.proficiencyBonus) {
+    result += ability.masterySavingThrowValue * characterStore.character.proficiencyBonus;
+  }
+  return result;
 }
 
-function calculateCheckValue(value: any) {
-  return Math.floor((value - 10) / 2);
+function calculateCheckValue(value: any, ability: AbilityDto) {
+  let result = Math.floor((value - 10) / 2);
+  if (ability.masteryCheckValue == 1 && characterStore.character?.proficiencyBonus) {
+    result += characterStore.character.proficiencyBonus;
+  }
+  if (ability.masteryCheckValue > 1 && characterStore.character?.proficiencyBonus) {
+    result += ability.masteryCheckValue * characterStore.character.proficiencyBonus;
+  }
+  return result;
 }
 </script>
 
 
 <template>
-  <!--  <ion-content class="ion-padding" color="dark">-->
   <div class="abilities" v-if="resultAbilities">
     <div class="ability-item">
       <div class="skill-item" style="width: 100%; height: 27px; margin-top: 0">
@@ -170,19 +242,29 @@ function calculateCheckValue(value: any) {
       </div>
     </div>
     <div class="ability-item" v-for="(ability, key) in orderedAbilities" :key="key">
-      <div class="ability-header" @click="selectAbility(ability[1])">
-        <div class="ability">
+      <div class="ability-header">
+        <div class="ability" @click="selectAbility(ability[1])">
           <div class="ability-name">{{ ability[1].name }}</div>
           <div class="ability-value">{{ ability[1].value + ability[1].bonusValue }}</div>
         </div>
         <div class="ability-side-block">
           <div class="check">
+            <div class="skill-up">
+              <AbilityParamUp :checked="ability[1].masteryCheckValue > 0"
+                              :doubleChecked="ability[1].masteryCheckValue > 1"
+                              @click="changeCheckedAbilityCheck(ability[1])"/>
+            </div>
             <div class="check-name">Проверка</div>
-            <div class="check-value">{{ calculateCheckValue(ability[1].value + ability[1].bonusValue) }}</div>
+            <div class="check-value">{{ calculateCheckValue(ability[1].value + ability[1].bonusValue, ability[1]) }}</div>
           </div>
           <div class="saving-throw">
+            <div class="skill-up">
+              <AbilityParamUp :checked="ability[1].masterySavingThrowValue > 0"
+                              :doubleChecked="ability[1].masterySavingThrowValue > 1"
+                              @click="changeCheckedAbilitySavingThrow(ability[1])"/>
+            </div>
             <div class="saving-throw-name">Спасбросок</div>
-            <div class="saving-throw-value">{{ calculateSavingThrow(ability[1].value + ability[1].bonusValue) }}</div>
+            <div class="saving-throw-value">{{ calculateSavingThrow(ability[1].value + ability[1].bonusValue, ability[1]) }}</div>
           </div>
         </div>
       </div>
@@ -200,7 +282,6 @@ function calculateCheckValue(value: any) {
       </div>
     </div>
   </div>
-  <!--  </ion-content>-->
 </template>
 
 <style scoped>
@@ -241,54 +322,41 @@ function calculateCheckValue(value: any) {
   width: 30%;
 }
 
-.check {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-direction: row;
-  background: var(--ion-color-medium-tint);
-  border-radius: 10px;
-  font-size: 11px;
-  height: 20px;
-  padding-left: 10px;
-  padding-right: 3px;
-}
 
-.check-value {
-  font-size: 11px;
-  background: var(--ion-color-primary);
-  color: var(--ion-color-primary-contrast);
-  border-radius: 50%;
-  height: 15px;
-  width: 15px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
 
+.check,
 .saving-throw {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  flex-direction: row;
   background: var(--ion-color-medium-tint);
   border-radius: 10px;
   font-size: 11px;
-  height: 20px;
-  padding-left: 10px;
-  padding-right: 3px;
+  height: 22px;
+  padding-left: 2px;
 }
 
+.check-name,
+.saving-throw-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+.check-value,
 .saving-throw-value {
   font-size: 11px;
   background: var(--ion-color-primary);
   color: var(--ion-color-primary-contrast);
   border-radius: 50%;
-  height: 15px;
-  width: 15px;
+  height: 16px;
+  width: 16px;
+  min-width: 16px;
   display: flex;
   justify-content: center;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .skill-item {
@@ -328,6 +396,8 @@ function calculateCheckValue(value: any) {
 .skill-up {
   width: 20px;
   height: 20px;
+  display: flex;
+  align-items: center;
 }
 
 ion-content {
