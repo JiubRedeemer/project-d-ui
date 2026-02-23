@@ -109,6 +109,13 @@ const addNote = async () => {
     console.log(noteDto)
     console.log("newTags.value:", JSON.stringify(newTags.value || newTags));
 
+    if(!noteDto.name || noteDto.name.length < 1) {
+      newNoteName.value = "";
+      newNoteText.value = "";
+      newTags.value.splice(0); // очищает reactive массив
+      isBlockExpanded.value = null; // Закрываем все секции
+      return;
+    }
     const res = await axios.put(
         `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}/rooms/${roomId}/characters/${characterId}/notes`,
         noteDto,
@@ -144,6 +151,12 @@ const updateNote = async (notebookId: string, noteId: string) => {
       tags: normalizeTags(editTags.value),
     };
     console.log(noteDto)
+    if(!noteDto.name || noteDto.name.length < 1) {
+      isEditing.value = null;
+      isBlockExpanded.value = null; // Закрываем все секции
+      toggleEditMode(null);
+      return;
+    }
     const res = await axios.patch(
         `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}/rooms/${roomId}/characters/${characterId}/notes/${noteId}`,
         noteDto,
@@ -201,12 +214,6 @@ const expandBlock = (noteNumber: number, section) => {
   editNoteText.value = section.noteText;
   editTags.value = section.tags ? JSON.parse(JSON.stringify(section.tags)) : [];
 
-};
-
-const updateInputSectionText = (event: Event, section) => {
-  const target = event.target as HTMLElement;
-  editNoteText.value = target.innerText;
-  editNoteName.value = section.name;
 };
 const updateHeaderSectionText = (event: Event, section) => {
   const target = event.target as HTMLElement;
