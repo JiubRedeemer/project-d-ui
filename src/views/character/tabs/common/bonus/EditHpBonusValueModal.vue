@@ -19,7 +19,9 @@ const props = defineProps({
 
 const emit = defineEmits(["closeBonusValueHpModal"]); // Добавляем событие закрытия
 const inputValue = ref();
+const inputMaxValue = ref();
 inputValue.value = characterStore.character.health.bonusValue;
+inputMaxValue.value = characterStore.character.health.maxHp;
 
 async function onSubmit() {
   try {
@@ -36,10 +38,22 @@ async function onSubmit() {
           },
         }
     );
+    await axios.patch(
+        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${characterStore.character.id}${props.url}${GATEWAY_INTEGRATION_ROUTES.max}`,
+        {
+          bonusValue: inputMaxValue.value,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          },
+        }
+    );
   } catch (error) {
     console.error("Ошибка при получении данных:", error);
   }
-  characterStore.character.health.bonusValue! = Number(inputValue.value);
+  characterStore.updateCharacterInStoreById(route.params.roomId, characterStore.character.id);
   console.log(inputValue);
   emit('closeBonusValueHpModal');
 }
@@ -59,6 +73,19 @@ async function onSubmit() {
             HEADERS.health.rus + " (" + (characterStore.character.health!.maxHp! + characterStore.character.health!.bonusValue!) + ")"
           }}
         </div>
+      </div>
+      <div class="input-block">
+        <ion-input
+            type="number"
+            fill="outline"
+            color="primary"
+            :clear-input="false"
+            v-model="inputMaxValue"
+            :value="characterStore.character.health!.maxHp"
+            label-placement="floating"
+            label="Максимальное значение"
+            class="input-block"
+            shape="round"/>
       </div>
       <div class="input-block">
         <ion-input

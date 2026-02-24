@@ -45,6 +45,7 @@ export const GATEWAY_INTEGRATION_ROUTES = {
     equip: "/equip",
 
     health: "/health",
+    max: "/max",
     updateCurrent: "/updateCurrent",
     armoryClass: "/armoryClass",
     speed: "/speed",
