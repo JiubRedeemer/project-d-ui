@@ -144,9 +144,9 @@ async function exchangeMoneyRequest(goldenCount: number, silverCount: number, co
         v-model="walletStore.wallet.count"
     >
       <ion-select slot="start" aria-label="Coin" interface="popover" v-model="walletStore.wallet.type">
-        <ion-select-option value="golden_coin">🪙</ion-select-option>
-        <ion-select-option value="silver_coin">⚪</ion-select-option>
-        <ion-select-option value="copper_coin">🟠</ion-select-option>
+        <ion-select-option value="golden_coin">зм.</ion-select-option>
+        <ion-select-option value="silver_coin">см.</ion-select-option>
+        <ion-select-option value="copper_coin">мм.</ion-select-option>
       </ion-select>
     </ion-input>
     <div class="exchange-buttons">
