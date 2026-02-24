@@ -24,7 +24,7 @@ import EditArmoryClassValueModal from "@/views/character/tabs/common/bonus/EditA
 import EditInitiativeValueModal from "@/views/character/tabs/common/bonus/EditInitiativeValueModal.vue";
 import HpModal from "@/views/character/tabs/common/HpModal.vue";
 import abilitiesTabIcon from "../../static/icons/AbilitiesTab.svg"
-import attacksTabIcon from "../../static/icons/Attack.svg"
+import attacksTabIcon from "../../static/icons/AttackTab.svg"
 import bioTabIcon from "../../static/icons/PersonalityTab.svg"
 import inventoryTabIcon from "../../static/icons/InventoryTab.svg"
 import notesTabIcon from "../../static/icons/NotesTab.svg"
