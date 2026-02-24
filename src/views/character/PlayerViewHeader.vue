@@ -6,7 +6,13 @@ import {useCharacterStore} from "@/stores/CharacterStore"
 
 
 const characterStore = useCharacterStore()
+const emit = defineEmits<{
+  (e: "open-levelup-modal"): void;
+}>();
 
+const openLevelupModal = () => {
+  emit("open-levelup-modal");
+};
 
 
 
@@ -28,7 +34,12 @@ const characterStore = useCharacterStore()
     </ion-title>
 
     <ion-buttons slot="end">
-      <div class="level-container">
+      <div class="level-container"
+           role="button"
+           tabindex="0"
+           @click="openLevelupModal"
+           @keydown.enter.prevent="openLevelupModal"
+           @keydown.space.prevent="openLevelupModal">
         <div class="level-circle">
           <div class="level">{{ characterStore.character?.level?.level }}</div>
           <div class="experience">{{
@@ -64,6 +75,7 @@ const characterStore = useCharacterStore()
   align-items: center;
   justify-content: center;
   margin-right: 10px;
+  cursor: pointer;
 }
 
 .level-circle {

@@ -39,6 +39,7 @@ import AttacksAndSkillsView from "@/views/character/tabs/attacksAndSkills/Attack
 import {useCharacterSkillsStore} from "@/stores/CharacterSkillsStore";
 import RestViewModal from "@/views/character/tabs/rest/RestViewModal.vue";
 import EditSkillValueModal from "./tabs/common/bonus/EditSkillValueModal.vue";
+import LevelUpViewModal from "@/views/character/tabs/level/LevelUpViewModal.vue";
 
 const route = useRoute();
 const characterStore = useCharacterStore()
@@ -54,6 +55,7 @@ const showEditArmoryClassBonusModal = ref(false); // Управляем види
 const showEditInitiativeBonusModal = ref(false); // Управляем видимостью модалки
 const showEditHealthModal = ref(false); // Управляем видимостью модалки
 const showRestModal = ref(false);
+const showLevelUpModal = ref(false);
 const selectedCharacter = ref<Character>();
 const subheaderStore = useSubheaderOpenedStore();
 const characterSkillsStore = useCharacterSkillsStore();
@@ -100,6 +102,10 @@ const openRestModal = (character: Character) => {
   showRestModal.value = true;
 }
 
+const openLevelUpModal = () => {
+  showLevelUpModal.value = true;
+}
+
 
 const closeEditAbilityModal = () => {
   showEditAbilityBonusModal.value = false; // Закрываем модалку
@@ -134,6 +140,10 @@ const closeRestModal = () => {
 };
 
 
+const closeLevelUpModal = () => {
+  showLevelUpModal.value = false;
+};
+
 const openSubheader = () => {
   subheaderStore.subheaderOpened = true; // Закрываем модалку
 };
@@ -143,7 +153,7 @@ const openSubheader = () => {
 <template>
   <ion-page>
     <ion-header :translucent="false">
-      <PlayerViewHeader v-if="asyncDone"/>
+      <PlayerViewHeader v-if="asyncDone" @open-levelup-modal="openLevelUpModal"/>
       <div class="subheader-block" :class="{ openSubheader: subheaderStore.subheaderOpened }">
         <PlayerViewSubheader v-if="asyncDone" @speed-selected="openEditSpeedModal"
                              @armory-class-selected="openEditArmoryClassModal"
@@ -302,6 +312,10 @@ const openSubheader = () => {
                    @closeRestModal="closeRestModal"
     />
 
+    <LevelUpViewModal v-if="showLevelUpModal"
+                      :isOpen="showLevelUpModal"
+                      @closeLevelUpModal="closeLevelUpModal"
+    />
     <HpModal v-if="showEditHealthModal"
              :isOpen="showEditHealthModal"
              :character-id="String(route.params.characterId)"
@@ -430,3 +444,4 @@ const openSubheader = () => {
   max-height: 140%; /* Высота в развернутом состоянии */
 }
 </style>
+

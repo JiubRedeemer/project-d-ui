@@ -51,7 +51,7 @@ watch(
   max-width: 480px;
   background: var(--ion-background-color, #fff);
   border-radius: 0 0 16px 16px;
-  padding: 16px;
+  padding: 0px;
 
   animation: slideDown 0.25s ease-out forwards;
 }
