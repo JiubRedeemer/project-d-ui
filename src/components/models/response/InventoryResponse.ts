@@ -87,6 +87,8 @@ export interface InventoryItem {
     item: Item;
     count: number;
     inUse: boolean;
+    damageBonusValue: number;
+    attackBonusValue: number;
     requirementsOk: boolean;
     skills?: InventoryItemSkill[];
 }

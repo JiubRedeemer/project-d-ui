@@ -16,6 +16,7 @@ import {CharacterSkill} from "@/components/models/response/Character";
 import {useCharacterSkillsStore} from "@/stores/CharacterSkillsStore";
 import EditCharacterSkillValueModal from "@/views/character/tabs/attacksAndSkills/EditCharacterSkillValueModal.vue";
 import {storeToRefs} from "pinia";
+import EditItemCombatBonusModal from "@/views/character/tabs/attacksAndSkills/EditItemCombatBonusModal.vue";
 
 const route = useRoute();
 
@@ -28,7 +29,7 @@ const dex = Math.floor((characterStore.character.abilities.filter(ability => abi
 
 const equippedItems = computed(() => inventoryStore.inventory?.items?.filter(item => item.inUse && (item.item.type === "WEAPON")));
 
-const { characterSkills } = storeToRefs(characterSkillsStore)
+const {characterSkills} = storeToRefs(characterSkillsStore)
 
 const skills = computed(() =>
     inventoryStore.inventory?.items?.flatMap(invItem =>
@@ -114,34 +115,68 @@ const getItemStats = (item: InventoryItem) => {
   return stats;
 };
 
-const calculateAttack = (item: InventoryItem) => {
-  if (item.item.subtype === 'EHW' || item.item.subtype === 'AHW' || item.item.subtype === 'SHW') {
-    return characterStore.character.proficiencyBonus + str;
-  } else if (item.item.subtype === 'ERW' || item.item.subtype === 'ARW' || item.item.subtype === 'SRW') {
-    return characterStore.character.proficiencyBonus + dex;
-  }
-  return 1;
+const getAttackBonus = (item: InventoryItem) => {
+  return item.attackBonusValue ? item.attackBonusValue : 0;
 };
 
-const showEditItemSkillModal = ref(false); // Управляем видимостью модалки
-const isEditingItemSkill = ref(false); // Управляем видимостью модалки
-const editingItemSkill = ref<ItemSkill>(); // Управляем видимостью модалки
+const getDamageBonus = (item: InventoryItem) => {
+  return item.damageBonusValue ? item.damageBonusValue : 0;
+};
+
+const setAttackBonus = (item: InventoryItem, value: number) => {
+  (item.item.stats as Record<string, unknown>).attackBonus = value;
+};
+
+const setDamageBonus = (item: InventoryItem, value: number) => {
+  (item.item.stats as Record<string, unknown>).damageBonus = value;
+};
+
+const calculateAttack = (item: InventoryItem) => {
+  if (item.item.subtype === 'EHW' || item.item.subtype === 'AHW' || item.item.subtype === 'SHW') {
+    return characterStore.character.proficiencyBonus + str + getAttackBonus(item);
+  } else if (item.item.subtype === 'ERW' || item.item.subtype === 'ARW' || item.item.subtype === 'SRW') {
+    return characterStore.character.proficiencyBonus + dex + getAttackBonus(item);
+  }
+  return getAttackBonus(item);
+};
+
+const calculateDamage = (item: InventoryItem) => {
+  if (item.item.subtype === 'EHW' || item.item.subtype === 'AHW' || item.item.subtype === 'SHW') {
+    return str + getDamageBonus(item);
+  } else if (item.item.subtype === 'ERW' || item.item.subtype === 'ARW' || item.item.subtype === 'SRW') {
+    return dex + getDamageBonus(item);
+  }
+  return getDamageBonus(item);
+};
+
+const showEditItemSkillModal = ref(false);
+const isEditingItemSkill = ref(false);
+const editingItemSkill = ref<ItemSkill>();
 
 
-const showEditCharacterSkillModal = ref(false); // Управляем видимостью модалки
-const isEditingCharacterSkill = ref(false); // Управляем видимостью модалки
-const editingCharacterSkill = ref<CharacterSkill>(); // Управляем видимостью модалки
+const showEditCharacterSkillModal = ref(false);
+const isEditingCharacterSkill = ref(false);
+const editingCharacterSkill = ref<CharacterSkill>();
+
+const showEditCombatBonusModal = ref(false);
+const editingCombatBonusType = ref<"attack" | "damage">("attack");
+const editingCombatBonusItem = ref<InventoryItem>();
 
 const inventoryItemStore = useInventoryItemStore();
 const ionRouter = useIonRouter();
 
 const closeEditItemSkillModal = () => {
-  showEditItemSkillModal.value = false; // Закрываем модалку
+  showEditItemSkillModal.value = false;
 };
 const closeEditCharacterSkillModal = () => {
-  showEditCharacterSkillModal.value = false; // Закрываем модалку
+  showEditCharacterSkillModal.value = false;
   isEditingCharacterSkill.value = false;
   editingCharacterSkill.value = undefined;
+};
+
+const closeEditCombatBonusModal = () => {
+  showEditCombatBonusModal.value = false;
+  editingCombatBonusItem.value = undefined;
 };
 
 const openEditItemSkillModal = (isEditing: boolean, itemSkill: ItemSkill | undefined) => {
@@ -163,6 +198,54 @@ const openEditCharacterSkillModal = (isEditing: boolean, characterSkill: Charact
   }
   showEditCharacterSkillModal.value = true;
 };
+
+const openEditCombatBonusModal = (item: InventoryItem, type: "attack" | "damage") => {
+  editingCombatBonusItem.value = item;
+  editingCombatBonusType.value = type;
+  showEditCombatBonusModal.value = true;
+};
+
+const currentCombatBonusValue = computed(() => {
+  if (!editingCombatBonusItem.value) return 0;
+  return editingCombatBonusType.value === "attack"
+      ? getAttackBonus(editingCombatBonusItem.value)
+      : getDamageBonus(editingCombatBonusItem.value);
+});
+
+const combatBonusTitle = computed(() => {
+  const label = editingCombatBonusType.value === "attack" ? "Бонус к атаке" : "Бонус к урону";
+  return label;
+});
+
+async function saveItemCombatBonus(value: number) {
+  if (!editingCombatBonusItem.value) return;
+
+  const typePath = editingCombatBonusType.value === "attack" ? "/attack" : "/damage";
+  const targetItem = editingCombatBonusItem.value;
+
+  try {
+    await axios.patch(
+        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.inventory}/${route.params.characterId}${GATEWAY_INTEGRATION_ROUTES.items}/${targetItem.id}${typePath}${GATEWAY_INTEGRATION_ROUTES.bonus}`,
+        {bonusValue: value},
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          },
+        }
+    );
+
+    if (editingCombatBonusType.value === "attack") {
+      setAttackBonus(targetItem, value);
+    } else {
+      setDamageBonus(targetItem, value);
+    }
+    await inventoryStore.updateInventoryInStoreById(route.params.roomId, route.params.characterId)
+    closeEditCombatBonusModal();
+  } catch (error) {
+    console.error("Error while updating item combat bonus:", error);
+  }
+}
 
 function openInventoryItem(item: InventoryItem) {
   inventoryItemStore.inventoryItem = item;
@@ -202,8 +285,8 @@ async function deleteCharacterSkill(id: string) {
   <div class="inventory-body">
     <h1 class="sectionHeader" v-if="equippedItems?.length! > 0">{{ HEADERS.equipped.rus }}</h1>
     <div class="equipped" v-if="equippedItems?.length! > 0">
-      <div class="section" v-for="item in equippedItems" :key="item.id" @click="openInventoryItem(item)">
-        <div class="image-block">
+      <div class="section" v-for="item in equippedItems" :key="item.id">
+        <div class="image-block" @click="openInventoryItem(item)">
           <img width="65px" height="65px" class="item-image" :class="getRarityClass(item.item.rarity)"
                :src="getItemImageUrl(item.item.imgUrl)"
                :alt="item.item.name.rus"/>
@@ -224,13 +307,16 @@ async function deleteCharacterSkill(id: string) {
               </div>
             </div>
             <div class="buttons-block">
-              <div class="attack">
+              <div class="attack" @click="openEditCombatBonusModal(item, 'attack')">
                 <div class="attack-name">Атака</div>
                 <div class="attack-value">{{ calculateAttack(item) }}</div>
               </div>
-              <div class="damage">
+              <div class="damage" @click="openEditCombatBonusModal(item, 'damage')">
                 <div class="damage-name">Урон</div>
-                <div class="damage-value">{{ item.item.stats.damage.value }}</div>
+                <div class="damage-value">{{
+                    item.item.stats.damage.value + (calculateDamage(item) > 0 ? " + " + calculateDamage(item) : "") + (calculateDamage(item) < 0 ? " " + calculateDamage(item) : "")
+                  }}
+                </div>
               </div>
             </div>
           </div>
@@ -344,7 +430,13 @@ async function deleteCharacterSkill(id: string) {
                                 @saveCharacterSkill="(characterSkill : CharacterSkill) => saveCharacterSkill(characterSkill)"
                                 @deleteCharacterSkill="(skillId : string) => deleteCharacterSkill(skillId)"/>
 
-
+  <EditItemCombatBonusModal
+      :isOpen="showEditCombatBonusModal"
+      :title="combatBonusTitle"
+      :initialValue="currentCombatBonusValue"
+      @close="closeEditCombatBonusModal"
+      @save="(value: number) => saveItemCombatBonus(value)"
+  />
 </template>
 
 <style scoped>
@@ -463,6 +555,7 @@ ion-progress-bar {
   height: 20px;
   padding-left: 5px;
   width: 130px;
+  cursor: pointer;
 }
 
 .damage-value, .attack-value {
@@ -479,9 +572,9 @@ ion-progress-bar {
 
 .add-new-button {
   position: fixed;
-  bottom: -10px; /* расстояние от нижнего края */
+  bottom: -10px;
   width: 100%;
-  background: transparent; /* или нужный фон */
+  background: transparent;
   display: flex;
   flex-direction: row;
   justify-content: center;

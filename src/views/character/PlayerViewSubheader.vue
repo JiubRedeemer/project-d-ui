@@ -114,13 +114,13 @@ const getDexArmoryClass = () : number => {
       </div>
     </div>
     <div class="center-icons" v-show="subheaderStore.subheaderOpened">
-      <div class="inspiration">
-        <div class="subheader-chip">
-        </div>
-        <div class="subheader-chip-name">
-          {{ HEADERS.inspiration.rus }}
-        </div>
-      </div>
+<!--      <div class="inspiration">-->
+<!--        <div class="subheader-chip">-->
+<!--        </div>-->
+<!--        <div class="subheader-chip-name">-->
+<!--          {{ HEADERS.inspiration.rus }}-->
+<!--        </div>-->
+<!--      </div>-->
       <div class="initiative" @click="selectInitiative(characterStore.character!!)">
         <div class="subheader-chip">
           {{
@@ -143,7 +143,7 @@ const getDexArmoryClass = () : number => {
     </div>
   </div>
   <div class="subheader-show-arrow">
-    <div class="arrow" @click="closeSubheader">⌃</div>
+    <div class="arrow" @click="closeSubheader">{{ subheaderStore.subheaderOpened ? "ꜛ" : "ꜜ" }}</div>
   </div>
 </template>
 
