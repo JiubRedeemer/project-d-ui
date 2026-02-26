@@ -24,6 +24,7 @@ export interface Character {
     level: Level;
     itemStats: EquippedItemsStatsResponse | null;
     currentHpDiceCount: number;
+    isOwner: boolean;
 }
 
 export interface ClassInfo {
