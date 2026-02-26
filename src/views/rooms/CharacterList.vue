@@ -6,7 +6,6 @@ import {
   IonContent,
   IonFab,
   IonFabButton,
-  IonFabList,
   IonIcon,
   IonInput,
   IonItem,
@@ -16,7 +15,6 @@ import {
   IonPage,
   IonSelect,
   IonSelectOption,
-  onIonViewDidEnter,
   onIonViewWillEnter,
   toastController,
   useIonRouter
@@ -148,7 +146,7 @@ const sendInvite = async () => {
           </ion-avatar>
           <ion-icon aria-hidden="false" :icon="chevronForwardOutline" slot="end"></ion-icon>
           <ion-label>
-            <h1 class="character-name">{{ character.name }}</h1>
+            <h1 class="character-name" :class="character.isOwner ? 'character-owned' : 'character-not-owned'" >{{ character.name }}</h1>
             <p class="character-description">{{ character.raceInfo.name }} - {{ character.clazzInfo.name }}</p>
           </ion-label>
         </ion-item>
@@ -221,6 +219,14 @@ const sendInvite = async () => {
 
 .character-list {
   background: transparent;
+}
+
+.character-not-owned {
+  color: var(--ion-color-secondary);
+}
+
+.character-owned {
+  color: var(--ion-color-primary);
 }
 
 .character-list-placeholder-wrapper {

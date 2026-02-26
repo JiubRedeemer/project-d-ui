@@ -1,18 +1,13 @@
 <script setup lang="ts">
-import {IonButton, IonIcon, toastController} from "@ionic/vue";
+import {IonButton, IonIcon, onIonViewDidEnter, toastController, useIonRouter} from "@ionic/vue";
 import {add, addOutline, flashOutline, removeOutline} from "ionicons/icons";
 import {useRoute} from "vue-router";
 import {computed, onMounted, ref} from "vue";
-import {onIonViewDidEnter} from "@ionic/vue";
 import {createSpellCellForBook, deleteSpellCell, updateSpellCell, useSpellCell} from "@/api/magicApi";
 import type {ChargesRefillEnum, SpellBookItemDto, SpellCellDto, SpellDto} from "@/components/models/response/MagicApi";
 import SpellInfoModal from "@/views/character/tabs/magic/SpellInfoModal.vue";
-import {
-    FILE_STORAGE_INTEGRATION_ROUTES,
-    SPELL_IMAGE_PLACEHOLDER,
-} from "@/config/integrationRoutes";
+import {FILE_STORAGE_INTEGRATION_ROUTES, SPELL_IMAGE_PLACEHOLDER,} from "@/config/integrationRoutes";
 import {useMagicStore} from "@/stores/MagicStore";
-import {useIonRouter} from "@ionic/vue";
 
 const route = useRoute();
 const ionRouter = useIonRouter();
@@ -62,10 +57,9 @@ const spellsByLevel = computed(() => {
         }
         byLevel.get(level)!.push(item);
     }
-    const sorted = Array.from(byLevel.entries()).sort(
+  return Array.from(byLevel.entries()).sort(
         ([a], [b]) => parseInt(a, 10) - parseInt(b, 10)
     );
-    return sorted;
 });
 
 function getSpellName(spell: SpellDto | undefined): string {
@@ -735,6 +729,9 @@ onIonViewDidEnter(loadMagicData);
 .item-stats {
   font-size: 11px;
   color: var(--ion-color-light-shade);
+  overflow: hidden;
+  max-height: 15px;
+  max-width: 200px;
 }
 
 .spell-image {

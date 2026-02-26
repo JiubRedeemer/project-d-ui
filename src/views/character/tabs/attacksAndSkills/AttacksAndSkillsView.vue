@@ -24,8 +24,8 @@ const inventoryStore = useInventoryStore();
 const characterStore = useCharacterStore();
 const characterSkillsStore = useCharacterSkillsStore();
 
-const str = Math.floor((characterStore.character.abilities.filter(ability => ability.code === "STR")[0].value - 10) / 2);
-const dex = Math.floor((characterStore.character.abilities.filter(ability => ability.code === "DEX")[0].value - 10) / 2);
+const str = Math.floor((characterStore.character.abilities.filter(ability => ability.code === "STR")[0].value + characterStore.character.abilities.filter(ability => ability.code === "STR")[0].bonusValue - 10) / 2);
+const dex = Math.floor((characterStore.character.abilities.filter(ability => ability.code === "DEX")[0].value + characterStore.character.abilities.filter(ability => ability.code === "DEX")[0].bonusValue - 10) / 2);
 
 const equippedItems = computed(() => inventoryStore.inventory?.items?.filter(item => item.inUse && (item.item.type === "WEAPON")));
 
@@ -213,8 +213,7 @@ const currentCombatBonusValue = computed(() => {
 });
 
 const combatBonusTitle = computed(() => {
-  const label = editingCombatBonusType.value === "attack" ? "Бонус к атаке" : "Бонус к урону";
-  return label;
+  return editingCombatBonusType.value === "attack" ? "Бонус к атаке" : "Бонус к урону";
 });
 
 async function saveItemCombatBonus(value: number) {
