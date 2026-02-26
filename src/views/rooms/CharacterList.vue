@@ -22,7 +22,7 @@ import {
 import {add, chevronForwardOutline, personAddOutline, sendOutline} from "ionicons/icons";
 import {HEADERS, TEXTS} from "@/config/localisations";
 import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
-import {ref} from "vue";
+import {computed, ref} from "vue";
 import axios from "axios";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {useRoute} from "vue-router";
@@ -36,6 +36,28 @@ const showInviteModal = ref(false);
 const inviteEmail = ref("");
 const inviteRole = ref<"PLAYER" | "MASTER">("PLAYER");
 const isSendingInvite = ref(false);
+
+const isCharacterOwned = (character: Character) => {
+  return (character as Character & { isOwned?: boolean }).isOwned ?? character.isOwner;
+};
+
+const sortedCharacters = computed(() => {
+  return [...characters.value].sort((a, b) => {
+    const aOwned = isCharacterOwned(a);
+    const bOwned = isCharacterOwned(b);
+
+    if (aOwned !== bOwned) {
+      return Number(bOwned) - Number(aOwned);
+    }
+
+    const nameCompare = a.name.localeCompare(b.name, "ru", {sensitivity: "base"});
+    if (nameCompare !== 0) {
+      return nameCompare;
+    }
+
+    return a.id.localeCompare(b.id);
+  });
+});
 
 const setupCharacters = async () => {
   const http = axios.create({
@@ -136,8 +158,8 @@ const sendInvite = async () => {
     <RoomsHeader :header-name="HEADERS.characters.rus"></RoomsHeader>
     <ion-content :fullscreen="true" color="dark">
 
-      <ion-list v-show="characters.length != 0" class="character-list">
-        <ion-item v-for="(character, index) in characters" :key="index" :button="true" color="dark"
+      <ion-list v-show="sortedCharacters.length != 0" class="character-list">
+        <ion-item v-for="character in sortedCharacters" :key="character.id" :button="true" color="dark"
                   @click="goToCharacter(character.id)">
           <ion-avatar aria-hidden="false" slot="start">
             <img width="64" height="64"
@@ -146,13 +168,13 @@ const sendInvite = async () => {
           </ion-avatar>
           <ion-icon aria-hidden="false" :icon="chevronForwardOutline" slot="end"></ion-icon>
           <ion-label>
-            <h1 class="character-name" :class="character.isOwner ? 'character-owned' : 'character-not-owned'" >{{ character.name }}</h1>
+            <h1 class="character-name" :class="isCharacterOwned(character) ? 'character-owned' : 'character-not-owned'" >{{ character.name }}</h1>
             <p class="character-description">{{ character.raceInfo.name }} - {{ character.clazzInfo.name }}</p>
           </ion-label>
         </ion-item>
       </ion-list>
 
-      <div class="character-list-placeholder-wrapper" v-show="characters.length == 0">
+      <div class="character-list-placeholder-wrapper" v-show="sortedCharacters.length == 0">
         <div class="room-list-placeholder">{{ TEXTS.emptyCharactersList.rus }}</div>
       </div>
 
