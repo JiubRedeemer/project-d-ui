@@ -109,6 +109,7 @@ const openLevelUpModal = () => {
 
 const closeEditAbilityModal = () => {
   showEditAbilityBonusModal.value = false; // Закрываем модалку
+  selectedAbility.value = null;
 };
 
 const closeEditSkillModal = () => {
