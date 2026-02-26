@@ -9,9 +9,11 @@ import {
   IonFabButton,
   IonHeader,
   IonIcon,
+  IonInfiniteScroll,
   IonInfiniteScrollContent,
   IonLabel,
   IonPage,
+  IonSearchbar,
   IonToolbar,
   toastController,
   useIonRouter
@@ -30,20 +32,37 @@ const route = useRoute();
 const ionRouter = useIonRouter();
 const findItems = ref<Item[]>([]);
 const queryString = ref<string>();
+const isLoadingItems = ref(false);
+const activeSearchToken = ref(0);
 const hasMoreItems = ref(true); // Для бесконечной прокрутки
 
 async function handleInput(event: any) {
-  const query = event.target.value.toLowerCase().trim();
-  if (query.length <= 1) return;
+  const query = String(event?.detail?.value ?? event?.target?.value ?? "").toLowerCase().trim();
+  if (query.length <= 1) {
+    findItems.value = [];
+    hasMoreItems.value = false;
+    isLoadingItems.value = false;
+    return;
+  }
 
+  activeSearchToken.value += 1;
+  const searchToken = activeSearchToken.value;
   queryString.value = query;
   findItems.value = []; // Очистка списка
   hasMoreItems.value = true;
-  await loadItems(query, null, null);
+  await loadItems(query, null, null, searchToken, true);
 }
 
-async function loadItems(query: string | undefined, lastSeenCreatedAt: string | null, lastSeenId: string | null): Promise<void> {
-  if (!hasMoreItems.value) return;
+async function loadItems(
+  query: string | undefined,
+  lastSeenCreatedAt: string | null,
+  lastSeenId: string | null,
+  searchToken: number,
+  replaceResults = false
+): Promise<void> {
+  if (!hasMoreItems.value && !replaceResults) return;
+  if (isLoadingItems.value && !replaceResults) return;
+  isLoadingItems.value = true;
 
   try {
     const response = await axios.post(
@@ -62,6 +81,8 @@ async function loadItems(query: string | undefined, lastSeenCreatedAt: string | 
         }
     );
 
+    if (searchToken !== activeSearchToken.value) return;
+
     const newItems = (response.data as Item[]).map(item => ({
       ...item,
       count: item.count ?? 1
@@ -71,10 +92,19 @@ async function loadItems(query: string | undefined, lastSeenCreatedAt: string | 
       hasMoreItems.value = false;
     }
 
-    findItems.value.push(...newItems);
+    if (replaceResults) {
+      findItems.value = newItems;
+    } else {
+      findItems.value.push(...newItems);
+    }
   } catch (error) {
+    if (searchToken !== activeSearchToken.value) return;
     console.error("Ошибка при получении данных:", error);
     hasMoreItems.value = false;
+  } finally {
+    if (searchToken === activeSearchToken.value) {
+      isLoadingItems.value = false;
+    }
   }
 }
 
@@ -138,11 +168,14 @@ async function ionInfinite(event: InfiniteScrollCustomEvent) {
   }
 
   const lastItem = findItems.value[findItems.value.length - 1];
+  const cursorCreatedAt = lastItem.createdAt?.toString().replace(/(\+\d{2}:\d{2}|Z)$/, "") ?? null;
 
   await loadItems(
       queryString.value,
-      lastItem.createdAt.toString().replace(/(\+\d{2}:\d{2}|Z)$/, "") ?? null,
-      lastItem.id ?? null
+      cursorCreatedAt,
+      lastItem.id ?? null,
+      activeSearchToken.value,
+      false
   );
 
   event.target.complete();
@@ -266,8 +299,8 @@ function openAddView() {
       <!-- Infinite scroll ОБЯЗАТЕЛЬНО последним -->
       <ion-infinite-scroll
           threshold="100px"
-          @ionInfinite="ionInfinite"
-          :disabled="!hasMoreItems">
+          @ionInfinite="ionInfinite($event)"
+          :disabled="!hasMoreItems || isLoadingItems">
 
         <ion-infinite-scroll-content
             loading-spinner="bubbles"
@@ -392,3 +425,4 @@ ion-searchbar {
 }
 
 </style>
+
