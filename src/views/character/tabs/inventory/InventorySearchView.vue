@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import {
-  InfiniteScrollCustomEvent,
   IonBackButton,
   IonButton,
   IonButtons,
@@ -9,11 +8,8 @@ import {
   IonFabButton,
   IonHeader,
   IonIcon,
-  IonInfiniteScroll,
-  IonInfiniteScrollContent,
   IonLabel,
   IonPage,
-  IonSearchbar,
   IonToolbar,
   toastController,
   useIonRouter
@@ -34,6 +30,8 @@ const findItems = ref<Item[]>([]);
 const queryString = ref<string>();
 const isLoadingItems = ref(false);
 const activeSearchToken = ref(0);
+const AUTOLOAD_THRESHOLD_PX = 180;
+const contentScrollHost = ref<HTMLElement | null>(null);
 const hasMoreItems = ref(true); // Для бесконечной прокрутки
 
 async function handleInput(event: any) {
@@ -69,7 +67,7 @@ async function loadItems(
         `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.items}${GATEWAY_INTEGRATION_ROUTES.search}`,
         {
           searchQuery: query,
-          limit: 15,
+          limit: 150,
           lastSeenCreatedAt,
           lastSeenId
         },
@@ -88,7 +86,7 @@ async function loadItems(
       count: item.count ?? 1
     }));
 
-    if (newItems.length < 15) {
+    if (newItems.length < 150) {
       hasMoreItems.value = false;
     }
 
@@ -161,11 +159,8 @@ const getItemStats = (item: Item) => {
   return stats;
 };
 
-async function ionInfinite(event: InfiniteScrollCustomEvent) {
-  if (!hasMoreItems.value || findItems.value.length === 0) {
-    event.target.complete();
-    return;
-  }
+async function loadMoreItems() {
+  if (!hasMoreItems.value || isLoadingItems.value || findItems.value.length === 0) return;
 
   const lastItem = findItems.value[findItems.value.length - 1];
   const cursorCreatedAt = lastItem.createdAt?.toString().replace(/(\+\d{2}:\d{2}|Z)$/, "") ?? null;
@@ -177,8 +172,25 @@ async function ionInfinite(event: InfiniteScrollCustomEvent) {
       activeSearchToken.value,
       false
   );
+}
 
-  event.target.complete();
+async function handleContentScroll(event: any) {
+  if (!hasMoreItems.value || isLoadingItems.value || findItems.value.length === 0) return;
+
+  const target = event?.target as any;
+  if (!contentScrollHost.value && typeof target?.getScrollElement === "function") {
+    contentScrollHost.value = await target.getScrollElement();
+  }
+
+  const scrollTop = Number(event?.detail?.scrollTop ?? target?.scrollTop ?? 0);
+  const scrollHeight = Number(contentScrollHost.value?.scrollHeight ?? target?.scrollHeight ?? 0);
+  const clientHeight = Number(contentScrollHost.value?.clientHeight ?? target?.clientHeight ?? 0);
+  if (!scrollHeight || !clientHeight) return;
+  const distanceToBottom = scrollHeight - (scrollTop + clientHeight);
+
+  if (distanceToBottom <= AUTOLOAD_THRESHOLD_PX) {
+    void loadMoreItems();
+  }
 }
 
 // Метод изменения количества предметов
@@ -244,7 +256,7 @@ function openAddView() {
       </ion-toolbar>
     </ion-header>
 
-    <ion-content>
+    <ion-content :scroll-events="true" @ionScroll="handleContentScroll($event)">
 
       <!-- Список -->
       <div class="found" v-if="findItems?.length! > 0">
@@ -297,17 +309,15 @@ function openAddView() {
       </div>
 
       <!-- Infinite scroll ОБЯЗАТЕЛЬНО последним -->
-      <ion-infinite-scroll
-          threshold="100px"
-          @ionInfinite="ionInfinite($event)"
-          :disabled="!hasMoreItems || isLoadingItems">
-
-        <ion-infinite-scroll-content
-            loading-spinner="bubbles"
-            loading-text="Загрузка...">
-        </ion-infinite-scroll-content>
-
-      </ion-infinite-scroll>
+      <div v-if="findItems.length > 0 && hasMoreItems" class="load-more-block">
+        <ion-button
+            data-test="load-more"
+            class="load-more-button"
+            @click="loadMoreItems"
+            :disabled="isLoadingItems">
+          {{ isLoadingItems ? 'Загрузка...' : 'Загрузить ещё' }}
+        </ion-button>
+      </div>
 
     </ion-content>
 
@@ -402,6 +412,17 @@ ion-searchbar {
   margin-right: -15px;
   height: 20px;
   margin-top: 5px;
+}
+
+.load-more-block {
+  display: flex;
+  justify-content: center;
+  margin: 8px 0 90px;
+}
+
+.load-more-button {
+  --background: #2b2930;
+  --color: var(--ion-color-light);
 }
 
 .rarity-common {
