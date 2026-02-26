@@ -43,6 +43,7 @@ async function onSubmit() {
   }
   props.ability!.value!.bonusValue! = Number(inputValue.value);
   console.log(inputValue);
+  await characterStore.updateCharacterInStoreById(route.params.roomId, characterStore.character.id)
   emit('closeEditAbilityModal')
 }
 

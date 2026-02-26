@@ -68,10 +68,12 @@ const closeSubheader = () => {
 
 const getBaseArmoryClass = () : number => {
   if (characterStore.character != null && inventoryStore.inventory != null) {
-    const equippedArmor = inventoryStore.inventory.items.filter(item => item.inUse && item.item.type === 'ARMOR')[0];
+    const equippedArmor = inventoryStore.inventory.items.filter(item => item.inUse && item.item.type === 'ARMOR' && item.item.subtype != "SHIELD")[0];
+    const equippedShield = inventoryStore.inventory.items.filter(item => item.inUse && item.item.type === 'ARMOR' && item.item.subtype === "SHIELD")[0];
+
     if (equippedArmor)
-      return Number(equippedArmor.item.stats.armorClass)
-    else return characterStore.character?.armoryClass;
+      return Number(equippedArmor.item.stats.armorClass) + (equippedShield ? 2 : 0)
+    else return 10 + (equippedShield ? 2 : 0);
   }
   return 0;
 }
@@ -81,15 +83,24 @@ function calculateCheckValue(value: any) {
 }
 
 const getDexArmoryClass = () : number => {
-  const equippedArmor = inventoryStore.inventory.items.filter(item => item.inUse && item.item.type === 'ARMOR')[0];
+  const equippedArmor = inventoryStore.inventory.items.filter(item => item.inUse && item.item.type === 'ARMOR' && item.item.subtype != "SHIELD")[0];
   const dexAbility = characterStore.character.abilities.filter(ability => ability.code == 'DEX')[0];
   const dexAbilityCheck = calculateCheckValue(dexAbility.value + dexAbility.bonusValue)
+  let classBonusFromAbility = 0;
+  if(characterStore.character.clazzCode === "MONK") {
+    const wisAbility = characterStore.character.abilities.filter(ability => ability.code == 'WIS')[0];
+    classBonusFromAbility = calculateCheckValue(wisAbility.value + wisAbility.bonusValue);
+  }
+  if(characterStore.character.clazzCode === "BARBARIAN") {
+    const conAbility = characterStore.character.abilities.filter(ability => ability.code == 'CON')[0];
+    classBonusFromAbility = calculateCheckValue(conAbility.value + conAbility.bonusValue);
+  }
   if(equippedArmor && equippedArmor.item.subtype == 'HEAVY_ARMOR') return 0;
   else if (equippedArmor && equippedArmor.item.subtype == 'MEDIUM_ARMOR') {
     return dexAbilityCheck >= 2 ? 2 : dexAbilityCheck
   }
   else if (equippedArmor && equippedArmor.item.subtype == 'LIGHT_ARMOR') return dexAbilityCheck
-  else return 0;
+  else return dexAbilityCheck + classBonusFromAbility;
 }
 </script>
 
