@@ -25,6 +25,7 @@ export interface Character {
     itemStats: EquippedItemsStatsResponse | null;
     currentHpDiceCount: number;
     isOwner: boolean;
+    ownerUsername: string;
 }
 
 export interface ClassInfo {

@@ -169,6 +169,7 @@ const sendInvite = async () => {
           <ion-icon aria-hidden="false" :icon="chevronForwardOutline" slot="end"></ion-icon>
           <ion-label>
             <h1 class="character-name" :class="isCharacterOwned(character) ? 'character-owned' : 'character-not-owned'" >{{ character.name }}</h1>
+            <h2 class="username">{{ character.ownerUsername}}</h2>
             <p class="character-description">{{ character.raceInfo.name }} - {{ character.clazzInfo.name }}</p>
           </ion-label>
         </ion-item>
@@ -249,6 +250,10 @@ const sendInvite = async () => {
 
 .character-owned {
   color: var(--ion-color-primary);
+}
+
+.username {
+  color: var(--ion-color-tertiary);
 }
 
 .character-list-placeholder-wrapper {
