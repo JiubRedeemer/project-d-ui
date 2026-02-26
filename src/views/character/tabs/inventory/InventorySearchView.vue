@@ -9,12 +9,12 @@ import {
   IonFabButton,
   IonHeader,
   IonIcon,
+  IonInfiniteScrollContent,
   IonLabel,
   IonPage,
   IonToolbar,
   toastController,
-  useIonRouter,
-  IonInfiniteScrollContent
+  useIonRouter
 } from "@ionic/vue";
 import {ref} from "vue";
 import {Item} from "@/components/models/response/InventoryResponse";
@@ -131,18 +131,21 @@ const getItemStats = (item: Item) => {
   return stats;
 };
 
-function ionInfinite(event: InfiniteScrollCustomEvent) {
+async function ionInfinite(event: InfiniteScrollCustomEvent) {
   if (!hasMoreItems.value || findItems.value.length === 0) {
     event.target.complete();
     return;
   }
 
   const lastItem = findItems.value[findItems.value.length - 1];
-  const createdAt = lastItem.createdAt?.toString().replace(/(\+\d{2}:\d{2}|Z)$/, "");
 
-  loadItems(queryString.value, createdAt, lastItem.id).finally(() => {
-    event.target.complete();
-  });
+  await loadItems(
+      queryString.value,
+      lastItem.createdAt.toString().replace(/(\+\d{2}:\d{2}|Z)$/, "") ?? null,
+      lastItem.id ?? null
+  );
+
+  event.target.complete();
 }
 
 // Метод изменения количества предметов
@@ -200,60 +203,93 @@ function openAddView() {
         <ion-buttons slot="start">
           <ion-back-button/>
         </ion-buttons>
-        <ion-searchbar placeholder="Найти предмет" class="search-line"
-                       @ionInput="handleInput($event)"></ion-searchbar>
+        <ion-searchbar
+            placeholder="Найти предмет"
+            class="search-line"
+            @ionInput="handleInput($event)">
+        </ion-searchbar>
       </ion-toolbar>
     </ion-header>
+
     <ion-content>
-      <ion-infinite-scroll @ionInfinite="ionInfinite">
-        <ion-infinite-scroll-content>
-          <div class="found" v-if="findItems?.length! > 0">
-            <div class="section" v-for="item in findItems" :key="item.id">
-              <div class="section-start-block" @click="console.log('click item')">
-                <div class="image-block">
-                  <img class="item-image" :class="getRarityClass(item.rarity)"
-                       :src="getItemImageUrl(item.imgUrl)"
-                       :alt="item.name.rus"/>
-                </div>
-                <div class="stats-block">
-                  <div class="item-name">
-                    {{ item.name.rus }}
-                  </div>
-                  <div class="item-stats" v-for="(stat, index) in getItemStats(item)" :key="index">
-                    {{ stat }}
-                  </div>
-                </div>
+
+      <!-- Список -->
+      <div class="found" v-if="findItems?.length! > 0">
+        <div class="section" v-for="item in findItems" :key="item.id">
+          <div class="section-start-block">
+            <div class="image-block">
+              <img
+                  class="item-image"
+                  :class="getRarityClass(item.rarity)"
+                  :src="getItemImageUrl(item.imgUrl)"
+                  :alt="item.name.rus"/>
+            </div>
+
+            <div class="stats-block">
+              <div class="item-name">
+                {{ item.name.rus }}
               </div>
-              <div class="buttons-block">
-                <ion-button @click="addItemToInventory(item)" size="small" shape="round" class="equip-button"
-                            fill="outline">
-                  <ion-icon slot="icon-only" :icon="addOutline"></ion-icon>
-                </ion-button>
-                <ion-buttons class="counter-buttons">
-                  <ion-button size="small" @click="changeItemCount(item, 'remove')">
-                    <ion-icon slot="icon-only" size="small" :icon="remove"></ion-icon>
-                  </ion-button>
-                  <ion-label>{{ item.count }}</ion-label>
-                  <ion-button size="small" @click="changeItemCount(item, 'add')">
-                    <ion-icon slot="icon-only" size="small" :icon="add"></ion-icon>
-                  </ion-button>
-                </ion-buttons>
+              <div
+                  class="item-stats"
+                  v-for="(stat, index) in getItemStats(item)"
+                  :key="index">
+                {{ stat }}
               </div>
             </div>
           </div>
+
+          <div class="buttons-block">
+            <ion-button
+                @click="addItemToInventory(item)"
+                size="small"
+                shape="round"
+                class="equip-button"
+                fill="outline">
+              <ion-icon slot="icon-only" :icon="addOutline"></ion-icon>
+            </ion-button>
+
+            <ion-buttons class="counter-buttons">
+              <ion-button size="small" @click="changeItemCount(item, 'remove')">
+                <ion-icon slot="icon-only" size="small" :icon="remove"></ion-icon>
+              </ion-button>
+
+              <ion-label>{{ item.count }}</ion-label>
+
+              <ion-button size="small" @click="changeItemCount(item, 'add')">
+                <ion-icon slot="icon-only" size="small" :icon="add"></ion-icon>
+              </ion-button>
+            </ion-buttons>
+          </div>
+        </div>
+      </div>
+
+      <!-- Infinite scroll ОБЯЗАТЕЛЬНО последним -->
+      <ion-infinite-scroll
+          threshold="100px"
+          @ionInfinite="ionInfinite"
+          :disabled="!hasMoreItems">
+
+        <ion-infinite-scroll-content
+            loading-spinner="bubbles"
+            loading-text="Загрузка...">
         </ion-infinite-scroll-content>
+
       </ion-infinite-scroll>
+
     </ion-content>
+
     <ion-fab slot="fixed" vertical="bottom" horizontal="start">
       <ion-fab-button color="primary" @click="ionRouter.back">
         <ion-icon :icon="arrowBack" color="dark"></ion-icon>
       </ion-fab-button>
     </ion-fab>
+
     <ion-fab slot="fixed" vertical="bottom" horizontal="end">
       <ion-fab-button color="primary" @click="openAddView">
         <ion-icon :icon="add" color="dark"></ion-icon>
       </ion-fab-button>
     </ion-fab>
+
   </ion-page>
 </template>
 
