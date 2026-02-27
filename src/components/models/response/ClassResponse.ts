@@ -21,5 +21,6 @@ type ClassResponse = {
     name: string;
     description: string;
     code: string;
+    imgUrl: string; // Ссылка на картинку
     stats: Stats;
 };

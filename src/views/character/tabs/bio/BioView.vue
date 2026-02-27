@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { ref } from "vue";
-import { useRoute } from "vue-router";
+import {ref} from "vue";
+import {useRoute} from "vue-router";
 import axios from "axios";
-import { FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES } from "@/config/integrationRoutes";
-import { TEXTS } from "@/config/localisations";
-import { marked } from "marked";
-import { add, saveOutline } from "ionicons/icons";
-import { IonButton, IonButtons, IonIcon } from "@ionic/vue";
-import { useCharacterStore } from "@/stores/CharacterStore";
+import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {TEXTS} from "@/config/localisations";
+import {marked} from "marked";
+import {add, saveOutline} from "ionicons/icons";
+import {IonButton, IonButtons, IonIcon} from "@ionic/vue";
+import {useCharacterStore} from "@/stores/CharacterStore";
 import {useInventoryStore} from "@/stores/InventoryStore";
 
 const fileInput = ref<HTMLInputElement | null>(null);
@@ -43,7 +43,7 @@ const expandBlock = (name: string) => {
 
 const saveSectionText = async (name: string) => {
   const originalValue =
-    characterStore.character.characterBio[name] ?? "";
+      characterStore.character.characterBio[name] ?? "";
 
   const newValue = inputSectionText.value ?? "";
 
@@ -59,14 +59,14 @@ const saveSectionText = async (name: string) => {
     const characterId = route.params.characterId as string;
 
     await axios.patch(
-      `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${characterId}${GATEWAY_INTEGRATION_ROUTES.bio}/${name}`,
-      { value: newValue },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-        },
-      }
+        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${characterId}${GATEWAY_INTEGRATION_ROUTES.bio}/${name}`,
+        {value: newValue},
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          },
+        }
     );
 
     await characterStore.updateCharacterInStoreById(roomId, characterId);
@@ -90,7 +90,7 @@ const saveField = async (field: string, text: string) => {
 
     await axios.patch(
         `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${characterId}${GATEWAY_INTEGRATION_ROUTES.bio}/${field}`,
-        { value: newValue },
+        {value: newValue},
         {
           headers: {
             "Content-Type": "application/json",

@@ -67,7 +67,10 @@ const openLevelupModal = () => {
 
 .race-class-block {
   font-size: 10px;
+  max-height: 50px;
   color: var(--ion-color-primary);
+
+  white-space: wrap;        /* разрешает перенос строк */
 }
 
 .level-container {

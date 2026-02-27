@@ -31,6 +31,8 @@ export const GATEWAY_INTEGRATION_ROUTES = {
     rooms: "/rooms",
     roomClasses: "/classes",
     roomRaces: "/races",
+    roomClassesGrouped: "/classes/grouped",
+    roomRacesGrouped: "/races/grouped",
     roomAbilities: "/abilities",
     roomSkills: "/skills",
     roomSkillsByCode: "/skills/byCode",
@@ -90,6 +92,8 @@ export const FILE_STORAGE_INTEGRATION_ROUTES = {
     avatar_images_bucket: "/avatar-images",
     items_images_bucket: "/item-images",
     skills_images_bucket: "/skills-images",
+    races_images_bucket: "/races-images",
+    classes_images_bucket: "/classes-images",
     upload: "/upload",
     download: "/download"
 }

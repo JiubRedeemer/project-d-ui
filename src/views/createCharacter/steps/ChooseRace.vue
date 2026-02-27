@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div>
     <div class="wrapper">
       <div class="race-header">
@@ -8,45 +8,51 @@
               :slides-per-view="6"
               space-between="5"
               @swiper="smallSwiperInstance = $event"
+              @slideChange="onSmallSlideChange"
           >
-            <swiper-slide v-show="racesLoaded" v-for="(race, i) in races"
+            <swiper-slide v-show="racesLoaded" v-for="(group, i) in raceGroups"
                           :key="i"
-                          :class="{ 'selected-slide': i === selectedIndex } "
-                          @click="onSmallSlideClick(i)"
+                          :class="{ 'selected-slide': i === selectedGroupIndex }"
+                          @click="onGroupClick(i)"
             >
-              <img :src="getRaceImage(race.code)" class="race-image"
-                   alt="Изображение расы" onerror="this.onerror=null; this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"/>
+              <img :src="getRaceImageUrl(getGroupPreviewRace(group)?.imgUrl)" class="race-image"
+                   alt="Изображение расы" @error="onImageError"/>
             </swiper-slide>
-            <swiper-slide v-show="!racesLoaded" v-for="(i) in racesPlaceholder"
-                          :key="i"
-            >
+            <swiper-slide v-show="!racesLoaded" v-for="i in racesPlaceholder" :key="i">
               <ion-thumbnail slot="start">
                 <ion-skeleton-text style="border-radius: 50%" :animated="true"></ion-skeleton-text>
               </ion-thumbnail>
             </swiper-slide>
           </swiper>
         </div>
-        <ion-button size="default" class="list-button" fill="clear" color="light">
+        <ion-button
+            size="default"
+            class="list-button"
+            fill="clear"
+            :color="hasSubraces ? 'primary' : 'light'"
+            :disabled="!currentRaceOptions.length"
+            @click="openSubraceList"
+        >
           <ion-icon slot="icon-only" :ios="menuOutline" :md="menuOutline"></ion-icon>
         </ion-button>
       </div>
-      <div class="raceLargeList">
+      <div class="raceLargeList" v-if="raceGroups.length">
         <swiper
             :modules="[IonicSlides]"
-            @slideChange="onLargeSlideChange"
             @swiper="largeSwiperInstance = $event"
+            @slideChange="onLargeSlideChange"
         >
-          <swiper-slide v-show="racesLoaded" v-for="(race, i) in races" :key="i" class="slide-content">
-            <div class="race-container">
+          <swiper-slide v-for="(group, i) in raceGroups" :key="i">
+            <div class="race-container" v-if="getSelectedRaceForGroup(i)">
               <div class="image-wrapper">
-                <img :src="getRaceImage(race.code)" class="background-large-image"
-                     alt="Изображение расы" onerror="this.onerror=null; this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"/>
+                <img :src="getRaceImageUrl(getSelectedRaceForGroup(i)?.imgUrl)" class="background-large-image"
+                     alt="Изображение расы" @error="onImageError"/>
                 <div class="race-overlay">
-                  <p class="race-name">{{ race.name }}</p>
+                  <p class="race-name">{{ getSelectedRaceForGroup(i)?.name }}</p>
                 </div>
               </div>
               <div class="race-description">
-                <p class="race-text">{{ race.description }}</p>
+                <p class="race-text">{{ getSelectedRaceForGroup(i)?.description }}</p>
               </div>
             </div>
           </swiper-slide>
@@ -54,33 +60,45 @@
       </div>
     </div>
   </div>
-  <ion-fab slot="fixed" vertical="bottom" horizontal="end" @click="onChooseRace(races[selectedIndex])">
+  <ion-fab slot="fixed" vertical="bottom" horizontal="end" @click="onChooseRace(selectedRace)">
     <ion-fab-button color="primary">
       <ion-icon :icon="arrowForwardOutline" color="dark"></ion-icon>
     </ion-fab-button>
   </ion-fab>
+  <ion-action-sheet
+      :is-open="isSubraceListOpen"
+      header="Выберите подвид"
+      :buttons="subraceActionButtons"
+      @didDismiss="isSubraceListOpen = false"
+  />
 </template>
 
 <script setup lang="ts">
-import {IonButton, IonFab, IonFabButton, IonIcon, IonicSlides, IonSkeletonText, IonThumbnail} from "@ionic/vue";
-import {onMounted, ref} from "vue";
+import {IonActionSheet, IonButton, IonChip, IonFab, IonFabButton, IonIcon, IonicSlides, IonLabel, IonSkeletonText, IonThumbnail} from "@ionic/vue";
+import {computed, onMounted, ref} from "vue";
 import {Swiper, SwiperSlide} from "swiper/vue";
 import {arrowForwardOutline, menuOutline} from "ionicons/icons";
 import axios from "axios";
 import {Swiper as SwiperType} from "swiper/types";
 import {useRoute} from "vue-router";
-import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 
-const route = useRoute()
+const route = useRoute();
 
-const races = ref<RaceResponse[]>([]);
+const raceGroups = ref<RaceGroupResponse[]>([]);
 const racesPlaceholder = ref([1, 2, 3, 4, 5, 6, 7, 8, 9]);
-let racesLoaded = false;
+const racesLoaded = ref(false);
+const selectedGroupIndex = ref(0);
+const selectedRaceCode = ref<string | null>(null);
+const selectedRaceCodesByGroup = ref<Record<number, string>>({});
+const isSubraceListOpen = ref(false);
+const smallSwiperInstance = ref<SwiperType | null>(null);
+const largeSwiperInstance = ref<SwiperType | null>(null);
 
-const raceImages = import.meta.glob("/src/static/images/races/*.png", {
-  eager: true,
-  import: "default",
-}) as Record<string, string>;
+type RaceGroupResponse = {
+  species?: RaceResponse | null;
+  subspecies?: RaceResponse[] | null;
+};
 
 const props = defineProps({
   characterData: Object,
@@ -90,7 +108,7 @@ const props = defineProps({
 onMounted(async () => {
   try {
     const response = await axios.get(
-        GATEWAY_INTEGRATION_ROUTES.baseURL + GATEWAY_INTEGRATION_ROUTES.api + GATEWAY_INTEGRATION_ROUTES.rooms + '/' + route.params.roomId + GATEWAY_INTEGRATION_ROUTES.roomRaces,
+        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.roomRacesGrouped}`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -98,43 +116,136 @@ onMounted(async () => {
           },
         }
     );
-    races.value = response.data;
-    racesLoaded = true;
+    raceGroups.value = (response.data || []) as RaceGroupResponse[];
+    selectDefaultRaceForGroup(0);
+    racesLoaded.value = true;
   } catch (error) {
     console.error("Ошибка при получении данных:", error);
   }
 });
 
-const selectedIndex = ref(0);
-const smallSwiperInstance = ref<SwiperType | null>(null);
-const largeSwiperInstance = ref<SwiperType | null>(null);
-
-function onLargeSlideChange(swiper: SwiperType) {
-  selectedIndex.value = swiper.activeIndex;
-  if (smallSwiperInstance.value) {
-    smallSwiperInstance.value.slideTo(selectedIndex.value, 300, true);
+const currentGroup = computed(() => raceGroups.value[selectedGroupIndex.value]);
+const currentRaceOptions = computed(() => {
+  const group = currentGroup.value;
+  if (!group) {
+    return [];
   }
+  return [group.species, ...(group.subspecies || [])].filter(Boolean) as RaceResponse[];
+});
+const selectedRace = computed(() =>
+    currentRaceOptions.value.find((race) => race.code === selectedRaceCode.value) || currentRaceOptions.value[0]
+);
+const hasSubraces = computed(() => (currentGroup.value?.subspecies?.length || 0) > 0);
+const subraceActionButtons = computed(() => [
+  ...currentRaceOptions.value.map((race) => ({
+    text: race.name,
+    handler: () => onRaceOptionSelect(race.code),
+  })),
+  {
+    text: "Отмена",
+    role: "cancel",
+  },
+]);
+
+function getGroupPreviewRace(group: RaceGroupResponse) {
+  return (group.species || group.subspecies?.[0]) as RaceResponse | undefined;
 }
 
-function onSmallSlideClick(index: number) {
-  selectedIndex.value = index;
+function selectDefaultRaceForGroup(index: number) {
+  const options = getRaceOptionsForGroup(index);
+  if (!options.length) {
+    selectedRaceCode.value = null;
+    return;
+  }
+  if (!selectedRaceCodesByGroup.value[index]) {
+    selectedRaceCodesByGroup.value[index] = options[0].code;
+  }
+  selectedRaceCode.value = selectedRaceCodesByGroup.value[index];
+}
+
+function getRaceOptionsForGroup(index: number): RaceResponse[] {
+  const group = raceGroups.value[index];
+  if (!group) {
+    return [];
+  }
+  return [group.species, ...(group.subspecies || [])].filter(Boolean) as RaceResponse[];
+}
+
+function getSelectedRaceForGroup(index: number): RaceResponse | undefined {
+  const options = getRaceOptionsForGroup(index);
+  if (!options.length) {
+    return undefined;
+  }
+  const selectedCode = selectedRaceCodesByGroup.value[index];
+  return options.find((race) => race.code === selectedCode) || options[0];
+}
+
+function onGroupClick(index: number) {
+  selectedGroupIndex.value = index;
+  if (smallSwiperInstance.value) {
+    smallSwiperInstance.value.slideTo(index, 300, true);
+  }
   if (largeSwiperInstance.value) {
     largeSwiperInstance.value.slideTo(index, 300, true);
   }
+  selectDefaultRaceForGroup(index);
 }
 
-function getRaceImage(code: string) {
-  return raceImages[`/src/static/images/races/image_${code}_M.png`];
+function onRaceOptionSelect(raceCode: string) {
+  selectedRaceCode.value = raceCode;
+  selectedRaceCodesByGroup.value[selectedGroupIndex.value] = raceCode;
+  isSubraceListOpen.value = false;
 }
 
-function onChooseRace(race: object) {
-  if (props.characterData) {
+function onSmallSlideChange(swiper: SwiperType) {
+  if (swiper.activeIndex !== selectedGroupIndex.value) {
+    selectedGroupIndex.value = swiper.activeIndex;
+    if (largeSwiperInstance.value) {
+      largeSwiperInstance.value.slideTo(swiper.activeIndex, 300, true);
+    }
+    selectDefaultRaceForGroup(swiper.activeIndex);
+  }
+}
+
+function onLargeSlideChange(swiper: SwiperType) {
+  if (swiper.activeIndex !== selectedGroupIndex.value) {
+    selectedGroupIndex.value = swiper.activeIndex;
+    if (smallSwiperInstance.value) {
+      smallSwiperInstance.value.slideTo(swiper.activeIndex, 300, true);
+    }
+    selectDefaultRaceForGroup(swiper.activeIndex);
+  }
+}
+
+function openSubraceList() {
+  if (!currentRaceOptions.value.length) {
+    return;
+  }
+  isSubraceListOpen.value = true;
+}
+
+function onImageError(event: Event) {
+  const target = event.target as HTMLImageElement;
+
+  target.onerror = null;
+  target.src =
+      "https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png";
+}
+
+const getRaceImageUrl = (imgUrl: string | undefined) => {
+  return imgUrl != null
+      ? `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.races_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.download}/${imgUrl}`
+      : "https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png";
+};
+
+function onChooseRace(race?: RaceResponse) {
+  if (props.characterData && race) {
     // eslint-disable-next-line vue/no-mutating-props
     props.characterData.race = race;
   }
-  if (props.currentStep) {
+  if (props.currentStep && race) {
     // eslint-disable-next-line vue/no-mutating-props
-    props.currentStep.current = props.currentStep.current + 1
+    props.currentStep.current = props.currentStep.current + 1;
   }
 }
 </script>
@@ -153,6 +264,13 @@ function onChooseRace(race: object) {
 
 .list-button {
   background: transparent;
+}
+
+.subrace-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 8px;
 }
 
 .raceLargeList {
@@ -181,8 +299,8 @@ function onChooseRace(race: object) {
 }
 
 .image-wrapper {
-  position: relative; /* Positioning context for the overlay */
-  width: 100%; /* Ensure it takes the full width of the container */
+  position: relative;
+  width: 100%;
 }
 
 .background-large-image {
@@ -193,33 +311,26 @@ function onChooseRace(race: object) {
 }
 
 .race-overlay {
-  position: absolute; /* Position absolutely within the image wrapper */
-  bottom: 0; /* Align to the bottom */
+  position: absolute;
+  bottom: 0;
   left: 0;
   right: 0;
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.6) 100%); /* Gradient overlay */
-  color: white; /* Text color */
-  text-align: center; /* Center text */
-  padding: 10px; /* Padding for the text */
-  border-radius: 0 0 7% 7%; /* Match border radius of the image */
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.6) 100%);
+  color: white;
+  text-align: center;
+  padding: 10px;
+  border-radius: 0 0 7% 7%;
 }
 
-
 .race-name {
-  font-size: 1.5rem; /* Increase font size for visibility */
+  font-size: 1.5rem;
   font-weight: bold;
-  margin: 0; /* Reset margin */
+  margin: 0;
 }
 
 .race-description {
   text-align: center;
   margin-top: 10px;
-}
-
-.race-text {
-  font-size: 1rem;
-  color: white;
-  margin-top: 5px;
 }
 
 .race-text {
