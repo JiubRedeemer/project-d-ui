@@ -6,7 +6,7 @@ import {
   IonIcon,
   IonInput,
   IonItem,
-  IonPage,
+  IonPage, IonSelect, IonSelectOption,
   toastController,
   useIonRouter
 } from "@ionic/vue";
@@ -21,6 +21,7 @@ const ionRouter = useIonRouter();
 
 const roomName = ref("");
 const roomDescription = ref("");
+const roomRules = ref("DND5E");
 const roomImage = ref<File | null>(null);
 const previewImage = ref<string | null>(null);
 const filePath = ref<string>("");
@@ -91,6 +92,7 @@ const createRoom = async () => {
       GATEWAY_INTEGRATION_ROUTES.rooms, {
       name: roomName.value,
       description: roomDescription.value,
+      rules: roomRules.value,
       filePath: filePath.value,
     }, {
       headers: {
@@ -133,6 +135,19 @@ const createRoom = async () => {
         <ion-item color="dark" class="input-block">
           <ion-input :label="TEXTS.roomDescription.rus" label-placement="floating" fill="outline" color="primary"
             :placeholder="TEXTS.enterRoomDescription.rus" v-model="roomDescription"></ion-input>
+        </ion-item>
+
+        <ion-item color="dark" class="input-block">
+          <ion-select
+              label="Правила"
+              label-placement="floating"
+              fill="outline"
+              color="primary"
+              v-model="roomRules"
+          >
+            <ion-select-option value="DND5E">Днд 5e</ion-select-option>
+            <ion-select-option value="DND2024">Днд 2024</ion-select-option>
+          </ion-select>
         </ion-item>
 
         <ion-fab slot="fixed" vertical="bottom" horizontal="end">
