@@ -27,5 +27,6 @@ type RaceResponse = {
     name: string; // Название расы
     description: string; // Описание расы
     code: string; // Код расы
+    imgUrl: string; // Ссылка на картинку
     stats: RaceStats; // Статистика расы
 };

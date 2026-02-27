@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div>
     <div class="wrapper">
       <div class="class-header">
@@ -8,48 +8,60 @@
               :slides-per-view="6"
               space-between="5"
               @swiper="smallSwiperInstance = $event"
+              @slideChange="onSmallSlideChange"
           >
-            <swiper-slide v-for="(clazz, i) in classes"
+            <swiper-slide v-for="(group, i) in classGroups"
                           :key="i"
-                          :class="{ 'selected-slide': i === selectedIndex } "
-                          @click="onSmallSlideClick(i)"
+                          :class="{ 'selected-slide': i === selectedGroupIndex }"
+                          @click="onGroupClick(i)"
             >
-              <img :src="getClassImage(clazz.code)" class="class-image"
-                   alt="Изображение класса" onerror="this.onerror=null; this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"/>
+              <img :src="getClassImageUrl(getGroupPreviewClass(group)?.imgUrl)" class="class-image"
+                   alt="Изображение класса" @error="onImageError"/>
             </swiper-slide>
           </swiper>
         </div>
-        <ion-button size="default" class="list-button" fill="clear" color="light">
+        <ion-button
+            size="default"
+            class="list-button"
+            fill="clear"
+            :color="hasSubclasses ? 'primary' : 'light'"
+            :disabled="!currentClassOptions.length"
+            @click="openSubclassList"
+        >
           <ion-icon slot="icon-only" :ios="menuOutline" :md="menuOutline"></ion-icon>
         </ion-button>
       </div>
-      <div class="classLargeList">
+      <div class="classLargeList" v-if="selectedClass">
         <swiper
             :modules="[IonicSlides]"
-            @slideChange="onLargeSlideChange"
             @swiper="largeSwiperInstance = $event"
+            @slideChange="onLargeSlideChange"
         >
-          <swiper-slide v-for="(clazz, i) in classes" :key="i" class="slide-content">
+          <swiper-slide v-for="(group, i) in classGroups" :key="i">
             <div class="class-container">
               <div class="image-wrapper">
-                <img :src="getClassImage(clazz.code)" class="background-large-image"
-                     alt="Изображение расы" onerror="this.onerror=null; this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"/>
+                <img :src="getClassImageUrl(selectedClass.imgUrl)" class="background-large-image"
+                     alt="Изображение класса"
+                     @error="onImageError"/>
                 <div class="class-overlay">
-                  <p class="class-name">{{ clazz.name }}</p>
+                  <p class="class-name">{{ selectedClass.name }}</p>
                 </div>
               </div>
               <div class="abilities-container">
-                <ion-chip v-for="(ability, i) in clazz.stats.savingThrowsAbilities" :key="i">
+                <ion-chip v-for="(ability, i) in selectedClass.stats.savingThrowsAbilities" :key="i">
                   <ion-icon :icon="arrowUp" color="success"></ion-icon>
                   <ion-label>{{ ability.name }}</ion-label>
                 </ion-chip>
                 <ion-chip>
                   <ion-icon :icon="heart" color="danger"></ion-icon>
-                  <ion-label>{{ clazz.stats.hpDice.substring(0, clazz.stats.hpDice.length-4) }}</ion-label>
+                  <ion-label>{{
+                      selectedClass.stats.hpDice.substring(0, selectedClass.stats.hpDice.length - 4)
+                    }}
+                  </ion-label>
                 </ion-chip>
               </div>
               <div class="class-description">
-                <p class="class-text">{{ clazz.description }}</p>
+                <p class="class-text">{{ selectedClass.description }}</p>
               </div>
             </div>
           </swiper-slide>
@@ -57,41 +69,65 @@
       </div>
     </div>
   </div>
-  <ion-fab slot="fixed" vertical="bottom" horizontal="end" @click="onChooseClass(classes[selectedIndex])">
+  <ion-fab slot="fixed" vertical="bottom" horizontal="end" @click="onChooseClass(selectedClass)">
     <ion-fab-button color="primary">
       <ion-icon :icon="arrowForwardOutline" color="dark"></ion-icon>
     </ion-fab-button>
   </ion-fab>
+  <ion-action-sheet
+      :is-open="isSubclassListOpen"
+      header="Выберите подкласс"
+      :buttons="subclassActionButtons"
+      @didDismiss="isSubclassListOpen = false"
+  />
 </template>
 
 <script setup lang="ts">
-import {IonButton, IonChip, IonFab, IonFabButton, IonIcon, IonicSlides, IonLabel} from "@ionic/vue";
-import {onMounted, ref} from "vue";
+import {IonActionSheet, IonButton, IonChip, IonFab, IonFabButton, IonIcon, IonicSlides, IonLabel} from "@ionic/vue";
+import {computed, onMounted, ref} from "vue";
 import {Swiper, SwiperSlide} from "swiper/vue";
 import {arrowForwardOutline, arrowUp, heart, menuOutline} from "ionicons/icons";
 import axios from "axios";
 import {Swiper as SwiperType} from "swiper/types";
 import {useRoute} from "vue-router";
-import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 
-const route = useRoute()
+const route = useRoute();
 
-const classes = ref<ClassResponse[]>([]);
+const classGroups = ref<ClassGroupResponse[]>([]);
+const selectedGroupIndex = ref(0);
+const selectedClassCode = ref<string | null>(null);
+const isSubclassListOpen = ref(false);
+const smallSwiperInstance = ref<SwiperType | null>(null);
+const largeSwiperInstance = ref<SwiperType | null>(null);
 
-const classImages = import.meta.glob("/src/static/images/classes/*.png", {
-  eager: true,
-  import: "default",
-}) as Record<string, string>;
+type ClassGroupResponse = {
+  clazz?: ClassResponse | null;
+  subClazzes?: ClassResponse[] | null;
+};
 
 const props = defineProps({
   characterData: Object,
   currentStep: Object,
 });
 
+const getClassImageUrl = (imgUrl: string | undefined) => {
+  return imgUrl != null
+      ? `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.classes_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.download}/${imgUrl}`
+      : "https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png";
+};
+
+function onImageError(event: Event) {
+  const target = event.target as HTMLImageElement;
+  target.onerror = null;
+  target.src =
+      "https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png";
+}
+
 onMounted(async () => {
   try {
     const response = await axios.get(
-        GATEWAY_INTEGRATION_ROUTES.baseURL + GATEWAY_INTEGRATION_ROUTES.api + GATEWAY_INTEGRATION_ROUTES.rooms + '/' + route.params.roomId + GATEWAY_INTEGRATION_ROUTES.roomClasses,
+        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.roomClassesGrouped}`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -99,43 +135,99 @@ onMounted(async () => {
           },
         }
     );
-    classes.value = response.data;
-  } catch (error) {
 
+    classGroups.value = (response.data || []) as ClassGroupResponse[];
+    selectDefaultClassForGroup(0);
+  } catch (error) {
     console.error("Ошибка при получении данных:", error);
   }
 });
 
-const selectedIndex = ref(0);
-const smallSwiperInstance = ref<SwiperType | null>(null);
-const largeSwiperInstance = ref<SwiperType | null>(null);
+const currentGroup = computed(() => classGroups.value[selectedGroupIndex.value]);
+const currentClassOptions = computed(() => {
+  const group = currentGroup.value;
+  if (!group) {
+    return [];
+  }
+  return [group.clazz, ...(group.subClazzes || [])].filter(Boolean) as ClassResponse[];
+});
+const selectedClass = computed(() =>
+    currentClassOptions.value.find((clazz) => clazz.code === selectedClassCode.value) || currentClassOptions.value[0]
+);
+const hasSubclasses = computed(() => (currentGroup.value?.subClazzes?.length || 0) > 0);
+const subclassActionButtons = computed(() => [
+  ...currentClassOptions.value.map((clazz) => ({
+    text: clazz.name,
+    handler: () => onClassOptionSelect(clazz.code),
+  })),
+  {
+    text: "Отмена",
+    role: "cancel",
+  },
+]);
+
+function getGroupPreviewClass(group: ClassGroupResponse) {
+  return (group.clazz || group.subClazzes?.[0]) as ClassResponse | undefined;
+}
+
+function selectDefaultClassForGroup(index: number) {
+  const group = classGroups.value[index];
+  if (!group) {
+    selectedClassCode.value = null;
+    return;
+  }
+  selectedClassCode.value = group.clazz?.code || group.subClazzes?.[0]?.code || null;
+}
+
+function onGroupClick(index: number) {
+  selectedGroupIndex.value = index;
+  if (smallSwiperInstance.value) {
+    smallSwiperInstance.value.slideTo(index, 300, true);
+  }
+  selectDefaultClassForGroup(index);
+}
+
+function onClassOptionSelect(classCode: string) {
+  selectedClassCode.value = classCode;
+  isSubclassListOpen.value = false;
+}
+
+
+function onSmallSlideChange(swiper: SwiperType) {
+  if (swiper.activeIndex !== selectedGroupIndex.value) {
+    selectedGroupIndex.value = swiper.activeIndex;
+    if (largeSwiperInstance.value) {
+      largeSwiperInstance.value.slideTo(swiper.activeIndex, 300, true);
+    }
+    selectDefaultClassForGroup(swiper.activeIndex);
+  }
+}
 
 function onLargeSlideChange(swiper: SwiperType) {
-  selectedIndex.value = swiper.activeIndex;
-  if (smallSwiperInstance.value) {
-    smallSwiperInstance.value.slideTo(selectedIndex.value, 300, true);
+  if (swiper.activeIndex !== selectedGroupIndex.value) {
+    selectedGroupIndex.value = swiper.activeIndex;
+    if (smallSwiperInstance.value) {
+      smallSwiperInstance.value.slideTo(swiper.activeIndex, 300, true);
+    }
+    selectDefaultClassForGroup(swiper.activeIndex);
   }
 }
 
-function onSmallSlideClick(index: number) {
-  selectedIndex.value = index;
-  if (largeSwiperInstance.value) {
-    largeSwiperInstance.value.slideTo(index, 300, true);
+function openSubclassList() {
+  if (!currentClassOptions.value.length) {
+    return;
   }
+  isSubclassListOpen.value = true;
 }
 
-function getClassImage(code: string) {
-  return classImages[`/src/static/images/classes/image_${code}_M.png`];
-}
-
-function onChooseClass(clazz: object) {
-  if (props.characterData) {
+function onChooseClass(clazz?: ClassResponse) {
+  if (props.characterData && clazz) {
     // eslint-disable-next-line vue/no-mutating-props
     props.characterData.clazz = clazz;
   }
-  if (props.currentStep) {
+  if (props.currentStep && clazz) {
     // eslint-disable-next-line vue/no-mutating-props
-    props.currentStep.current = props.currentStep.current + 1
+    props.currentStep.current = props.currentStep.current + 1;
   }
 }
 </script>
@@ -154,6 +246,13 @@ function onChooseClass(clazz: object) {
 
 .list-button {
   background: transparent;
+}
+
+.subclass-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 8px;
 }
 
 .classLargeList {
@@ -182,8 +281,8 @@ function onChooseClass(clazz: object) {
 }
 
 .image-wrapper {
-  position: relative; /* Positioning context for the overlay */
-  width: 100%; /* Ensure it takes the full width of the container */
+  position: relative;
+  width: 100%;
 }
 
 .background-large-image {
@@ -194,33 +293,26 @@ function onChooseClass(clazz: object) {
 }
 
 .class-overlay {
-  position: absolute; /* Position absolutely within the image wrapper */
-  bottom: 0; /* Align to the bottom */
+  position: absolute;
+  bottom: 0;
   left: 0;
   right: 0;
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.6) 100%); /* Gradient overlay */
-  color: white; /* Text color */
-  text-align: center; /* Center text */
-  padding: 10px; /* Padding for the text */
-  border-radius: 0 0 7% 7%; /* Match border radius of the image */
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.6) 100%);
+  color: white;
+  text-align: center;
+  padding: 10px;
+  border-radius: 0 0 7% 7%;
 }
 
-
 .class-name {
-  font-size: 1.5rem; /* Increase font size for visibility */
+  font-size: 1.5rem;
   font-weight: bold;
-  margin: 0; /* Reset margin */
+  margin: 0;
 }
 
 .class-description {
   text-align: center;
   margin-top: 10px;
-}
-
-.class-text {
-  font-size: 1rem;
-  color: white;
-  margin-top: 5px;
 }
 
 .class-text {
@@ -241,6 +333,6 @@ swiper-slide {
 .abilities-container {
   display: flex;
   flex-wrap: nowrap;
-  gap: 8px; /* Между элементами можно добавить отступ */
+  gap: 8px;
 }
 </style>
