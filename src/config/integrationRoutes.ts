@@ -99,6 +99,7 @@ export const FILE_STORAGE_INTEGRATION_ROUTES = {
     skills_images_bucket: "/skills-images",
     races_images_bucket: "/races-images",
     classes_images_bucket: "/classes-images",
+    backgrounds_images_bucket: "/backgrounds-images",
     upload: "/upload",
     download: "/download"
 }

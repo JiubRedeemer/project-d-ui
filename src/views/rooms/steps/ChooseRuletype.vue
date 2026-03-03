@@ -17,10 +17,11 @@ import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
 import {ref} from "vue";
 import axios from "axios";
 import {FILE_STORAGE_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
-import {add, checkmark} from "ionicons/icons";
+import {add, arrowForwardOutline, checkmark} from "ionicons/icons";
 import {useRoomCreationStore} from "@/stores/RoomCreationStore";
 
 const ionRouter = useIonRouter();
+const roomCreationStore = useRoomCreationStore();
 
 const roomName = ref("");
 const roomDescription = ref("");
@@ -33,7 +34,6 @@ const filePath = ref<string>("");
 const fileInput = ref<HTMLInputElement | null>(null);
 
 const allowedFormats = ["image/jpeg", "image/png", "image/gif", "image/bmp", "image/webp", "image/tiff", "image/svg+xml"];
-const roomCreationStore = useRoomCreationStore();
 const handleFileUpload = (event: Event) => {
   const file = (event.target as HTMLInputElement).files?.[0] || null;
   if (file && allowedFormats.includes(file.type)) {
@@ -81,22 +81,25 @@ async function showValidationErrorToast() {
   await toast.present();
 }
 
-const createRoom = async () => {
+const nextStep = async () => {
   if (!roomName.value.trim()) {
     await showValidationErrorToast();
     return;
   }
 
   if (roomImage.value) filePath.value = await uploadToMinio(roomImage.value);
-
   roomCreationStore.roomInfo.name = roomName.value;
   roomCreationStore.roomInfo.description = roomDescription.value;
   roomCreationStore.roomInfo.rules = roomRules.value;
   roomCreationStore.roomInfo.baseRules = roomRootRules.value;
   roomCreationStore.roomInfo.filePath = filePath.value;
-  await roomCreationStore.createRoom();
-  ionRouter.replace("/rooms");
-  roomCreationStore.clearAll()
+  if (roomCreationStore.roomInfo.rules == 'HOMEBREW') {
+    ionRouter.navigate("/rooms/create/races", 'forward', 'push');
+  } else {
+    await roomCreationStore.createRoom();
+    roomCreationStore.clearAll()
+    ionRouter.replace("/rooms");
+  }
 };
 </script>
 
@@ -148,8 +151,8 @@ const createRoom = async () => {
           </ion-select>
         </ion-item>
         <ion-fab slot="fixed" vertical="bottom" horizontal="end">
-          <ion-fab-button color="primary" @click="createRoom">
-            <ion-icon :icon="checkmark" color="dark"></ion-icon>
+          <ion-fab-button color="primary" @click="nextStep">
+            <ion-icon :icon="roomRules === 'HOMEBREW' ? arrowForwardOutline : checkmark" color="dark"></ion-icon>
           </ion-fab-button>
         </ion-fab>
       </div>

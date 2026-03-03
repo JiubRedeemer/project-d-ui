@@ -14,6 +14,10 @@ import InventorySearchView from "@/views/character/tabs/inventory/InventorySearc
 import InventoryItemAddView from "@/views/character/tabs/inventory/InventoryItemAddView.vue";
 import MagicSearchView from "@/views/character/tabs/magic/MagicSearchView.vue";
 import SpellAddView from "@/views/character/tabs/magic/SpellAddView.vue";
+import ChooseRuletype from "@/views/rooms/steps/ChooseRuletype.vue";
+import ChooseRaces from "@/views/rooms/steps/ChooseRaces.vue";
+import ChooseClasses from "@/views/rooms/steps/ChooseClasses.vue";
+import ChooseBackgrounds from "@/views/rooms/steps/ChooseBackgrounds.vue";
 
 const routes: Array<RouteRecordRaw> = [
     {
@@ -44,6 +48,26 @@ const routes: Array<RouteRecordRaw> = [
         path: '/rooms/create',
         component: CreateRoom,
         name: 'createRoom'
+    },
+    {
+        path: '/rooms/create/ruleType',
+        component: ChooseRuletype,
+        name: 'ruleType'
+    },
+    {
+        path: '/rooms/create/races',
+        component: ChooseRaces,
+        name: 'races'
+    },
+    {
+        path: '/rooms/create/classes',
+        component: ChooseClasses,
+        name: 'classes'
+    },
+    {
+        path: '/rooms/create/backgrounds',
+        component: ChooseBackgrounds,
+        name: 'backgrounds'
     },
     {
         path: '/invites',
