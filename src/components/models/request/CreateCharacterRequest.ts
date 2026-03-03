@@ -6,6 +6,8 @@ type CreateCharacterRequest = {
     name: string,
     classCode: string,
     raceCode: string,
+    /** D&D 2024: code of selected background (optional) */
+    backgroundCode?: string,
     abilities: AbilityShort[],
     skills: SkillShort[],
     //---ABOUT-----------------
