@@ -14,11 +14,45 @@
           <ion-label>{{ totalCoins }}</ion-label>
         </ion-chip>
       </div>
+      <!-- D&D 2024: background ability modifiers (+2/+1 or +1/+1/+1) -->
+      <div v-if="hasBackgroundModifiers" class="background-modifiers-block">
+        <p class="background-modifiers-title">Предыстория (D&D 2024)</p>
+        <p class="background-modifiers-hint">+2 к одной и +1 к другой <strong>или</strong> +1 к трём разным</p>
+        <ion-segment :value="backgroundBonusMode" @ionChange="onBackgroundModeChange">
+          <ion-segment-button value="2+1">
+            <ion-label>+2 и +1</ion-label>
+          </ion-segment-button>
+          <ion-segment-button value="1+1+1">
+            <ion-label>+1, +1, +1</ion-label>
+          </ion-segment-button>
+        </ion-segment>
+        <div class="background-slots">
+          <template v-if="backgroundBonusMode === '2+1'">
+            <ion-chip
+                v-for="slot in ['+2', '+1']"
+                :key="slot"
+                :color="getBackgroundSlotCode(slot) ? 'primary' : 'medium'"
+                @click="getBackgroundSlotCode(slot) && clearBackgroundSlot(slot)"
+            >
+              <ion-label>{{ slot }}: {{ getBackgroundSlotName(slot) || 'Выберите' }}</ion-label>
+            </ion-chip>
+          </template>
+          <template v-else>
+            <ion-chip
+                v-for="(code, idx) in backgroundPlus1x3"
+                :key="`${code}-${idx}`"
+                color="primary"
+            >
+              <ion-label>+1: {{ getAbilityName(code) }}</ion-label>
+            </ion-chip>
+          </template>
+        </div>
+      </div>
       <div class="ability-list">
         <ion-list color="dark">
           <ion-item color="dark" v-for="(ability, index) in abilities" :key="index">
             <div @click="onClickAbility(ability.code)" class="ability-score-round"
-                 :class="{ highlighted: isAbilityHighlighted(ability.code)  }" slot="start">
+                 :class="{ highlighted: isAbilityHighlighted(ability.code), 'background-eligible': isAllowedForBackground(ability.code) }" slot="start">
               <span class="ability-score-value">{{
                   ability.defaultValue + ability.modifierValue + ability.byCoinsValue
                 }}</span>
@@ -48,8 +82,19 @@
 </template>
 
 <script setup lang="ts">
-import {IonButton, IonChip, IonFab, IonFabButton, IonIcon, IonItem, IonLabel, IonList, IonNote} from "@ionic/vue";
-import {onMounted, ref, watch} from "vue";
+import {
+  IonButton,
+  IonChip,
+  IonFab,
+  IonFabButton,
+  IonIcon,
+  IonItem,
+  IonLabel,
+  IonList,
+  IonNote,
+  IonSegmentButton,
+} from "@ionic/vue";
+import {computed, onMounted, ref, watch} from "vue";
 import {addOutline, arrowForwardOutline, arrowUp, invertModeOutline, removeOutline} from "ionicons/icons";
 import axios from "axios";
 import {useRoute} from "vue-router";
@@ -66,6 +111,23 @@ const abilities = ref<AbilityResponse[]>([]);
 const totalCoins = ref(27);
 let onChooseCount = 0;
 let selected: string[] = [];
+
+// D&D 2024: background ability modifiers — +2/+1 to two abilities or +1/+1/+1 to three
+const backgroundBonusMode = ref<"2+1" | "1+1+1">("2+1");
+const backgroundPlus2 = ref<string | null>(null);
+const backgroundPlus1 = ref<string | null>(null);
+const backgroundPlus1x3 = ref<string[]>([]);
+
+const backgroundStats = computed(() => {
+  const bg = props.characterData?.background as { stats?: { abilityModifiers?: string[] } } | undefined;
+  return bg?.stats;
+});
+const allowedBackgroundCodes = computed(() => {
+  const codes = backgroundStats.value?.abilityModifiers;
+  if (!Array.isArray(codes) || codes.length === 0) return [];
+  return codes.filter((code: string) => abilities.value.some((a) => a.code === code));
+});
+const hasBackgroundModifiers = computed(() => allowedBackgroundCodes.value.length > 0);
 const abilityUpgradeCostTable: { [key: number]: number } = {
   0: 1,
   1: 1,
@@ -107,21 +169,103 @@ function calculateAbilityValues() {
   totalCoins.value = MAX_COINS_VALUE;
   abilities.value = abilities.value.map(ability => {
     const modifier = raceModifiers.find((mod: AbilityModifier) => mod.code === ability.code || mod.code === "ALL");
-    const modifierValue = modifier ? modifier.value : 0; // Если модификатор не найден, 0
+    const modifierValue = modifier ? modifier.value : 0;
+    const backgroundMod = getBackgroundModifierForAbility(ability.code);
 
     return {
       ...ability,
-      defaultValue: MINIMAL_ABILITY_VALUE, // Прибавляем модификатор к defaultValue
-      modifierValue: modifierValue,
+      defaultValue: MINIMAL_ABILITY_VALUE,
+      modifierValue: modifierValue + backgroundMod,
       byCoinsValue: 0
     };
   });
 }
 
-// Используем watch для отслеживания изменений в abilityModifiers
+function getBackgroundModifierForAbility(code: string): number {
+  if (!hasBackgroundModifiers.value) return 0;
+  if (backgroundBonusMode.value === "2+1") {
+    if (backgroundPlus2.value === code) return 2;
+    if (backgroundPlus1.value === code) return 1;
+  } else if (backgroundPlus1x3.value.filter(a => a === code).length > 0) return 1;
+  return 0;
+}
+
+function getBackgroundSlotCode(slot: "+2" | "+1"): string | null {
+  return slot === "+2" ? backgroundPlus2.value : backgroundPlus1.value;
+}
+function getBackgroundSlotName(slot: "+2" | "+1"): string {
+  const code = getBackgroundSlotCode(slot);
+  return code ? (abilities.value.find((a) => a.code === code)?.name ?? code) : "";
+}
+function getAbilityName(code: string): string {
+  return abilities.value.find((a) => a.code === code)?.name ?? code;
+}
+function clearBackgroundSlot(slot: "+2" | "+1") {
+  if (slot === "+2") backgroundPlus2.value = null;
+  else backgroundPlus1.value = null;
+  calculateAbilityValues();
+}
+function onBackgroundModeChange(ev: Event) {
+  console.log(ev)
+  const v = (ev as CustomEvent).detail?.value as string | undefined;
+  if (v === "2+1" || v === "1+1+1") {
+    backgroundBonusMode.value = v;
+    if (v === "2+1") {
+      backgroundPlus1x3.value = [];
+    } else {
+      backgroundPlus2.value = null;
+      backgroundPlus1.value = null;
+      // +1+1+1: preselect first 3 allowed abilities, user cannot change
+      backgroundPlus1x3.value = allowedBackgroundCodes.value.slice(0, 3);
+    }
+    calculateAbilityValues();
+  }
+}
+function isAllowedForBackground(code: string): boolean {
+  return allowedBackgroundCodes.value.includes(code);
+}
+function tryAssignBackgroundModifier(abilityCode: string): boolean {
+  if (!hasBackgroundModifiers.value || !isAllowedForBackground(abilityCode)) return false;
+  if (backgroundBonusMode.value === "2+1") {
+    // 1. Clicking an already-assigned ability clears it (toggle off)
+    if (backgroundPlus2.value === abilityCode) {
+      backgroundPlus2.value = null;
+    } else if (backgroundPlus1.value === abilityCode) {
+      backgroundPlus1.value = null;
+    } else if (!backgroundPlus2.value) {
+      // 2. Assign +2 first
+      backgroundPlus2.value = abilityCode;
+    } else if (!backgroundPlus1.value && abilityCode !== backgroundPlus2.value) {
+      // 3. Then assign +1 to a different ability (never same as +2)
+      backgroundPlus1.value = abilityCode;
+    } else if (backgroundPlus2.value && backgroundPlus1.value && abilityCode !== backgroundPlus2.value) {
+      // 4. Both full: clicking another allowed ability replaces +1
+      backgroundPlus1.value = abilityCode;
+    } else {
+      backgroundPlus1x3.value = allowedBackgroundCodes.value.slice(0, 3);
+      return false;
+    }
+  } else {
+    // +1+1+1: preselected, user cannot choose or change
+    return false;
+  }
+  calculateAbilityValues();
+  return true;
+}
+
 watch(() => props.characterData?.race?.stats?.abilityModifiers, () => {
-  calculateAbilityValues(); // Пересчитываем значения, когда модификаторы меняются
-}, {immediate: true}); // Вызов при первой инициализации
+  calculateAbilityValues();
+}, {immediate: true});
+
+watch(
+  () => props.characterData?.background?.stats?.abilityModifiers,
+  () => {
+    backgroundPlus2.value = null;
+    backgroundPlus1.value = null;
+    backgroundPlus1x3.value = [];
+    calculateAbilityValues();
+  }
+);
 
 function getAbilityRaceModifiers() {
   return (props.characterData?.race?.stats?.abilityModifiers || [{code: 'Нет модификаторов'}])
@@ -148,6 +292,8 @@ function getAbilityRaceModifiers() {
 }
 
 function onClickAbility(abilityCode: string) {
+  if (tryAssignBackgroundModifier(abilityCode)) return;
+
   const matchingAbility = abilities.value.find(ability => ability.code === abilityCode);
   if (!matchingAbility) {
     return
@@ -155,7 +301,7 @@ function onClickAbility(abilityCode: string) {
   const matchingAnyModifier = getAbilityRaceModifiers().find((modifier: AbilityModifier) => modifier.code === "ANY");
   const matchingNotAnyModifier = getAbilityRaceModifiers().find((modifier: AbilityModifier) => modifier.code === abilityCode);
   if (!matchingNotAnyModifier && matchingAbility.defaultValue + matchingAbility.modifierValue == MINIMAL_ABILITY_VALUE) {
-    if (selected.length < onChooseCount) {
+    if (selected.length < onChooseCount && !selected.includes(matchingAbility.code)) {
       selected.push(matchingAbility.code)
       if (matchingAnyModifier) {
         matchingAbility.modifierValue = matchingAnyModifier.value
@@ -171,9 +317,13 @@ function onClickAbility(abilityCode: string) {
 
 function isAbilityHighlighted(abilityCode: string) {
   const raceModifiers = getAbilityRaceModifiers();
-  return raceModifiers.some((modifier: AbilityModifier) => modifier.code === "ALL") ||
+  const fromRace =
+      raceModifiers.some((modifier: AbilityModifier) => modifier.code === "ALL") ||
       raceModifiers.some((modifier: AbilityModifier) => modifier.code === abilityCode) ||
       selected.some(code => code === abilityCode);
+  if (fromRace) return true;
+  return hasBackgroundModifiers.value && getBackgroundModifierForAbility(abilityCode) > 0;
+
 }
 
 function abilityModify(abilityCode: string, change: number) {
@@ -293,8 +443,42 @@ ion-item {
 }
 
 .ability-score-round.highlighted {
-  background-color: var(--ion-color-primary); /* Цвет фона */
-  animation: glowing 1.5s infinite; /* Анимация свечения */
-  position: relative; /* Устанавливает позиционирование элемента */
+  background-color: var(--ion-color-primary);
+  animation: glowing 1.5s infinite;
+  position: relative;
+}
+
+.ability-score-round.background-eligible {
+  border: 2px solid var(--ion-color-tertiary);
+}
+
+.background-modifiers-block {
+  margin-top: 12px;
+  margin-bottom: 12px;
+  padding: 10px 0;
+}
+
+.background-modifiers-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ion-text-color);
+  margin: 0 0 4px 0;
+}
+
+.background-modifiers-hint {
+  font-size: 0.85rem;
+  color: var(--ion-color-medium-shade);
+  margin: 0 0 10px 0;
+}
+
+.background-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.background-slots ion-chip {
+  cursor: pointer;
 }
 </style>

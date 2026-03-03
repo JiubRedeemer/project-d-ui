@@ -1,5 +1,5 @@
 <script setup lang="ts">
-
+import { computed } from "vue";
 import { arrowBack } from "ionicons/icons";
 import {
   IonBackButton,
@@ -14,9 +14,13 @@ import {
 import LogOutButton from "@/views/common/LogOutButton.vue";
 import { useRoute } from "vue-router";
 
-const props = defineProps(['headerText', 'step'])
+const props = withDefaults(
+  defineProps<{ headerText: string; step: { current: number; names: string[] }; totalSteps?: number }>(),
+  { totalSteps: undefined }
+);
 const route = useRoute();
 const backHref = `/rooms/${route.params.roomId}/characters`;
+const progressTotal = computed(() => props.totalSteps ?? props.step.names.length);
 
 </script>
 
@@ -38,7 +42,7 @@ const backHref = `/rooms/${route.params.roomId}/characters`;
         <ion-buttons slot="end">
           <LogOutButton />
         </ion-buttons>
-        <ion-progress-bar :value="props.step.current / props.step.names.length"></ion-progress-bar>
+        <ion-progress-bar :value="props.step.current / progressTotal"></ion-progress-bar>
       </ion-toolbar>
     </ion-buttons>
   </ion-header>

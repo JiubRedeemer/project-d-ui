@@ -38,6 +38,9 @@ export const GATEWAY_INTEGRATION_ROUTES = {
     roomSkillsByCode: "/skills/byCode",
     roomSkillsByClassCode: "/skills/byClass",
 
+    /** D&D 2024: GET .../rooms/:roomId/backgrounds (list), GET .../rooms/:roomId/backgrounds/:code (one) */
+    backgrounds: "/backgrounds",
+
     characters: "/characters",
     charactersHeader: "/header",
     charactersSubheader: "/subheader",
