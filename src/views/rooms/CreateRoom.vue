@@ -22,6 +22,7 @@ const ionRouter = useIonRouter();
 const roomName = ref("");
 const roomDescription = ref("");
 const roomRules = ref("DND5E");
+const roomRootRules = ref("DND5E");
 const roomImage = ref<File | null>(null);
 const previewImage = ref<string | null>(null);
 const filePath = ref<string>("");
@@ -93,6 +94,7 @@ const createRoom = async () => {
       name: roomName.value,
       description: roomDescription.value,
       rules: roomRules.value,
+      baseRules: roomRootRules.value,
       filePath: filePath.value,
     }, {
       headers: {
@@ -144,6 +146,20 @@ const createRoom = async () => {
               fill="outline"
               color="primary"
               v-model="roomRules"
+          >
+            <ion-select-option value="DND5E">Днд 5e</ion-select-option>
+            <ion-select-option value="DND2024">Днд 2024</ion-select-option>
+            <ion-select-option value="HOMEBREW">Хоумбрю</ion-select-option>
+          </ion-select>
+        </ion-item>
+
+        <ion-item color="dark" class="input-block" v-show="roomRules === 'HOMEBREW'">
+          <ion-select
+              label="База для правил"
+              label-placement="floating"
+              fill="outline"
+              color="primary"
+              v-model="roomRootRules"
           >
             <ion-select-option value="DND5E">Днд 5e</ion-select-option>
             <ion-select-option value="DND2024">Днд 2024</ion-select-option>

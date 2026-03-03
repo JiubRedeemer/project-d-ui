@@ -408,7 +408,7 @@ async function deleteCharacterSkill(id: string) {
     </div>
   </div>
   <div class="add-new-button">
-    <ion-button size="large" shape="round" @click="openEditCharacterSkillModal(true, undefined)">
+    <ion-button color="secondary" size="large" shape="round" @click="openEditCharacterSkillModal(true, undefined)">
       <ion-icon slot="icon-only" :icon="addOutline"></ion-icon>
     </ion-button>
   </div>
