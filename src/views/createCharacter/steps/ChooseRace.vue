@@ -306,7 +306,8 @@ function onChooseRace(race?: RaceResponse) {
 .background-large-image {
   width: 100%;
   height: auto;
-  min-width: 100vw;
+  min-width: 90vw;
+  max-width: 90vw;
   object-fit: cover;
   border-radius: 7%;
 }

@@ -52,7 +52,7 @@ const goToRoom = (roomId: string) => {
 }
 
 const goToCreateRoom = () => {
-  ionRouter.navigate('/rooms/create', 'forward', 'push')
+  ionRouter.navigate('/rooms/create/ruleType', 'forward', 'push')
 }
 
 
