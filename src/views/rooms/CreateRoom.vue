@@ -6,16 +6,19 @@ import {
   IonIcon,
   IonInput,
   IonItem,
-  IonPage, IonSelect, IonSelectOption,
+  IonPage,
+  IonSelect,
+  IonSelectOption,
   toastController,
   useIonRouter
 } from "@ionic/vue";
-import { HEADERS, TEXTS } from "@/config/localisations";
+import {HEADERS, TEXTS} from "@/config/localisations";
 import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
-import { ref } from "vue";
+import {ref} from "vue";
 import axios from "axios";
-import { FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES } from "@/config/integrationRoutes";
-import { add, checkmark } from "ionicons/icons";
+import {FILE_STORAGE_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {add, checkmark} from "ionicons/icons";
+import {useRoomCreationStore} from "@/stores/RoomCreationStore";
 
 const ionRouter = useIonRouter();
 
@@ -30,7 +33,7 @@ const filePath = ref<string>("");
 const fileInput = ref<HTMLInputElement | null>(null);
 
 const allowedFormats = ["image/jpeg", "image/png", "image/gif", "image/bmp", "image/webp", "image/tiff", "image/svg+xml"];
-
+const roomCreationStore = useRoomCreationStore();
 const handleFileUpload = (event: Event) => {
   const file = (event.target as HTMLInputElement).files?.[0] || null;
   if (file && allowedFormats.includes(file.type)) {
@@ -52,18 +55,18 @@ const triggerFileInput = () => {
 const uploadToMinio = async (file: File) => {
 
   const res = await axios.put(
-    `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL +
-    FILE_STORAGE_INTEGRATION_ROUTES.api +
-    FILE_STORAGE_INTEGRATION_ROUTES.room_images_bucket +
-    FILE_STORAGE_INTEGRATION_ROUTES.upload}`,
-    {
-      file
-    },
-    {
-      headers: {
-        "Content-Type": "multipart/form-data",
+      `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL +
+      FILE_STORAGE_INTEGRATION_ROUTES.api +
+      FILE_STORAGE_INTEGRATION_ROUTES.room_images_bucket +
+      FILE_STORAGE_INTEGRATION_ROUTES.upload}`,
+      {
+        file
+      },
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        }
       }
-    }
   );
   return res.data;
 
@@ -86,29 +89,14 @@ const createRoom = async () => {
 
   if (roomImage.value) filePath.value = await uploadToMinio(roomImage.value);
 
-
-  try {
-    const res = await axios.put(GATEWAY_INTEGRATION_ROUTES.baseURL +
-      GATEWAY_INTEGRATION_ROUTES.api +
-      GATEWAY_INTEGRATION_ROUTES.rooms, {
-      name: roomName.value,
-      description: roomDescription.value,
-      rules: roomRules.value,
-      baseRules: roomRootRules.value,
-      filePath: filePath.value,
-    }, {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("accessToken")}`
-      }
-    });
-
-    if (res.status == 200) {
-      ionRouter.navigate("/rooms", "forward", "push");
-    }
-  } catch (error) {
-    console.error("Ошибка создания комнаты", error);
-  }
+  roomCreationStore.roomInfo.name = roomName.value;
+  roomCreationStore.roomInfo.description = roomDescription.value;
+  roomCreationStore.roomInfo.rules = roomRules.value;
+  roomCreationStore.roomInfo.baseRules = roomRootRules.value;
+  roomCreationStore.roomInfo.filePath = filePath.value;
+  await roomCreationStore.createRoom();
+  ionRouter.replace("/rooms");
+  roomCreationStore.clearAll()
 };
 </script>
 
@@ -119,24 +107,22 @@ const createRoom = async () => {
     <ion-content :fullscreen="true" color="dark">
       <div class="form-wrapper">
         <div class="image-wrapper" @click="triggerFileInput">
-          <img v-if="previewImage" :src="previewImage" class="background-large-image" alt="Room Image" />
+          <img v-if="previewImage" :src="previewImage" class="background-large-image" alt="Room Image"/>
           <div v-else class="placeholder-container">
             <ion-icon :icon="add" class="placeholder-icon"></ion-icon>
           </div>
           <div class="background-large-image-overlay"></div>
         </div>
-
-        <input type="file" ref="fileInput" @change="handleFileUpload" accept="image/*" style="display: none;" />
-
+        <input type="file" ref="fileInput" @change="handleFileUpload" accept="image/*" style="display: none;"/>
 
         <ion-item color="dark" class="input-block">
           <ion-input :label="TEXTS.roomName.rus" label-placement="floating" fill="outline" color="primary"
-            :placeholder="TEXTS.enterRoomName.rus" :clear-input="true" v-model="roomName"></ion-input>
+                     :placeholder="TEXTS.enterRoomName.rus" :clear-input="true" v-model="roomName"></ion-input>
         </ion-item>
 
         <ion-item color="dark" class="input-block">
           <ion-input :label="TEXTS.roomDescription.rus" label-placement="floating" fill="outline" color="primary"
-            :placeholder="TEXTS.enterRoomDescription.rus" v-model="roomDescription"></ion-input>
+                     :placeholder="TEXTS.enterRoomDescription.rus" v-model="roomDescription"></ion-input>
         </ion-item>
 
         <ion-item color="dark" class="input-block">
