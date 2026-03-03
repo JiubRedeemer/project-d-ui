@@ -180,14 +180,14 @@ const sendInvite = async () => {
       </div>
 
       <ion-fab slot="fixed" vertical="bottom" horizontal="end">
-        <ion-fab-button color="primary" @click="createCharacter()">
+        <ion-fab-button color="medium" @click="createCharacter()">
           <ion-icon :icon="add" color="light"></ion-icon>
         </ion-fab-button>
       </ion-fab>
 
       <ion-fab slot="fixed" vertical="bottom" horizontal="end" class="invite-fab">
-        <ion-fab-button color="secondary" @click="openInviteModal()">
-          <ion-icon :icon="personAddOutline" color="dark"></ion-icon>
+        <ion-fab-button color="medium" @click="openInviteModal()">
+          <ion-icon :icon="personAddOutline" color="light"></ion-icon>
         </ion-fab-button>
       </ion-fab>
 

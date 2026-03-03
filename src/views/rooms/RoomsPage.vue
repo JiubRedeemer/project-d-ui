@@ -87,7 +87,7 @@ const goToCreateRoom = () => {
       </div>
 
       <ion-fab slot="fixed" vertical="bottom" horizontal="end">
-        <ion-fab-button color="primary" @click="goToCreateRoom()">
+        <ion-fab-button color="medium" @click="goToCreateRoom()">
           <ion-icon :icon="add" color="light"></ion-icon>
         </ion-fab-button>
       </ion-fab>

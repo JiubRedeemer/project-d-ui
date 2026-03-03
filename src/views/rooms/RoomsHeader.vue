@@ -36,9 +36,9 @@ onBeforeMount(() => {
 </script>
 
 <template>
-  <ion-header>
+  <ion-header class="ion-no-border">
     <ion-buttons>
-      <ion-toolbar style="--background: transparent">
+      <ion-toolbar color="dark" no-border>
         <ion-title>{{ props.headerName }}</ion-title>
         <ion-buttons slot="start">
           <ion-back-button/>
