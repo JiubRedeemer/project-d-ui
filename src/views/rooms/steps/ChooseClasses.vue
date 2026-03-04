@@ -13,22 +13,35 @@ import {
   onIonViewDidEnter,
   useIonRouter
 } from "@ionic/vue";
-import {arrowForwardOutline, chevronForwardOutline} from "ionicons/icons";
+import {addOutline, arrowBackOutline, arrowForwardOutline, chevronForwardOutline} from "ionicons/icons";
 import {HEADERS, TEXTS} from "@/config/localisations";
 import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
-import {onMounted, ref} from "vue";
+import {computed, onMounted, ref} from "vue";
 import {FILE_STORAGE_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {ClazzDto} from "@/api/rulebookApi.types";
 import {useRoomCreationStore} from "@/stores/RoomCreationStore";
+import {useFullClassStore} from "@/stores/FullClassStore";
 
 const roomCreationStore = useRoomCreationStore();
+const classFullStore = useFullClassStore();
 const ionRouter = useIonRouter();
 
-const classes = ref<ClazzDto[]>();
+const classesFromApi = ref<ClazzDto[]>([]);
+
+const classes = computed(() => {
+  const api = classesFromApi.value ?? [];
+  const customCodes = new Set(api.map((c) => c.code));
+  const customOnly = roomCreationStore.classes.filter((c) => !customCodes.has(c.code));
+  return [...api, ...customOnly];
+});
 
 const setupClasses = async () => {
-  classes.value = await roomCreationStore.getAvailableClasses(roomCreationStore.roomInfo.baseRules)
-}
+  classesFromApi.value = await roomCreationStore.getAvailableClasses(roomCreationStore.roomInfo.baseRules);
+};
+
+const createItem = () => {
+  ionRouter.navigate("/createEntity/class", "forward", "push");
+};
 
 onIonViewDidEnter(() => {
   setupClasses()
@@ -51,7 +64,8 @@ const toggleClass = (clazz: ClazzDto) => {
 };
 
 const goToFullClass = (clazz: ClazzDto) => {
-  console.log(roomCreationStore.classes.length);
+  classFullStore.clazz = clazz;
+  ionRouter.navigate("/guidebook/classes/" + clazz.code, 'forward', 'push')
 }
 
 const onRowClick = (clazz: ClazzDto, e: Event) => {
@@ -66,17 +80,19 @@ const onRowClick = (clazz: ClazzDto, e: Event) => {
 const nextStep = () => {
   ionRouter.navigate("/rooms/create/backgrounds", 'forward', 'push');
 }
-
+const previousStep = () => {
+  ionRouter.back();
+}
 
 </script>
 
 <template>
   <ion-page>
-    <RoomsHeader :header-name="HEADERS.rooms.rus"></RoomsHeader>
+    <RoomsHeader :header-name="HEADERS.chooseClasses.rus"></RoomsHeader>
     <ion-content :fullscreen="true" color="dark">
 
-      <ion-list v-show="classes?.length != 0" class="room-list">
-        <ion-item v-for="(clazz, index) in classes" :key="clazz.id" :button="true" color="dark" @click="onRowClick(clazz, $event)">
+      <ion-list v-show="classes.length !== 0" class="room-list">
+        <ion-item v-for="(clazz, index) in classes" :key="clazz.code + (clazz.id ?? '')" :button="true" color="dark" @click="onRowClick(clazz, $event)">
           <ion-checkbox slot="end" :checked="isClassSelected(clazz)" />
           <ion-avatar aria-hidden="false" slot="start">
             <img width="64" height="64"
@@ -92,15 +108,26 @@ const nextStep = () => {
             <div class="room-name">{{ clazz.name }}</div>
           </ion-label>
         </ion-item>
+        <div style="min-height: 50px"></div>
       </ion-list>
 
-      <div class="room-list-placeholder-wrapper" v-show="classes?.length == 0">
+      <div class="room-list-placeholder-wrapper" v-show="classes.length === 0">
         <div class="room-list-placeholder">{{ TEXTS.emptyRoomList.rus }}</div>
       </div>
 
       <ion-fab slot="fixed" vertical="bottom" horizontal="end">
         <ion-fab-button color="medium" @click="nextStep()">
           <ion-icon :icon="arrowForwardOutline" color="light"></ion-icon>
+        </ion-fab-button>
+      </ion-fab>
+      <ion-fab slot="fixed" vertical="bottom" horizontal="start">
+        <ion-fab-button color="medium" @click="previousStep()">
+          <ion-icon :icon="arrowBackOutline" color="light"></ion-icon>
+        </ion-fab-button>
+      </ion-fab>
+      <ion-fab slot="fixed" vertical="bottom" horizontal="center">
+        <ion-fab-button color="medium" @click="createItem()">
+          <ion-icon :icon="addOutline" color="light"></ion-icon>
         </ion-fab-button>
       </ion-fab>
 

@@ -31,7 +31,7 @@
             <ion-chip
                 v-for="slot in ['+2', '+1']"
                 :key="slot"
-                :color="getBackgroundSlotCode(slot) ? 'primary' : 'medium'"
+                :color="getBackgroundSlotCode(slot) ? 'primary' : 'secondary'"
                 @click="getBackgroundSlotCode(slot) && clearBackgroundSlot(slot)"
             >
               <ion-label>{{ slot }}: {{ getBackgroundSlotName(slot) || 'Выберите' }}</ion-label>
@@ -453,7 +453,7 @@ ion-item {
 }
 
 .ability-score-round.background-eligible {
-  border: 2px solid var(--ion-color-tertiary);
+  border: 2px solid var(--ion-color-success);
 }
 
 .background-modifiers-block {
@@ -471,7 +471,7 @@ ion-item {
 
 .background-modifiers-hint {
   font-size: 0.85rem;
-  color: var(--ion-color-medium-shade);
+  color: var(--ion-color-secondary);
   margin: 0 0 10px 0;
 }
 

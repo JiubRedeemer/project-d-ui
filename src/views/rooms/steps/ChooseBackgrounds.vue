@@ -13,25 +13,38 @@ import {
   onIonViewDidEnter,
   useIonRouter
 } from "@ionic/vue";
-import {arrowForwardOutline, chevronForwardOutline} from "ionicons/icons";
+import {addOutline, arrowBackOutline, arrowForwardOutline, chevronForwardOutline} from "ionicons/icons";
 import {HEADERS, TEXTS} from "@/config/localisations";
 import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
-import {onMounted, ref} from "vue";
+import {computed, onMounted, ref} from "vue";
 import {FILE_STORAGE_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {BackgroundDto} from "@/api/rulebookApi.types";
 import {useRoomCreationStore} from "@/stores/RoomCreationStore";
+import {useFullBackgroundStore} from "@/stores/FullBackgroundStore";
 
 const roomCreationStore = useRoomCreationStore();
+const backgroundFullStore = useFullBackgroundStore();
 const ionRouter = useIonRouter();
 
-const backgrounds = ref<BackgroundDto[]>();
+const backgroundsFromApi = ref<BackgroundDto[]>([]);
+
+const backgrounds = computed(() => {
+  const api = backgroundsFromApi.value ?? [];
+  const customCodes = new Set(api.map((b) => b.code));
+  const customOnly = roomCreationStore.backgrounds.filter((b) => !customCodes.has(b.code));
+  return [...api, ...customOnly];
+});
 
 const setupBackgrounds = async () => {
-  backgrounds.value = await roomCreationStore.getAvailableBackgrounds(roomCreationStore.roomInfo.baseRules)
-  if (!backgrounds.value || backgrounds.value.length == 0) {
+  backgroundsFromApi.value = await roomCreationStore.getAvailableBackgrounds(roomCreationStore.roomInfo.baseRules) ?? [];
+  if (!backgroundsFromApi.value.length && !roomCreationStore.backgrounds.length) {
     await nextStep();
   }
-}
+};
+
+const createItem = () => {
+  ionRouter.navigate("/createEntity/background", "forward", "push");
+};
 
 onIonViewDidEnter(() => {
   setupBackgrounds()
@@ -54,7 +67,8 @@ const toggleBackground = (background: BackgroundDto) => {
 };
 
 const goToFullBackground = (background: BackgroundDto) => {
-  console.log(roomCreationStore.backgrounds.length);
+  backgroundFullStore.background = background;
+  ionRouter.navigate("/guidebook/backgrounds/" + background.code, 'forward', 'push')
 }
 
 const onRowClick = (background: BackgroundDto, e: Event) => {
@@ -74,17 +88,19 @@ const nextStep = async () => {
   ionRouter.replace("/rooms");
   roomCreationStore.clearAll();
 }
-
+const previousStep = () => {
+  ionRouter.back();
+}
 
 </script>
 
 <template>
   <ion-page>
-    <RoomsHeader :header-name="HEADERS.rooms.rus"></RoomsHeader>
+    <RoomsHeader :header-name="HEADERS.chooseBackgrounds.rus"></RoomsHeader>
     <ion-content :fullscreen="true" color="dark">
 
-      <ion-list v-show="backgrounds?.length != 0" class="room-list">
-        <ion-item v-for="(background, index) in backgrounds" :key="background.id" :button="true" color="dark"
+      <ion-list v-show="backgrounds.length !== 0" class="room-list">
+        <ion-item v-for="(background, index) in backgrounds" :key="background.code + (background.id ?? '')" :button="true" color="dark"
                   @click="onRowClick(background, $event)">
           <ion-checkbox slot="end" :checked="isBackgroundSelected(background)"/>
           <ion-avatar aria-hidden="false" slot="start">
@@ -101,15 +117,26 @@ const nextStep = async () => {
             <div class="room-name">{{ background.name }}</div>
           </ion-label>
         </ion-item>
+        <div style="min-height: 50px"></div>
       </ion-list>
 
-      <div class="room-list-placeholder-wrapper" v-show="backgrounds?.length == 0">
+      <div class="room-list-placeholder-wrapper" v-show="backgrounds.length === 0">
         <div class="room-list-placeholder">{{ TEXTS.emptyRoomList.rus }}</div>
       </div>
 
       <ion-fab slot="fixed" vertical="bottom" horizontal="end">
         <ion-fab-button color="medium" @click="nextStep()">
           <ion-icon :icon="arrowForwardOutline" color="light"></ion-icon>
+        </ion-fab-button>
+      </ion-fab>
+      <ion-fab slot="fixed" vertical="bottom" horizontal="start">
+        <ion-fab-button color="medium" @click="previousStep()">
+          <ion-icon :icon="arrowBackOutline" color="light"></ion-icon>
+        </ion-fab-button>
+      </ion-fab>
+      <ion-fab slot="fixed" vertical="bottom" horizontal="center">
+        <ion-fab-button color="medium" @click="createItem()">
+          <ion-icon :icon="addOutline" color="light"></ion-icon>
         </ion-fab-button>
       </ion-fab>
 

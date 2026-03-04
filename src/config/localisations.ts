@@ -203,6 +203,10 @@ export const TEXTS = {
 export const HEADERS = {
     menu: {rus: 'Project-D', eng: 'Project-D'},
     rooms: {rus: 'Комнаты', eng: 'Rooms'},
+    chooseRuleType: {rus: 'Набор правил', eng: 'Rule type'},
+    chooseRaces: {rus: 'Набор видов', eng: 'Races'},
+    chooseClasses: {rus: 'Набор классов', eng: 'Classes'},
+    chooseBackgrounds: {rus: 'Набор предысторий', eng: 'Backgrounds'},
     characters: {rus: 'Персонажи', eng: 'Characters'},
     invites: {rus: 'Приглашения', eng: 'Invites'},
     race: {rus: 'Раса', eng: 'Race'},
