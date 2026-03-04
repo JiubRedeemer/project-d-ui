@@ -28,6 +28,9 @@ const backgrounds = ref<BackgroundDto[]>();
 
 const setupBackgrounds = async () => {
   backgrounds.value = await roomCreationStore.getAvailableBackgrounds(roomCreationStore.roomInfo.baseRules)
+  if (!backgrounds.value || backgrounds.value.length == 0) {
+    await nextStep();
+  }
 }
 
 onIonViewDidEnter(() => {
@@ -83,7 +86,7 @@ const nextStep = async () => {
       <ion-list v-show="backgrounds?.length != 0" class="room-list">
         <ion-item v-for="(background, index) in backgrounds" :key="background.id" :button="true" color="dark"
                   @click="onRowClick(background, $event)">
-          <ion-checkbox slot="end" :checked="isBackgroundSelected(background)" />
+          <ion-checkbox slot="end" :checked="isBackgroundSelected(background)"/>
           <ion-avatar aria-hidden="false" slot="start">
             <img width="64" height="64"
                  :src="background.imgUrl ? FILE_STORAGE_INTEGRATION_ROUTES.baseURL +
