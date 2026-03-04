@@ -18,11 +18,11 @@
       <div v-if="hasBackgroundModifiers" class="background-modifiers-block">
         <p class="background-modifiers-title">Предыстория (D&D 2024)</p>
         <p class="background-modifiers-hint">+2 к одной и +1 к другой <strong>или</strong> +1 к трём разным</p>
-        <ion-segment :value="backgroundBonusMode" @ionChange="onBackgroundModeChange">
-          <ion-segment-button value="2+1">
+        <ion-segment :value="backgroundBonusMode">
+          <ion-segment-button value="2+1" @click="applyBackgroundMode('2+1')">
             <ion-label>+2 и +1</ion-label>
           </ion-segment-button>
-          <ion-segment-button value="1+1+1">
+          <ion-segment-button value="1+1+1" @click="applyBackgroundMode('1+1+1')">
             <ion-label>+1, +1, +1</ion-label>
           </ion-segment-button>
         </ion-segment>
@@ -52,7 +52,8 @@
         <ion-list color="dark">
           <ion-item color="dark" v-for="(ability, index) in abilities" :key="index">
             <div @click="onClickAbility(ability.code)" class="ability-score-round"
-                 :class="{ highlighted: isAbilityHighlighted(ability.code), 'background-eligible': isAllowedForBackground(ability.code) }" slot="start">
+                 :class="{ highlighted: isAbilityHighlighted(ability.code), 'background-eligible': isAllowedForBackground(ability.code) }"
+                 slot="start">
               <span class="ability-score-value">{{
                   ability.defaultValue + ability.modifierValue + ability.byCoinsValue
                 }}</span>
@@ -92,6 +93,7 @@ import {
   IonLabel,
   IonList,
   IonNote,
+  IonSegment,
   IonSegmentButton,
 } from "@ionic/vue";
 import {computed, onMounted, ref, watch} from "vue";
@@ -193,37 +195,39 @@ function getBackgroundModifierForAbility(code: string): number {
 function getBackgroundSlotCode(slot: "+2" | "+1"): string | null {
   return slot === "+2" ? backgroundPlus2.value : backgroundPlus1.value;
 }
+
 function getBackgroundSlotName(slot: "+2" | "+1"): string {
   const code = getBackgroundSlotCode(slot);
   return code ? (abilities.value.find((a) => a.code === code)?.name ?? code) : "";
 }
+
 function getAbilityName(code: string): string {
   return abilities.value.find((a) => a.code === code)?.name ?? code;
 }
+
 function clearBackgroundSlot(slot: "+2" | "+1") {
   if (slot === "+2") backgroundPlus2.value = null;
   else backgroundPlus1.value = null;
   calculateAbilityValues();
 }
-function onBackgroundModeChange(ev: Event) {
-  console.log(ev)
-  const v = (ev as CustomEvent).detail?.value as string | undefined;
-  if (v === "2+1" || v === "1+1+1") {
-    backgroundBonusMode.value = v;
-    if (v === "2+1") {
-      backgroundPlus1x3.value = [];
-    } else {
-      backgroundPlus2.value = null;
-      backgroundPlus1.value = null;
-      // +1+1+1: preselect first 3 allowed abilities, user cannot change
-      backgroundPlus1x3.value = allowedBackgroundCodes.value.slice(0, 3);
-    }
-    calculateAbilityValues();
+
+function applyBackgroundMode(value: "2+1" | "1+1+1") {
+  backgroundBonusMode.value = value;
+  if (value === "2+1") {
+    backgroundPlus1x3.value = [];
+  } else {
+    backgroundPlus2.value = null;
+    backgroundPlus1.value = null;
+    backgroundPlus1x3.value = allowedBackgroundCodes.value.slice(0, 3);
   }
+  calculateAbilityValues();
 }
+
+
 function isAllowedForBackground(code: string): boolean {
   return allowedBackgroundCodes.value.includes(code);
 }
+
 function tryAssignBackgroundModifier(abilityCode: string): boolean {
   if (!hasBackgroundModifiers.value || !isAllowedForBackground(abilityCode)) return false;
   if (backgroundBonusMode.value === "2+1") {
@@ -258,13 +262,13 @@ watch(() => props.characterData?.race?.stats?.abilityModifiers, () => {
 }, {immediate: true});
 
 watch(
-  () => props.characterData?.background?.stats?.abilityModifiers,
-  () => {
-    backgroundPlus2.value = null;
-    backgroundPlus1.value = null;
-    backgroundPlus1x3.value = [];
-    calculateAbilityValues();
-  }
+    () => props.characterData?.background?.stats?.abilityModifiers,
+    () => {
+      backgroundPlus2.value = null;
+      backgroundPlus1.value = null;
+      backgroundPlus1x3.value = [];
+      calculateAbilityValues();
+    }
 );
 
 function getAbilityRaceModifiers() {
