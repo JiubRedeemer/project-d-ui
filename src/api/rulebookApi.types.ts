@@ -33,7 +33,7 @@ export type RaceStatsDto = {
   maxAge: number;
   maxHeight: number;
   maxWeight: number;
-  baseSpeed: number;
+  baseSpeed?: number | null;
   abilityModifiers: AbilityModifierDto[];
   traits: RaceTraitDto[];
   proficiencies: RaceProficiencyDto[];
@@ -47,7 +47,7 @@ export type RaceDto = {
   code: string;
   speciesCode?: string | null;
   imgUrl?: string | null;
-  stats: RaceStatsDto;
+  stats?: RaceStatsDto;
 };
 
 export type RaceGroupDto = {

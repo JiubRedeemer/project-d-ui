@@ -14,10 +14,10 @@ import {
   onIonViewDidEnter,
   useIonRouter
 } from "@ionic/vue";
-import {arrowBackOutline, arrowForwardOutline, chevronForwardOutline} from "ionicons/icons";
+import {addOutline, arrowBackOutline, arrowForwardOutline, chevronForwardOutline} from "ionicons/icons";
 import {HEADERS, TEXTS} from "@/config/localisations";
 import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
-import {onMounted, ref} from "vue";
+import {computed, onMounted, ref} from "vue";
 import {FILE_STORAGE_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {RaceDto} from "@/api/rulebookApi.types";
 import {useRoomCreationStore} from "@/stores/RoomCreationStore";
@@ -27,13 +27,20 @@ const roomCreationStore = useRoomCreationStore();
 const racesFullStore = useFullRaceStore();
 const ionRouter = useIonRouter();
 
-const races = ref<RaceDto[]>();
+const racesFromApi = ref<RaceDto[]>([]);
+
+const races = computed(() => {
+  const api = racesFromApi.value ?? [];
+  const customCodes = new Set(api.map((r) => r.code));
+  const customOnly = roomCreationStore.races.filter((r) => !customCodes.has(r.code));
+  return [...api, ...customOnly];
+});
 
 const setupRaces = async () => {
   if (!roomCreationStore.roomInfo.baseRules && !roomCreationStore.roomInfo.baseRules) {
     ionRouter.replace("/rooms/create/ruleType")
   }
-  races.value = await roomCreationStore.getAvailableRaces(roomCreationStore.roomInfo.baseRules)
+  racesFromApi.value = await roomCreationStore.getAvailableRaces(roomCreationStore.roomInfo.baseRules)
 }
 
 onIonViewDidEnter(() => {
@@ -79,6 +86,10 @@ const previousStep = () => {
   ionRouter.back();
 }
 
+const createItem = () => {
+  ionRouter.navigate("/createEntity/race", 'forward', 'push');
+}
+
 
 </script>
 
@@ -87,8 +98,8 @@ const previousStep = () => {
     <RoomsHeader :header-name="HEADERS.chooseRaces.rus"></RoomsHeader>
     <ion-content :fullscreen="true" color="dark">
 
-      <ion-list v-show="races?.length != 0" class="room-list">
-        <ion-item v-for="(race, index) in races" :key="race.id" :button="true" color="dark"
+      <ion-list v-show="races.length !== 0" class="room-list">
+        <ion-item v-for="(race, index) in races" :key="race.code + (race.id ?? '')" :button="true" color="dark"
                   @click="onRowClick(race, $event)">
           <ion-checkbox slot="end" :checked="isRaceSelected(race)"/>
           <ion-avatar aria-hidden="false" slot="start">
@@ -108,7 +119,7 @@ const previousStep = () => {
         <div style="min-height: 50px"></div>
       </ion-list>
 
-      <div class="room-list-placeholder-wrapper" v-show="races?.length == 0">
+      <div class="room-list-placeholder-wrapper" v-show="races.length === 0">
         <div class="room-list-placeholder">{{ TEXTS.emptyRoomList.rus }}</div>
       </div>
 
@@ -120,6 +131,11 @@ const previousStep = () => {
       <ion-fab slot="fixed" vertical="bottom" horizontal="start">
         <ion-fab-button color="medium" @click="previousStep()">
           <ion-icon :icon="arrowBackOutline" color="light"></ion-icon>
+        </ion-fab-button>
+      </ion-fab>
+      <ion-fab slot="fixed" vertical="bottom" horizontal="center">
+        <ion-fab-button color="medium" @click="createItem()">
+          <ion-icon :icon="addOutline" color="light"></ion-icon>
         </ion-fab-button>
       </ion-fab>
 

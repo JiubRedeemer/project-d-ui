@@ -21,6 +21,9 @@ import ChooseBackgrounds from "@/views/rooms/steps/ChooseBackgrounds.vue";
 import RaceFullView from "@/views/common/guidebook/RaceFullView.vue";
 import ClassFullView from "@/views/common/guidebook/ClassFullView.vue";
 import BackgroundFullView from "@/views/common/guidebook/BackgroundFullView.vue";
+import CreateRace from "@/views/common/createEntity/CreateRace.vue";
+import CreateClass from "@/views/common/createEntity/CreateClass.vue";
+import CreateBackground from "@/views/common/createEntity/CreateBackground.vue";
 
 const routes: Array<RouteRecordRaw> = [
     {
@@ -131,6 +134,21 @@ const routes: Array<RouteRecordRaw> = [
         path: '/guidebook/backgrounds/:backgroundCode',
         component: BackgroundFullView,
         name: 'backgroundFullView'
+    },
+    {
+        path: '/createEntity/race',
+        component: CreateRace,
+        name: 'createRace',
+    },
+    {
+        path: '/createEntity/class',
+        component: CreateClass,
+        name: 'createClass',
+    },
+    {
+        path: '/createEntity/background',
+        component: CreateBackground,
+        name: 'createBackground',
     }
 ]
 
