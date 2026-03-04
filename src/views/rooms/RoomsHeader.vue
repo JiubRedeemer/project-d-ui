@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {IonBadge, IonBackButton, IonButton, IonButtons, IonHeader, IonIcon, IonTitle, IonToolbar, useIonRouter} from "@ionic/vue";
-import {notificationsOutline, searchOutline} from "ionicons/icons";
+import {arrowBack, notificationsOutline, searchOutline} from "ionicons/icons";
 import {onBeforeMount, ref} from "vue";
 import axios from "axios";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
@@ -41,7 +41,10 @@ onBeforeMount(() => {
       <ion-toolbar color="dark" no-border>
         <ion-title>{{ props.headerName }}</ion-title>
         <ion-buttons slot="start">
-          <ion-back-button/>
+          <ion-button v-if="headerName === 'Персонажи'" size="small" @click="ionRouter.replace('/rooms')">
+            <ion-icon slot="icon-only" :icon="arrowBack"></ion-icon>
+          </ion-button>
+          <ion-back-button v-else/>
           <ion-button size="small">
             <ion-icon slot="icon-only" :ios="searchOutline" :md="searchOutline"></ion-icon>
           </ion-button>
