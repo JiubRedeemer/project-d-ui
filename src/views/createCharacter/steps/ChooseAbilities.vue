@@ -93,6 +93,8 @@ import {
   IonLabel,
   IonList,
   IonNote,
+  IonSegment,
+  IonSegmentButton,
 } from "@ionic/vue";
 import {computed, onMounted, ref, watch} from "vue";
 import {addOutline, arrowForwardOutline, arrowUp, invertModeOutline, removeOutline} from "ionicons/icons";
