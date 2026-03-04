@@ -10,6 +10,7 @@ import {
   IonIcon,
   IonLabel,
   IonPage,
+  IonSearchbar,
   IonToolbar,
   toastController,
   useIonRouter
@@ -52,11 +53,11 @@ async function handleInput(event: any) {
 }
 
 async function loadItems(
-  query: string | undefined,
-  lastSeenCreatedAt: string | null,
-  lastSeenId: string | null,
-  searchToken: number,
-  replaceResults = false
+    query: string | undefined,
+    lastSeenCreatedAt: string | null,
+    lastSeenId: string | null,
+    searchToken: number,
+    replaceResults = false
 ): Promise<void> {
   if (!hasMoreItems.value && !replaceResults) return;
   if (isLoadingItems.value && !replaceResults) return;
