@@ -13,15 +13,17 @@ import {
   onIonViewDidEnter,
   useIonRouter
 } from "@ionic/vue";
-import {arrowForwardOutline, chevronForwardOutline} from "ionicons/icons";
+import {arrowBackOutline, arrowForwardOutline, chevronForwardOutline} from "ionicons/icons";
 import {HEADERS, TEXTS} from "@/config/localisations";
 import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
 import {onMounted, ref} from "vue";
 import {FILE_STORAGE_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {BackgroundDto} from "@/api/rulebookApi.types";
 import {useRoomCreationStore} from "@/stores/RoomCreationStore";
+import {useFullBackgroundStore} from "@/stores/FullBackgroundStore";
 
 const roomCreationStore = useRoomCreationStore();
+const backgroundFullStore = useFullBackgroundStore();
 const ionRouter = useIonRouter();
 
 const backgrounds = ref<BackgroundDto[]>();
@@ -54,7 +56,8 @@ const toggleBackground = (background: BackgroundDto) => {
 };
 
 const goToFullBackground = (background: BackgroundDto) => {
-  console.log(roomCreationStore.backgrounds.length);
+  backgroundFullStore.background = background;
+  ionRouter.navigate("/guidebook/backgrounds/" + background.code, 'forward', 'push')
 }
 
 const onRowClick = (background: BackgroundDto, e: Event) => {
@@ -74,13 +77,15 @@ const nextStep = async () => {
   ionRouter.replace("/rooms");
   roomCreationStore.clearAll();
 }
-
+const previousStep = () => {
+  ionRouter.back();
+}
 
 </script>
 
 <template>
   <ion-page>
-    <RoomsHeader :header-name="HEADERS.rooms.rus"></RoomsHeader>
+    <RoomsHeader :header-name="HEADERS.chooseBackgrounds.rus"></RoomsHeader>
     <ion-content :fullscreen="true" color="dark">
 
       <ion-list v-show="backgrounds?.length != 0" class="room-list">
@@ -101,6 +106,7 @@ const nextStep = async () => {
             <div class="room-name">{{ background.name }}</div>
           </ion-label>
         </ion-item>
+        <div style="min-height: 50px"></div>
       </ion-list>
 
       <div class="room-list-placeholder-wrapper" v-show="backgrounds?.length == 0">
@@ -110,6 +116,11 @@ const nextStep = async () => {
       <ion-fab slot="fixed" vertical="bottom" horizontal="end">
         <ion-fab-button color="medium" @click="nextStep()">
           <ion-icon :icon="arrowForwardOutline" color="light"></ion-icon>
+        </ion-fab-button>
+      </ion-fab>
+      <ion-fab slot="fixed" vertical="bottom" horizontal="start">
+        <ion-fab-button color="medium" @click="previousStep()">
+          <ion-icon :icon="arrowBackOutline" color="light"></ion-icon>
         </ion-fab-button>
       </ion-fab>
 

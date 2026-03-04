@@ -13,15 +13,17 @@ import {
   onIonViewDidEnter,
   useIonRouter
 } from "@ionic/vue";
-import {arrowForwardOutline, chevronForwardOutline} from "ionicons/icons";
+import {arrowBackOutline, arrowForwardOutline, chevronForwardOutline} from "ionicons/icons";
 import {HEADERS, TEXTS} from "@/config/localisations";
 import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
 import {onMounted, ref} from "vue";
 import {FILE_STORAGE_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {ClazzDto} from "@/api/rulebookApi.types";
 import {useRoomCreationStore} from "@/stores/RoomCreationStore";
+import {useFullClassStore} from "@/stores/FullClassStore";
 
 const roomCreationStore = useRoomCreationStore();
+const classFullStore = useFullClassStore();
 const ionRouter = useIonRouter();
 
 const classes = ref<ClazzDto[]>();
@@ -51,7 +53,8 @@ const toggleClass = (clazz: ClazzDto) => {
 };
 
 const goToFullClass = (clazz: ClazzDto) => {
-  console.log(roomCreationStore.classes.length);
+  classFullStore.clazz = clazz;
+  ionRouter.navigate("/guidebook/classes/" + clazz.code, 'forward', 'push')
 }
 
 const onRowClick = (clazz: ClazzDto, e: Event) => {
@@ -66,13 +69,15 @@ const onRowClick = (clazz: ClazzDto, e: Event) => {
 const nextStep = () => {
   ionRouter.navigate("/rooms/create/backgrounds", 'forward', 'push');
 }
-
+const previousStep = () => {
+  ionRouter.back();
+}
 
 </script>
 
 <template>
   <ion-page>
-    <RoomsHeader :header-name="HEADERS.rooms.rus"></RoomsHeader>
+    <RoomsHeader :header-name="HEADERS.chooseClasses.rus"></RoomsHeader>
     <ion-content :fullscreen="true" color="dark">
 
       <ion-list v-show="classes?.length != 0" class="room-list">
@@ -92,6 +97,7 @@ const nextStep = () => {
             <div class="room-name">{{ clazz.name }}</div>
           </ion-label>
         </ion-item>
+        <div style="min-height: 50px"></div>
       </ion-list>
 
       <div class="room-list-placeholder-wrapper" v-show="classes?.length == 0">
@@ -101,6 +107,11 @@ const nextStep = () => {
       <ion-fab slot="fixed" vertical="bottom" horizontal="end">
         <ion-fab-button color="medium" @click="nextStep()">
           <ion-icon :icon="arrowForwardOutline" color="light"></ion-icon>
+        </ion-fab-button>
+      </ion-fab>
+      <ion-fab slot="fixed" vertical="bottom" horizontal="start">
+        <ion-fab-button color="medium" @click="previousStep()">
+          <ion-icon :icon="arrowBackOutline" color="light"></ion-icon>
         </ion-fab-button>
       </ion-fab>
 

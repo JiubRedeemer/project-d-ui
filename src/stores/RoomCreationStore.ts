@@ -82,9 +82,6 @@ export const useRoomCreationStore = defineStore('createRoomCreationStore', {
                         Authorization: `Bearer ${localStorage.getItem("accessToken")}`
                     }
                 });
-                console.log("RES: " + res)
-                console.log("RESDATA: " + res.data)
-                console.log("RESDATAID: " + res.data.id)
                 this.roomInfoCreatedId = res.data.id;
                 return res.data.id
             } catch (error) {

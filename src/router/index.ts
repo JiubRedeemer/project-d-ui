@@ -18,6 +18,9 @@ import ChooseRuletype from "@/views/rooms/steps/ChooseRuletype.vue";
 import ChooseRaces from "@/views/rooms/steps/ChooseRaces.vue";
 import ChooseClasses from "@/views/rooms/steps/ChooseClasses.vue";
 import ChooseBackgrounds from "@/views/rooms/steps/ChooseBackgrounds.vue";
+import RaceFullView from "@/views/common/guidebook/RaceFullView.vue";
+import ClassFullView from "@/views/common/guidebook/ClassFullView.vue";
+import BackgroundFullView from "@/views/common/guidebook/BackgroundFullView.vue";
 
 const routes: Array<RouteRecordRaw> = [
     {
@@ -113,6 +116,21 @@ const routes: Array<RouteRecordRaw> = [
         path: '/rooms/:roomId/characters/:characterId/magic/add',
         component: SpellAddView,
         name: 'spellAddView'
+    },
+    {
+        path: '/guidebook/races/:raceCode',
+        component: RaceFullView,
+        name: 'raceFullView'
+    },
+    {
+        path: '/guidebook/classes/:classCode',
+        component: ClassFullView,
+        name: 'classFullView'
+    },
+    {
+        path: '/guidebook/backgrounds/:backgroundCode',
+        component: BackgroundFullView,
+        name: 'backgroundFullView'
     }
 ]
 

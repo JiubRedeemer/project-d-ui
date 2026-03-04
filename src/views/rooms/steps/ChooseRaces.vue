@@ -2,8 +2,8 @@
 
 import {
   IonAvatar,
-  IonContent,
   IonCheckbox,
+  IonContent,
   IonFab,
   IonFabButton,
   IonIcon,
@@ -14,21 +14,23 @@ import {
   onIonViewDidEnter,
   useIonRouter
 } from "@ionic/vue";
-import {arrowForwardOutline, chevronForwardOutline} from "ionicons/icons";
+import {arrowBackOutline, arrowForwardOutline, chevronForwardOutline} from "ionicons/icons";
 import {HEADERS, TEXTS} from "@/config/localisations";
 import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
 import {onMounted, ref} from "vue";
 import {FILE_STORAGE_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {RaceDto} from "@/api/rulebookApi.types";
 import {useRoomCreationStore} from "@/stores/RoomCreationStore";
+import {useFullRaceStore} from "@/stores/FullRaceStore";
 
 const roomCreationStore = useRoomCreationStore();
+const racesFullStore = useFullRaceStore();
 const ionRouter = useIonRouter();
 
 const races = ref<RaceDto[]>();
 
 const setupRaces = async () => {
-  if(!roomCreationStore.roomInfo.baseRules && !roomCreationStore.roomInfo.baseRules) {
+  if (!roomCreationStore.roomInfo.baseRules && !roomCreationStore.roomInfo.baseRules) {
     ionRouter.replace("/rooms/create/ruleType")
   }
   races.value = await roomCreationStore.getAvailableRaces(roomCreationStore.roomInfo.baseRules)
@@ -56,7 +58,8 @@ const toggleRace = (race: RaceDto) => {
 };
 
 const goToFullRace = (race: RaceDto) => {
-  console.log(roomCreationStore.races.length);
+  racesFullStore.race = race;
+  ionRouter.navigate("/guidebook/races/" + race.code, 'forward', 'push')
 }
 
 const onRowClick = (race: RaceDto, e: Event) => {
@@ -72,17 +75,22 @@ const nextStep = () => {
   ionRouter.navigate("/rooms/create/classes", 'forward', 'push');
 }
 
+const previousStep = () => {
+  ionRouter.back();
+}
+
 
 </script>
 
 <template>
   <ion-page>
-    <RoomsHeader :header-name="HEADERS.rooms.rus"></RoomsHeader>
+    <RoomsHeader :header-name="HEADERS.chooseRaces.rus"></RoomsHeader>
     <ion-content :fullscreen="true" color="dark">
 
       <ion-list v-show="races?.length != 0" class="room-list">
-        <ion-item v-for="(race, index) in races" :key="race.id" :button="true" color="dark" @click="onRowClick(race, $event)">
-          <ion-checkbox slot="end" :checked="isRaceSelected(race)" />
+        <ion-item v-for="(race, index) in races" :key="race.id" :button="true" color="dark"
+                  @click="onRowClick(race, $event)">
+          <ion-checkbox slot="end" :checked="isRaceSelected(race)"/>
           <ion-avatar aria-hidden="false" slot="start">
             <img width="64" height="64"
                  :src="race.imgUrl ? FILE_STORAGE_INTEGRATION_ROUTES.baseURL +
@@ -97,6 +105,7 @@ const nextStep = () => {
             <div class="room-name">{{ race.name }}</div>
           </ion-label>
         </ion-item>
+        <div style="min-height: 50px"></div>
       </ion-list>
 
       <div class="room-list-placeholder-wrapper" v-show="races?.length == 0">
@@ -106,6 +115,11 @@ const nextStep = () => {
       <ion-fab slot="fixed" vertical="bottom" horizontal="end">
         <ion-fab-button color="medium" @click="nextStep()">
           <ion-icon :icon="arrowForwardOutline" color="light"></ion-icon>
+        </ion-fab-button>
+      </ion-fab>
+      <ion-fab slot="fixed" vertical="bottom" horizontal="start">
+        <ion-fab-button color="medium" @click="previousStep()">
+          <ion-icon :icon="arrowBackOutline" color="light"></ion-icon>
         </ion-fab-button>
       </ion-fab>
 
