@@ -133,7 +133,7 @@ watch(
         } catch (error) {
           console.error("Ошибка при сохранении персонажа:", error);
         }
-        ionRouter.navigate("/rooms/" + route.params.roomId + "/characters", "forward", "push");
+        ionRouter.replace("/rooms/" + route.params.roomId + "/characters");
       }
     }
 );

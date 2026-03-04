@@ -54,6 +54,15 @@ const goToFullBackground = (background: BackgroundDto) => {
   console.log(roomCreationStore.backgrounds.length);
 }
 
+const onRowClick = (background: BackgroundDto, e: Event) => {
+  const target = e.target as HTMLElement
+  if (target.closest?.('ion-checkbox')) {
+    toggleBackground(background)
+  } else {
+    goToFullBackground(background)
+  }
+}
+
 const nextStep = async () => {
   const roomId = await roomCreationStore.createRoom();
   await roomCreationStore.createRacesBulk(roomId);
@@ -73,9 +82,8 @@ const nextStep = async () => {
 
       <ion-list v-show="backgrounds?.length != 0" class="room-list">
         <ion-item v-for="(background, index) in backgrounds" :key="background.id" :button="true" color="dark"
-                  @click="goToFullBackground(background)">
-          <ion-checkbox slot="end" :checked="isBackgroundSelected(background)"
-                        @ionChange="toggleBackground(background)"/>
+                  @click="onRowClick(background, $event)">
+          <ion-checkbox slot="end" :checked="isBackgroundSelected(background)" />
           <ion-avatar aria-hidden="false" slot="start">
             <img width="64" height="64"
                  :src="background.imgUrl ? FILE_STORAGE_INTEGRATION_ROUTES.baseURL +

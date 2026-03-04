@@ -54,6 +54,15 @@ const goToFullClass = (clazz: ClazzDto) => {
   console.log(roomCreationStore.classes.length);
 }
 
+const onRowClick = (clazz: ClazzDto, e: Event) => {
+  const target = e.target as HTMLElement
+  if (target.closest?.('ion-checkbox')) {
+    toggleClass(clazz)
+  } else {
+    goToFullClass(clazz)
+  }
+}
+
 const nextStep = () => {
   ionRouter.navigate("/rooms/create/backgrounds", 'forward', 'push');
 }
@@ -67,8 +76,8 @@ const nextStep = () => {
     <ion-content :fullscreen="true" color="dark">
 
       <ion-list v-show="classes?.length != 0" class="room-list">
-        <ion-item v-for="(clazz, index) in classes" :key="clazz.id" :button="true" color="dark" @click="goToFullClass(clazz)">
-          <ion-checkbox slot="end" :checked="isClassSelected(clazz)" @ionChange="toggleClass(clazz)" />
+        <ion-item v-for="(clazz, index) in classes" :key="clazz.id" :button="true" color="dark" @click="onRowClick(clazz, $event)">
+          <ion-checkbox slot="end" :checked="isClassSelected(clazz)" />
           <ion-avatar aria-hidden="false" slot="start">
             <img width="64" height="64"
                  :src="clazz.imgUrl ? FILE_STORAGE_INTEGRATION_ROUTES.baseURL +

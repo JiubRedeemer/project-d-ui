@@ -3,6 +3,7 @@
 import {
   IonAvatar,
   IonContent,
+  IonCheckbox,
   IonFab,
   IonFabButton,
   IonIcon,
@@ -13,7 +14,7 @@ import {
   onIonViewDidEnter,
   useIonRouter
 } from "@ionic/vue";
-import {add, arrowForwardOutline, chevronForwardOutline} from "ionicons/icons";
+import {arrowForwardOutline, chevronForwardOutline} from "ionicons/icons";
 import {HEADERS, TEXTS} from "@/config/localisations";
 import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
 import {onMounted, ref} from "vue";
@@ -27,6 +28,9 @@ const ionRouter = useIonRouter();
 const races = ref<RaceDto[]>();
 
 const setupRaces = async () => {
+  if(!roomCreationStore.roomInfo.baseRules && !roomCreationStore.roomInfo.baseRules) {
+    ionRouter.replace("/rooms/create/ruleType")
+  }
   races.value = await roomCreationStore.getAvailableRaces(roomCreationStore.roomInfo.baseRules)
 }
 
@@ -39,9 +43,10 @@ onMounted(() => {
 })
 
 const isRaceSelected = (race: RaceDto) =>
-  roomCreationStore.races.some((r) => r.code === race.code);
+    roomCreationStore.races.some((r) => r.code === race.code);
 
 const toggleRace = (race: RaceDto) => {
+  console.log(roomCreationStore.races.length);
   const idx = roomCreationStore.races.findIndex((r) => r.code === race.code);
   if (idx >= 0) {
     roomCreationStore.races = roomCreationStore.races.filter((r) => r.code !== race.code);
@@ -52,6 +57,15 @@ const toggleRace = (race: RaceDto) => {
 
 const goToFullRace = (race: RaceDto) => {
   console.log(roomCreationStore.races.length);
+}
+
+const onRowClick = (race: RaceDto, e: Event) => {
+  const target = e.target as HTMLElement
+  if (target.closest?.('ion-checkbox')) {
+    toggleRace(race)
+  } else {
+    goToFullRace(race)
+  }
 }
 
 const nextStep = () => {
@@ -67,8 +81,8 @@ const nextStep = () => {
     <ion-content :fullscreen="true" color="dark">
 
       <ion-list v-show="races?.length != 0" class="room-list">
-        <ion-item v-for="(race, index) in races" :key="race.id" :button="true" color="dark" @click="goToFullRace(race)">
-          <ion-checkbox slot="end" :checked="isRaceSelected(race)" @ionChange="toggleRace(race)" />
+        <ion-item v-for="(race, index) in races" :key="race.id" :button="true" color="dark" @click="onRowClick(race, $event)">
+          <ion-checkbox slot="end" :checked="isRaceSelected(race)" />
           <ion-avatar aria-hidden="false" slot="start">
             <img width="64" height="64"
                  :src="race.imgUrl ? FILE_STORAGE_INTEGRATION_ROUTES.baseURL +
