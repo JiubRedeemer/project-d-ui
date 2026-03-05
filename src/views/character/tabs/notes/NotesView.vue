@@ -3,16 +3,7 @@ import {onMounted, ref} from "vue";
 import {useRoute} from "vue-router";
 import axios from "axios";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
-import {
-  IonButton,
-  IonButtons,
-  IonChip,
-  IonIcon,
-  IonInput,
-  IonLabel,
-  IonTextarea,
-  onIonViewDidEnter
-} from "@ionic/vue";
+import {IonButton, IonButtons, IonChip, IonIcon, IonInput, IonLabel, IonTextarea, onIonViewDidEnter} from "@ionic/vue";
 import {addOutline, createOutline, saveOutline, trashOutline} from "ionicons/icons";
 
 import {marked} from "marked";
@@ -88,12 +79,12 @@ const removeTagField = (target: "new" | "edit", index: number) => {
 
 // === Add note ===
 const normalizeTags = (tags: { name?: string | null; color?: string | null }[]) =>
-  tags
-    .map(tag => ({
-      name: String(tag?.name ?? "").trim(),
-      color: tag?.color || "#8888ff",
-    }))
-    .filter(tag => tag.name.length > 0);
+    tags
+        .map(tag => ({
+          name: String(tag?.name ?? "").trim(),
+          color: tag?.color || "#8888ff",
+        }))
+        .filter(tag => tag.name.length > 0);
 
 const addNote = async () => {
   try {
@@ -109,7 +100,7 @@ const addNote = async () => {
     console.log(noteDto)
     console.log("newTags.value:", JSON.stringify(newTags.value || newTags));
 
-    if(!noteDto.name || noteDto.name.length < 1) {
+    if (!noteDto.name || noteDto.name.length < 1) {
       newNoteName.value = "";
       newNoteText.value = "";
       newTags.value.splice(0); // очищает reactive массив
@@ -151,7 +142,7 @@ const updateNote = async (notebookId: string, noteId: string) => {
       tags: normalizeTags(editTags.value),
     };
     console.log(noteDto)
-    if(!noteDto.name || noteDto.name.length < 1) {
+    if (!noteDto.name || noteDto.name.length < 1) {
       isEditing.value = null;
       isBlockExpanded.value = null; // Закрываем все секции
       toggleEditMode(null);
@@ -230,7 +221,7 @@ const autoGrow = (event: Event) => {
 </script>
 
 <template>
-  <div>
+  <div class="note-list">
     <!-- Список заметок -->
     <div
         v-for="(section, index) in notes"
@@ -421,22 +412,32 @@ const autoGrow = (event: Event) => {
       </ion-buttons>
     </div>
 
-    <!-- Кнопка "Добавить заметку" -->
-    <div class="add-note-button">
-      <ion-button
-          expand="block"
-          shape="round"
-          color="primary"
-          @click="isBlockExpanded = 'new'"
-      >
-        <ion-icon slot="start" :icon="addOutline"></ion-icon>
-        Добавить заметку
-      </ion-button>
-    </div>
   </div>
+
+  <!-- Кнопка "Добавить заметку" -->
+  <div class="add-new-button">
+    <ion-button size="large" shape="round" color="secondary" @click="isBlockExpanded = 'new'">
+      <ion-icon slot="icon-only" :icon="addOutline"/>
+    </ion-button>
+  </div>
+
 </template>
 
 <style scoped>
+
+.add-new-button {
+  position: fixed;
+  bottom: -10px;
+  /* расстояние от нижнего края */
+  width: 100%;
+  background: transparent;
+  /* или нужный фон */
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  margin-left: -15px;
+}
 
 .section {
   position: relative;

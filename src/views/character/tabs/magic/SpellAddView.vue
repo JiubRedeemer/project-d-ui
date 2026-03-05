@@ -27,7 +27,7 @@ import {
   updateSpell,
 } from "@/api/magicApi";
 import type { SpellDto } from "@/components/models/response/MagicApi";
-import type { SpellClass } from "@/components/models/response/MagicApi";
+import { getClassesForRoom } from "@/api/rulebookApi";
 import { FILE_STORAGE_INTEGRATION_ROUTES } from "@/config/integrationRoutes";
 import { useMagicStore } from "@/stores/MagicStore";
 import axios from "axios";
@@ -70,21 +70,9 @@ const allowedFormats = [
 ];
 const invalidFields = ref<string[]>([]);
 
-const spellClasses: { value: SpellClass; label: string }[] = [
-  { value: "WIZARD", label: "Волшебник" },
-  { value: "SORCERER", label: "Чародей" },
-  { value: "WARLOCK", label: "Колдун" },
-  { value: "CLERIC", label: "Жрец" },
-  { value: "DRUID", label: "Друид" },
-  { value: "BARD", label: "Бард" },
-  { value: "PALADIN", label: "Паладин" },
-  { value: "RANGER", label: "Следопыт" },
-  { value: "ARTIFICER", label: "Изобретатель" },
-  { value: "FIGHTER", label: "Воин" },
-  { value: "BARBARIAN", label: "Варвар" },
-  { value: "MONK", label: "Монах" },
-  { value: "ROGUE", label: "Плут" },
-];
+/** Spell class options from the room's configured classes */
+const spellClasses = ref<{ value: string; label: string }[]>([]);
+const spellClassesLoading = ref(true);
 
 const levels = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
 const spellSchools = [
@@ -254,6 +242,33 @@ function loadEditingSpell(s: SpellDto) {
   }
 }
 
+async function loadRoomSpellClasses() {
+  spellClassesLoading.value = true;
+  try {
+    const classes = await getClassesForRoom(roomId.value, undefined);
+    const options = classes.map((c) => ({
+      value: c.code,
+      label: c.name?.trim() || c.code,
+    }));
+    const editing = magicStore.editingSpell;
+    if (editing?.spellClass) {
+      const existingCodes = new Set(options.map((o) => o.value));
+      const spellCodes = editing.spellClass.split(",").map((x) => x.trim()).filter(Boolean);
+      for (const code of spellCodes) {
+        if (!existingCodes.has(code)) {
+          existingCodes.add(code);
+          options.push({ value: code, label: code });
+        }
+      }
+    }
+    spellClasses.value = options;
+  } catch {
+    spellClasses.value = [];
+  } finally {
+    spellClassesLoading.value = false;
+  }
+}
+
 onIonViewDidEnter(async () => {
   if (!magicStore.spellBook?.id) {
     try {
@@ -266,6 +281,7 @@ onIonViewDidEnter(async () => {
       magicStore.setSpellBook(null);
     }
   }
+  await loadRoomSpellClasses();
   const editing = magicStore.editingSpell;
   if (editing) {
     loadEditingSpell(editing);
@@ -361,8 +377,9 @@ onUnmounted(() => {
               color="primary"
               interface="popover"
               v-model="selectedSpellClasses"
-              placeholder="Выберите классы (можно несколько или ни одного)"
+              :placeholder="spellClassesLoading ? 'Загрузка классов комнаты...' : (spellClasses.length ? 'Выберите классы (можно несколько или ни одного)' : 'В комнате нет классов')"
               multiple
+              :disabled="spellClassesLoading"
             >
               <ion-select-option
                 v-for="c in spellClasses"
