@@ -18,7 +18,7 @@ import {
 import {add, chevronForwardOutline} from "ionicons/icons";
 import {HEADERS, TEXTS} from "@/config/localisations";
 import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
-import {onMounted, ref} from "vue";
+import {onBeforeUnmount, onMounted, ref} from "vue";
 import axios from "axios";
 import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 
@@ -31,6 +31,9 @@ const deletePopoverEvent = ref<Event | null>(null);
 const roomToDelete = ref<Room | null>(null);
 const didOpenDeletePopover = ref(false);
 let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+let pressStartX = 0;
+let pressStartY = 0;
+const MOVE_THRESHOLD_PX = 10;
 
 const http = () => axios.create({
   baseURL: GATEWAY_INTEGRATION_ROUTES.baseURL,
@@ -55,6 +58,11 @@ onMounted(() => {
   setupRooms();
 });
 
+onBeforeUnmount(() => {
+  unbindMoveListener();
+  if (longPressTimer) clearTimeout(longPressTimer);
+});
+
 const goToRoom = (roomId: string) => {
   ionRouter.navigate('/rooms/' + roomId + '/characters', 'forward', 'push');
 };
@@ -63,21 +71,44 @@ const goToCreateRoom = () => {
   ionRouter.navigate('/rooms/create/ruleType', 'forward', 'push');
 };
 
+const onRoomPressMove = (e: MouseEvent | TouchEvent) => {
+  if (!longPressTimer) return;
+  const source = e instanceof TouchEvent ? (e as TouchEvent).touches[0] : (e as MouseEvent);
+  const x = source?.clientX ?? 0;
+  const y = source?.clientY ?? 0;
+  const dist = Math.hypot(x - pressStartX, y - pressStartY);
+  if (dist > MOVE_THRESHOLD_PX) {
+    onRoomPressEnd();
+  }
+};
+
+const bindMoveListener = () => {
+  document.addEventListener('touchmove', onRoomPressMove, { passive: true });
+  document.addEventListener('mousemove', onRoomPressMove);
+};
+const unbindMoveListener = () => {
+  document.removeEventListener('touchmove', onRoomPressMove);
+  document.removeEventListener('mousemove', onRoomPressMove);
+};
+
 const onRoomPressStart = (room: Room, e: MouseEvent | TouchEvent) => {
   roomToDelete.value = room;
   const source = e instanceof TouchEvent ? (e as TouchEvent).touches[0] : (e as MouseEvent);
-  const clientX = source?.clientX ?? 0;
-  const clientY = source?.clientY ?? 0;
+  pressStartX = source?.clientX ?? 0;
+  pressStartY = source?.clientY ?? 0;
+  bindMoveListener();
   longPressTimer = setTimeout(() => {
     longPressTimer = null;
+    unbindMoveListener();
     didOpenDeletePopover.value = true;
-    const ev = new MouseEvent('click', { clientX, clientY, bubbles: true });
+    const ev = new MouseEvent('click', { clientX: pressStartX, clientY: pressStartY, bubbles: true });
     deletePopoverEvent.value = ev;
     deletePopoverOpen.value = true;
   }, 500);
 };
 
 const onRoomPressEnd = () => {
+  unbindMoveListener();
   if (longPressTimer) {
     clearTimeout(longPressTimer);
     longPressTimer = null;
