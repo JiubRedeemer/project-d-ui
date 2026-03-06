@@ -616,7 +616,6 @@ async function deleteCharacterSkill(id: string) {
 }
 
 .damage-value {
-  font-size: 14px;
   color: var(--ion-color-primary);
 }
 
