@@ -117,10 +117,7 @@ const getDamageText = (item: InventoryItem) => {
   const d = item.item.stats?.damage;
   if (!d) return '';
   const value = d.value;
-  const name = d.damageTypeName;
-  if (value && name) return `${value} ${name}`;
   if (value) return value;
-  if (name) return name;
   return '';
 };
 
