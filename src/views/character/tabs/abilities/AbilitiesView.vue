@@ -236,7 +236,7 @@ function calculateCheckValue(value: any, ability: AbilityDto) {
 <template>
   <div class="abilities" v-if="resultAbilities">
     <div class="ability-item">
-      <div class="skill-item" style="width: 100%; height: 27px; margin-top: 0">
+      <div class="skill-item skill-item--proficiency">
         <div class="skill-name">Бонус мастерства</div>
         <div class="skill-value">{{ characterStore.character.proficiencyBonus }}</div>
       </div>
@@ -290,10 +290,10 @@ function calculateCheckValue(value: any, ability: AbilityDto) {
 }
 
 .ability-item {
+  margin-top: 10px;
+  padding: 10px;
   background: var(--ion-color-medium);
   border-radius: 15px;
-  padding: 10px;
-  margin-top: 10px;
 }
 
 .ability-header {
@@ -302,74 +302,76 @@ function calculateCheckValue(value: any, ability: AbilityDto) {
 }
 
 .ability {
-  background: var(--ion-color-medium-tint);
-  border-radius: 15px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
   width: 70%;
   height: 50px;
   padding-left: 15px;
   padding-right: 15px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-direction: row;
+  background: var(--ion-color-medium-tint);
+  border-radius: 15px;
 }
 
 .ability-side-block {
-  padding-left: 6px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   width: 30%;
+  padding-left: 6px;
 }
-
-
 
 .check,
 .saving-throw {
   display: flex;
   align-items: center;
-  background: var(--ion-color-medium-tint);
-  border-radius: 10px;
-  font-size: 11px;
   height: 22px;
   padding-left: 2px;
+  font-size: 11px;
+  background: var(--ion-color-medium-tint);
+  border-radius: 10px;
 }
 
 .check-name,
 .saving-throw-name {
   flex: 1;
-  white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
   text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .check-value,
 .saving-throw-value {
-  font-size: 11px;
-  background: var(--ion-color-primary);
-  color: var(--ion-color-primary-contrast);
-  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
   height: 16px;
   width: 16px;
   min-width: 16px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--ion-color-primary-contrast);
+  background: var(--ion-color-primary);
+  border-radius: 50%;
 }
 
 .skill-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  height: 27px;
+  margin-top: 10px;
   padding-left: 4px;
   padding-right: 4px;
   background: var(--ion-color-medium-tint);
   border-radius: 20px;
-  margin-top: 10px;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  height: 27px;
-  justify-content: space-between;
+}
+
+.skill-item--proficiency {
+  margin-top: 0;
 }
 
 .skill-start-block {
@@ -382,26 +384,26 @@ function calculateCheckValue(value: any, ability: AbilityDto) {
 }
 
 .skill-value {
-  font-size: 11px;
-  background: var(--ion-color-primary);
-  color: var(--ion-color-primary-contrast);
-  border-radius: 50%;
-  height: 20px;
-  width: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 20px;
+  height: 20px;
+  font-size: 11px;
+  color: var(--ion-color-primary-contrast);
+  background: var(--ion-color-primary);
+  border-radius: 50%;
 }
 
 .skill-up {
-  width: 20px;
-  height: 20px;
   display: flex;
   align-items: center;
+  width: 20px;
+  height: 20px;
 }
 
 ion-content {
-  --padding-start: 0px;
-  --padding-end: 0px;
+  --padding-start: 0;
+  --padding-end: 0;
 }
 </style>

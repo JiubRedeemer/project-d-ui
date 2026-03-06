@@ -27,7 +27,7 @@ import {v4 as uuidv4} from 'uuid';
 import {type ItemSkill, Price} from "@/components/models/response/InventoryResponse";
 import {useRoute} from "vue-router";
 import EditItemSkillValueModal from "@/views/character/tabs/inventory/EditItemSkillValueModal.vue";
-import { useInventoryStore } from "@/stores/InventoryStore";
+import {useInventoryStore} from "@/stores/InventoryStore";
 
 const ionRouter = useIonRouter();
 const route = useRoute();
@@ -475,16 +475,16 @@ async function saveItem() {
       );
       ionRouter.back();
 
-      if(oldItemId.value && oldItemId.value !== itemId) {
+      if (oldItemId.value && oldItemId.value !== itemId) {
         await deleteFromInventory(oldItemId.value);
         await addItemToInventory(itemId);
-      } else if(!oldItemId.value) {
+      } else if (!oldItemId.value) {
         await addItemToInventory(itemId);
       }
     } catch (error) {
       console.error("Ошибка при получении данных:", error);
     }
-
+    createInventoryItemStore.clearAll()
   } else {
     const toast = await toastController.create({
       message: 'Заполните обязательные поля',
