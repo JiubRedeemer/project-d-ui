@@ -116,7 +116,7 @@ const getItemStats = (item: InventoryItem) => {
 const getDamageText = (item: InventoryItem) => {
   const d = item.item.stats?.damage;
   if (!d) return '';
-  const value = d.value;
+  const value = d.value + (calculateDamage(item) > 0 ? " + " + calculateDamage(item) : "") + (calculateDamage(item) < 0 ? " " + calculateDamage(item) : "");
   if (value) return value;
   return '';
 };
