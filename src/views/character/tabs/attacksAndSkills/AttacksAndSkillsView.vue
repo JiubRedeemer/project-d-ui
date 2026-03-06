@@ -615,6 +615,11 @@ async function deleteCharacterSkill(id: string) {
   padding-left: 5px;
 }
 
+.damage-value {
+  font-size: 14px;
+  color: var(--ion-color-primary);
+}
+
 .damage {
   margin-top: 2px;
 }
