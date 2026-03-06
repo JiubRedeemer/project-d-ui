@@ -433,7 +433,7 @@ async function takeMoney() {
             <div class="item-name">
               {{ item.item.name.rus }}
             </div>
-            <div class="item-stats" v-for="(stat, index) in getItemStats(item)" :key="index">
+            <div class="item-stats" v-for="(stat, index) in getItemStats(item)" :key="index" v-if="getItemStats(item).length > 0">
               {{ stat }}
             </div>
           </div>
@@ -535,10 +535,10 @@ async function takeMoney() {
 
 .section {
   background-color: var(--ion-color-medium);
-  border-radius: 25px;
-  padding: 10px;
+  border-radius: 20px;
+  padding: 5px;
   overflow: hidden;
-  max-height: 75px;
+  max-height: 70px;
   margin-bottom: 10px;
   display: flex;
   flex-direction: row;
@@ -577,10 +577,23 @@ async function takeMoney() {
 .item-name {
   font-size: 16px;
   font-weight: bold;
+  margin-bottom: 8px;
 }
 
 .item-stats {
   font-size: 11px;
+}
+
+.stats-block{
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
+}
+
+.image-block {
+  width: 55px;
+  height: 55px;
 }
 
 .item-image {

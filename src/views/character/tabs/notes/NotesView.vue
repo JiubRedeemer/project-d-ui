@@ -9,8 +9,16 @@ import {addOutline, createOutline, saveOutline, trashOutline} from "ionicons/ico
 import {marked} from "marked";
 
 marked.setOptions({
-  breaks: true, // переносы строк сохраняются
+  breaks: true,
 });
+
+interface NoteSection {
+  id: string;
+  notebookId?: string;
+  name: string;
+  noteText: string;
+  tags?: { name: string; color: string }[];
+}
 
 const route = useRoute();
 
@@ -31,12 +39,16 @@ const inputSectionText = ref<string | null>(null);
 
 const editingNoteId = ref<string | null>(null);
 
-const toggleEditMode = (section) => {
+const toggleEditMode = (section: NoteSection | null) => {
+  if (section === null) {
+    editingNoteId.value = null;
+    return;
+  }
   if (editingNoteId.value === section.id) {
-    section.noteText = editNoteText.value; // сохраняем как текст
+    section.noteText = editNoteText.value;
     editingNoteId.value = null;
   } else {
-    editNoteText.value = section.noteText; // копируем текст
+    editNoteText.value = section.noteText;
     editingNoteId.value = section.id;
   }
 };
@@ -59,8 +71,6 @@ const loadNotebook = async () => {
     );
     notebook.value = res.data;
     notes.value = res.data.notes || [];
-    console.log(notebook)
-    console.log(notes.value)
   } catch (e) {
     console.error("Ошибка при загрузке блокнота:", e);
   }
@@ -96,9 +106,6 @@ const addNote = async () => {
       noteText: newNoteText.value,
       tags: normalizeTags(newTags.value),
     };
-
-    console.log(noteDto)
-    console.log("newTags.value:", JSON.stringify(newTags.value || newTags));
 
     if (!noteDto.name || noteDto.name.length < 1) {
       newNoteName.value = "";
@@ -141,7 +148,6 @@ const updateNote = async (notebookId: string, noteId: string) => {
       noteText: editNoteText.value,
       tags: normalizeTags(editTags.value),
     };
-    console.log(noteDto)
     if (!noteDto.name || noteDto.name.length < 1) {
       isEditing.value = null;
       isBlockExpanded.value = null; // Закрываем все секции
@@ -198,15 +204,15 @@ const loadNotesData = () => {
 onMounted(loadNotesData);
 onIonViewDidEnter(loadNotesData);
 
-const expandBlock = (noteNumber: number, section) => {
+const expandBlock = (noteNumber: number, section: NoteSection) => {
   isBlockExpanded.value = noteNumber;
   inputSectionText.value = notes.value[noteNumber];
   editNoteName.value = section.name;
   editNoteText.value = section.noteText;
   editTags.value = section.tags ? JSON.parse(JSON.stringify(section.tags)) : [];
-
 };
-const updateHeaderSectionText = (event: Event, section) => {
+
+const updateHeaderSectionText = (event: Event, section: NoteSection) => {
   const target = event.target as HTMLElement;
   editNoteText.value = section.noteText;
   editNoteName.value = target.innerText;
@@ -214,392 +220,255 @@ const updateHeaderSectionText = (event: Event, section) => {
 
 const autoGrow = (event: Event) => {
   const textarea = event.target as HTMLTextAreaElement;
-  textarea.style.height = "auto"; // сброс высоты
-  textarea.style.height = textarea.scrollHeight + "px"; // подгон под содержимое
+  textarea.style.height = "auto";
+  textarea.style.height = textarea.scrollHeight + "px";
+};
+
+const getSheetAccentStyle = (section: NoteSection) => {
+  const color = section.tags?.[0]?.color;
+  if (!color) return {};
+  return { borderLeftColor: color };
 };
 
 </script>
 
 <template>
-  <div class="note-list">
-    <!-- Список заметок -->
-    <div
-        v-for="(section, index) in notes"
-        :key="section.id"
-        :class="{ expand: isBlockExpanded === index }"
-        class="section"
-        v-show="isBlockExpanded === null || isBlockExpanded === index"
-        @click.stop="expandBlock(index, section)"
-    >
-      <h1 class="sectionHeader"
-          contenteditable="true"
-          @input="updateHeaderSectionText($event, section)"
-      >{{ section.name }}:</h1>
+  <div class="notes-body">
+    <h1 class="sectionHeader" v-if="notes.length > 0">Заметки</h1>
 
-      <!-- Текст заметки -->
-      <div v-if="isBlockExpanded === index" class="note-text-container">
-        <!-- Кнопка включения режима редактирования -->
-        <ion-button
-            color="medium"
-            class="edit-toggle-btn"
-            size="small"
-            @click.stop="toggleEditMode(section)"
-        >
-          <ion-icon :icon="createOutline"></ion-icon>
-        </ion-button>
+    <div class="note-list">
+      <article
+          v-for="(section, index) in notes"
+          :key="section.id"
+          :class="{ 'notes-card--expanded': isBlockExpanded === index }"
+          class="notes-card"
+          v-show="isBlockExpanded === null || isBlockExpanded === index"
+          @click.stop="expandBlock(index, section)"
+      >
+        <header class="notes-card__header">
+          <h2
+              class="notes-card__title"
+              contenteditable="true"
+              @input="updateHeaderSectionText($event, section)"
+          >{{ section.name }}</h2>
+          <div v-if="section.tags?.length" class="notes-card__tags-dots" :class="{ 'notes-card__tags-dots--expanded': isBlockExpanded === index }">
+            <template v-if="isBlockExpanded === index">
+              <ion-chip
+                  v-for="(tag, tIndex) in section.tags"
+                  :key="tIndex"
+                  :style="{ backgroundColor: tag.color || '#8888ff', color: '#fff' }"
+                  class="notes-card__tag"
+              >
+                <ion-label>{{ tag.name }}</ion-label>
+              </ion-chip>
+            </template>
+            <template v-else>
+              <span
+                  v-for="(tag, tIndex) in section.tags.slice(0, 5)"
+                  :key="tIndex"
+                  class="notes-card__tag-dot"
+                  :style="{ backgroundColor: tag.color || '#8888ff' }"
+              />
+            </template>
+          </div>
+        </header>
 
-        <!-- Отображение markdown -->
-        <div
-            v-if="editingNoteId !== section.id"
-            class="note-markdown"
-            v-html="renderMarkdown(section.noteText)"
-        ></div>
-
-        <!-- Режим редактирования -->
-        <textarea
-            v-else
-            v-model="editNoteText"
-            class="note-edit-textarea"
-            placeholder="Введите текст заметки..."
-            @input="autoGrow($event)"
-            @click="autoGrow($event)"
-            ref="editTextArea"
-        ></textarea>
-        <div class="tags-block" v-if="editingNoteId === section.id" @click.stop>
-          <div
-              v-for="(tag, index) in editTags"
-              :key="index"
-              class="tag-field"
-          >
-            <ion-input
-                placeholder="Имя тега"
-                v-model="tag.name"
-                class="tag-input"
-            ></ion-input>
-
-            <input
-                type="color"
-                v-model="tag.color"
-                class="tag-color-picker"
-            />
-
-            <ion-chip :style="{ backgroundColor: tag.color }" @click.stop="removeTagField('edit', index)">
-              <ion-label>{{ tag.name || "Без имени" }}</ion-label>
-            </ion-chip>
+        <div v-if="isBlockExpanded === index" class="notes-card__body" @click.stop>
+          <div class="notes-card__toolbar">
+            <ion-button
+                fill="clear"
+                size="small"
+                class="notes-card__edit-btn"
+                @click.stop="toggleEditMode(section)"
+            >
+              <ion-icon :icon="createOutline"></ion-icon>
+            </ion-button>
           </div>
 
-          <ion-button
-              size="small"
-              shape="round"
-              color="primary"
-              @click.stop="addNewTagField('edit')"
-          >
-            <ion-icon slot="icon-only" :icon="addOutline"></ion-icon>
-          </ion-button>
-        </div>
-      </div>
-
-      <!-- Когда заметка свернута -->
-      <p
-          v-else
-          class="note-collapsed-text"
-          v-html="renderMarkdown(section.noteText)"
-      ></p>
-
-      <div
-          v-if="section.tags && section.tags.length"
-          :class="[
-    'note-tags',
-    isBlockExpanded === index ? 'expanded-tags' : 'collapsed-tags'
-  ]"
-      >
-        <!-- Если заметка раскрыта -->
-        <template v-if="isBlockExpanded === index">
-          <ion-chip
-              v-for="(tag, tIndex) in section.tags"
-              :key="tIndex"
-              :style="{ backgroundColor: tag.color || '#8888ff', color: '#fff' }"
-              class="note-tag-chip"
-          >
-            <ion-label>{{ tag.name }}</ion-label>
-          </ion-chip>
-        </template>
-
-        <!-- Если заметка свернута -->
-        <template v-else>
           <div
-              v-for="(tag, tIndex) in section.tags.slice(0, 5)"
-              :key="tIndex"
-              class="tag-dot"
-              :style="{ backgroundColor: tag.color || '#8888ff' }"></div>
-        </template>
-      </div>
-
-      <ion-buttons slot="end" class="sectionButtons" v-if="isBlockExpanded === index">
-        <ion-button color="success" @click.stop="updateNote(section.notebookId, section.id)">
-          <ion-icon slot="icon-only" :icon="saveOutline"></ion-icon>
-        </ion-button>
-        <ion-button color="danger" @click.stop="deleteNote(section.id)">
-          <ion-icon slot="icon-only" :icon="trashOutline"></ion-icon>
-        </ion-button>
-      </ion-buttons>
-    </div>
-
-    <!-- Блок добавления новой заметки -->
-    <div class="new-note-section" v-if="isBlockExpanded === 'new'">
-      <h2>Новая заметка</h2>
-      <ion-input
-          placeholder="Название заметки"
-          :value="newNoteName"
-          @input="(e) => newNoteName = e.target.value"
-          class="new-note-input"
-      ></ion-input>
-
-      <ion-textarea
-          placeholder="Текст заметки (поддерживается Markdown)"
-          :value="newNoteText"
-          @input="(e) => newNoteText = e.target.value"
-          autoGrow
-          class="new-note-text"
-      ></ion-textarea>
-
-      <div class="tags-block">
-        <div
-            v-for="(tag, index) in newTags"
-            :key="index"
-            class="tag-field"
-        >
-          <ion-input
-              placeholder="Имя тега"
-              v-model="tag.name"
-              class="tag-input"
-          ></ion-input>
-
-          <input
-              type="color"
-              v-model="tag.color"
-              class="tag-color-picker"
+              v-if="editingNoteId !== section.id"
+              class="notes-card__markdown note-markdown"
+              v-html="renderMarkdown(section.noteText)"
           />
 
-          <ion-chip :style="{ backgroundColor: tag.color }">
-            <ion-label>{{ tag.name || "Без имени" }}</ion-label>
-            <ion-icon
-                slot="end"
-                :icon="trashOutline"
-                @click.stop="removeTagField('new', index)"
-            ></ion-icon>
-          </ion-chip>
+          <template v-else>
+            <textarea
+                v-model="editNoteText"
+                class="notes-card__textarea"
+                placeholder="Введите текст заметки (Markdown)..."
+                @input="autoGrow($event)"
+                @click="autoGrow($event)"
+            />
+
+            <div class="notes-card__tags-edit tags-block">
+              <div
+                  v-for="(tag, tagIdx) in editTags"
+                  :key="tagIdx"
+                  class="tag-field"
+              >
+                <ion-input
+                    placeholder="Имя тега"
+                    v-model="tag.name"
+                    fill="outline"
+                    class="tag-input"
+                />
+                <input type="color" v-model="tag.color" class="tag-color-picker" aria-label="Цвет тега" />
+                <ion-chip :style="{ backgroundColor: tag.color }" @click="removeTagField('edit', tagIdx)">
+                  <ion-label>{{ tag.name || 'Без имени' }}</ion-label>
+                </ion-chip>
+              </div>
+              <ion-button size="small" shape="round" color="primary" @click="addNewTagField('edit')">
+                <ion-icon slot="icon-only" :icon="addOutline" />
+              </ion-button>
+            </div>
+          </template>
+
+          <div class="notes-card__actions">
+            <ion-button shape="round" size="small" color="primary" @click.stop="updateNote(section.notebookId, section.id)">
+              <ion-icon slot="start" :icon="saveOutline" />
+              Сохранить
+            </ion-button>
+            <ion-button shape="round" size="small" fill="outline" color="danger" @click.stop="deleteNote(section.id)" aria-label="Удалить">
+              <ion-icon slot="icon-only" :icon="trashOutline" />
+            </ion-button>
+          </div>
         </div>
 
-        <ion-button
-            size="small"
-            shape="round"
-            color="primary"
-            @click.stop="addNewTagField('new')"
-        >
-          <ion-icon slot="icon-only" :icon="addOutline"></ion-icon>
-        </ion-button>
-      </div>
+        <div v-else class="notes-card__sheet-preview">
+          <p class="notes-card__preview" v-html="renderMarkdown(section.noteText)"></p>
+        </div>
+      </article>
 
-      <ion-buttons class="sectionButtons">
-        <ion-button color="success" @click="addNote">
-          <ion-icon slot="start" :icon="saveOutline"></ion-icon>
-          Сохранить
-        </ion-button>
-        <ion-button color="primary" @click="isBlockExpanded = null">
-          Отмена
-        </ion-button>
-      </ion-buttons>
+      <!-- Новая заметка -->
+      <article v-if="isBlockExpanded === 'new'" class="notes-card notes-card--new">
+        <h2 class="notes-card__title">Новая заметка</h2>
+        <div class="notes-card__body">
+          <ion-input
+              v-model="newNoteName"
+              label="Название"
+              label-placement="floating"
+              fill="outline"
+              placeholder="Название заметки"
+              class="new-note-input"
+          />
+          <ion-textarea
+              v-model="newNoteText"
+              label="Текст (Markdown)"
+              label-placement="floating"
+              fill="outline"
+              placeholder="Текст заметки..."
+              :auto-grow="true"
+              class="new-note-text"
+          />
+
+          <div class="tags-block notes-card__tags-edit">
+            <div v-for="(tag, tagIdx) in newTags" :key="tagIdx" class="tag-field">
+              <ion-input v-model="tag.name" placeholder="Имя тега" fill="outline" class="tag-input" />
+              <input type="color" v-model="tag.color" class="tag-color-picker" aria-label="Цвет тега" />
+              <ion-chip :style="{ backgroundColor: tag.color }" @click="removeTagField('new', tagIdx)">
+                <ion-label>{{ tag.name || 'Без имени' }}</ion-label>
+                <ion-icon slot="end" :icon="trashOutline" />
+              </ion-chip>
+            </div>
+            <ion-button size="small" shape="round" color="primary" @click="addNewTagField('new')">
+              <ion-icon slot="icon-only" :icon="addOutline" />
+            </ion-button>
+          </div>
+
+          <div class="notes-card__actions">
+            <ion-button shape="round" size="small" color="primary" @click="addNote">
+              <ion-icon slot="start" :icon="saveOutline" />
+              Сохранить
+            </ion-button>
+            <ion-button shape="round" size="small" fill="outline" color="danger" @click="isBlockExpanded = null">
+              Отмена
+            </ion-button>
+          </div>
+        </div>
+      </article>
     </div>
-
   </div>
 
-  <!-- Кнопка "Добавить заметку" -->
   <div class="add-new-button">
     <ion-button size="large" shape="round" color="secondary" @click="isBlockExpanded = 'new'">
-      <ion-icon slot="icon-only" :icon="addOutline"/>
+      <ion-icon slot="icon-only" :icon="addOutline" />
     </ion-button>
   </div>
-
 </template>
 
 <style scoped>
-
-.add-new-button {
-  position: fixed;
-  bottom: -10px;
-  /* расстояние от нижнего края */
-  width: 100%;
-  background: transparent;
-  /* или нужный фон */
-  display: flex;
-  flex-direction: row;
-  justify-content: center;
-  align-items: center;
-  margin-left: -15px;
-}
-
-.section {
-  position: relative;
-  margin-top: 20px;
-  background-color: var(--ion-color-medium);
-  border-radius: 15px;
-  padding: 10px;
-  overflow: hidden;
-  max-height: 130px;
-  transition: max-height 0.4s ease;
-}
-
-.section.expand {
-  height: fit-content;
-  max-height: 10000px;
-  transition: max-height 4s ease;
-}
-
-.section h1 {
-  font-size: 16pt; /* Размер для h1 */
-}
-
-.section h2 {
-  font-size: 14pt; /* Размер для h2 */
-}
-
-.section h3 {
-  font-size: 12pt; /* Размер для h3 */
-}
-
-.section h4 {
-  font-size: 10pt;
-}
-
-.section h5 {
-  font-size: 8pt;
-}
-
-.section h6 {
-  font-size: 6pt;
+.notes-body {
+  padding-bottom: max(60px, calc(52px + env(safe-area-inset-bottom, 0)));
 }
 
 .sectionHeader {
-  margin-top: 0;
   color: var(--ion-color-light);
+  font-size: 22px;
+  font-weight: normal;
+  margin-top: 10px;
+  margin-bottom: 8px;
 }
 
-.sectionButtons {
-  width: 100%;
+.note-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  align-content: start;
+}
+
+@media (min-width: 600px) {
+  .note-list {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.notes-card {
+  position: relative;
   display: flex;
-  justify-content: end;
-}
-
-
-p[contenteditable="true"] {
-  outline: none;
-  cursor: text;
-}
-
-p[contenteditable="true"]:focus {
-  border-color: var(--ion-color-primary);
-}
-
-.add-note-button {
-  margin-top: 30px;
-  display: flex;
-  justify-content: center;
-}
-
-.new-note-section {
-  margin-top: 20px;
-  padding: 15px;
-  border-radius: 15px;
+  flex-direction: column;
   background-color: var(--ion-color-medium);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  animation: fadeIn 0.3s ease;
-}
-
-.new-note-input,
-.new-note-text {
-  margin-bottom: 15px;
-  border-radius: 10px;
-  background: var(--ion-color-medium-shade);
-  border: var(--ion-color-light);
-  padding: 10px;
-  display: flex;
-  align-content: center;
-  justify-content: center;
-}
-
-.tags-block {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.tag-field {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.tag-input {
-  flex: 1;
-}
-
-.tag-color-picker {
-  width: 40px;
-  height: 40px;
-  border: none;
-  background: none;
-  cursor: pointer;
-  border-radius: 50%;
-
-}
-
-.sectionButtons {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-.note-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-/* Когда заметка не раскрыта — кружочки в углу */
-.collapsed-tags {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  justify-content: flex-end;
-  gap: 4px;
-}
-
-/* Маленькие цветные кружки */
-.tag-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  box-shadow: 0 0 2px rgba(0, 0, 0, 0.3);
-}
-
-/* Когда заметка раскрыта — теги под текстом */
-.expanded-tags {
-  margin-top: 8px;
-  justify-content: flex-start;
-}
-
-.note-tag-chip {
-  font-size: 0.9rem;
-  padding: 0 8px;
+  color: var(--ion-color-light);
   border-radius: 12px;
+  padding: 12px 14px;
+  padding-left: 14px;
+  overflow: hidden;
+  min-height: 100px;
+  max-height: 140px;
+  transition: max-height 0.35s ease-out, box-shadow 0.2s ease, transform 0.2s ease;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.06);
 }
 
-@keyframes fadeIn {
+.notes-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.06);
+}
+
+.notes-card--expanded {
+  grid-column: 1 / -1;
+  max-height: 2000px;
+  cursor: default;
+  background-color: var(--ion-color-medium);
+  color: var(--ion-color-light);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  border-radius: 16px;
+  border: 1px solid transparent;
+  min-height: 0;
+}
+
+.notes-card--new {
+  grid-column: 1 / -1;
+  max-height: none;
+  min-height: 0;
+  background-color: var(--ion-color-medium);
+  color: var(--ion-color-light);
+  animation: notesFadeIn 0.25s ease;
+}
+
+@keyframes notesFadeIn {
   from {
     opacity: 0;
-    transform: translateY(5px);
+    transform: translateY(-8px);
   }
   to {
     opacity: 1;
@@ -607,45 +476,228 @@ p[contenteditable="true"]:focus {
   }
 }
 
-.note-text-container {
-  position: relative;
-  margin-top: 10px;
+.notes-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 28px;
 }
 
-.edit-toggle-btn {
-  position: absolute;
-  top: 0;
-  right: 0;
-  z-index: 2;
-  --padding-start: 4px;
-  --padding-end: 4px;
-  --border-radius: 8px;
+.notes-card__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: bold;
+  color: var(--ion-color-light);
+  flex: 1;
+  min-width: 0;
+  outline: none;
+}
+
+.notes-card--expanded .notes-card__title {
+  font-size: 16px;
+}
+
+.notes-card__title[contenteditable="true"] {
+  cursor: text;
+}
+
+.notes-card__title[contenteditable="true"]:focus {
+  color: var(--ion-color-primary);
+}
+
+.notes-card__tags-dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.notes-card__tags-dots--expanded {
+  margin-top: 4px;
+  margin-bottom: 0;
+}
+
+.notes-card__sheet-preview {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  margin-top: 4px;
+}
+
+.notes-card__sheet-preview .notes-card__preview {
+  flex: 1;
+  min-height: 0;
+}
+
+.notes-card__tag-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.25);
+}
+
+.notes-card__tag {
+  font-size: 12px;
+  height: 24px;
+}
+
+.notes-card__preview {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--ion-color-light-shade);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.notes-card__preview :deep(p) {
+  margin: 0 0 0.25em;
+}
+
+.notes-card__preview :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+.notes-card__body {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--ion-color-medium-shade);
+}
+
+.notes-card__toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 6px;
+}
+
+.notes-card__edit-btn {
+  --padding-start: 6px;
+  --padding-end: 6px;
+  margin: 0;
 }
 
 .note-markdown {
-  padding-right: 35px; /* чтобы не налезала кнопка */
-  white-space: pre-wrap;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ion-color-light);
+  word-break: break-word;
+  min-width: 0;
+  margin-bottom: 10px;
 }
 
-.note-edit-textarea {
+.note-markdown :deep(p) {
+  margin: 0 0 0.5em;
+}
+
+.note-markdown :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+.note-markdown :deep(ul),
+.note-markdown :deep(ol) {
+  margin: 0.5em 0;
+  padding-left: 1.25em;
+}
+
+.note-markdown :deep(h1) { font-size: 1.15em; }
+.note-markdown :deep(h2) { font-size: 1.05em; }
+.note-markdown :deep(h3) { font-size: 1em; }
+
+.notes-card__preview :deep(h1) { font-size: 1em; }
+.notes-card__preview :deep(h2) { font-size: 0.95em; }
+.notes-card__preview :deep(h3) { font-size: 0.9em; }
+
+.notes-card__textarea {
   width: 100%;
   min-height: 100px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--ion-color-medium-shade);
+  background: var(--ion-color-medium-shade);
+  color: var(--ion-color-light);
+  font-size: 14px;
+  line-height: 1.5;
   resize: none;
   overflow: hidden;
-  border-radius: 10px;
-  padding: 10px;
-  background: var(--ion-color-medium);
-  color: var(--ion-color-light);
-  border: 1px solid var(--ion-color-medium-shade);
-  font-size: 14px;
-  line-height: 1.4;
   transition: height 0.2s ease;
-  white-space: pre-wrap;
+  box-sizing: border-box;
 }
 
-.note-collapsed-text {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.notes-card__textarea::placeholder {
+  color: var(--ion-color-light-shade);
+}
+
+.notes-card__tags-edit {
+  margin-bottom: 12px;
+}
+
+.tags-block {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.tag-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tag-input {
+  flex: 1;
+  min-width: 80px;
+  max-width: 140px;
+}
+
+.tag-color-picker {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 50%;
+  padding: 0;
+}
+
+.notes-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.notes-card__actions ion-button {
+  --padding-start: 10px;
+  --padding-end: 10px;
+  margin: 0;
+}
+
+.new-note-input,
+.new-note-text {
+  margin-bottom: 12px;
+}
+
+.add-new-button {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  background: transparent;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 8px 0;
+  padding-bottom: max(8px, env(safe-area-inset-bottom, 0));
 }
 </style>

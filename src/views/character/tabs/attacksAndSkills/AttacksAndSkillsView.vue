@@ -6,7 +6,7 @@ import {useInventoryStore} from "@/stores/InventoryStore";
 import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {useCharacterStore} from "@/stores/CharacterStore";
 import {InventoryItem, InventoryItemSkill, ItemSkill} from "@/components/models/response/InventoryResponse";
-import {addOutline, handRightOutline} from "ionicons/icons";
+import {addOutline, contractOutline, handRightOutline, skullOutline} from "ionicons/icons";
 import {IonButton, IonIcon, IonProgressBar, useIonRouter} from "@ionic/vue";
 import axios from "axios";
 import {useRoute} from "vue-router";
@@ -102,17 +102,26 @@ function getRarityClass(rarity: string | undefined) {
 const getItemStats = (item: InventoryItem) => {
   const stats: string[] = [];
 
-
   if (item.item.stats?.damage) {
     stats.push(`${TEXTS.damage.rus}: ${item.item.stats.damage.damageTypeName}`);
   }
-
 
   if (item.item.subtypeName) {
     stats.push(`${TEXTS.type.rus}: ${item.item.subtypeName}`);
   }
 
   return stats;
+};
+
+const getDamageText = (item: InventoryItem) => {
+  const d = item.item.stats?.damage;
+  if (!d) return '';
+  const value = d.value;
+  const name = d.damageTypeName;
+  if (value && name) return `${value} ${name}`;
+  if (value) return value;
+  if (name) return name;
+  return '';
 };
 
 const getAttackBonus = (item: InventoryItem) => {
@@ -286,47 +295,49 @@ async function deleteCharacterSkill(id: string) {
     <div class="equipped" v-if="equippedItems?.length! > 0">
       <div class="section" v-for="item in equippedItems" :key="item.id">
         <div class="image-block" @click="openInventoryItem(item)">
-          <img width="65px" height="65px" class="item-image" :class="getRarityClass(item.item.rarity)"
+          <img width="75px" height="75px" class="item-image" :class="getRarityClass(item.item.rarity)"
                :src="getItemImageUrl(item.item.imgUrl)"
                :alt="item.item.name.rus"/>
         </div>
         <div class="info-block">
-          <div class="item-name">
+          <div class="header-block">
+            <div class="item-name">
               <span>
                 {{ item.item.name.rus }}
               <span
                   v-if="characterStore.character.abilities.find(ability => ability.code === 'STR')?.value < Number(item.item.stats.requirement)"
                   style="color: red;">*</span>
             </span>
+            </div>
+            <div class="attack" @click="openEditCombatBonusModal(item, 'attack')">
+              <div class="attack-value">{{ calculateAttack(item) }}</div>
+              <div class="attack-icon">
+                <ion-icon :icon="contractOutline" color="primary" slot="icon-only"/>
+              </div>
+            </div>
           </div>
           <div class="item-footer-block">
             <div class="stats-block">
               <div class="item-stats" v-for="(stat, index) in getItemStats(item)" :key="index">
                 {{ stat }}
               </div>
-            </div>
-            <div class="buttons-block">
-              <div class="attack" @click="openEditCombatBonusModal(item, 'attack')">
-                <div class="attack-name">Атака</div>
-                <div class="attack-value">{{ calculateAttack(item) }}</div>
-              </div>
               <div class="damage" @click="openEditCombatBonusModal(item, 'damage')">
-                <div class="damage-name">Урон</div>
-                <div class="damage-value">{{
-                    item.item.stats.damage.value + (calculateDamage(item) > 0 ? " + " + calculateDamage(item) : "") + (calculateDamage(item) < 0 ? " " + calculateDamage(item) : "")
-                  }}
+                <div class="damage-icon">
+                  <ion-icon :icon="skullOutline" color="primary" slot="icon-only"/>
                 </div>
+                <div class="damage-value">{{ getDamageText(item) || '—' }}</div>
               </div>
             </div>
+
           </div>
         </div>
       </div>
     </div>
     <h1 class="sectionHeader" v-if="skills?.length! > 0">{{ HEADERS.item_skills.rus }}</h1>
     <div class="skills" v-if="skills?.length! > 0">
-      <div class="section" v-for="skill in skills" :key="skill.id">
+      <div class="section-skill" v-for="skill in skills" :key="skill.id">
         <div class="image-block">
-          <img width="65px" height="65px" class="item-image"
+          <img width="75px" height="75px" class="item-image"
                :src="getSkillImageUrl(skill.skill.imgUrl)"
                :alt="skill.skill.name.rus"/>
         </div>
@@ -366,9 +377,9 @@ async function deleteCharacterSkill(id: string) {
     </div>
     <h1 class="sectionHeader" v-if="characterSkills?.length! > 0">{{ HEADERS.character_skills.rus }}</h1>
     <div class="skills" v-if="characterSkills?.length! > 0">
-      <div class="section" v-for="skill in characterSkills" :key="skill.id">
+      <div class="section-skill" v-for="skill in characterSkills" :key="skill.id">
         <div class="image-block">
-          <img width="65px" height="65px" class="item-image"
+          <img width="75px" height="75px" class="item-image"
                :src="getSkillImageUrl(skill.imgUrl)"
                :alt="skill.name"/>
         </div>
@@ -439,6 +450,28 @@ async function deleteCharacterSkill(id: string) {
 </template>
 
 <style scoped>
+.inventory-body {
+  padding-bottom: max(60px, calc(52px + env(safe-area-inset-bottom, 0)));
+}
+
+.equipped,
+.skills {
+  margin-bottom: 8px;
+}
+
+.stats-block {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.header-block {
+  display: flex;
+  justify-content: space-between;
+  padding-right: 5px;
+  padding-bottom: 0;
+}
 
 .charges {
   display: flex;
@@ -447,10 +480,11 @@ async function deleteCharacterSkill(id: string) {
 }
 
 .charges-value {
+  min-width: 100px;
   width: 120px;
 }
 
-ion-progress-bar {
+:deep(ion-progress-bar) {
   height: 12px;
   border-radius: 6px;
 }
@@ -465,13 +499,25 @@ ion-progress-bar {
 .section {
   background-color: var(--ion-color-medium);
   border-radius: 25px;
-  padding: 10px;
-  overflow: hidden;
-  max-height: 85px;
+  padding: 5px;
   margin-bottom: 10px;
   display: flex;
   flex-direction: row;
-  justify-content: start;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  width: 100%;
+}
+
+.section-skill {
+  background-color: var(--ion-color-medium);
+  border-radius: 25px;
+  padding: 5px;
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
   gap: 10px;
   width: 100%;
 }
@@ -516,10 +562,18 @@ ion-progress-bar {
   flex-direction: column;
   justify-content: center;
   font-size: 11px;
+  min-height: 15px;
+}
+
+.image-block {
+  width: 75px;
+  height: 75px;
 }
 
 .item-image {
-  border-radius: 15px;
+  width: 75px;
+  height: 75px;
+  border-radius: 20px;
   border: 2px solid transparent;
 }
 
@@ -545,39 +599,57 @@ ion-progress-bar {
 
 .damage, .attack {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   flex-direction: row;
-  background: var(--ion-color-medium-tint);
   border-radius: 10px;
-  font-size: 11px;
   height: 20px;
-  padding-left: 5px;
-  width: 130px;
+  width: auto;
   cursor: pointer;
 }
 
 .damage-value, .attack-value {
   font-size: 11px;
-  background: var(--ion-color-primary);
-  color: var(--ion-color-primary-contrast);
-  border-radius: 15px;
-  height: 20px;
-  width: 80px;
+  height: 15px;
+  width: auto;
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
+  padding-left: 5px;
+}
+
+.damage {
+  margin-top: 2px;
+}
+
+.attack-value {
+  font-size: 16px;
 }
 
 .add-new-button {
   position: fixed;
-  bottom: -10px;
+  bottom: 0;
+  left: 0;
+  right: 0;
   width: 100%;
   background: transparent;
   display: flex;
   flex-direction: row;
   justify-content: center;
   align-items: center;
-  margin-left: -15px;
+  padding: 8px 0;
+  padding-bottom: max(8px, env(safe-area-inset-bottom, 0));
+}
+
+.attack-icon,
+.damage-icon {
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+}
+
+.description {
+  word-break: break-word;
+  min-width: 0;
 }
 </style>

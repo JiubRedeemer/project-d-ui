@@ -23,6 +23,7 @@ import {useRoute} from "vue-router";
 import {TEXTS} from "@/config/localisations";
 import {add, addOutline, arrowBack, remove} from "ionicons/icons";
 import {useInventoryStore} from "@/stores/InventoryStore";
+import InventorySearchItemFullViewModal from "@/views/character/tabs/inventory/InventorySearchItemFullViewModal.vue";
 
 const inventoryStore = useInventoryStore();
 const route = useRoute();
@@ -33,7 +34,24 @@ const isLoadingItems = ref(false);
 const activeSearchToken = ref(0);
 const AUTOLOAD_THRESHOLD_PX = 180;
 const contentScrollHost = ref<HTMLElement | null>(null);
-const hasMoreItems = ref(true); // Для бесконечной прокрутки
+const hasMoreItems = ref(true);
+const selectedItem = ref<Item | null>(null);
+const showFullViewModal = ref(false);
+
+function openFullView(item: Item) {
+  selectedItem.value = item;
+  showFullViewModal.value = true;
+}
+
+function closeFullView() {
+  showFullViewModal.value = false;
+  selectedItem.value = null;
+}
+
+async function addFromFullView(item: Item, count: number) {
+  await addItemToInventory(item, count);
+  closeFullView();
+}
 
 async function handleInput(event: any) {
   const query = String(event?.detail?.value ?? event?.target?.value ?? "").toLowerCase().trim();
@@ -206,11 +224,11 @@ function changeItemCount(item: Item, action: 'add' | 'remove') {
   }
 }
 
-// Заглушка для кнопки "добавить в инвентарь"
-async function addItemToInventory(item: Item) {
+async function addItemToInventory(item: Item, count?: number) {
+  const qty = count ?? item.count ?? 1;
   try {
     const response = await axios.put(
-        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.inventory}/${route.params.characterId}/${item.id}/${item.count}`,
+        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.inventory}/${route.params.characterId}/${item.id}/${qty}`,
         {},
         {
           headers: {
@@ -219,12 +237,11 @@ async function addItemToInventory(item: Item) {
           },
         }
     );
-    inventoryStore.inventory = response.data
+    inventoryStore.inventory = response.data;
   } catch (error) {
     console.error("Ошибка при получении данных:", error);
   }
   await presentToast();
-  console.log(`Добавить в инвентарь ${item.count} предметов с ID: ${item.id}`);
 }
 
 async function presentToast() {
@@ -262,7 +279,7 @@ function openAddView() {
       <!-- Список -->
       <div class="found" v-if="findItems?.length! > 0">
         <div class="section" v-for="item in findItems" :key="item.id">
-          <div class="section-start-block">
+          <div class="section-start-block" @click="openFullView(item)">
             <div class="image-block">
               <img
                   class="item-image"
@@ -284,7 +301,7 @@ function openAddView() {
             </div>
           </div>
 
-          <div class="buttons-block">
+          <div class="buttons-block" @click.stop>
             <ion-button
                 @click="addItemToInventory(item)"
                 size="small"
@@ -334,6 +351,13 @@ function openAddView() {
       </ion-fab-button>
     </ion-fab>
 
+    <InventorySearchItemFullViewModal
+      :item="selectedItem"
+      :is-open="showFullViewModal"
+      :character-id="String(route.params.characterId)"
+      @close="closeFullView"
+      @add-to-inventory="addFromFullView"
+    />
   </ion-page>
 </template>
 
@@ -366,6 +390,9 @@ function openAddView() {
   justify-content: start;
   align-items: center;
   gap: 10px;
+  cursor: pointer;
+  flex: 1;
+  min-width: 0;
 }
 
 .item-name {
@@ -445,6 +472,5 @@ ion-searchbar {
 .rarity-legendary {
   border-color: orange;
 }
-
 </style>
 
