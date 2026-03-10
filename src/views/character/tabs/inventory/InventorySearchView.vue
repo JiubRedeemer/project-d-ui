@@ -352,11 +352,12 @@ function openAddView() {
     </ion-fab>
 
     <InventorySearchItemFullViewModal
-      :item="selectedItem"
-      :is-open="showFullViewModal"
-      :character-id="String(route.params.characterId)"
-      @close="closeFullView"
-      @add-to-inventory="addFromFullView"
+        :item="selectedItem"
+        :is-open="showFullViewModal"
+        :character-id="String(route.params.characterId)"
+        :room-id="String(route.params.roomId)"
+        @close="closeFullView"
+        @add-to-inventory="addFromFullView"
     />
   </ion-page>
 </template>
