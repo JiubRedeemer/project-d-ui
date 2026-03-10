@@ -14,6 +14,7 @@ import {
   IonTextarea,
   IonToggle,
   IonToolbar,
+  IonCheckbox,
   toastController,
   useIonRouter
 } from "@ionic/vue";
@@ -58,6 +59,8 @@ const showEditItemSkillModal = ref(false); // Управляем видимос�
 const isEditingItemSkill = ref(false); // Управляем видимостью модалки
 const editingItemSkill = ref<ItemSkill>(); // Управляем видимостью модалки
 const createItemSkills = ref<ItemSkill[]>([]);
+const noDexBonusLimit = ref<boolean>(false);
+const noStrengthRequirement = ref<boolean>(false);
 
 const oldItemId = ref<string>();
 const oldItemCount = ref<number | undefined>();
@@ -111,7 +114,26 @@ onBeforeMount(() => {
     oldItemId.value = createInventoryItemStore.inventoryItemId
     oldItemCount.value = createInventoryItemStore.item.count;
     createInventoryItemStore.item.id = itemId;
+    noDexBonusLimit.value = createInventoryItemStore.item.stats.armorClassMaxDexterityBonus === "-1";
+    noStrengthRequirement.value = createInventoryItemStore.item.stats.requirement === "-1";
+  }
+});
 
+watch(noDexBonusLimit, (checked) => {
+  if (checked) {
+    createInventoryItemStore.item.stats.armorClassMaxDexterityBonus = "-1";
+    invalidFields.value = invalidFields.value.filter(field => field !== 'armorClassMaxDexterityBonus');
+  } else if (createInventoryItemStore.item.stats.armorClassMaxDexterityBonus === "-1") {
+    createInventoryItemStore.item.stats.armorClassMaxDexterityBonus = "";
+  }
+});
+
+watch(noStrengthRequirement, (checked) => {
+  if (checked) {
+    createInventoryItemStore.item.stats.requirement = "-1";
+    invalidFields.value = invalidFields.value.filter(field => field !== 'requirement');
+  } else if (createInventoryItemStore.item.stats.requirement === "-1") {
+    createInventoryItemStore.item.stats.requirement = "";
   }
 });
 
@@ -818,12 +840,16 @@ const getSkillImageUrl = (imgUrl: string | undefined) => {
                 fill="outline"
                 color="primary"
                 v-model="createInventoryItemStore.item.stats.armorClassMaxDexterityBonus"
+            :disabled="noDexBonusLimit"
                 label-placement="floating"
                 class="input-block"
                 shape=""
                 :class="{ 'invalid-field': invalidFields.includes('armorClassMaxDexterityBonus') }"
                 @ionInput="invalidFields = invalidFields.filter(field => field !== 'armorClassMaxDexterityBonus')"
             />
+        <ion-checkbox v-model="noDexBonusLimit">
+          Нет ограничений бонуса ловкости
+        </ion-checkbox>
           </div>
           <div class="stat-section requirement">
             <div class="stat-section-name">{{ HEADERS.force_requirements.rus }}</div>
@@ -832,12 +858,16 @@ const getSkillImageUrl = (imgUrl: string | undefined) => {
                 fill="outline"
                 color="primary"
                 v-model="createInventoryItemStore.item.stats.requirement"
+            :disabled="noStrengthRequirement"
                 label-placement="floating"
                 class="input-block"
                 shape=""
                 :class="{ 'invalid-field': invalidFields.includes('requirement') }"
                 @ionInput="invalidFields = invalidFields.filter(field => field !== 'requirement')"
             />
+        <ion-checkbox v-model="noStrengthRequirement">
+          Нет требований к силе
+        </ion-checkbox>
           </div>
           <div class="stat-section customization">
             <div class="stat-section-name">{{ HEADERS.need_customization.rus }}</div>
