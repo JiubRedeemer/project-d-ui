@@ -10,7 +10,7 @@ export interface Price {
 
 export interface Damage {
     value: string;
-    damageType: string;
+    damageType?: string;
     damageTypeName?: string;
 }
 

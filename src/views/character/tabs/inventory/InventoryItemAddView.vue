@@ -3,6 +3,7 @@ import {
   IonBackButton,
   IonButton,
   IonButtons,
+  IonCheckbox,
   IonChip,
   IonContent,
   IonHeader,
@@ -14,7 +15,6 @@ import {
   IonTextarea,
   IonToggle,
   IonToolbar,
-  IonCheckbox,
   toastController,
   useIonRouter
 } from "@ionic/vue";
@@ -50,11 +50,11 @@ const viewType = ref<string>("ARMOR");
 const visibleForPlayers = ref<boolean>(true);
 const customization = ref<boolean>(false);
 const invalidFields = ref<string[]>([]); // Track invalid fields
-const damageType = ref<string>("CRUSHING");
-const damageValue = ref<string>("");
+const damageType = ref<string | undefined>("CRUSHING");
+const damageValue = ref<string | undefined>("");
 const defaultPriceValue = ref<number>(0);
 const defaultPriceCoinType = ref<string>("GOLDEN");
-const defaultPrice = ref<Price>({value: 0, coinType: "GOLDEN"});
+const defaultPrice = ref<Price | undefined>({value: 0, coinType: "GOLDEN"});
 const showEditItemSkillModal = ref(false); // Управляем видимостью модалки
 const isEditingItemSkill = ref(false); // Управляем видимостью модалки
 const editingItemSkill = ref<ItemSkill>(); // Управляем видимостью модалки
@@ -103,14 +103,10 @@ onBeforeMount(() => {
     viewType.value = createInventoryItemStore.item.type;
     damageType.value = createInventoryItemStore.item.stats.damage?.damageType;
     damageValue.value = createInventoryItemStore.item.stats.damage?.value;
-    defaultPrice.value = createInventoryItemStore.item.stats.defaultPrice[0];
-    defaultPriceCoinType.value = createInventoryItemStore.item.stats.defaultPrice[0].coinType
-    defaultPriceValue.value = createInventoryItemStore.item.stats.defaultPrice[0].value
+    defaultPrice.value = createInventoryItemStore.item?.stats?.defaultPrice[0];
+    defaultPriceCoinType.value = createInventoryItemStore.item?.stats?.defaultPrice[0]?.coinType
+    defaultPriceValue.value = createInventoryItemStore.item?.stats?.defaultPrice[0]?.value
     itemRarity.value = createInventoryItemStore.item.rarity ? createInventoryItemStore.item.rarity : 'COMMON';
-    if (!(createInventoryItemStore.item.creatorId == (route.params.characterId as string))) {
-      createInventoryItemStore.item.creatorId = route.params.characterId;
-      createInventoryItemStore.item.creator = "user";
-    }
     oldItemId.value = createInventoryItemStore.inventoryItemId
     oldItemCount.value = createInventoryItemStore.item.count;
     createInventoryItemStore.item.id = itemId;
@@ -259,7 +255,7 @@ function mapTypeToValue(display: string): string {
   }
 }
 
-function mapSubTypeToValue(name: string): string {
+function mapSubTypeToValue(name: string): string | null {
   switch (name) {
     case 'Простое рукопашное':
       return 'SHW'
@@ -284,7 +280,7 @@ function mapSubTypeToValue(name: string): string {
     case 'Магический предмет':
       return 'MAGIC_ITEM'
     default:
-      return null
+      return null;
   }
 }
 
@@ -450,7 +446,28 @@ function removeTag(tag: string) {
   createInventoryItemStore.item.stats.tags = createInventoryItemStore?.item?.stats?.tags?.filter(t => t !== tag);
 }
 
+async function getMyId() {
+  const myIdResponse = await axios.get(
+      `${GATEWAY_INTEGRATION_ROUTES.baseURL}/users/myId`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+      }
+  );
+  return myIdResponse;
+}
+
 async function saveItem() {
+  try {
+    const myIdResponse = await getMyId();
+    createInventoryItemStore.item.creatorId = myIdResponse.data;
+    createInventoryItemStore.item.creator = "user";
+  } catch (e) {
+    console.error("Не удалось получить идентификатор пользователя", e);
+  }
+
   if (viewType.value == "WEAPON") {
     createInventoryItemStore.item.stats.damage = {
       damageType: damageType.value,
@@ -840,16 +857,16 @@ const getSkillImageUrl = (imgUrl: string | undefined) => {
                 fill="outline"
                 color="primary"
                 v-model="createInventoryItemStore.item.stats.armorClassMaxDexterityBonus"
-            :disabled="noDexBonusLimit"
+                :disabled="noDexBonusLimit"
                 label-placement="floating"
                 class="input-block"
                 shape=""
                 :class="{ 'invalid-field': invalidFields.includes('armorClassMaxDexterityBonus') }"
                 @ionInput="invalidFields = invalidFields.filter(field => field !== 'armorClassMaxDexterityBonus')"
             />
-        <ion-checkbox v-model="noDexBonusLimit">
-          Нет ограничений бонуса ловкости
-        </ion-checkbox>
+            <ion-checkbox v-model="noDexBonusLimit">
+              Нет ограничений бонуса ловкости
+            </ion-checkbox>
           </div>
           <div class="stat-section requirement">
             <div class="stat-section-name">{{ HEADERS.force_requirements.rus }}</div>
@@ -858,16 +875,16 @@ const getSkillImageUrl = (imgUrl: string | undefined) => {
                 fill="outline"
                 color="primary"
                 v-model="createInventoryItemStore.item.stats.requirement"
-            :disabled="noStrengthRequirement"
+                :disabled="noStrengthRequirement"
                 label-placement="floating"
                 class="input-block"
                 shape=""
                 :class="{ 'invalid-field': invalidFields.includes('requirement') }"
                 @ionInput="invalidFields = invalidFields.filter(field => field !== 'requirement')"
             />
-        <ion-checkbox v-model="noStrengthRequirement">
-          Нет требований к силе
-        </ion-checkbox>
+            <ion-checkbox v-model="noStrengthRequirement">
+              Нет требований к силе
+            </ion-checkbox>
           </div>
           <div class="stat-section customization">
             <div class="stat-section-name">{{ HEADERS.need_customization.rus }}</div>

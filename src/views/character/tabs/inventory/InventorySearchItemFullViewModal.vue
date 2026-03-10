@@ -12,32 +12,36 @@ import {
   IonToggle,
   IonToolbar
 } from "@ionic/vue";
-import {ref, watch} from "vue";
+import {computed, ref, watch} from "vue";
 import type {Item, ItemSkill} from "@/components/models/response/InventoryResponse";
-import {FILE_STORAGE_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {HEADERS, TEXTS} from "@/config/localisations";
 import {add, remove, searchOutline} from "ionicons/icons";
 import {marked} from "marked";
 import armorIcon from "@/static/icons/Armor.svg";
 import EditItemSkillValueModal from "@/views/character/tabs/inventory/EditItemSkillValueModal.vue";
+import axios from "axios";
 
 const props = withDefaults(
   defineProps<{
     item: Item | null;
     isOpen: boolean;
     characterId: string;
+    roomId: string;
   }>(),
-  { item: null, isOpen: false, characterId: "" }
+  { item: null, isOpen: false, characterId: "", roomId: "" }
 );
 
 const emit = defineEmits<{
   (e: "close"): void;
   (e: "addToInventory", item: Item, count: number): void;
+  (e: "deleteItem", itemId: string): void;
 }>();
 
 const fullViewCount = ref(1);
 const showEditItemSkillModal = ref(false);
 const editingItemSkill = ref<ItemSkill | undefined>();
+const myUserId = ref<string | null>(null);
 
 watch(
   () => [props.item, props.isOpen],
@@ -46,6 +50,32 @@ watch(
   },
   { immediate: true }
 );
+
+watch(
+  () => props.isOpen,
+  async (open) => {
+    if (!open || myUserId.value) return;
+    try {
+      const response = await axios.get(
+        `${GATEWAY_INTEGRATION_ROUTES.baseURL}/users/myId`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          },
+        }
+      );
+      myUserId.value = response.data;
+    } catch (e) {
+      console.error("Не удалось получить идентификатор пользователя", e);
+    }
+  }
+);
+
+const isOwner = computed(() => {
+  if (!props.item || !myUserId.value) return false;
+  return props.item.creatorId === myUserId.value;
+});
 
 function closeModal() {
   emit("close");
@@ -64,6 +94,25 @@ function addFromFullView() {
   if (!props.item) return;
   emit("addToInventory", props.item, fullViewCount.value);
   closeModal();
+}
+
+async function deleteItem() {
+  if (!props.item) return;
+  try {
+    await axios.delete(
+      `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${props.roomId}${GATEWAY_INTEGRATION_ROUTES.items}/${props.item.id}`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+      }
+    );
+    emit("deleteItem", props.item.id);
+    closeModal();
+  } catch (e) {
+    console.error("Ошибка при удалении предмета", e);
+  }
 }
 
 function isLetter(str: string) {
@@ -230,6 +279,16 @@ const getSkillImageUrl = (imgUrl: string | undefined) =>
               <ion-icon slot="icon-only" size="small" :icon="add"></ion-icon>
             </ion-button>
           </div>
+          <ion-button
+            v-if="isOwner"
+            expand="block"
+            shape="round"
+            color="danger"
+            fill="outline"
+            @click="deleteItem"
+          >
+            Удалить предмет
+          </ion-button>
           <ion-button expand="block" shape="round" color="primary" @click="addFromFullView">
             Добавить в инвентарь
           </ion-button>
