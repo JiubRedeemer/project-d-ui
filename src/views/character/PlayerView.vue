@@ -29,6 +29,7 @@ import bioTabIcon from "../../static/icons/PersonalityTab.svg"
 import inventoryTabIcon from "../../static/icons/InventoryTab.svg"
 import notesTabIcon from "../../static/icons/NotesTab.svg"
 import magicTabIcon from "../../static/icons/Magic.svg"
+import traitsTabIcon from "../../static/icons/TraitsTab.svg"
 import InventoryView from "@/views/character/tabs/inventory/InventoryView.vue";
 import {useCharacterStore} from "@/stores/CharacterStore";
 import {useSubheaderOpenedStore} from "@/stores/SubheaderStore";
@@ -40,6 +41,7 @@ import {useCharacterSkillsStore} from "@/stores/CharacterSkillsStore";
 import RestViewModal from "@/views/character/tabs/rest/RestViewModal.vue";
 import EditSkillValueModal from "./tabs/common/bonus/EditSkillValueModal.vue";
 import LevelUpViewModal from "@/views/character/tabs/level/LevelUpViewModal.vue";
+import TraitsView from "@/views/character/tabs/traits/TraitsView.vue";
 
 const route = useRoute();
 const characterStore = useCharacterStore()
@@ -174,7 +176,8 @@ const openSubheader = () => {
                      direction="y"
                      :scroll-x="false">
           <div class="tab-content abilities" :class="{ openSubheader: subheaderStore.subheaderOpened }">
-            <AbilitiesView v-if="asyncDone" @ability-selected="openEditAbilityModal" @skill-selected="openEditSkillModal"/>
+            <AbilitiesView v-if="asyncDone" @ability-selected="openEditAbilityModal"
+                           @skill-selected="openEditSkillModal"/>
           </div>
         </ion-content>
       </ion-tab>
@@ -198,6 +201,19 @@ const openSubheader = () => {
           <div class="tab-content bio" :class="{ openSubheader: subheaderStore.subheaderOpened }">
             <Suspense>
               <PersonalityView v-if="asyncDone"/>
+            </Suspense>
+          </div>
+        </ion-content>
+      </ion-tab>
+      <ion-tab tab="traits">
+        <ion-content class="ion-padding"
+                     :fullscreen="true"
+                     color="dark"
+                     direction="y"
+                     :scroll-x="false">
+          <div class="tab-content traits" :class="{ openSubheader: subheaderStore.subheaderOpened }">
+            <Suspense>
+              <TraitsView v-if="asyncDone"/>
             </Suspense>
           </div>
         </ion-content>
@@ -257,6 +273,11 @@ const openSubheader = () => {
             <ion-icon :icon="bioTabIcon"/>
           </div>
         </ion-tab-button>
+        <ion-tab-button tab="traits">
+          <div class="tab-icon-wrapper">
+            <ion-icon :icon="traitsTabIcon"/>
+          </div>
+        </ion-tab-button>
         <ion-tab-button tab="inventory">
           <div class="tab-icon-wrapper">
             <ion-icon :icon="inventoryTabIcon"/>
@@ -285,10 +306,10 @@ const openSubheader = () => {
                            @closeEditAbilityModal="closeEditAbilityModal"/>
 
     <EditSkillValueModal v-if="selectedSkill"
-                           :skill="ref(selectedSkill)"
-                           :isOpen="showEditSkillBonusModal"
-                           :character-id="String(route.params.characterId)"
-                           @closeEditSkillModal="closeEditSkillModal"/>                       
+                         :skill="ref(selectedSkill)"
+                         :isOpen="showEditSkillBonusModal"
+                         :character-id="String(route.params.characterId)"
+                         @closeEditSkillModal="closeEditSkillModal"/>
 
     <EditSpeedValueModal v-if="showEditSpeedBonusModal"
                          :isOpen="showEditSpeedBonusModal"
@@ -388,6 +409,10 @@ const openSubheader = () => {
   margin-top: 120px;
 }
 
+.traits.openSubheader {
+  margin-top: 120px;
+}
+
 .inventory.openSubheader {
   margin-top: 120px;
 }
@@ -411,6 +436,11 @@ const openSubheader = () => {
 }
 
 .bio {
+  margin-top: 64px;
+  transition: margin-top 0.3s ease;
+}
+
+.traits {
   margin-top: 64px;
   transition: margin-top 0.3s ease;
 }

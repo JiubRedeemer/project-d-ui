@@ -741,13 +741,14 @@ onIonViewDidEnter(loadMagicData);
 
 .add-new-button {
   position: fixed;
-  bottom: -10px;
+  bottom: 0;
+  left: 0;
+  right: 0;
   width: 100%;
   background: transparent;
   display: flex;
-  flex-direction: row;
   justify-content: center;
   align-items: center;
-  margin-left: -15px;
+  padding: 8px 0 max(8px, env(safe-area-inset-bottom, 0));
 }
 </style>

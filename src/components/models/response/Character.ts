@@ -1,4 +1,5 @@
 import {ChargesRefill} from "@/components/models/response/InventoryResponse";
+import {RaceTraitDto} from "@/api/rulebookApi.types";
 
 export interface Character {
     id: string;
@@ -22,6 +23,7 @@ export interface Character {
     characterBio: CharacterBio;
     health: Health;
     level: Level;
+    traits: CharacterTraits[];
     itemStats: EquippedItemsStatsResponse | null;
     currentHpDiceCount: number;
     isOwner: boolean;
@@ -36,6 +38,7 @@ export interface ClassInfo {
 export interface RaceInfo {
     code: string;
     name: string;
+    traits: RaceTraitDto[];
 }
 
 export interface Ability {
@@ -110,6 +113,13 @@ export interface CharacterSkill {
     charges: number | undefined;
     chargesRefill: ChargesRefill;
     imgUrl: string;
+}
+
+export interface CharacterTraits {
+    id: string;
+    characterId: string;
+    name: string;
+    description: string;
 }
 
 export enum ItemStatsEnum {
