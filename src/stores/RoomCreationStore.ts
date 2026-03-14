@@ -58,9 +58,15 @@ export const useRoomCreationStore = defineStore('createRoomCreationStore', {
             const ZERO_UUID = "00000000-0000-0000-0000-000000000000";
             return await getSubClassesByCodeForRoom(ZERO_UUID, classCode, forceRuleType)
         },
+        async getAvailableSubClassesForRoomId(classCode: string, roomId: string, forceRuleType: string | undefined): Promise<ClazzDto[]> {
+            return await getSubClassesByCodeForRoom(roomId, classCode, forceRuleType)
+        },
         async getAvailableSubRaces(raceCode: string, forceRuleType: string | undefined): Promise<RaceDto[]> {
             const ZERO_UUID = "00000000-0000-0000-0000-000000000000";
             return await getRaceSubspeciesByCodeForRoom(ZERO_UUID, raceCode, forceRuleType)
+        },
+        async getAvailableSubRacesForRoomId(raceCode: string, roomId: string, forceRuleType: string | undefined): Promise<RaceDto[]> {
+            return await getRaceSubspeciesByCodeForRoom(roomId, raceCode, forceRuleType)
         },
         async getAvailableBackgrounds(forceRuleType: string | undefined): Promise<BackgroundDto[]> {
             const ZERO_UUID = "00000000-0000-0000-0000-000000000000";

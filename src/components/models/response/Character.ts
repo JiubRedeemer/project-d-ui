@@ -38,6 +38,7 @@ export interface ClassInfo {
 export interface RaceInfo {
     code: string;
     name: string;
+    imgUrl: string;
     traits: RaceTraitDto[];
 }
 

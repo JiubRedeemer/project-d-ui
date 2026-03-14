@@ -1,10 +1,9 @@
 <script setup lang="ts">
 
 import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
-import {useRoomCreationStore} from "@/stores/RoomCreationStore";
 import {FILE_STORAGE_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {arrowBackOutline} from "ionicons/icons";
-import {IonChip, IonFab, IonFabButton, IonIcon, IonLabel, IonPage} from "@ionic/vue";
+import {IonChip, IonContent, IonFab, IonFabButton, IonIcon, IonLabel, IonPage} from "@ionic/vue";
 import {useRouter} from "vue-router";
 import {useFullBackgroundStore} from "@/stores/FullBackgroundStore";
 

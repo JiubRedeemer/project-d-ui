@@ -286,13 +286,13 @@ const getDexArmoryClass = () : number => {
 
 .subheader-show-arrow {
   position: absolute;
-  bottom: -8px;
+  bottom: -10px;
   left: 50%;
   transform: translateX(-50%);
   background: var(--ion-color-medium);
   border-radius: 50%;
-  width: 15px;
-  height: 15px;
+  width: 20px;
+  height: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -300,7 +300,7 @@ const getDexArmoryClass = () : number => {
 }
 
 .arrow {
-  font-size: 14px;
+  font-size: 16px;
   color: white;
 }
 </style>

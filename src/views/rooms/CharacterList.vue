@@ -19,7 +19,7 @@ import {
   toastController,
   useIonRouter
 } from "@ionic/vue";
-import {add, chevronForwardOutline, personAddOutline, sendOutline} from "ionicons/icons";
+import {add, chevronForwardOutline, keyOutline, personAddOutline, sendOutline} from "ionicons/icons";
 import {HEADERS, TEXTS} from "@/config/localisations";
 import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
 import {computed, ref} from "vue";
@@ -27,6 +27,7 @@ import axios from "axios";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {useRoute} from "vue-router";
 import {Character} from "@/components/models/response/Character";
+import {getCharacterAvatarUrl, CHARACTER_AVATAR_PLACEHOLDER} from "@/utils/characterAvatar";
 
 const ionRouter = useIonRouter();
 const route = useRoute();
@@ -35,6 +36,7 @@ const characters = ref<Character[]>([]);
 const showInviteModal = ref(false);
 const inviteEmail = ref("");
 const inviteRole = ref<"PLAYER" | "MASTER">("PLAYER");
+const userRoles = ref<String[]>([]);
 const isSendingInvite = ref(false);
 
 const isCharacterOwned = (character: Character) => {
@@ -75,8 +77,29 @@ const setupCharacters = async () => {
   }
 }
 
+const getRoleInRoom = async () => {
+  const http = axios.create({
+    baseURL: GATEWAY_INTEGRATION_ROUTES.baseURL,
+    headers: {
+      "Content-type": "application/json",
+      "Authorization": "Bearer " + localStorage.getItem("accessToken")
+    },
+  });
+
+  const res = await http.get(GATEWAY_INTEGRATION_ROUTES.api + GATEWAY_INTEGRATION_ROUTES.rooms + '/' + route.params.roomId + GATEWAY_INTEGRATION_ROUTES.roles);
+
+  if (res.status == 200) {
+    userRoles.value = res.data
+  }
+}
+
+const isMaster = () => {
+  return userRoles.value.filter(role => role == "MASTER").length > 0;
+}
+
 onIonViewWillEnter(() => {
   setupCharacters()
+  getRoleInRoom()
 })
 
 const createCharacter = () => {
@@ -85,6 +108,10 @@ const createCharacter = () => {
 
 const goToCharacter = (characterId: string) => {
   ionRouter.navigate('/rooms/' + route.params.roomId + '/characters/' + characterId, 'forward', 'push')
+}
+
+function goToMasterLk() {
+  ionRouter.navigate('/rooms/' + route.params.roomId + '/master', 'forward', 'push')
 }
 
 const openInviteModal = () => {
@@ -157,19 +184,33 @@ const sendInvite = async () => {
   <ion-page>
     <RoomsHeader :header-name="HEADERS.characters.rus"></RoomsHeader>
     <ion-content :fullscreen="true" color="dark">
+      <ion-item :button="true" color="dark" @click="goToMasterLk()" v-if="isMaster">
+        <ion-avatar aria-hidden="false" slot="start">
+          <img width="64" height="64"
+               src="https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png"
+               alt="external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2"/>
+        </ion-avatar>
+        <ion-icon aria-hidden="false" :icon="keyOutline" slot="end"></ion-icon>
+        <ion-label>
+          <h1 class="character-name character-owned">Ширма мастера</h1>
+          <p class="character-description">Управление комнатой</p>
+        </ion-label>
+      </ion-item>
 
       <ion-list v-show="sortedCharacters.length != 0" class="character-list">
         <ion-item v-for="character in sortedCharacters" :key="character.id" :button="true" color="dark"
                   @click="goToCharacter(character.id)">
           <ion-avatar aria-hidden="false" slot="start">
             <img width="64" height="64"
-                 src="https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png"
-                 alt="external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2"/>
+                 :src="getCharacterAvatarUrl(character)"
+                 alt=""
+                 @error="($event.target as HTMLImageElement).src = CHARACTER_AVATAR_PLACEHOLDER"/>
           </ion-avatar>
           <ion-icon aria-hidden="false" :icon="chevronForwardOutline" slot="end"></ion-icon>
           <ion-label>
-            <h1 class="character-name" :class="isCharacterOwned(character) ? 'character-owned' : 'character-not-owned'" >{{ character.name }}</h1>
-            <h2 class="username">{{ character.ownerUsername}}</h2>
+            <h1 class="character-name" :class="isCharacterOwned(character) ? 'character-owned' : 'character-not-owned'">
+              {{ character.name }}</h1>
+            <h2 class="username">{{ character.ownerUsername }}</h2>
             <p class="character-description">{{ character.raceInfo.name }} - {{ character.clazzInfo.name }}</p>
           </ion-label>
         </ion-item>
