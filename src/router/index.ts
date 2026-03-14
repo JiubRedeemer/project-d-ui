@@ -24,6 +24,7 @@ import BackgroundFullView from "@/views/common/guidebook/BackgroundFullView.vue"
 import CreateRace from "@/views/common/createEntity/CreateRace.vue";
 import CreateClass from "@/views/common/createEntity/CreateClass.vue";
 import CreateBackground from "@/views/common/createEntity/CreateBackground.vue";
+import MasterView from "@/views/master/MasterView.vue";
 
 const routes: Array<RouteRecordRaw> = [
     {
@@ -149,6 +150,14 @@ const routes: Array<RouteRecordRaw> = [
         path: '/createEntity/background',
         component: CreateBackground,
         name: 'createBackground',
+    },
+
+
+    //MASTER
+    {
+        path: '/rooms/:roomId/master',
+        component: MasterView,
+        name: 'masterView',
     }
 ]
 

@@ -8,7 +8,8 @@ import {
   IonTabBar,
   IonTabButton,
   IonTabs,
-  onIonViewDidEnter
+  onIonViewDidEnter,
+  onIonViewDidLeave
 } from "@ionic/vue";
 import PlayerViewHeader from "@/views/character/PlayerViewHeader.vue";
 import AbilitiesView from "@/views/character/tabs/abilities/AbilitiesView.vue";
@@ -62,12 +63,41 @@ const selectedCharacter = ref<Character>();
 const subheaderStore = useSubheaderOpenedStore();
 const characterSkillsStore = useCharacterSkillsStore();
 
+const POLL_INTERVAL_MS = 10_000;
+let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+const startPolling = () => {
+  const roomId = route.params.roomId as string;
+  const characterId = route.params.characterId as string;
+
+  const poll = async () => {
+    await characterStore.updateCharacterInStoreById(roomId, characterId);
+    await inventoryStore.updateInventoryInStoreById(roomId, characterId);
+    await characterSkillsStore.updateCharacterSkills(roomId, characterId);
+  };
+
+  poll();
+  pollTimer = setInterval(poll, POLL_INTERVAL_MS);
+};
+
+const stopPolling = () => {
+  if (pollTimer) {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+};
+
 onIonViewDidEnter(async () => {
-  await characterStore.updateCharacterInStoreById(route.params.roomId, route.params.characterId)
-  await inventoryStore.updateInventoryInStoreById(route.params.roomId, route.params.characterId)
-  await characterSkillsStore.updateCharacterSkills(route.params.roomId, route.params.characterId)
+  await characterStore.updateCharacterInStoreById(route.params.roomId, route.params.characterId);
+  await inventoryStore.updateInventoryInStoreById(route.params.roomId, route.params.characterId);
+  await characterSkillsStore.updateCharacterSkills(route.params.roomId, route.params.characterId);
+  startPolling();
   asyncDone.value = true;
-})
+});
+
+onIonViewDidLeave(() => {
+  stopPolling();
+});
 
 const openEditAbilityModal = (ability: AbilityDto) => {
   selectedAbility.value = ability;

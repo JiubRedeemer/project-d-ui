@@ -27,6 +27,7 @@ export const GATEWAY_INTEGRATION_ROUTES = {
     invites: "/invites/rooms",
     acceptInvite: "/invites/rooms/accept",
     declineInvite: "/invites/rooms/decline",
+    roles: "/roles",
 
     rooms: "/rooms",
     roomClasses: "/classes",

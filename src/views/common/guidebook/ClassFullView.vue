@@ -4,21 +4,27 @@ import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
 import {useRoomCreationStore} from "@/stores/RoomCreationStore";
 import {FILE_STORAGE_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {arrowBackOutline} from "ionicons/icons";
-import {IonChip, IonFab, IonFabButton, IonIcon, IonLabel, IonPage} from "@ionic/vue";
+import {IonChip, IonContent, IonFab, IonFabButton, IonIcon, IonLabel, IonPage} from "@ionic/vue";
 import {onMounted, ref} from "vue";
 import type {ClazzDto} from "@/api/rulebookApi.types";
 import {useRouter} from "vue-router";
 import {useFullClassStore} from "@/stores/FullClassStore";
+import {useRoomStore} from "@/stores/RoomStore";
 
 const fullClassStore = useFullClassStore();
 const roomCreationStore = useRoomCreationStore();
+const roomStore = useRoomStore();
 const subClasses = ref<ClazzDto[]>([]);
 const ionRouter = useRouter();
 
 onMounted(async () => {
   const clazz = fullClassStore.clazz;
   if (clazz?.code) {
-    subClasses.value = await roomCreationStore.getAvailableSubClasses(clazz.code, roomCreationStore.roomInfo.baseRules) ?? [];
+    if (roomStore.room.id) {
+      subClasses.value = await roomCreationStore.getAvailableSubClassesForRoomId(clazz.code, roomStore.room.id, roomCreationStore.roomInfo.baseRules) ?? [];
+    } else {
+      subClasses.value = await roomCreationStore.getAvailableSubClasses(clazz.code, roomCreationStore.roomInfo.baseRules) ?? [];
+    }
   }
 });
 

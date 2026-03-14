@@ -5,20 +5,26 @@ import {useFullRaceStore} from "@/stores/FullRaceStore";
 import {useRoomCreationStore} from "@/stores/RoomCreationStore";
 import {FILE_STORAGE_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {arrowBackOutline, arrowUp} from "ionicons/icons";
-import {IonChip, IonFab, IonFabButton, IonIcon, IonLabel, IonPage} from "@ionic/vue";
+import {IonChip, IonContent, IonFab, IonFabButton, IonIcon, IonLabel, IonPage} from "@ionic/vue";
 import {onMounted, ref} from "vue";
 import type {RaceDto} from "@/api/rulebookApi.types";
 import {useRouter} from "vue-router";
+import {useRoomStore} from "@/stores/RoomStore";
 
 const fullRaceStore = useFullRaceStore();
 const roomCreationStore = useRoomCreationStore();
+const roomStore = useRoomStore();
 const subspecies = ref<RaceDto[]>([]);
 const ionRouter = useRouter();
 
 onMounted(async () => {
   const race = fullRaceStore.race;
   if (race?.code) {
-    subspecies.value = await roomCreationStore.getAvailableSubRaces(race.code, roomCreationStore.roomInfo.baseRules) ?? [];
+    if (roomStore.room.id) {
+      subspecies.value = await roomCreationStore.getAvailableSubRacesForRoomId(race.code, roomStore.room.id, roomCreationStore.roomInfo.baseRules) ?? [];
+    } else {
+      subspecies.value = await roomCreationStore.getAvailableSubRaces(race.code, roomCreationStore.roomInfo.baseRules) ?? [];
+    }
   }
 });
 
@@ -103,7 +109,7 @@ const previousStep = () => {
 </template>
 
 <style scoped>
-.description{
+.description {
   margin-top: 10px;
   margin-left: 10px;
   margin-right: 10px;
@@ -113,16 +119,16 @@ const previousStep = () => {
   border-radius: 10px;
 }
 
-.stat{
+.stat {
   margin-top: 10px;
 }
 
-.stat-header{
+.stat-header {
   font-size: 24px;
   padding-left: 10px;
 }
 
-.stat-chip{
+.stat-chip {
   margin-left: 10px;
 }
 
@@ -162,7 +168,7 @@ const previousStep = () => {
   display: flex;
 }
 
-.avatar{
+.avatar {
   margin-top: 10px;
   margin-left: 10px;
   margin-right: 10px;
@@ -170,7 +176,7 @@ const previousStep = () => {
   justify-content: center;
 }
 
-.header{
+.header {
   display: flex;
   justify-content: center;
 }
