@@ -602,7 +602,7 @@ onIonViewDidEnter(async () => {
               <ion-icon :icon="chevronForwardOutline" slot="end" />
               <ion-label>
                 <h3>{{ getSpellName(spell) }}</h3>
-                <p>{{ spell.school }} <span v-if="spell.damageType">— {{ spell.damageType }}</span></p>
+                <p class="spell-school">{{ spell.school }} <span v-if="spell.damageType">— {{ spell.damageType }}</span></p>
               </ion-label>
             </ion-item>
           </ion-list>
@@ -627,6 +627,10 @@ onIonViewDidEnter(async () => {
 </template>
 
 <style scoped>
+.spell-school{
+  color: var(--ion-color-secondary);
+}
+
 .guidebook {
   padding: 0 12px 80px;
 }
