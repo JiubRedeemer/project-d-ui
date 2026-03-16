@@ -11,7 +11,15 @@ import {
   onIonViewDidEnter,
   useIonRouter
 } from "@ionic/vue";
-import {arrowBackOutline, chevronForwardOutline, peopleOutline, bookOutline, documentTextOutline, cubeOutline, sparklesOutline} from "ionicons/icons";
+import {
+  chevronForwardOutline,
+  peopleOutline,
+  bookOutline,
+  documentTextOutline,
+  cubeOutline,
+  sparklesOutline,
+  menuOutline
+} from "ionicons/icons";
 import {computed, ref, watch} from "vue";
 import {useRoute} from "vue-router";
 import {
@@ -65,6 +73,9 @@ const items = ref<Item[]>([]);
 const spells = ref<SpellDto[]>([]);
 const itemSearchQuery = ref("");
 const spellSearchQuery = ref("");
+const selectedSpellClass = ref<string | "ALL">("ALL");
+const spellClasses = ref<{ value: string; label: string; groupCode?: string | null }[]>([]);
+const spellClassesLoading = ref(false);
 const loading = ref(false);
 const itemsLoadingMore = ref(false);
 const hasMoreItems = ref(true);
@@ -90,8 +101,28 @@ watch([roomId, baseRuleType], () => {
   backgrounds.value = [];
 }, { flush: "sync" });
 
+// Локальный дебаунс для поиска заклинаний и предметов,
+// чтобы не перерендеривать большие списки на каждый ввод символа
+const debouncedSpellSearchQuery = ref("");
+const debouncedItemSearchQuery = ref("");
+
+let spellSearchTimeout: ReturnType<typeof setTimeout> | null = null;
+let itemSearchTimeout: ReturnType<typeof setTimeout> | null = null;
+
+watch(
+  spellSearchQuery,
+  (q) => {
+    if (spellSearchTimeout) clearTimeout(spellSearchTimeout);
+    const value = q.trim();
+    spellSearchTimeout = setTimeout(() => {
+      debouncedSpellSearchQuery.value = value;
+    }, 250);
+  },
+  { flush: "post" }
+);
+
 const filteredSpells = computed(() => {
-  const q = spellSearchQuery.value.trim().toLowerCase();
+  const q = debouncedSpellSearchQuery.value.toLowerCase();
   let list = spells.value;
   if (q) {
     list = list.filter((s) => {
@@ -175,7 +206,7 @@ async function loadBackgrounds() {
 }
 
 async function searchItems(replaceResults = true) {
-  const q = itemSearchQuery.value.trim();
+  const q = debouncedItemSearchQuery.value.trim();
   if (q.length < 2) {
     items.value = [];
     hasMoreItems.value = true;
@@ -249,19 +280,60 @@ function closeSpellModal() {
 async function loadSpells() {
   loading.value = true;
   try {
-    spells.value = await listSpells();
+    const spellClass =
+      selectedSpellClass.value === "ALL" ? undefined : (selectedSpellClass.value as string);
+    const rootSpellClass =
+      spellClass != null
+        ? (spellClasses.value.find((c) => c.value === spellClass)?.groupCode ?? undefined)
+        : undefined;
+    spells.value = await listSpells(spellClass, rootSpellClass ?? undefined);
   } finally {
     loading.value = false;
   }
 }
 
-watch(itemSearchQuery, (q) => {
-  if (q.trim().length >= 2) searchItems(true);
-  else {
-    items.value = [];
-    hasMoreItems.value = true;
+async function loadSpellClassesForRoom() {
+  if (!roomId.value) return;
+  spellClassesLoading.value = true;
+  try {
+    const classes = await getClassesForRoom(roomId.value, undefined);
+    const options = classes.map((c) => ({
+      value: c.code,
+      label: c.name?.trim() || c.code,
+      groupCode: c.groupCode
+    }));
+    spellClasses.value = options;
+  } catch {
+    spellClasses.value = [];
+  } finally {
+    spellClassesLoading.value = false;
   }
+}
+
+watch(selectedSpellClass, () => {
+  loadSpells();
 });
+
+watch(
+  itemSearchQuery,
+  (q) => {
+    if (itemSearchTimeout) clearTimeout(itemSearchTimeout);
+    const value = q.trim();
+
+    if (value.length < 2) {
+      debouncedItemSearchQuery.value = "";
+      items.value = [];
+      hasMoreItems.value = true;
+      return;
+    }
+
+    itemSearchTimeout = setTimeout(() => {
+      debouncedItemSearchQuery.value = value;
+      searchItems(true);
+    }, 300);
+  },
+  { flush: "post" }
+);
 
 function goToRace(race: RaceDto) {
   fullRaceStore.race = race;
@@ -323,7 +395,10 @@ function goToSection(section: Section) {
   if (section === "races" && races.value.length === 0) loadRaces();
   else if (section === "classes" && classes.value.length === 0) loadClasses();
   else if (section === "backgrounds" && backgrounds.value.length === 0) loadBackgrounds();
-  else if (section === "spells" && spells.value.length === 0) loadSpells();
+    else if (section === "spells" && spells.value.length === 0) {
+      loadSpellClassesForRoom();
+      loadSpells();
+    }
 }
 
 function goBack() {
@@ -367,7 +442,7 @@ onIonViewDidEnter(async () => {
       <div class="section-header">
         <ion-buttons>
           <ion-button fill="clear" @click="goBack">
-            <ion-icon :icon="arrowBackOutline" />
+            <ion-icon :icon="menuOutline" />
           </ion-button>
         </ion-buttons>
         <h2 class="section-title">{{ sectionTitles[currentSection] }}</h2>
@@ -485,11 +560,31 @@ onIonViewDidEnter(async () => {
 
     <!-- Заклинания -->
     <div v-show="currentSection === 'spells'" class="segment-content">
-      <ion-searchbar
-        v-model="spellSearchQuery"
-        placeholder="Поиск заклинаний"
-        debounce="200"
-      />
+      <div class="spells-filters">
+        <ion-searchbar
+          v-model="spellSearchQuery"
+          placeholder="Поиск заклинаний"
+          debounce="200"
+        />
+        <div class="spell-class-select-wrapper">
+          <label class="spell-class-label" for="spell-class-select">Класс</label>
+          <select
+            id="spell-class-select"
+            v-model="selectedSpellClass"
+            class="spell-class-select"
+            :disabled="spellClassesLoading"
+          >
+            <option value="ALL">Все классы</option>
+            <option
+              v-for="opt in spellClasses"
+              :key="opt.value"
+              :value="opt.value"
+            >
+              {{ opt.label }}
+            </option>
+          </select>
+        </div>
+      </div>
       <div v-if="!loading && filteredSpells.length" class="spells-content">
         <div v-for="[level, levelSpells] in spellsByLevel" :key="level" class="spell-level-group">
           <div class="spell-level-label">{{ level === "0" ? "Фокусы" : `${level} уровень` }}</div>
@@ -547,10 +642,10 @@ onIonViewDidEnter(async () => {
 }
 
 .section-header {
+  margin-top: 50px;
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 12px;
   padding: 4px 0;
 }
 
@@ -599,6 +694,33 @@ ion-searchbar {
 
 .spells-content {
   padding-bottom: 16px;
+}
+
+.spells-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.spell-class-select-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px 4px;
+}
+
+.spell-class-label {
+  font-size: 14px;
+  color: var(--ion-color-light);
+}
+
+.spell-class-select {
+  flex: 1;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--ion-color-medium);
+  background: var(--ion-color-dark);
+  color: var(--ion-color-light);
 }
 
 .spell-level-group {
