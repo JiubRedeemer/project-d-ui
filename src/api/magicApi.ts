@@ -9,7 +9,6 @@ import type {
     SpellCellDto,
     ImportResult,
 } from "@/components/models/response/MagicApi";
-import type { SpellClass } from "@/components/models/response/MagicApi";
 
 function baseUrl() {
     return `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}`;
@@ -24,10 +23,20 @@ function authHeaders() {
 
 // ——— Spells ———
 
-export async function listSpells(spellClass?: SpellClass): Promise<SpellDto[]> {
+export async function listSpells(
+    spellClass?: string,
+    rootSpellClass?: string
+): Promise<SpellDto[]> {
+    const params =
+        spellClass != null || rootSpellClass != null
+            ? {
+                  ...(spellClass != null ? { spellClass } : {}),
+                  ...(rootSpellClass != null ? { rootSpellClass } : {}),
+              }
+            : undefined;
     const { data } = await axios.get<SpellDto[]>(
         `${baseUrl()}${GATEWAY_INTEGRATION_ROUTES.spells}`,
-        { headers: authHeaders(), params: spellClass != null ? { spellClass } : undefined }
+        { headers: authHeaders(), params }
     );
     return data;
 }
