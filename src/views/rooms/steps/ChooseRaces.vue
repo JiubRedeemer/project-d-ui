@@ -36,6 +36,23 @@ const races = computed(() => {
   return [...api, ...customOnly];
 });
 
+const areAllRacesSelected = computed(() =>
+    races.value.length > 0 && races.value.every((r) => isRaceSelected(r))
+);
+
+const isRacesSelectionIndeterminate = computed(() => {
+  const selectedCount = races.value.filter((r) => isRaceSelected(r)).length;
+  return selectedCount > 0 && selectedCount < races.value.length;
+});
+
+const toggleAllRaces = () => {
+  if (areAllRacesSelected.value) {
+    roomCreationStore.races = [];
+  } else {
+    roomCreationStore.races = [...races.value];
+  }
+};
+
 const setupRaces = async () => {
   if (!roomCreationStore.roomInfo.baseRules && !roomCreationStore.roomInfo.baseRules) {
     ionRouter.replace("/rooms/create/ruleType")
@@ -98,9 +115,19 @@ const createItem = () => {
     <RoomsHeader :header-name="HEADERS.chooseRaces.rus"></RoomsHeader>
     <ion-content :fullscreen="true" color="dark">
 
+      <ion-item v-if="races.length" color="dark">
+        <ion-label>Выбрать все</ion-label>
+        <ion-checkbox
+            slot="end"
+            :indeterminate="isRacesSelectionIndeterminate"
+            :checked="areAllRacesSelected"
+            @ionChange="toggleAllRaces"
+        />
+      </ion-item>
+
       <ion-list v-show="races.length !== 0" class="room-list">
         <ion-item v-for="(race, index) in races" :key="race.code + (race.id ?? '')" :button="true" color="dark"
-                  @click="onRowClick(race, $event)">
+                  >
           <ion-checkbox slot="end" :checked="isRaceSelected(race)"/>
           <ion-avatar aria-hidden="false" slot="start">
             <img width="64" height="64"
@@ -111,7 +138,7 @@ const createItem = () => {
                  'https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"
                  alt="external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2"/>
           </ion-avatar>
-          <ion-icon aria-hidden="false" :icon="chevronForwardOutline" slot="end"></ion-icon>
+          <ion-icon aria-hidden="false" :icon="chevronForwardOutline" slot="end" @click="onRowClick(race, $event)"></ion-icon>
           <ion-label>
             <div class="room-name">{{ race.name }}</div>
           </ion-label>
