@@ -2,6 +2,7 @@
 
 import {
   IonAvatar,
+  IonCheckbox,
   IonContent,
   IonFab,
   IonFabButton,
@@ -34,6 +35,23 @@ const backgrounds = computed(() => {
   const customOnly = roomCreationStore.backgrounds.filter((b) => !customCodes.has(b.code));
   return [...api, ...customOnly];
 });
+
+const areAllBackgroundsSelected = computed(() =>
+    backgrounds.value.length > 0 && backgrounds.value.every((b) => isBackgroundSelected(b))
+);
+
+const isBackgroundsSelectionIndeterminate = computed(() => {
+  const selectedCount = backgrounds.value.filter((b) => isBackgroundSelected(b)).length;
+  return selectedCount > 0 && selectedCount < backgrounds.value.length;
+});
+
+const toggleAllBackgrounds = () => {
+  if (areAllBackgroundsSelected.value) {
+    roomCreationStore.backgrounds = [];
+  } else {
+    roomCreationStore.backgrounds = [...backgrounds.value];
+  }
+};
 
 const setupBackgrounds = async () => {
   backgroundsFromApi.value = await roomCreationStore.getAvailableBackgrounds(roomCreationStore.roomInfo.baseRules) ?? [];
@@ -99,9 +117,19 @@ const previousStep = () => {
     <RoomsHeader :header-name="HEADERS.chooseBackgrounds.rus"></RoomsHeader>
     <ion-content :fullscreen="true" color="dark">
 
+      <ion-item v-if="backgrounds.length" color="dark">
+        <ion-label>Выбрать все</ion-label>
+        <ion-checkbox
+            slot="end"
+            :indeterminate="isBackgroundsSelectionIndeterminate"
+            :checked="areAllBackgroundsSelected"
+            @ionChange="toggleAllBackgrounds"
+        />
+      </ion-item>
+
       <ion-list v-show="backgrounds.length !== 0" class="room-list">
         <ion-item v-for="(background, index) in backgrounds" :key="background.code + (background.id ?? '')" :button="true" color="dark"
-                  @click="onRowClick(background, $event)">
+                  >
           <ion-checkbox slot="end" :checked="isBackgroundSelected(background)"/>
           <ion-avatar aria-hidden="false" slot="start">
             <img width="64" height="64"
@@ -112,7 +140,7 @@ const previousStep = () => {
                  'https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"
                  alt="external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2"/>
           </ion-avatar>
-          <ion-icon aria-hidden="false" :icon="chevronForwardOutline" slot="end"></ion-icon>
+          <ion-icon aria-hidden="false" :icon="chevronForwardOutline" slot="end" @click="onRowClick(background, $event)"></ion-icon>
           <ion-label>
             <div class="room-name">{{ background.name }}</div>
           </ion-label>

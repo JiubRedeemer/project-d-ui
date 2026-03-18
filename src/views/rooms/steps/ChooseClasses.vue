@@ -2,6 +2,7 @@
 
 import {
   IonAvatar,
+  IonCheckbox,
   IonContent,
   IonFab,
   IonFabButton,
@@ -34,6 +35,23 @@ const classes = computed(() => {
   const customOnly = roomCreationStore.classes.filter((c) => !customCodes.has(c.code));
   return [...api, ...customOnly];
 });
+
+const areAllClassesSelected = computed(() =>
+    classes.value.length > 0 && classes.value.every((c) => isClassSelected(c))
+);
+
+const isClassesSelectionIndeterminate = computed(() => {
+  const selectedCount = classes.value.filter((c) => isClassSelected(c)).length;
+  return selectedCount > 0 && selectedCount < classes.value.length;
+});
+
+const toggleAllClasses = () => {
+  if (areAllClassesSelected.value) {
+    roomCreationStore.classes = [];
+  } else {
+    roomCreationStore.classes = [...classes.value];
+  }
+};
 
 const setupClasses = async () => {
   classesFromApi.value = await roomCreationStore.getAvailableClasses(roomCreationStore.roomInfo.baseRules);
@@ -91,8 +109,18 @@ const previousStep = () => {
     <RoomsHeader :header-name="HEADERS.chooseClasses.rus"></RoomsHeader>
     <ion-content :fullscreen="true" color="dark">
 
+      <ion-item v-if="classes.length" color="dark">
+        <ion-label>Выбрать все</ion-label>
+        <ion-checkbox
+            slot="end"
+            :indeterminate="isClassesSelectionIndeterminate"
+            :checked="areAllClassesSelected"
+            @ionChange="toggleAllClasses"
+        />
+      </ion-item>
+
       <ion-list v-show="classes.length !== 0" class="room-list">
-        <ion-item v-for="(clazz, index) in classes" :key="clazz.code + (clazz.id ?? '')" :button="true" color="dark" @click="onRowClick(clazz, $event)">
+        <ion-item v-for="(clazz, index) in classes" :key="clazz.code + (clazz.id ?? '')" :button="true" color="dark">
           <ion-checkbox slot="end" :checked="isClassSelected(clazz)" />
           <ion-avatar aria-hidden="false" slot="start">
             <img width="64" height="64"
@@ -103,7 +131,7 @@ const previousStep = () => {
                  'https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"
                  alt="external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2"/>
           </ion-avatar>
-          <ion-icon aria-hidden="false" :icon="chevronForwardOutline" slot="end"></ion-icon>
+          <ion-icon aria-hidden="false" :icon="chevronForwardOutline" slot="end" @click="onRowClick(clazz, $event)"></ion-icon>
           <ion-label>
             <div class="room-name">{{ clazz.name }}</div>
           </ion-label>
