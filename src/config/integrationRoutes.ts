@@ -72,6 +72,11 @@ export const GATEWAY_INTEGRATION_ROUTES = {
 
     notes: "/notes",
 
+    // NPC API (room-scoped, under /api/rooms/:roomId)
+    npcs: "/npcs",
+    npcRelations: "/relations",
+    npcRelationType: "/relationType",
+
     // Magic API (under /api, not room-scoped)
     spells: "/spells",
     spellsImport: "/spells/import",
@@ -101,6 +106,7 @@ export const FILE_STORAGE_INTEGRATION_ROUTES = {
     races_images_bucket: "/races-images",
     classes_images_bucket: "/classes-images",
     backgrounds_images_bucket: "/backgrounds-images",
+    npc_images_bucket: "/npc-images",
     upload: "/upload",
     download: "/download"
 }

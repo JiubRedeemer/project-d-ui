@@ -25,6 +25,8 @@ import CreateRace from "@/views/common/createEntity/CreateRace.vue";
 import CreateClass from "@/views/common/createEntity/CreateClass.vue";
 import CreateBackground from "@/views/common/createEntity/CreateBackground.vue";
 import MasterView from "@/views/master/MasterView.vue";
+import CreateNpcView from "@/views/npcs/CreateNpcView.vue";
+import NpcFullView from "@/views/npcs/NpcFullView.vue";
 
 const routes: Array<RouteRecordRaw> = [
     {
@@ -137,6 +139,11 @@ const routes: Array<RouteRecordRaw> = [
         name: 'backgroundFullView'
     },
     {
+        path: '/rooms/:roomId/npcs/:npcId/full',
+        component: NpcFullView,
+        name: 'npcFullView'
+    },
+    {
         path: '/createEntity/race',
         component: CreateRace,
         name: 'createRace',
@@ -150,6 +157,18 @@ const routes: Array<RouteRecordRaw> = [
         path: '/createEntity/background',
         component: CreateBackground,
         name: 'createBackground',
+    },
+
+    // NPCs (room-scoped)
+    {
+        path: '/rooms/:roomId/npcs/create',
+        component: CreateNpcView,
+        name: 'createNpc',
+    },
+    {
+        path: '/rooms/:roomId/npcs/:npcId/edit',
+        component: CreateNpcView,
+        name: 'editNpc',
     },
 
 
