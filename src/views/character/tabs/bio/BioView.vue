@@ -1,18 +1,28 @@
 <script setup lang="ts">
-import {ref} from "vue";
+import {onMounted, ref} from "vue";
 import {useRoute} from "vue-router";
 import axios from "axios";
 import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {TEXTS} from "@/config/localisations";
 import {marked} from "marked";
 import {add, saveOutline} from "ionicons/icons";
-import {IonButton, IonButtons, IonIcon} from "@ionic/vue";
+import {
+  IonButton,
+  IonButtons,
+  IonIcon,
+  IonSpinner,
+  useIonRouter,
+  onIonViewDidEnter,
+} from "@ionic/vue";
 import {useCharacterStore} from "@/stores/CharacterStore";
 import {useInventoryStore} from "@/stores/InventoryStore";
+import {useNpcRelationsStore} from "@/stores/NpcRelationsStore";
+import type {RelationTypeEnum} from "@/api/npcApi.types";
 
 const fileInput = ref<HTMLInputElement | null>(null);
 
 const route = useRoute();
+const ionRouter = useIonRouter();
 const editedValues = ref<Record<string, string>>({});
 const isBlockExpanded = ref<string | null>(null);
 const inputSectionText = ref<string | null>(null);
@@ -22,6 +32,37 @@ const allowedFormats = ["image/jpeg", "image/png", "image/gif", "image/bmp", "im
 const filePath = ref<string>("");
 const characterStore = useCharacterStore()
 const inventoryStore = useInventoryStore()
+const npcRelationsStore = useNpcRelationsStore()
+
+const NPC_PLACEHOLDER =
+    "https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png";
+
+const relationTabs: Array<{ value: RelationTypeEnum; label: string }> = [
+  {value: "FRIEND", label: "Друзья"},
+  {value: "ENEMY", label: "Враги"},
+  {value: "RULER", label: "Правитель"},
+  {value: "PET", label: "Питомец"},
+  {value: "OTHER", label: "Другое"},
+];
+
+function getNpcImageUrl(imgUrl: string | undefined | null): string {
+  return `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.npc_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.download}/${imgUrl}`;
+}
+
+async function loadAllRelatedNpcs() {
+  const roomId = route.params.roomId as string;
+  const characterId = route.params.characterId as string;
+  await npcRelationsStore.loadAll(roomId, characterId);
+}
+
+function onAddRelation(type: RelationTypeEnum) {
+  const roomId = route.params.roomId as string;
+  const characterId = route.params.characterId as string;
+  ionRouter.push({
+    path: `/rooms/${roomId}/npcs/create`,
+    query: { characterId, relationType: type },
+  });
+}
 
 const startEditing = (field: string) => {
   editedValues.value[field] = characterStore.character.characterBio[field];
@@ -147,6 +188,9 @@ const uploadToMinio = async (file: File): Promise<string> => {
   );
   return res.data;
 };
+
+onMounted(loadAllRelatedNpcs);
+onIonViewDidEnter(loadAllRelatedNpcs);
 </script>
 
 <template>
@@ -157,7 +201,8 @@ const uploadToMinio = async (file: File): Promise<string> => {
         <img v-else-if="characterStore.character.characterBio.avatar" :src="FILE_STORAGE_INTEGRATION_ROUTES.baseURL +
                  FILE_STORAGE_INTEGRATION_ROUTES.api +
                  FILE_STORAGE_INTEGRATION_ROUTES.avatar_images_bucket +
-                 FILE_STORAGE_INTEGRATION_ROUTES.download + '/' + characterStore.character.characterBio.avatar" class="avatar-img" alt="avatar"/>
+                 FILE_STORAGE_INTEGRATION_ROUTES.download + '/' + characterStore.character.characterBio.avatar"
+             class="avatar-img" alt="avatar"/>
         <div v-else class="avatar-img">
           <ion-icon :icon="add" class="placeholder-icon"></ion-icon>
         </div>
@@ -181,23 +226,125 @@ const uploadToMinio = async (file: File): Promise<string> => {
     <div
         v-for="section in ['history', 'ideals', 'personality', 'attachments', 'weaknesses', 'relationships']"
         :key="section"
-        :class="{ expand: isBlockExpanded === section }"
-        class="section"
+        class="bio-section"
         v-show="isBlockExpanded === null || isBlockExpanded === section"
-        @click.stop="expandBlock(section)"
     >
       <h1 class="sectionHeader">{{ TEXTS[section].rus }}:</h1>
-      <p
-          contenteditable="true"
-          v-html="isBlockExpanded === section ? characterStore.character.characterBio[section] : renderMarkdown(characterStore.character.characterBio[section])"
-          @input="updateInputSectionText($event)"
-      ></p>
-      <ion-buttons slot="end" class="sectionButtons" v-show="isBlockExpanded === section">
-        <ion-button @click.stop="saveSectionText(section)">
-          <ion-icon slot="icon-only" :icon="saveOutline"></ion-icon>
-        </ion-button>
-      </ion-buttons>
+      <div
+          :class="{ expand: isBlockExpanded === section }"
+          class="section"
+          @click.stop="expandBlock(section)"
+      >
+        <p
+            contenteditable="true"
+            v-html="isBlockExpanded === section ? characterStore.character.characterBio[section] : renderMarkdown(characterStore.character.characterBio[section])"
+            @input="updateInputSectionText($event)"
+        ></p>
+        <ion-buttons slot="end" class="sectionButtons" v-show="isBlockExpanded === section">
+          <ion-button @click.stop="saveSectionText(section)">
+            <ion-icon slot="icon-only" :icon="saveOutline"></ion-icon>
+          </ion-button>
+        </ion-buttons>
+      </div>
     </div>
+
+    <!-- NPC Relations: separate blocks -->
+    <template v-if="isBlockExpanded == null">
+      <h1 class="sectionHeader">Друзья:</h1>
+      <div class="npc-section">
+        <div class="npc-relations-loading" v-if="npcRelationsStore.loading">
+          <ion-spinner name="crescent"></ion-spinner>
+        </div>
+          <div class="npc-relations-list" v-else>
+          <div class="npc-card" v-for="npc in npcRelationsStore.byType.FRIEND" :key="npc.id">
+            <img class="npc-avatar" onerror="this.onerror=null; this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'" :src="getNpcImageUrl(npc.imgUrl)" :alt="npc.name" @click.stop="ionRouter.push(`/rooms/${route.params.roomId}/npcs/${npc.id}/full`)"/>
+            <div class="npc-name" @click.stop="ionRouter.push(`/rooms/${route.params.roomId}/npcs/${npc.id}/full`)">{{ npc.name }}</div>
+          </div>
+          <div class="npc-card npc-card-add" @click="onAddRelation('FRIEND')">
+            <div class="npc-avatar npc-add-avatar">
+              <ion-icon class="npc-add-icon" :icon="add"></ion-icon>
+            </div>
+            <div class="npc-name">Добавить</div>
+          </div>
+        </div>
+      </div>
+
+      <h1 class="sectionHeader">Враги:</h1>
+      <div class="npc-section">
+        <div class="npc-relations-loading" v-if="npcRelationsStore.loading">
+          <ion-spinner name="crescent"></ion-spinner>
+        </div>
+        <div class="npc-relations-list" v-else>
+          <div class="npc-card" v-for="npc in npcRelationsStore.byType.ENEMY" :key="npc.id">
+            <img class="npc-avatar" onerror="this.onerror=null; this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'" :src="getNpcImageUrl(npc.imgUrl)" :alt="npc.name" @click.stop="ionRouter.push(`/rooms/${route.params.roomId}/npcs/${npc.id}/full`)"/>
+            <div class="npc-name" @click.stop="ionRouter.push(`/rooms/${route.params.roomId}/npcs/${npc.id}/full`)">{{ npc.name }}</div>
+          </div>
+          <div class="npc-card npc-card-add" @click="onAddRelation('ENEMY')">
+            <div class="npc-avatar npc-add-avatar">
+              <ion-icon class="npc-add-icon" :icon="add"></ion-icon>
+            </div>
+            <div class="npc-name">Добавить</div>
+          </div>
+        </div>
+      </div>
+
+      <h1 class="sectionHeader">Правители:</h1>
+      <div class="npc-section">
+        <div class="npc-relations-loading" v-if="npcRelationsStore.loading">
+          <ion-spinner name="crescent"></ion-spinner>
+        </div>
+        <div class="npc-relations-list" v-else>
+          <div class="npc-card" v-for="npc in npcRelationsStore.byType.RULER" :key="npc.id">
+            <img class="npc-avatar" onerror="this.onerror=null; this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'" :src="getNpcImageUrl(npc.imgUrl)" :alt="npc.name" @click.stop="ionRouter.push(`/rooms/${route.params.roomId}/npcs/${npc.id}/full`)"/>
+            <div class="npc-name" @click.stop="ionRouter.push(`/rooms/${route.params.roomId}/npcs/${npc.id}/full`)">{{ npc.name }}</div>
+          </div>
+          <div class="npc-card npc-card-add" @click="onAddRelation('RULER')">
+            <div class="npc-avatar npc-add-avatar">
+              <ion-icon class="npc-add-icon" :icon="add"></ion-icon>
+            </div>
+            <div class="npc-name">Добавить</div>
+          </div>
+        </div>
+      </div>
+
+      <h1 class="sectionHeader">Питомцы:</h1>
+      <div class="npc-section">
+        <div class="npc-relations-loading" v-if="npcRelationsStore.loading">
+          <ion-spinner name="crescent"></ion-spinner>
+        </div>
+        <div class="npc-relations-list" v-else>
+          <div class="npc-card" v-for="npc in npcRelationsStore.byType.PET" :key="npc.id">
+            <img class="npc-avatar" onerror="this.onerror=null; this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'" :src="getNpcImageUrl(npc.imgUrl)" :alt="npc.name" @click.stop="ionRouter.push(`/rooms/${route.params.roomId}/npcs/${npc.id}/full`)"/>
+            <div class="npc-name" @click.stop="ionRouter.push(`/rooms/${route.params.roomId}/npcs/${npc.id}/full`)">{{ npc.name }}</div>
+          </div>
+          <div class="npc-card npc-card-add" @click="onAddRelation('PET')">
+            <div class="npc-avatar npc-add-avatar">
+              <ion-icon class="npc-add-icon" :icon="add"></ion-icon>
+            </div>
+            <div class="npc-name">Добавить</div>
+          </div>
+        </div>
+      </div>
+
+      <h1 class="sectionHeader">Другие связи:</h1>
+      <div class="npc-section">
+        <div class="npc-relations-loading" v-if="npcRelationsStore.loading">
+          <ion-spinner name="crescent"></ion-spinner>
+        </div>
+        <div class="npc-relations-list" v-else>
+          <div class="npc-card" v-for="npc in npcRelationsStore.byType.OTHER" :key="npc.id">
+            <img class="npc-avatar" onerror="this.onerror=null; this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'" :src="getNpcImageUrl(npc.imgUrl)" :alt="npc.name" @click.stop="ionRouter.push(`/rooms/${route.params.roomId}/npcs/${npc.id}/full`)"/>
+            <div class="npc-name" @click.stop="ionRouter.push(`/rooms/${route.params.roomId}/npcs/${npc.id}/full`)">{{ npc.name }}</div>
+          </div>
+          <div class="npc-card npc-card-add" @click="onAddRelation('OTHER')">
+            <div class="npc-avatar npc-add-avatar">
+              <ion-icon class="npc-add-icon" :icon="add"></ion-icon>
+            </div>
+            <div class="npc-name">Добавить</div>
+          </div>
+        </div>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -207,8 +354,8 @@ const uploadToMinio = async (file: File): Promise<string> => {
 }
 
 .section {
-  margin-top: 20px;
   background-color: var(--ion-color-medium);
+  color: var(--ion-color-light);
   border-radius: 15px;
   padding: 10px;
   overflow: hidden;
@@ -226,36 +373,42 @@ const uploadToMinio = async (file: File): Promise<string> => {
 }
 
 
-.section h1 {
-  font-size: 16pt; /* Размер для h1 */
-  font-weight: bold;
+.section :deep(p) {
+  margin: 0 0 0.5em;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ion-color-light);
+  word-break: break-word;
 }
 
-.section h2 {
-  font-size: 14pt; /* Размер для h2 */
-  font-weight: bold;
+.section :deep(p:last-child) {
+  margin-bottom: 0;
 }
 
-.section h3 {
-  font-size: 12pt; /* Размер для h3 */
-  font-weight: bold;
+.section :deep(ul),
+.section :deep(ol) {
+  margin: 0.5em 0;
+  padding-left: 1.25em;
 }
 
-.section h4 {
-  font-size: 10pt;
+.section :deep(h1) {
+  font-size: 1.15em;
 }
 
-.section h5 {
-  font-size: 8pt;
+.section :deep(h2) {
+  font-size: 1.05em;
 }
 
-.section h6 {
-  font-size: 6pt;
+.section :deep(h3) {
+  font-size: 1em;
 }
 
 .sectionHeader {
-  color: var(--ion-color-primary);
-  font-size: 16pt;
+  color: var(--ion-color-light);
+  font-size: 22px;
+  font-weight: normal;
+  margin-top: 10px;
+  margin-bottom: 8px;
 }
 
 .header {
@@ -325,6 +478,64 @@ const uploadToMinio = async (file: File): Promise<string> => {
   width: 100%;
   display: flex;
   justify-content: end;
+}
+
+.npc-section {
+  background-color: var(--ion-color-medium);
+  border-radius: 15px;
+}
+
+.npc-relations-list {
+  display: flex;
+  flex-direction: row;
+  gap: 0;
+  overflow-x: auto;
+  padding: 6px 4px;
+}
+
+.npc-card {
+  flex: 0 0 auto;
+  width: 110px;
+  border-radius: 18px;
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.npc-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.npc-name {
+  width: 100%;
+  text-align: center;
+  font-size: 11pt;
+  line-height: 1.1;
+  word-break: break-word;
+}
+
+.npc-add-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.npc-add-icon {
+  font-size: 44px;
+  color: var(--ion-color-primary);
+}
+
+.npc-relations-loading {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 18px 0;
 }
 
 
