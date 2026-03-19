@@ -16,7 +16,6 @@ import {
   IonToggle,
   IonToolbar,
   toastController,
-  useIonRouter
 } from "@ionic/vue";
 import {HEADERS, TEXTS} from "@/config/localisations";
 import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
@@ -26,11 +25,11 @@ import {useCreateInventoryItemStore} from "@/stores/CreateInventoryItemStore";
 import axios from "axios";
 import {v4 as uuidv4} from 'uuid';
 import {type ItemSkill, Price} from "@/components/models/response/InventoryResponse";
-import {useRoute} from "vue-router";
+import {useRoute, useRouter} from "vue-router";
 import EditItemSkillValueModal from "@/views/character/tabs/inventory/EditItemSkillValueModal.vue";
 import {useInventoryStore} from "@/stores/InventoryStore";
 
-const ionRouter = useIonRouter();
+const router = useRouter();
 const route = useRoute();
 const previewImage = ref<string | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
@@ -512,7 +511,7 @@ async function saveItem() {
             },
           },
       );
-      ionRouter.back();
+      router.back();
 
       if (oldItemId.value && oldItemId.value !== itemId) {
         await deleteFromInventory(oldItemId.value);
@@ -546,7 +545,7 @@ async function deleteFromInventory(id: string) {
         }
     );
     inventoryStore.inventory = response.data;
-    ionRouter.back();
+    router.back();
   } catch (error) {
     console.error("Ошибка при получении данных:", error);
   }

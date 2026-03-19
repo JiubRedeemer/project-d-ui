@@ -1,13 +1,13 @@
 import { defineStore } from "pinia";
 import { getNpcsByCharacterIdAndRelationTypeForRoom } from "@/api/npcApi";
-import type { NpcDto, RelationTypeEnum } from "@/api/npcApi.types";
+import type { NpcWithRelationIdDto, RelationTypeEnum } from "@/api/npcApi.types";
 
 type NpcRelationsState = {
-  byType: Record<RelationTypeEnum, NpcDto[]>;
+  byType: Record<RelationTypeEnum, NpcWithRelationIdDto[]>;
   loading: boolean;
 };
 
-const EMPTY_BY_TYPE: Record<RelationTypeEnum, NpcDto[]> = {
+const EMPTY_BY_TYPE: Record<RelationTypeEnum, NpcWithRelationIdDto[]> = {
   FRIEND: [],
   ENEMY: [],
   RULER: [],
@@ -31,12 +31,14 @@ export const useNpcRelationsStore = defineStore("npcRelationsStore", {
               [t, await getNpcsByCharacterIdAndRelationTypeForRoom(roomId, characterId, t)] as const
           )
         );
-        const next: Record<RelationTypeEnum, NpcDto[]> = { ...EMPTY_BY_TYPE };
-        for (const [k, v] of entries) next[k] = v;
-        this.byType = next;
+        for (const [k, v] of entries) {
+          this.byType[k] = v;
+        }
       } catch (e) {
         console.error("Failed to load NPC relations:", e);
-        this.byType = { ...EMPTY_BY_TYPE };
+        for (const k of Object.keys(EMPTY_BY_TYPE) as RelationTypeEnum[]) {
+          this.byType[k] = [];
+        }
       } finally {
         this.loading = false;
       }

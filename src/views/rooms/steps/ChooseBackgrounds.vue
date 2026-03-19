@@ -18,6 +18,7 @@ import {addOutline, arrowBackOutline, arrowForwardOutline, chevronForwardOutline
 import {HEADERS, TEXTS} from "@/config/localisations";
 import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
 import {computed, onMounted, ref} from "vue";
+import {useRouter} from "vue-router";
 import {FILE_STORAGE_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {BackgroundDto} from "@/api/rulebookApi.types";
 import {useRoomCreationStore} from "@/stores/RoomCreationStore";
@@ -26,6 +27,7 @@ import {useFullBackgroundStore} from "@/stores/FullBackgroundStore";
 const roomCreationStore = useRoomCreationStore();
 const backgroundFullStore = useFullBackgroundStore();
 const ionRouter = useIonRouter();
+const router = useRouter();
 
 const backgroundsFromApi = ref<BackgroundDto[]>([]);
 
@@ -107,7 +109,7 @@ const nextStep = async () => {
   roomCreationStore.clearAll();
 }
 const previousStep = () => {
-  ionRouter.back();
+  router.back();
 }
 
 </script>

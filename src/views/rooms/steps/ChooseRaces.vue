@@ -18,6 +18,7 @@ import {addOutline, arrowBackOutline, arrowForwardOutline, chevronForwardOutline
 import {HEADERS, TEXTS} from "@/config/localisations";
 import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
 import {computed, onMounted, ref} from "vue";
+import {useRouter} from "vue-router";
 import {FILE_STORAGE_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {RaceDto} from "@/api/rulebookApi.types";
 import {useRoomCreationStore} from "@/stores/RoomCreationStore";
@@ -26,6 +27,7 @@ import {useFullRaceStore} from "@/stores/FullRaceStore";
 const roomCreationStore = useRoomCreationStore();
 const racesFullStore = useFullRaceStore();
 const ionRouter = useIonRouter();
+const router = useRouter();
 
 const racesFromApi = ref<RaceDto[]>([]);
 
@@ -100,7 +102,7 @@ const nextStep = () => {
 }
 
 const previousStep = () => {
-  ionRouter.back();
+  router.back();
 }
 
 const createItem = () => {

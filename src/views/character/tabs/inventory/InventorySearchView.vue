@@ -19,7 +19,7 @@ import {ref} from "vue";
 import {Item} from "@/components/models/response/InventoryResponse";
 import axios from "axios";
 import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
-import {useRoute} from "vue-router";
+import {useRoute, useRouter} from "vue-router";
 import {TEXTS} from "@/config/localisations";
 import {add, addOutline, arrowBack, remove} from "ionicons/icons";
 import {useInventoryStore} from "@/stores/InventoryStore";
@@ -28,6 +28,7 @@ import InventorySearchItemFullViewModal from "@/views/character/tabs/inventory/I
 const inventoryStore = useInventoryStore();
 const route = useRoute();
 const ionRouter = useIonRouter();
+const router = useRouter();
 const findItems = ref<Item[]>([]);
 const queryString = ref<string>();
 const isLoadingItems = ref(false);
@@ -340,7 +341,7 @@ function openAddView() {
     </ion-content>
 
     <ion-fab slot="fixed" vertical="bottom" horizontal="start">
-      <ion-fab-button color="primary" @click="ionRouter.back">
+      <ion-fab-button color="primary" @click="router.back">
         <ion-icon :icon="arrowBack" color="dark"></ion-icon>
       </ion-fab-button>
     </ion-fab>

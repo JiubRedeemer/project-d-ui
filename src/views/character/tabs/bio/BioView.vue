@@ -1,15 +1,16 @@
 <script setup lang="ts">
-import {onMounted, ref} from "vue";
+import {computed, onBeforeUnmount, onMounted, ref} from "vue";
 import {useRoute} from "vue-router";
 import axios from "axios";
 import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {TEXTS} from "@/config/localisations";
 import {marked} from "marked";
-import {add, saveOutline} from "ionicons/icons";
+import {add, saveOutline, sparkles} from "ionicons/icons";
 import {
   IonButton,
   IonButtons,
   IonIcon,
+  IonPopover,
   IonSpinner,
   useIonRouter,
   onIonViewDidEnter,
@@ -17,14 +18,36 @@ import {
 import {useCharacterStore} from "@/stores/CharacterStore";
 import {useInventoryStore} from "@/stores/InventoryStore";
 import {useNpcRelationsStore} from "@/stores/NpcRelationsStore";
-import type {RelationTypeEnum} from "@/api/npcApi.types";
+import {deleteCharacterNpcRelationByIdForRoom} from "@/api/npcApi";
+import type { NpcWithRelationIdDto, RelationTypeEnum } from "@/api/npcApi.types";
+import type {CharacterBio} from "@/components/models/response/Character";
+
+type BioStatFieldKey = "age" | "height" | "weight";
+type BioSectionKey =
+  | "history"
+  | "ideals"
+  | "personality"
+  | "attachments"
+  | "weaknesses"
+  | "relationships";
+type BioEditableKey = BioStatFieldKey | BioSectionKey | "avatar";
+
+const statFields: readonly BioStatFieldKey[] = ["age", "height", "weight"];
+const bioSections: readonly BioSectionKey[] = [
+  "history",
+  "ideals",
+  "personality",
+  "attachments",
+  "weaknesses",
+  "relationships",
+];
 
 const fileInput = ref<HTMLInputElement | null>(null);
 
 const route = useRoute();
 const ionRouter = useIonRouter();
 const editedValues = ref<Record<string, string>>({});
-const isBlockExpanded = ref<string | null>(null);
+const isBlockExpanded = ref<BioSectionKey | null>(null);
 const inputSectionText = ref<string | null>(null);
 const avatarImage = ref<File | null>(null);
 const previewImage = ref<string | null>(null);
@@ -33,6 +56,85 @@ const filePath = ref<string>("");
 const characterStore = useCharacterStore()
 const inventoryStore = useInventoryStore()
 const npcRelationsStore = useNpcRelationsStore()
+
+const relationsByType = computed(() => npcRelationsStore.byType)
+
+// Long-press delete for relations (like RoomsPage)
+const deleteRelationPopoverOpen = ref(false);
+const deleteRelationPopoverEvent = ref<Event | null>(null);
+const relationToDelete = ref<NpcWithRelationIdDto | null>(null);
+const didOpenDeleteRelationPopover = ref(false);
+let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+let pressStartX = 0;
+let pressStartY = 0;
+const MOVE_THRESHOLD_PX = 10;
+
+const onRelationPressMove = (e: MouseEvent | TouchEvent) => {
+  if (!longPressTimer) return;
+  const source = e instanceof TouchEvent ? (e as TouchEvent).touches[0] : (e as MouseEvent);
+  const x = source?.clientX ?? 0;
+  const y = source?.clientY ?? 0;
+  const dist = Math.hypot(x - pressStartX, y - pressStartY);
+  if (dist > MOVE_THRESHOLD_PX) {
+    onRelationPressEnd();
+  }
+};
+
+const bindMoveListener = () => {
+  document.addEventListener("touchmove", onRelationPressMove, { passive: true });
+  document.addEventListener("mousemove", onRelationPressMove);
+};
+const unbindMoveListener = () => {
+  document.removeEventListener("touchmove", onRelationPressMove);
+  document.removeEventListener("mousemove", onRelationPressMove);
+};
+
+const onRelationPressStart = (item: NpcWithRelationIdDto, e: MouseEvent | TouchEvent) => {
+  relationToDelete.value = item;
+  const source = e instanceof TouchEvent ? (e as TouchEvent).touches[0] : (e as MouseEvent);
+  pressStartX = source?.clientX ?? 0;
+  pressStartY = source?.clientY ?? 0;
+  bindMoveListener();
+  longPressTimer = setTimeout(() => {
+    longPressTimer = null;
+    unbindMoveListener();
+    didOpenDeleteRelationPopover.value = true;
+    const ev = new MouseEvent("click", { clientX: pressStartX, clientY: pressStartY, bubbles: true });
+    deleteRelationPopoverEvent.value = ev;
+    deleteRelationPopoverOpen.value = true;
+  }, 500);
+};
+
+const onRelationPressEnd = () => {
+  unbindMoveListener();
+  if (longPressTimer) {
+    clearTimeout(longPressTimer);
+    longPressTimer = null;
+  }
+};
+
+const confirmDeleteRelation = async () => {
+  if (!relationToDelete.value?.relationId) return;
+  const relationId = relationToDelete.value.relationId;
+  relationToDelete.value = null;
+  deleteRelationPopoverOpen.value = false;
+  deleteRelationPopoverEvent.value = null;
+  await onDeleteRelation(relationId);
+};
+
+const dismissDeleteRelationPopover = () => {
+  deleteRelationPopoverOpen.value = false;
+  deleteRelationPopoverEvent.value = null;
+  relationToDelete.value = null;
+};
+
+const goToNpcIfNotLongPress = (npcId: string) => {
+  if (didOpenDeleteRelationPopover.value) {
+    didOpenDeleteRelationPopover.value = false;
+    return;
+  }
+  ionRouter.push(`/rooms/${route.params.roomId}/npcs/${npcId}/full`);
+};
 
 const NPC_PLACEHOLDER =
     "https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png";
@@ -59,32 +161,52 @@ function onAddRelation(type: RelationTypeEnum) {
   const roomId = route.params.roomId as string;
   const characterId = route.params.characterId as string;
   ionRouter.push({
-    path: `/rooms/${roomId}/npcs/create`,
-    query: { characterId, relationType: type },
+    path: `/rooms/${roomId}/characters/${characterId}/npcs/search`,
+    query: { relationType: type },
   });
 }
 
-const startEditing = (field: string) => {
-  editedValues.value[field] = characterStore.character.characterBio[field];
+async function onDeleteRelation(relationId: string) {
+  const roomId = route.params.roomId as string;
+  const characterId = route.params.characterId as string;
+  try {
+    console.log(relationId);
+    await deleteCharacterNpcRelationByIdForRoom(roomId, characterId, relationId);
+    await loadAllRelatedNpcs();
+  } catch (e) {
+    console.error("Failed to delete relation:", e);
+  }
+}
+
+function getBioValue(bio: CharacterBio, key: BioEditableKey): string {
+  const val = bio[key];
+  return val != null ? String(val) : "";
+}
+
+function getEditableText(e: Event): string {
+  return (e.target as HTMLElement)?.innerText ?? "";
+}
+
+const startEditing = (field: BioStatFieldKey) => {
+  editedValues.value[field] = getBioValue(characterStore.character.characterBio, field);
 };
 
-const updateFieldValue = (field: string, text: string) => {
+const updateFieldValue = (field: BioStatFieldKey, text: string) => {
   editedValues.value[field] = text;
 };
 
 // Функция для конвертации текста в HTML
 const renderMarkdown = (text: string | undefined): string => {
-  return text ? marked(text) : "";
+  return text ? marked(text, {async: false}) : "";
 };
 
-const expandBlock = (name: string) => {
+const expandBlock = (name: BioSectionKey) => {
   isBlockExpanded.value = name;
-  inputSectionText.value = characterStore.character.characterBio[name] ?? "";
+  inputSectionText.value = getBioValue(characterStore.character.characterBio, name);
 };
 
-const saveSectionText = async (name: string) => {
-  const originalValue =
-      characterStore.character.characterBio[name] ?? "";
+const saveSectionText = async (name: BioSectionKey) => {
+  const originalValue = getBioValue(characterStore.character.characterBio, name);
 
   const newValue = inputSectionText.value ?? "";
 
@@ -121,9 +243,9 @@ const saveSectionText = async (name: string) => {
 };
 
 
-const saveField = async (field: string, text: string) => {
+const saveField = async (field: BioEditableKey, text: string) => {
   const newValue = text;
-  if (newValue === characterStore.character.characterBio[field]) return;
+  if (newValue === getBioValue(characterStore.character.characterBio, field)) return;
 
   try {
     const roomId = route.params.roomId as string;
@@ -140,15 +262,14 @@ const saveField = async (field: string, text: string) => {
         }
     );
     await characterStore.updateCharacterInStoreById(roomId, characterId);
-    await inventoryStore.updateInventoryInStoreById(route.params.roomId, route.params.characterId)
+    await inventoryStore.updateInventoryInStoreById(roomId, characterId)
   } catch (error) {
     console.error("Ошибка при сохранении данных:", error);
   }
 };
 
 const updateInputSectionText = (event: Event) => {
-  const target = event.target as HTMLElement;
-  inputSectionText.value = target.innerText;
+  inputSectionText.value = getEditableText(event);
 };
 
 const triggerFileInput = () => {
@@ -191,6 +312,11 @@ const uploadToMinio = async (file: File): Promise<string> => {
 
 onMounted(loadAllRelatedNpcs);
 onIonViewDidEnter(loadAllRelatedNpcs);
+
+onBeforeUnmount(() => {
+  unbindMoveListener();
+  if (longPressTimer) clearTimeout(longPressTimer);
+});
 </script>
 
 <template>
@@ -209,22 +335,22 @@ onIonViewDidEnter(loadAllRelatedNpcs);
         <input type="file" ref="fileInput" @change="handleFileUpload" accept="image/*" style="display: none;"/>
       </div>
       <div class="stats">
-        <div class="stat" v-for="field in ['age', 'height', 'weight']" :key="field">
+        <div class="stat" v-for="field in statFields" :key="field">
           {{ TEXTS[field].rus }} :
           <span
               class="stat-value"
               contenteditable="true"
               @focus="startEditing(field)"
-              @blur="saveField(field, $event.target?.innerText)"
-              @input="updateFieldValue(field, $event.target?.innerText)"
-              @keydown.enter.prevent="saveField(field, $event.target?.innerText)"
-          >{{ characterStore.character.characterBio[field] }}</span>
+              @blur="saveField(field, getEditableText($event))"
+              @input="updateFieldValue(field, getEditableText($event))"
+              @keydown.enter.prevent="saveField(field, getEditableText($event))"
+          >{{ getBioValue(characterStore.character.characterBio, field) }}</span>
         </div>
       </div>
     </div>
 
     <div
-        v-for="section in ['history', 'ideals', 'personality', 'attachments', 'weaknesses', 'relationships']"
+        v-for="section in bioSections"
         :key="section"
         class="bio-section"
         v-show="isBlockExpanded === null || isBlockExpanded === section"
@@ -237,7 +363,7 @@ onIonViewDidEnter(loadAllRelatedNpcs);
       >
         <p
             contenteditable="true"
-            v-html="isBlockExpanded === section ? characterStore.character.characterBio[section] : renderMarkdown(characterStore.character.characterBio[section])"
+            v-html="isBlockExpanded === section ? getBioValue(characterStore.character.characterBio, section) : renderMarkdown(getBioValue(characterStore.character.characterBio, section))"
             @input="updateInputSectionText($event)"
         ></p>
         <ion-buttons slot="end" class="sectionButtons" v-show="isBlockExpanded === section">
@@ -256,9 +382,25 @@ onIonViewDidEnter(loadAllRelatedNpcs);
           <ion-spinner name="crescent"></ion-spinner>
         </div>
           <div class="npc-relations-list" v-else>
-          <div class="npc-card" v-for="npc in npcRelationsStore.byType.FRIEND" :key="npc.id">
-            <img class="npc-avatar" onerror="this.onerror=null; this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'" :src="getNpcImageUrl(npc.imgUrl)" :alt="npc.name" @click.stop="ionRouter.push(`/rooms/${route.params.roomId}/npcs/${npc.id}/full`)"/>
-            <div class="npc-name" @click.stop="ionRouter.push(`/rooms/${route.params.roomId}/npcs/${npc.id}/full`)">{{ npc.name }}</div>
+          <div
+            class="npc-card"
+            v-for="item in relationsByType.FRIEND"
+            :key="item.relationId"
+            @click.stop="goToNpcIfNotLongPress(item.id)"
+            @touchstart.passive="onRelationPressStart(item, $event)"
+            @touchend="onRelationPressEnd"
+            @touchcancel="onRelationPressEnd"
+            @mousedown="onRelationPressStart(item, $event)"
+            @mouseup="onRelationPressEnd"
+            @mouseleave="onRelationPressEnd"
+          >
+            <div class="npc-card-avatar-wrap">
+              <img class="npc-avatar" onerror="this.onerror=null; this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'" :src="getNpcImageUrl(item.imgUrl)" :alt="item.name"/>
+              <div v-if="item.unique" class="npc-unique-badge" title="Уникальный">
+                <ion-icon :icon="sparkles" />
+              </div>
+            </div>
+            <div class="npc-name">{{ item.name }}</div>
           </div>
           <div class="npc-card npc-card-add" @click="onAddRelation('FRIEND')">
             <div class="npc-avatar npc-add-avatar">
@@ -275,9 +417,25 @@ onIonViewDidEnter(loadAllRelatedNpcs);
           <ion-spinner name="crescent"></ion-spinner>
         </div>
         <div class="npc-relations-list" v-else>
-          <div class="npc-card" v-for="npc in npcRelationsStore.byType.ENEMY" :key="npc.id">
-            <img class="npc-avatar" onerror="this.onerror=null; this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'" :src="getNpcImageUrl(npc.imgUrl)" :alt="npc.name" @click.stop="ionRouter.push(`/rooms/${route.params.roomId}/npcs/${npc.id}/full`)"/>
-            <div class="npc-name" @click.stop="ionRouter.push(`/rooms/${route.params.roomId}/npcs/${npc.id}/full`)">{{ npc.name }}</div>
+          <div
+            class="npc-card"
+            v-for="item in relationsByType.ENEMY"
+            :key="item.relationId"
+            @click.stop="goToNpcIfNotLongPress(item.id)"
+            @touchstart.passive="onRelationPressStart(item, $event)"
+            @touchend="onRelationPressEnd"
+            @touchcancel="onRelationPressEnd"
+            @mousedown="onRelationPressStart(item, $event)"
+            @mouseup="onRelationPressEnd"
+            @mouseleave="onRelationPressEnd"
+          >
+            <div class="npc-card-avatar-wrap">
+              <img class="npc-avatar" onerror="this.onerror=null; this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'" :src="getNpcImageUrl(item.imgUrl)" :alt="item.name"/>
+              <div v-if="item.unique" class="npc-unique-badge" title="Уникальный">
+                <ion-icon :icon="sparkles" />
+              </div>
+            </div>
+            <div class="npc-name">{{ item.name }}</div>
           </div>
           <div class="npc-card npc-card-add" @click="onAddRelation('ENEMY')">
             <div class="npc-avatar npc-add-avatar">
@@ -294,9 +452,25 @@ onIonViewDidEnter(loadAllRelatedNpcs);
           <ion-spinner name="crescent"></ion-spinner>
         </div>
         <div class="npc-relations-list" v-else>
-          <div class="npc-card" v-for="npc in npcRelationsStore.byType.RULER" :key="npc.id">
-            <img class="npc-avatar" onerror="this.onerror=null; this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'" :src="getNpcImageUrl(npc.imgUrl)" :alt="npc.name" @click.stop="ionRouter.push(`/rooms/${route.params.roomId}/npcs/${npc.id}/full`)"/>
-            <div class="npc-name" @click.stop="ionRouter.push(`/rooms/${route.params.roomId}/npcs/${npc.id}/full`)">{{ npc.name }}</div>
+          <div
+            class="npc-card"
+            v-for="item in relationsByType.RULER"
+            :key="item.relationId"
+            @click.stop="goToNpcIfNotLongPress(item.id)"
+            @touchstart.passive="onRelationPressStart(item, $event)"
+            @touchend="onRelationPressEnd"
+            @touchcancel="onRelationPressEnd"
+            @mousedown="onRelationPressStart(item, $event)"
+            @mouseup="onRelationPressEnd"
+            @mouseleave="onRelationPressEnd"
+          >
+            <div class="npc-card-avatar-wrap">
+              <img class="npc-avatar" onerror="this.onerror=null; this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'" :src="getNpcImageUrl(item.imgUrl)" :alt="item.name"/>
+              <div v-if="item.unique" class="npc-unique-badge" title="Уникальный">
+                <ion-icon :icon="sparkles" />
+              </div>
+            </div>
+            <div class="npc-name">{{ item.name }}</div>
           </div>
           <div class="npc-card npc-card-add" @click="onAddRelation('RULER')">
             <div class="npc-avatar npc-add-avatar">
@@ -313,9 +487,25 @@ onIonViewDidEnter(loadAllRelatedNpcs);
           <ion-spinner name="crescent"></ion-spinner>
         </div>
         <div class="npc-relations-list" v-else>
-          <div class="npc-card" v-for="npc in npcRelationsStore.byType.PET" :key="npc.id">
-            <img class="npc-avatar" onerror="this.onerror=null; this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'" :src="getNpcImageUrl(npc.imgUrl)" :alt="npc.name" @click.stop="ionRouter.push(`/rooms/${route.params.roomId}/npcs/${npc.id}/full`)"/>
-            <div class="npc-name" @click.stop="ionRouter.push(`/rooms/${route.params.roomId}/npcs/${npc.id}/full`)">{{ npc.name }}</div>
+          <div
+            class="npc-card"
+            v-for="item in relationsByType.PET"
+            :key="item.relationId"
+            @click.stop="goToNpcIfNotLongPress(item.id)"
+            @touchstart.passive="onRelationPressStart(item, $event)"
+            @touchend="onRelationPressEnd"
+            @touchcancel="onRelationPressEnd"
+            @mousedown="onRelationPressStart(item, $event)"
+            @mouseup="onRelationPressEnd"
+            @mouseleave="onRelationPressEnd"
+          >
+            <div class="npc-card-avatar-wrap">
+              <img class="npc-avatar" onerror="this.onerror=null; this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'" :src="getNpcImageUrl(item.imgUrl)" :alt="item.name"/>
+              <div v-if="item.unique" class="npc-unique-badge" title="Уникальный">
+                <ion-icon :icon="sparkles" />
+              </div>
+            </div>
+            <div class="npc-name">{{ item.name }}</div>
           </div>
           <div class="npc-card npc-card-add" @click="onAddRelation('PET')">
             <div class="npc-avatar npc-add-avatar">
@@ -332,9 +522,25 @@ onIonViewDidEnter(loadAllRelatedNpcs);
           <ion-spinner name="crescent"></ion-spinner>
         </div>
         <div class="npc-relations-list" v-else>
-          <div class="npc-card" v-for="npc in npcRelationsStore.byType.OTHER" :key="npc.id">
-            <img class="npc-avatar" onerror="this.onerror=null; this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'" :src="getNpcImageUrl(npc.imgUrl)" :alt="npc.name" @click.stop="ionRouter.push(`/rooms/${route.params.roomId}/npcs/${npc.id}/full`)"/>
-            <div class="npc-name" @click.stop="ionRouter.push(`/rooms/${route.params.roomId}/npcs/${npc.id}/full`)">{{ npc.name }}</div>
+          <div
+            class="npc-card"
+            v-for="item in relationsByType.OTHER"
+            :key="item.relationId"
+            @click.stop="goToNpcIfNotLongPress(item.id)"
+            @touchstart.passive="onRelationPressStart(item, $event)"
+            @touchend="onRelationPressEnd"
+            @touchcancel="onRelationPressEnd"
+            @mousedown="onRelationPressStart(item, $event)"
+            @mouseup="onRelationPressEnd"
+            @mouseleave="onRelationPressEnd"
+          >
+            <div class="npc-card-avatar-wrap">
+              <img class="npc-avatar" onerror="this.onerror=null; this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'" :src="getNpcImageUrl(item.imgUrl)" :alt="item.name"/>
+              <div v-if="item.unique" class="npc-unique-badge" title="Уникальный">
+                <ion-icon :icon="sparkles" />
+              </div>
+            </div>
+            <div class="npc-name">{{ item.name }}</div>
           </div>
           <div class="npc-card npc-card-add" @click="onAddRelation('OTHER')">
             <div class="npc-avatar npc-add-avatar">
@@ -345,6 +551,20 @@ onIonViewDidEnter(loadAllRelatedNpcs);
         </div>
       </div>
     </template>
+
+    <ion-popover
+      :is-open="deleteRelationPopoverOpen"
+      :event="deleteRelationPopoverEvent"
+      @didDismiss="dismissDeleteRelationPopover"
+    >
+      <div class="delete-relation-popover">
+        <p>Удалить связь?</p>
+        <div class="delete-relation-actions">
+          <ion-button fill="clear" size="small" @click="dismissDeleteRelationPopover">Нет</ion-button>
+          <ion-button fill="solid" color="danger" size="small" @click="confirmDeleteRelation">Да</ion-button>
+        </div>
+      </div>
+    </ion-popover>
   </div>
 </template>
 
@@ -491,6 +711,15 @@ onIonViewDidEnter(loadAllRelatedNpcs);
   gap: 0;
   overflow-x: auto;
   padding: 6px 4px;
+  scrollbar-width: none;
+
+  /* Для Internet Explorer и старых Edge */
+  -ms-overflow-style: none;
+
+  /* Для Chrome, Safari и современных Opera/Edge */
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 .npc-card {
@@ -504,19 +733,56 @@ onIonViewDidEnter(loadAllRelatedNpcs);
   gap: 8px;
 }
 
+.npc-card-avatar-wrap {
+  position: relative;
+}
+
+.npc-unique-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffd700, #ffb347);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  color: #5c3d00;
+  font-size: 12px;
+}
+
+.npc-unique-badge ion-icon {
+  font-size: 14px;
+}
+
 .npc-avatar {
-  width: 72px;
-  height: 72px;
+  width: 75px;
+  height: 75px;
   border-radius: 18px;
   object-fit: cover;
   background: rgba(255, 255, 255, 0.08);
 }
 
+.npc-delete-btn {
+  --padding-start: 4px;
+  --padding-end: 4px;
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 24px;
+  min-height: 24px;
+  margin: 0;
+  color: var(--ion-color-danger);
+  font-size: 14px;
+}
+
 .npc-name {
-  width: 100%;
+  width: 75px;
   text-align: center;
-  font-size: 11pt;
-  line-height: 1.1;
+  font-size: 9pt;
+  line-height: 1;
   word-break: break-word;
 }
 
@@ -538,6 +804,20 @@ onIonViewDidEnter(loadAllRelatedNpcs);
   padding: 18px 0;
 }
 
+.delete-relation-popover {
+  padding: 12px 16px;
+  min-width: 180px;
+  background-color: var(--ion-color-dark);
+}
+.delete-relation-popover p {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+}
+.delete-relation-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
 
 p[contenteditable="true"] {
   outline: none;

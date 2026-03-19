@@ -21,7 +21,7 @@ import {useInventoryItemStore} from "@/stores/InventoryItemStore";
 import armorIcon from "@/static/icons/Armor.svg";
 import {marked} from "marked";
 import axios from "axios";
-import {useRoute} from "vue-router";
+import {useRoute, useRouter} from "vue-router";
 import {useInventoryStore} from "@/stores/InventoryStore";
 import {ref} from "vue";
 import {useCreateInventoryItemStore} from "@/stores/CreateInventoryItemStore";
@@ -31,6 +31,7 @@ import EditItemSkillValueModal from "@/views/character/tabs/inventory/EditItemSk
 
 const route = useRoute();
 const ionRouter = useIonRouter();
+const router = useRouter();
 const inventoryItemStore = useInventoryItemStore();
 const inventoryStore = useInventoryStore();
 const createInventoryItemStore = useCreateInventoryItemStore();
@@ -50,7 +51,7 @@ function openViewItemSkillModal(isEditing: boolean, itemSkill: ItemSkill | undef
     editingItemSkill.value = itemSkill;
   }
   showEditItemSkillModal.value = true;
-};
+}
 
 onIonViewDidEnter(async () => {
   if (!inventoryItemStore.inventoryItem.itemId) {
@@ -112,7 +113,7 @@ async function deleteItemFromInventory() {
         }
     );
     inventoryStore.inventory = response.data;
-    ionRouter.back();
+    router.back();
   } catch (error) {
     console.error("Ошибка при получении данных:", error);
   }
@@ -363,13 +364,6 @@ const getSkillImageUrl = (imgUrl: string | undefined) => {
   font-size: 10pt;
 }
 
-.placeholder-icon {
-  align-self: center;
-  justify-self: center;
-  font-size: 48px;
-  color: white;
-}
-
 .armory-class {
   position: relative;
   display: inline-block;
@@ -497,13 +491,6 @@ const getSkillImageUrl = (imgUrl: string | undefined) => {
   align-items: center;
   flex-shrink: 0;
   gap: 5px;
-}
-
-.add-skill-button {
-  margin-top: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 </style>

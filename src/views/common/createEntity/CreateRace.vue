@@ -10,9 +10,9 @@ import {
   IonSelect,
   IonSelectOption,
   IonTextarea,
-  useIonRouter,
 } from "@ionic/vue";
 import {computed, onBeforeMount, ref} from "vue";
+import {useRouter} from "vue-router";
 import {useCreateRaceStore} from "@/stores/createEntity/CreateRaceStore";
 import {useRoomCreationStore} from "@/stores/RoomCreationStore";
 import axios from "axios";
@@ -26,7 +26,7 @@ const fileInput = ref<HTMLInputElement | null>(null);
 const previewImage = ref<string | null>(null);
 const createRaceStore = useCreateRaceStore();
 const roomCreationStore = useRoomCreationStore();
-const ionRouter = useIonRouter();
+const router = useRouter();
 const allowedFormats = ["image/jpeg", "image/png", "image/gif", "image/bmp", "image/webp", "image/tiff", "image/svg+xml"];
 const avatarImage = ref<File | null>(null);
 const filePath = ref<string>("");
@@ -116,7 +116,7 @@ function slugCode(name: string): string {
 }
 
 function onCancel() {
-  ionRouter.back();
+  router.back();
 }
 
 function onSave() {
@@ -134,7 +134,7 @@ function onSave() {
     stats: r.stats,
   };
   roomCreationStore.races = [...roomCreationStore.races, raceDto];
-  ionRouter.back();
+  router.back();
 }
 
 onBeforeMount(async () => {

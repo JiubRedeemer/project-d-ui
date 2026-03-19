@@ -31,6 +31,8 @@ export type NpcDto = {
   roomId: string;
   name: string;
   description?: string | null;
+  visible?: boolean;
+  unique?: boolean;
   type: NpcTypeEnum;
   clazzCode?: string | null;
   clazzInfo?: ClassInfoDto | null;
@@ -50,6 +52,8 @@ export type SaveNpcRequest = {
   name: string;
   description?: string | null;
   type: NpcTypeEnum;
+  visible?: boolean;
+  unique?: boolean;
   clazzCode?: string | null;
   raceCode?: string | null;
   armoryClass?: string | null;
@@ -66,6 +70,9 @@ export type CharacterNpcRelationDto = {
   note?: string | null;
   relationType?: RelationTypeEnum | null;
 };
+
+/** NPC with relation id (backend returns relationId in npcs/relationType response). */
+export type NpcWithRelationIdDto = NpcDto & { relationId: string };
 
 export type SaveCharacterNpcRelationRequest = {
   id?: string | null;

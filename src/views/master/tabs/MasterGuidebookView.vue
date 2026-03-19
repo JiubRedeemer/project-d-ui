@@ -8,15 +8,21 @@ import {
   IonLabel,
   IonList,
   IonSearchbar,
+  IonSelect,
+  IonSelectOption,
+  IonPopover,
   onIonViewDidEnter,
   useIonRouter
 } from "@ionic/vue";
 import {
+  add,
   chevronForwardOutline,
   peopleOutline,
+  personOutline,
   bookOutline,
   documentTextOutline,
   cubeOutline,
+  sparkles,
   sparklesOutline,
   menuOutline
 } from "ionicons/icons";
@@ -31,11 +37,15 @@ import type {BackgroundDto, ClazzDto, RaceDto} from "@/api/rulebookApi.types";
 import {Item} from "@/components/models/response/InventoryResponse";
 import type {SpellDto} from "@/components/models/response/MagicApi";
 import {listSpells} from "@/api/magicApi";
+import {getNpcsByRoomIdForRoom, saveCharacterNpcRelationForRoom} from "@/api/npcApi";
+import type {NpcDto, NpcTypeEnum} from "@/api/npcApi.types";
+import type {RelationTypeEnum} from "@/api/npcApi.types";
 import {FILE_STORAGE_INTEGRATION_ROUTES, SPELL_IMAGE_PLACEHOLDER} from "@/config/integrationRoutes";
 import {useRoomStore} from "@/stores/RoomStore";
 import {useFullRaceStore} from "@/stores/FullRaceStore";
 import {useFullClassStore} from "@/stores/FullClassStore";
 import {useFullBackgroundStore} from "@/stores/FullBackgroundStore";
+import type {Character} from "@/components/models/response/Character";
 import axios from "axios";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import MasterGuidebookItemModal from "@/views/master/modals/MasterGuidebookItemModal.vue";
@@ -48,7 +58,7 @@ const fullRaceStore = useFullRaceStore();
 const fullClassStore = useFullClassStore();
 const fullBackgroundStore = useFullBackgroundStore();
 
-type Section = "list" | "races" | "classes" | "backgrounds" | "items" | "spells";
+type Section = "list" | "races" | "classes" | "backgrounds" | "items" | "spells" | "npcs";
 const currentSection = ref<Section>("list");
 
 const SECTIONS: { id: Section; label: string; icon: string }[] = [
@@ -56,16 +66,42 @@ const SECTIONS: { id: Section; label: string; icon: string }[] = [
   {id: "classes", label: "Классы", icon: "bookOutline"},
   {id: "backgrounds", label: "Предыстории", icon: "documentTextOutline"},
   {id: "items", label: "Предметы", icon: "cubeOutline"},
-  {id: "spells", label: "Заклинания", icon: "sparklesOutline"}
+  {id: "spells", label: "Заклинания", icon: "sparklesOutline"},
+  {id: "npcs", label: "NPC", icon: "personOutline"}
 ];
 
 const sectionIcons: Record<string, unknown> = {
   peopleOutline,
+  personOutline,
   bookOutline,
   documentTextOutline,
   cubeOutline,
   sparklesOutline
 };
+
+const NPC_TYPE_LABELS: Record<NpcTypeEnum, string> = {
+  RATIONAL: "Разумное",
+  BEAST: "Животное",
+  MONSTER: "Монстр",
+  DEITY: "Божество",
+  UNDEAD: "Нежить"
+};
+
+const RELATION_TYPE_LABELS: Record<RelationTypeEnum, string> = {
+  FRIEND: "Друзья",
+  ENEMY: "Враги",
+  RULER: "Правитель",
+  PET: "Питомец",
+  OTHER: "Другое",
+};
+
+const relationTypeOptions = [
+  { value: "FRIEND" as RelationTypeEnum, label: RELATION_TYPE_LABELS.FRIEND },
+  { value: "ENEMY" as RelationTypeEnum, label: RELATION_TYPE_LABELS.ENEMY },
+  { value: "RULER" as RelationTypeEnum, label: RELATION_TYPE_LABELS.RULER },
+  { value: "PET" as RelationTypeEnum, label: RELATION_TYPE_LABELS.PET },
+  { value: "OTHER" as RelationTypeEnum, label: RELATION_TYPE_LABELS.OTHER },
+];
 const races = ref<RaceDto[]>([]);
 const classes = ref<ClazzDto[]>([]);
 const backgrounds = ref<BackgroundDto[]>([]);
@@ -84,6 +120,22 @@ const selectedItem = ref<Item | null>(null);
 const showItemModal = ref(false);
 const selectedSpell = ref<SpellDto | null>(null);
 const showSpellModal = ref(false);
+
+const npcs = ref<NpcDto[]>([]);
+const npcsLoading = ref(false);
+const npcFilterType = ref<NpcTypeEnum | "">("");
+const npcFilterClass = ref<string>("");
+const npcFilterRace = ref<string>("");
+
+const roomCharacters = ref<Character[]>([]);
+const roomCharactersLoading = ref(false);
+
+// Popover: добавление связи между выбранным NPC и персонажем комнаты
+const npcRelationPopoverOpen = ref(false);
+const npcRelationPopoverEvent = ref<Event | null>(null);
+const npcRelationPopoverNpcId = ref<string | null>(null);
+const npcRelationPopoverCharacterId = ref<string>("");
+const npcRelationPopoverType = ref<RelationTypeEnum | "">("");
 
 const roomId = computed(() => route.params.roomId as string);
 const baseRuleType = computed(() => roomStore.room?.baseRuleType);
@@ -120,6 +172,20 @@ watch(
   },
   { flush: "post" }
 );
+
+const npcClassOptions = computed(() =>
+  classes.value.map((c) => ({ value: c.code, label: c.name?.trim() || c.code || "" }))
+);
+const npcRaceOptions = computed(() =>
+  races.value.map((r) => ({ value: r.code, label: r.name?.trim() || r.code || "" }))
+);
+const filteredNpcs = computed(() => {
+  let result = npcs.value;
+  if (npcFilterType.value) result = result.filter((n) => n.type === npcFilterType.value);
+  if (npcFilterClass.value) result = result.filter((n) => n.clazzCode === npcFilterClass.value);
+  if (npcFilterRace.value) result = result.filter((n) => n.raceCode === npcFilterRace.value);
+  return result.sort((a, b) => a.name.localeCompare(b.name, "ru", {sensitivity: "base"}));
+});
 
 const filteredSpells = computed(() => {
   const q = debouncedSpellSearchQuery.value.toLowerCase();
@@ -390,15 +456,131 @@ function getSpellName(spell: SpellDto) {
   return n?.rus ?? n?.en ?? "—";
 }
 
+async function loadNpcs() {
+  if (!roomId.value) return;
+  npcsLoading.value = true;
+  try {
+    npcs.value = await getNpcsByRoomIdForRoom(roomId.value, {forceAll: true});
+    if (classes.value.length === 0) classes.value = await getClassesForRoom(roomId.value, baseRuleType.value ?? undefined);
+    if (races.value.length === 0) races.value = await getRacesForRoom(roomId.value, baseRuleType.value ?? undefined);
+  } catch (e) {
+    console.error("Failed to load NPCs:", e);
+  } finally {
+    npcsLoading.value = false;
+  }
+}
+
+function getNpcImageUrl(imgUrl: string | undefined | null) {
+  if (!imgUrl) return "https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png";
+  return `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.npc_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.download}/${imgUrl}`;
+}
+
+function getNpcTypeLabel(type: NpcTypeEnum | undefined | null) {
+  return type ? (NPC_TYPE_LABELS[type] ?? type) : "";
+}
+
+async function loadRoomCharactersIfNeeded() {
+  if (roomCharacters.value.length > 0) return;
+  if (roomCharactersLoading.value) return;
+  if (!roomId.value) return;
+
+  roomCharactersLoading.value = true;
+  try {
+    const http = axios.create({
+      baseURL: GATEWAY_INTEGRATION_ROUTES.baseURL,
+      headers: {
+        "Content-type": "application/json",
+        Authorization: "Bearer " + localStorage.getItem("accessToken"),
+      },
+    });
+
+    const res = await http.get(
+      GATEWAY_INTEGRATION_ROUTES.api +
+        GATEWAY_INTEGRATION_ROUTES.rooms +
+        "/" +
+        roomId.value +
+        GATEWAY_INTEGRATION_ROUTES.characters,
+    );
+
+    if (res.status === 200) {
+      roomCharacters.value = (res.data ?? []) as Character[];
+    } else {
+      roomCharacters.value = [];
+    }
+  } catch (e) {
+    console.error("Failed to load room characters:", e);
+    roomCharacters.value = [];
+  } finally {
+    roomCharactersLoading.value = false;
+  }
+}
+
+function openNpcRelationPopover(npcId: string, event: Event) {
+  npcRelationPopoverNpcId.value = npcId;
+  npcRelationPopoverEvent.value = event;
+  npcRelationPopoverOpen.value = true;
+
+  // Defaults for convenience (user can change in dropdown)
+  npcRelationPopoverType.value = "FRIEND";
+  npcRelationPopoverCharacterId.value = roomCharacters.value[0]?.id ?? "";
+
+  // Load characters lazily when opening
+  void loadRoomCharactersIfNeeded().then(() => {
+    if (!npcRelationPopoverCharacterId.value) {
+      npcRelationPopoverCharacterId.value = roomCharacters.value[0]?.id ?? "";
+    }
+  });
+}
+
+function dismissNpcRelationPopover() {
+  npcRelationPopoverOpen.value = false;
+  npcRelationPopoverEvent.value = null;
+  npcRelationPopoverNpcId.value = null;
+}
+
+async function confirmNpcRelation() {
+  if (!roomId.value) return;
+  if (!npcRelationPopoverNpcId.value) return;
+  if (!npcRelationPopoverCharacterId.value) return;
+  if (!npcRelationPopoverType.value) return;
+
+  const characterId = npcRelationPopoverCharacterId.value;
+  const npcId = npcRelationPopoverNpcId.value;
+  const relationType = npcRelationPopoverType.value as RelationTypeEnum;
+
+  try {
+    await saveCharacterNpcRelationForRoom(roomId.value, characterId, {
+      characterId,
+      npcId,
+      relationType,
+      note: null,
+    });
+  } catch (e) {
+    console.error("Failed to create NPC relation:", e);
+    // No toast right now: just keep it simple.
+    return;
+  } finally {
+    dismissNpcRelationPopover();
+  }
+}
+
+function goToNpc(npcId: string) {
+  ionRouter.push(`/rooms/${roomId.value}/npcs/${npcId}/full`);
+}
+
+function goToCreateNpc() {
+  ionRouter.push(`/rooms/${roomId.value}/npcs/create`);
+}
+
 function goToSection(section: Section) {
   currentSection.value = section;
   if (section === "races" && races.value.length === 0) loadRaces();
   else if (section === "classes" && classes.value.length === 0) loadClasses();
   else if (section === "backgrounds" && backgrounds.value.length === 0) loadBackgrounds();
-    else if (section === "spells" && spells.value.length === 0) {
-      loadSpellClassesForRoom();
-      loadSpells();
-    }
+  else if (section === "spells" && spells.value.length === 0) {
+    loadSpellClassesForRoom();
+    loadSpells();
+  } else if (section === "npcs") loadNpcs();
 }
 
 function goBack() {
@@ -410,7 +592,8 @@ const sectionTitles: Record<string, string> = {
   classes: "Классы",
   backgrounds: "Предыстории",
   items: "Предметы",
-  spells: "Заклинания"
+  spells: "Заклинания",
+  npcs: "NPC"
 };
 
 onIonViewDidEnter(async () => {
@@ -611,6 +794,137 @@ onIonViewDidEnter(async () => {
       <div v-else-if="loading" class="loading-placeholder">Загрузка...</div>
       <div v-else class="empty-placeholder">Нет заклинаний</div>
     </div>
+
+    <!-- NPC -->
+    <div v-show="currentSection === 'npcs'" class="segment-content npcs-section">
+      <div class="npcs-filters">
+        <IonSelect
+          interface="popover"
+          placeholder="Тип"
+          :value="npcFilterType"
+          @ionChange="npcFilterType = ($event as CustomEvent).detail.value"
+        >
+          <IonSelectOption value="">Все</IonSelectOption>
+          <IonSelectOption v-for="(label, type) in NPC_TYPE_LABELS" :key="type" :value="type">
+            {{ label }}
+          </IonSelectOption>
+        </IonSelect>
+        <IonSelect
+          interface="popover"
+          placeholder="Класс"
+          :value="npcFilterClass"
+          @ionChange="npcFilterClass = ($event as CustomEvent).detail.value"
+        >
+          <IonSelectOption value="">Все</IonSelectOption>
+          <IonSelectOption v-for="opt in npcClassOptions" :key="opt.value" :value="opt.value">
+            {{ opt.label }}
+          </IonSelectOption>
+        </IonSelect>
+        <IonSelect
+          interface="popover"
+          placeholder="Раса"
+          :value="npcFilterRace"
+          @ionChange="npcFilterRace = ($event as CustomEvent).detail.value"
+        >
+          <IonSelectOption value="">Все</IonSelectOption>
+          <IonSelectOption v-for="opt in npcRaceOptions" :key="opt.value" :value="opt.value">
+            {{ opt.label }}
+          </IonSelectOption>
+        </IonSelect>
+      </div>
+      <ion-list v-if="!npcsLoading && filteredNpcs.length" class="guidebook-list">
+        <ion-item
+          v-for="npc in filteredNpcs"
+          :key="npc.id"
+          :button="true"
+          color="dark"
+          @click="goToNpc(npc.id)"
+        >
+          <div class="npc-avatar-wrap" slot="start">
+            <ion-avatar>
+              <img :src="getNpcImageUrl(npc.imgUrl)" :alt="npc.name" />
+            </ion-avatar>
+            <div v-if="npc.unique" class="npc-unique-badge" title="Уникальный">
+              <ion-icon :icon="sparkles" />
+            </div>
+          </div>
+          <div class="npc-end-actions" slot="end">
+            <ion-button
+              fill="clear"
+              size="small"
+              color="primary"
+              @click.stop="openNpcRelationPopover(npc.id, $event)"
+            >
+              <ion-icon :icon="personOutline" />
+            </ion-button>
+            <ion-icon :icon="chevronForwardOutline" />
+          </div>
+          <ion-label>
+            <h3>{{ npc.name }}</h3>
+            <p class="npc-info">
+              {{ getNpcTypeLabel(npc.type) }}
+              <span v-if="npc.clazzInfo?.name || npc.clazzCode"> • {{ npc.clazzInfo?.name || npc.clazzCode }}</span>
+              <span v-if="npc.raceInfo?.name || npc.raceCode"> • {{ npc.raceInfo?.name || npc.raceCode }}</span>
+            </p>
+          </ion-label>
+        </ion-item>
+      </ion-list>
+      <div v-else-if="npcsLoading" class="loading-placeholder">Загрузка...</div>
+      <div v-else class="empty-placeholder">Нет NPC</div>
+      <ion-button fill="solid" color="primary" shape="round" class="add-npc-fab" @click="goToCreateNpc">
+        <ion-icon :icon="add" />
+      </ion-button>
+    </div>
+
+    <ion-popover
+      :is-open="npcRelationPopoverOpen"
+      :event="npcRelationPopoverEvent"
+      @didDismiss="dismissNpcRelationPopover"
+    >
+      <div class="npc-relation-popover">
+        <div class="npc-relation-title">Связать с персонажем</div>
+
+        <div v-if="roomCharactersLoading" class="npc-relation-loading">
+          <ion-spinner name="crescent" />
+          <div class="npc-relation-loading-text">Загрузка...</div>
+        </div>
+
+        <div v-else>
+          <div class="npc-relation-field">
+            <div class="npc-relation-label">Персонаж</div>
+            <select v-model="npcRelationPopoverCharacterId" class="npc-relation-select">
+              <option value="">— Выберите персонажа —</option>
+              <option v-for="ch in roomCharacters" :key="ch.id" :value="ch.id">
+                {{ ch.name }}
+              </option>
+            </select>
+          </div>
+
+          <div class="npc-relation-field">
+            <div class="npc-relation-label">Тип связи</div>
+            <select v-model="npcRelationPopoverType" class="npc-relation-select">
+              <option value="">— Выберите тип —</option>
+              <option v-for="opt in relationTypeOptions" :key="opt.value" :value="opt.value">
+                {{ opt.label }}
+              </option>
+            </select>
+          </div>
+
+          <div class="npc-relation-actions">
+            <ion-button fill="clear" size="small" @click="dismissNpcRelationPopover">Отмена</ion-button>
+            <ion-button
+              fill="solid"
+              size="small"
+              color="primary"
+              :disabled="!npcRelationPopoverCharacterId || !npcRelationPopoverType"
+              @click="confirmNpcRelation"
+            >
+              Создать связь
+            </ion-button>
+          </div>
+        </div>
+      </div>
+    </ion-popover>
     </template>
 
     <MasterGuidebookItemModal
@@ -741,5 +1055,140 @@ ion-searchbar {
 
 .load-more-btn {
   margin: 16px 0;
+}
+
+.npcs-section {
+  padding-bottom: 80px;
+}
+
+.add-npc-fab {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 56px;
+  height: 56px;
+  --border-radius: 50%;
+  --padding-start: 0;
+  --padding-end: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+}
+
+.npcs-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.npcs-filters ion-select {
+  flex: 1;
+  min-width: 100px;
+  --padding-start: 12px;
+  --padding-end: 12px;
+  background: var(--ion-color-medium);
+  border-radius: 8px;
+}
+
+.npc-info {
+  font-size: 13px;
+  color: var(--ion-color-medium);
+  margin-top: 2px;
+}
+
+.npc-avatar-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-right: 12px;
+}
+
+.npc-avatar-wrap ion-avatar {
+  width: 40px;
+  height: 40px;
+}
+
+.npc-avatar-wrap .npc-unique-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffd700, #ffb347);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  color: #5c3d00;
+  font-size: 11px;
+}
+
+.npc-avatar-wrap .npc-unique-badge ion-icon {
+  font-size: 12px;
+}
+
+.npc-end-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.npc-end-actions ion-icon {
+  font-size: 18px;
+}
+
+.npc-relation-popover {
+  padding: 12px 16px;
+  min-width: 240px;
+  background-color: var(--ion-color-dark);
+  border-radius: 12px;
+}
+
+.npc-relation-title {
+  color: var(--ion-color-light);
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.npc-relation-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 0;
+}
+
+.npc-relation-loading-text {
+  color: var(--ion-color-medium);
+  font-size: 12px;
+}
+
+.npc-relation-field {
+  margin-bottom: 10px;
+}
+
+.npc-relation-label {
+  color: var(--ion-color-light);
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+.npc-relation-select {
+  width: 100%;
+  background: var(--ion-color-medium);
+  color: var(--ion-color-light);
+  border-radius: 8px;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.npc-relation-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
 }
 </style>

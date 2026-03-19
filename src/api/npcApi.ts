@@ -7,6 +7,7 @@ import { GATEWAY_INTEGRATION_ROUTES } from "@/config/integrationRoutes";
 import type {
   CharacterNpcRelationDto,
   NpcDto,
+  NpcWithRelationIdDto,
   RelationTypeEnum,
   SaveCharacterNpcRelationRequest,
   SaveNpcRequest,
@@ -23,6 +24,9 @@ function authHeaders(): Record<string, string> {
     };
 }
 
+/** Backend wraps array in { value: T[], Count: number } */
+type WrappedResponse<T> = { value?: T[]; Count?: number } | T[];
+
 // ——— NPCs ———
 
 export async function saveNpcForRoom(roomId: string, body: SaveNpcRequest): Promise<NpcDto> {
@@ -34,12 +38,27 @@ export async function saveNpcForRoom(roomId: string, body: SaveNpcRequest): Prom
     return data;
 }
 
-export async function getNpcsByRoomIdForRoom(roomId: string): Promise<NpcDto[]> {
-    const { data } = await axios.get<NpcDto[]>(
+export type GetNpcsByRoomIdParams = {
+    characterId?: string | null;
+    forceAll?: boolean;
+};
+
+export async function getNpcsByRoomIdForRoom(
+    roomId: string,
+    params?: GetNpcsByRoomIdParams
+): Promise<NpcDto[]> {
+    const queryParams: Record<string, string | boolean> = {};
+    if (params?.characterId != null && params.characterId !== "") {
+        queryParams.characterId = params.characterId;
+    }
+    if (params?.forceAll != null) {
+        queryParams.forceAll = params.forceAll;
+    }
+    const { data } = await axios.get<WrappedResponse<NpcDto>>(
         `${baseUrl(roomId)}${GATEWAY_INTEGRATION_ROUTES.npcs}`,
-        { headers: authHeaders() }
+        { headers: authHeaders(), params: Object.keys(queryParams).length ? queryParams : undefined }
     );
-    return data;
+    return Array.isArray(data) ? data : (data as { value?: NpcDto[] }).value ?? [];
 }
 
 export async function getNpcByIdForRoom(roomId: string, id: string): Promise<NpcDto> {
@@ -75,10 +94,10 @@ export async function saveCharacterNpcRelationForRoom(
 export async function deleteCharacterNpcRelationByIdForRoom(
     roomId: string,
     characterId: string,
-    id: string
+    relationId: string
 ): Promise<void> {
     await axios.delete(
-        `${baseUrl(roomId)}${GATEWAY_INTEGRATION_ROUTES.characters}/${encodeURIComponent(characterId)}${GATEWAY_INTEGRATION_ROUTES.npcRelations}/${encodeURIComponent(id)}`,
+        `${baseUrl(roomId)}${GATEWAY_INTEGRATION_ROUTES.characters}/${encodeURIComponent(characterId)}${GATEWAY_INTEGRATION_ROUTES.npcs}${GATEWAY_INTEGRATION_ROUTES.npcRelations}/${encodeURIComponent(relationId)}`,
         { headers: authHeaders() }
     );
 }
@@ -98,11 +117,12 @@ export async function getNpcsByCharacterIdAndRelationTypeForRoom(
     roomId: string,
     characterId: string,
     relationType: RelationTypeEnum
-): Promise<NpcDto[]> {
-    const { data } = await axios.get<NpcDto[]>(
+): Promise<NpcWithRelationIdDto[]> {
+    const { data } = await axios.get<WrappedResponse<NpcWithRelationIdDto>>(
         `${baseUrl(roomId)}${GATEWAY_INTEGRATION_ROUTES.characters}/${encodeURIComponent(characterId)}${GATEWAY_INTEGRATION_ROUTES.npcs}${GATEWAY_INTEGRATION_ROUTES.npcRelationType}/${encodeURIComponent(relationType)}`,
         { headers: authHeaders() }
     );
-    return data;
+    const arr = Array.isArray(data) ? data : (data as { value?: NpcWithRelationIdDto[] }).value ?? [];
+    return arr;
 }
 

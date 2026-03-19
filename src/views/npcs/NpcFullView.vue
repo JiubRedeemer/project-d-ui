@@ -2,6 +2,7 @@
 import { onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import {
+  IonButton,
   IonChip,
   IonContent,
   IonFab,
@@ -10,11 +11,22 @@ import {
   IonLabel,
   IonPage,
 } from "@ionic/vue";
-import { arrowBackOutline } from "ionicons/icons";
+import { arrowBackOutline, createOutline, sparkles } from "ionicons/icons";
 import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
 import { FILE_STORAGE_INTEGRATION_ROUTES } from "@/config/integrationRoutes";
 import { getNpcByIdForRoom } from "@/api/npcApi";
-import type { NpcDto } from "@/api/npcApi.types";
+import type { NpcDto, NpcTypeEnum } from "@/api/npcApi.types";
+
+const NPC_TYPE_LABELS: Record<NpcTypeEnum, string> = {
+  RATIONAL: "Разумное",
+  BEAST: "Животное",
+  MONSTER: "Монстр",
+  DEITY: "Божество",
+  UNDEAD: "Нежить",
+};
+
+const getNpcTypeLabel = (type: NpcTypeEnum | undefined | null) =>
+  type ? (NPC_TYPE_LABELS[type] ?? type) : "";
 
 const route = useRoute();
 const ionRouter = useRouter();
@@ -29,6 +41,12 @@ const getImageUrl = (imgUrl: string | undefined | null) => {
 
 const previousStep = () => {
   ionRouter.back();
+};
+
+const goToEdit = () => {
+  const roomId = route.params.roomId as string;
+  const npcId = npc.value?.id;
+  if (npcId) ionRouter.push(`/rooms/${roomId}/npcs/${npcId}/edit`);
 };
 
 onMounted(async () => {
@@ -48,11 +66,21 @@ onMounted(async () => {
     <ion-content>
       <div class="container" v-if="npc">
         <div class="header">
-          <div class="avatar">
+          <div class="avatar-wrap">
             <img :src="getImageUrl(npc.imgUrl)" class="avatar-img" alt="npc" />
+            <div v-if="npc.unique" class="unique-badge" title="Уникальный">
+              <ion-icon :icon="sparkles" />
+              <span>Уникальный</span>
+            </div>
           </div>
         </div>
         <div class="body">
+          <div class="stat" v-if="npc.visible != null">
+            <div class="stat-header">Видимость</div>
+            <ion-chip class="stat-chip" :color="npc.visible ? 'success' : 'danger'">
+              <ion-label>{{ npc.visible ? "Видимый" : "Скрытый" }}</ion-label>
+            </ion-chip>
+          </div>
           <div class="description" v-if="npc.description">
             {{ npc.description }}
           </div>
@@ -60,7 +88,7 @@ onMounted(async () => {
           <div class="stat">
             <div class="stat-header">Тип</div>
             <ion-chip class="stat-chip" color="primary">
-              <ion-label>{{ npc.type }}</ion-label>
+              <ion-label>{{ getNpcTypeLabel(npc.type) }}</ion-label>
             </ion-chip>
           </div>
 
@@ -93,6 +121,13 @@ onMounted(async () => {
             </div>
           </div>
 
+          <div class="stat">
+            <ion-button fill="outline" size="small" @click="goToEdit">
+              <ion-icon :icon="createOutline" slot="start" />
+              Редактировать
+            </ion-button>
+          </div>
+
           <div style="height: 10vh"></div>
         </div>
       </div>
@@ -111,7 +146,7 @@ onMounted(async () => {
   margin-left: 10px;
   margin-right: 10px;
   padding: 10px;
-  text-align: center;
+  text-align: left;
   background-color: var(--ion-color-medium);
   border-radius: 10px;
 }
@@ -142,6 +177,35 @@ onMounted(async () => {
   align-content: center;
   justify-content: center;
   display: flex;
+}
+
+.avatar-wrap {
+  margin-top: 10px;
+  margin-left: 10px;
+  margin-right: 10px;
+  display: flex;
+  justify-content: center;
+  position: relative;
+}
+
+.unique-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #ffd700, #ffb347);
+  color: #5c3d00;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(255, 193, 7, 0.4);
+}
+
+.unique-badge ion-icon {
+  font-size: 16px;
 }
 
 .avatar {

@@ -18,7 +18,7 @@ import {
 } from "@ionic/vue";
 import { add, addOutline, arrowBack } from "ionicons/icons";
 import { computed, ref, watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import {
     addSpellToBook,
     getSpellBookByRoomAndCharacter,
@@ -35,6 +35,7 @@ import { useMagicStore } from "@/stores/MagicStore";
 
 const route = useRoute();
 const ionRouter = useIonRouter();
+const router = useRouter();
 const characterStore = useCharacterStore();
 const magicStore = useMagicStore();
 
@@ -264,7 +265,7 @@ function openAddSpellView() {
       </div>
     </ion-content>
     <ion-fab slot="fixed" vertical="bottom" horizontal="start">
-      <ion-fab-button color="primary" @click="ionRouter.back()">
+      <ion-fab-button color="primary" @click="router.back()">
         <ion-icon :icon="arrowBack" color="dark"/>
       </ion-fab-button>
     </ion-fab>
