@@ -18,6 +18,7 @@ import {addOutline, arrowBackOutline, arrowForwardOutline, chevronForwardOutline
 import {HEADERS, TEXTS} from "@/config/localisations";
 import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
 import {computed, onMounted, ref} from "vue";
+import {useRouter} from "vue-router";
 import {FILE_STORAGE_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {ClazzDto} from "@/api/rulebookApi.types";
 import {useRoomCreationStore} from "@/stores/RoomCreationStore";
@@ -26,6 +27,7 @@ import {useFullClassStore} from "@/stores/FullClassStore";
 const roomCreationStore = useRoomCreationStore();
 const classFullStore = useFullClassStore();
 const ionRouter = useIonRouter();
+const router = useRouter();
 
 const classesFromApi = ref<ClazzDto[]>([]);
 
@@ -99,7 +101,7 @@ const nextStep = () => {
   ionRouter.navigate("/rooms/create/backgrounds", 'forward', 'push');
 }
 const previousStep = () => {
-  ionRouter.back();
+  router.back();
 }
 
 </script>

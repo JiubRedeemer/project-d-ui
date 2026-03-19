@@ -15,11 +15,10 @@ import {
   IonToolbar,
   onIonViewDidEnter,
   toastController,
-  useIonRouter,
 } from "@ionic/vue";
 import { add } from "ionicons/icons";
 import { onUnmounted, ref } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import {
   addSpellToBook,
   createSpell,
@@ -33,7 +32,7 @@ import { useMagicStore } from "@/stores/MagicStore";
 import axios from "axios";
 
 const route = useRoute();
-const ionRouter = useIonRouter();
+const router = useRouter();
 const magicStore = useMagicStore();
 
 const roomId = ref(String(route.params.roomId));
@@ -202,7 +201,7 @@ async function saveSpell() {
     });
     await toast.present();
 
-    ionRouter.back();
+    router.back();
   } catch (e) {
     console.error("Failed to save spell:", e);
     const toast = await toastController.create({

@@ -1,18 +1,20 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import {
   IonButton,
   IonButtons,
   IonContent,
   IonIcon,
   IonInput,
+  IonItem,
+  IonLabel,
   IonPage,
   IonSelect,
   IonSelectOption,
   IonTextarea,
+  IonToggle,
   toastController,
-  useIonRouter,
 } from "@ionic/vue";
 import { add, closeCircleOutline, saveOutline } from "ionicons/icons";
 import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
@@ -34,9 +36,10 @@ import {
   GATEWAY_INTEGRATION_ROUTES,
 } from "@/config/integrationRoutes";
 import axios from "axios";
+import {useNpcRelationsStore} from "@/stores/NpcRelationsStore";
 
 const route = useRoute();
-const ionRouter = useIonRouter();
+const router = useRouter();
 
 const roomId = computed(() => route.params.roomId as string);
 const npcId = computed(() => (route.params.npcId as string | undefined) ?? undefined);
@@ -53,6 +56,7 @@ const relationType = computed<RelationTypeEnum | null>(() => {
 });
 
 const isLoading = ref(false);
+const npcRelationsStore = useNpcRelationsStore()
 
 const previewImage = ref<string | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
@@ -72,6 +76,8 @@ const npc = ref<SaveNpcRequest>({
   name: "",
   description: null,
   type: "RATIONAL",
+  visible: true,
+  unique: false,
   clazzCode: null,
   raceCode: null,
   armoryClass: null,
@@ -96,6 +102,16 @@ const roomRacesLoading = ref(true);
 
 function triggerFileInput() {
   fileInput.value?.click();
+}
+
+function setVisible(checked: boolean) {
+  npc.value.visible = checked;
+}
+function setUnique(checked: boolean) {
+  npc.value.unique = checked;
+}
+function setType(value: NpcTypeEnum) {
+  npc.value.type = value;
 }
 
 async function uploadToStorage(file: File): Promise<string> {
@@ -152,6 +168,8 @@ function fillFromDto(dto: NpcDto) {
     name: dto.name ?? "",
     description: dto.description ?? null,
     type: dto.type,
+    visible: dto.visible ?? true,
+    unique: dto.unique ?? false,
     clazzCode: dto.clazzCode ?? null,
     raceCode: dto.raceCode ?? null,
     armoryClass: dto.armoryClass ?? null,
@@ -186,7 +204,10 @@ async function loadNpcIfEditing() {
 }
 
 function onCancel() {
-  ionRouter.back();
+  if (characterId.value) {
+    npcRelationsStore.loadAll(roomId.value, characterId.value);
+  }
+  router.back();
 }
 
 function validate(): string | null {
@@ -216,6 +237,8 @@ async function onSave() {
       roomId: roomId.value,
       name: npc.value.name.trim(),
       description: npc.value.description?.trim?.() || null,
+      visible: npc.value.visible ?? true,
+      unique: npc.value.unique ?? false,
       clazzCode: npc.value.clazzCode?.trim?.() || null,
       raceCode: npc.value.raceCode?.trim?.() || null,
       armoryClass: npc.value.armoryClass?.trim?.() || null,
@@ -225,7 +248,6 @@ async function onSave() {
     };
 
     const saved = await saveNpcForRoom(roomId.value, body);
-
     // If opened from BioView: create relation (relationType can be null)
     if (characterId.value && saved?.id) {
       const rel: SaveCharacterNpcRelationRequest = {
@@ -240,6 +262,7 @@ async function onSave() {
       } catch (e) {
         console.error("Failed to create character–NPC relation:", e);
       }
+      await npcRelationsStore.loadAll(roomId.value, characterId.value);
     }
 
     const toast = await toastController.create({
@@ -248,7 +271,7 @@ async function onSave() {
       position: "top",
     });
     await toast.present();
-    ionRouter.back();
+    router.back();
   } catch (e) {
     console.error("Failed to save NPC:", e);
     const toast = await toastController.create({
@@ -350,7 +373,7 @@ onMounted(() => {
               fill="outline"
               color="primary"
               :value="npc.type"
-              @ionChange="(e) => (npc.type = (e as CustomEvent).detail.value)"
+              @ionChange="(e) => setType((e as CustomEvent).detail.value)"
               interface="popover"
               class="input-block"
             >
@@ -363,6 +386,15 @@ onMounted(() => {
               </ion-select-option>
             </ion-select>
           </div>
+
+          <ion-item lines="none" class="toggle-item">
+            <ion-label>Видимый</ion-label>
+            <ion-toggle :checked="npc.visible" @ionChange="(e) => setVisible((e as CustomEvent).detail.checked)" />
+          </ion-item>
+          <ion-item lines="none" class="toggle-item">
+            <ion-label>Уникальный</ion-label>
+            <ion-toggle :checked="npc.unique" @ionChange="(e) => setUnique((e as CustomEvent).detail.checked)" />
+          </ion-item>
 
           <div class="stat-section">
             <div class="stat-section-name">Описание</div>
@@ -385,7 +417,7 @@ onMounted(() => {
               @ionChange="
                 (e) => {
                   const v = (e as CustomEvent).detail.value;
-                  npc.clazzCode = v === '' ? null : v;
+                  npc.value.clazzCode = v === '' ? null : v;
                 }
               "
               interface="popover"
@@ -419,7 +451,7 @@ onMounted(() => {
               @ionChange="
                 (e) => {
                   const v = (e as CustomEvent).detail.value;
-                  npc.raceCode = v === '' ? null : v;
+                  npc.value.raceCode = v === '' ? null : v;
                 }
               "
               interface="popover"
@@ -479,7 +511,7 @@ onMounted(() => {
               @ionInput="
                 (e) => {
                   const v = Number((e.target as HTMLIonInputElement).value);
-                  npc.initiative = Number.isFinite(v) ? v : null;
+                  npc.value.initiative = Number.isFinite(v) ? v : null;
                 }
               "
               class="input-block"
@@ -601,6 +633,15 @@ onMounted(() => {
   justify-content: center;
   gap: 12px;
   padding: 16px 10px;
+}
+
+.toggle-item {
+  --background: transparent;
+  margin-top: 8px;
+  width: 90%;
+}
+.toggle-item ion-label {
+  color: var(--ion-color-light);
 }
 
 </style>

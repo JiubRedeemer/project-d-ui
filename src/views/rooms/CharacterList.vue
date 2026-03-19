@@ -94,7 +94,7 @@ const getRoleInRoom = async () => {
 }
 
 const isMaster = () => {
-  return userRoles.value.filter(role => role == "MASTER").length > 0;
+  return userRoles.value.filter(role => role === "MASTER").length > 0;
 }
 
 onIonViewWillEnter(() => {
@@ -184,7 +184,7 @@ const sendInvite = async () => {
   <ion-page>
     <RoomsHeader :header-name="HEADERS.characters.rus"></RoomsHeader>
     <ion-content :fullscreen="true" color="dark">
-      <ion-item :button="true" color="dark" @click="goToMasterLk()" v-if="isMaster">
+      <ion-item :button="true" color="dark" @click="goToMasterLk()" v-if="isMaster()">
         <ion-avatar aria-hidden="false" slot="start">
           <img width="64" height="64"
                src="https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png"

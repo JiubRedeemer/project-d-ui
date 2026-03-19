@@ -8,9 +8,9 @@ import {
   IonSelect,
   IonSelectOption,
   IonTextarea,
-  useIonRouter,
 } from "@ionic/vue";
 import {onBeforeMount, ref, computed} from "vue";
+import {useRouter} from "vue-router";
 import {useCreateClassStore} from "@/stores/createEntity/CreateClassStore";
 import {useRoomCreationStore} from "@/stores/RoomCreationStore";
 import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
@@ -50,7 +50,7 @@ const fileInput = ref<HTMLInputElement | null>(null);
 const previewImage = ref<string | null>(null);
 const createClassStore = useCreateClassStore();
 const roomCreationStore = useRoomCreationStore();
-const ionRouter = useIonRouter();
+const router = useRouter();
 const abilities = ref<AbilityDto[]>([]);
 const rootClassesList = ref<ClazzDto[]>([]);
 const allowedFormats = ["image/jpeg", "image/png", "image/gif", "image/bmp", "image/webp", "image/tiff", "image/svg+xml"];
@@ -218,7 +218,7 @@ function slugCode(name: string): string {
 }
 
 function onCancel() {
-  ionRouter.back();
+  router.back();
 }
 
 function onSave() {
@@ -236,7 +236,7 @@ function onSave() {
     stats: c.stats!,
   };
   roomCreationStore.classes = [...roomCreationStore.classes, clazzDto];
-  ionRouter.back();
+  router.back();
 }
 
 onBeforeMount(async () => {

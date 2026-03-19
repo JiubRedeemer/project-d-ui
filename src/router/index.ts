@@ -27,6 +27,7 @@ import CreateBackground from "@/views/common/createEntity/CreateBackground.vue";
 import MasterView from "@/views/master/MasterView.vue";
 import CreateNpcView from "@/views/npcs/CreateNpcView.vue";
 import NpcFullView from "@/views/npcs/NpcFullView.vue";
+import SearchNpcView from "@/views/npcs/SearchNpcView.vue";
 
 const routes: Array<RouteRecordRaw> = [
     {
@@ -160,6 +161,11 @@ const routes: Array<RouteRecordRaw> = [
     },
 
     // NPCs (room-scoped)
+    {
+        path: '/rooms/:roomId/characters/:characterId/npcs/search',
+        component: SearchNpcView,
+        name: 'searchNpc',
+    },
     {
         path: '/rooms/:roomId/npcs/create',
         component: CreateNpcView,
