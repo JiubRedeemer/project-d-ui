@@ -9,7 +9,8 @@ import {
   IonTabButton,
   IonTabs,
   onIonViewDidEnter,
-  onIonViewDidLeave
+  onIonViewDidLeave,
+  toastController
 } from "@ionic/vue";
 import PlayerViewHeader from "@/views/character/PlayerViewHeader.vue";
 import AbilitiesView from "@/views/character/tabs/abilities/AbilitiesView.vue";
@@ -62,6 +63,22 @@ const showLevelUpModal = ref(false);
 const selectedCharacter = ref<Character>();
 const subheaderStore = useSubheaderOpenedStore();
 const characterSkillsStore = useCharacterSkillsStore();
+
+const earlyVersionClickCount = ref(0);
+
+const onEarlyVersionStubClick = async () => {
+  earlyVersionClickCount.value += 1;
+
+  if (earlyVersionClickCount.value === 5) {
+    const toast = await toastController.create({
+      message: "Зачем жмал то?",
+      duration: 2000,
+      position: "top",
+    });
+    await toast.present();
+    earlyVersionClickCount.value = 0;
+  }
+};
 
 const POLL_INTERVAL_MS = 10_000;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
@@ -324,6 +341,16 @@ const openSubheader = () => {
           </div>
         </ion-tab-button>
       </ion-tab-bar>
+
+      <!-- Заглушка для ранней версии функционала -->
+      <div
+        class="early-version-stub"
+        role="button"
+        tabindex="0"
+        aria-label="Вы используете альфа-версию приложения — спасибо, что вы с нами на этом этапе!"
+        @click="onEarlyVersionStubClick"
+        @keydown.enter.prevent="onEarlyVersionStubClick"
+      ></div>
     </IonTabs>
 
 
@@ -379,6 +406,35 @@ const openSubheader = () => {
 
 <style scoped>
 
+ion-page {
+  position: relative;
+}
+
+.early-version-stub {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  /* IonTabBar с margin 10px обычно занимает ~56px сверху; фиксируем метку чуть выше */
+  bottom: -93px;
+  z-index: 50;
+  pointer-events: auto;
+  font-size: 8px;
+  font-weight: 600;
+  text-align: center;
+  width: 93vw;
+  color: var(--ion-color-secondary);
+  background-color: var(--ion-color-medium);
+}
+
+.early-version-stub::before {
+  content: "Вы используете альфа-версию приложения — спасибо, что вы с нами на этом этапе!";
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.35);
+  color: inherit;
+}
+
 .tab-bar, .tab-bar ion-tab-button {
   background: var(--ion-color-medium);
 }
@@ -412,6 +468,8 @@ const openSubheader = () => {
 
 .tab-bar {
   background: var(--ion-color-medium);
+  position: relative;
+  z-index: 20;
   border-radius: 20px;
   margin: 10px;
   display: flex;
