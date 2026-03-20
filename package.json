@@ -30,9 +30,11 @@
     "ionicons": "^8.0.13",
     "marked": "^17.0.3",
     "minio": "^8.0.7",
+    "node-viewerjs": "^0.7.4",
     "pinia": "^3.0.4",
     "swiper": "^12.1.2",
     "uuid": "^11.0.0",
+    "viewerjs": "^1.11.7",
     "vue": "^3.5.29",
     "vue-cookies": "^1.8.6",
     "vue-router": "^5.0.3"
