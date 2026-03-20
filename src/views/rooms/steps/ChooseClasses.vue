@@ -83,18 +83,84 @@ const toggleClass = (clazz: ClazzDto) => {
   }
 };
 
+type ClassGroup = {
+  key: string;
+  root: ClazzDto | null;
+  subs: ClazzDto[];
+};
+
+const classGroups = computed<ClassGroup[]>(() => {
+  const groupsByRootCode = new Map<string, { root: ClazzDto | null; subs: ClazzDto[] }>();
+
+  for (const clazz of classes.value) {
+    const rootCode = clazz.groupCode ? clazz.groupCode : clazz.code;
+    const existing = groupsByRootCode.get(rootCode);
+    if (!existing) {
+      groupsByRootCode.set(rootCode, {root: clazz.groupCode ? null : clazz, subs: []});
+    } else if (!clazz.groupCode) {
+      existing.root = clazz;
+    }
+
+    const g = groupsByRootCode.get(rootCode)!;
+    if (clazz.groupCode) g.subs.push(clazz);
+  }
+
+  const out: ClassGroup[] = Array.from(groupsByRootCode.entries()).map(([key, value]) => ({
+    key,
+    root: value.root,
+    subs: value.subs,
+  }));
+
+  for (const g of out) {
+    g.subs = [...g.subs].sort((a, b) => (a.name ?? a.code).localeCompare(b.name ?? b.code, "ru", {sensitivity: "base"}));
+  }
+
+  out.sort((a, b) => {
+    const aLabel = a.root?.name ?? a.subs[0]?.name ?? a.key;
+    const bLabel = b.root?.name ?? b.subs[0]?.name ?? b.key;
+    return aLabel.localeCompare(bLabel, "ru", {sensitivity: "base"});
+  });
+
+  return out;
+});
+
+function getGroupItems(group: ClassGroup): ClazzDto[] {
+  if (group.root) return [group.root, ...group.subs];
+  return [...group.subs];
+}
+
+function isClassGroupSelected(group: ClassGroup): boolean {
+  const items = getGroupItems(group);
+  return items.length > 0 && items.every((c) => isClassSelected(c));
+}
+
+function isClassGroupIndeterminate(group: ClassGroup): boolean {
+  const items = getGroupItems(group);
+  const selectedCount = items.filter((c) => isClassSelected(c)).length;
+  return selectedCount > 0 && selectedCount < items.length;
+}
+
+function toggleClassGroup(group: ClassGroup): void {
+  const items = getGroupItems(group);
+  if (!items.length) return;
+
+  const allSelected = items.every((c) => isClassSelected(c));
+  if (allSelected) {
+    const codesToRemove = new Set(items.map((c) => c.code));
+    roomCreationStore.classes = roomCreationStore.classes.filter((c) => !codesToRemove.has(c.code));
+    return;
+  }
+
+  const selectedCodes = new Set(roomCreationStore.classes.map((c) => c.code));
+  roomCreationStore.classes = [
+    ...roomCreationStore.classes,
+    ...items.filter((c) => !selectedCodes.has(c.code)),
+  ];
+}
+
 const goToFullClass = (clazz: ClazzDto) => {
   classFullStore.clazz = clazz;
   ionRouter.navigate("/guidebook/classes/" + clazz.code, 'forward', 'push')
-}
-
-const onRowClick = (clazz: ClazzDto, e: Event) => {
-  const target = e.target as HTMLElement
-  if (target.closest?.('ion-checkbox')) {
-    toggleClass(clazz)
-  } else {
-    goToFullClass(clazz)
-  }
 }
 
 const nextStep = () => {
@@ -121,23 +187,111 @@ const previousStep = () => {
         />
       </ion-item>
 
-      <ion-list v-show="classes.length !== 0" class="room-list">
-        <ion-item v-for="(clazz, index) in classes" :key="clazz.code + (clazz.id ?? '')" :button="true" color="dark">
-          <ion-checkbox slot="end" :checked="isClassSelected(clazz)" />
-          <ion-avatar aria-hidden="false" slot="start">
-            <img width="64" height="64"
-                 :src="clazz.imgUrl ? FILE_STORAGE_INTEGRATION_ROUTES.baseURL +
-                 FILE_STORAGE_INTEGRATION_ROUTES.api +
-                 FILE_STORAGE_INTEGRATION_ROUTES.classes_images_bucket +
-                 FILE_STORAGE_INTEGRATION_ROUTES.download + '/' + clazz.imgUrl :
-                 'https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"
-                 alt="external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2"/>
-          </ion-avatar>
-          <ion-icon aria-hidden="false" :icon="chevronForwardOutline" slot="end" @click="onRowClick(clazz, $event)"></ion-icon>
-          <ion-label>
-            <div class="room-name">{{ clazz.name }}</div>
-          </ion-label>
-        </ion-item>
+      <ion-list v-show="classGroups.length !== 0" class="room-list">
+        <template v-for="group in classGroups" :key="group.key">
+          <ion-item
+            v-if="group.root"
+            :button="true"
+            color="dark"
+          >
+            <ion-checkbox
+              slot="end"
+              :checked="isClassGroupSelected(group)"
+              :indeterminate="isClassGroupIndeterminate(group)"
+              @ionChange="toggleClassGroup(group)"
+            />
+            <ion-avatar aria-hidden="false" slot="start">
+              <img
+                width="64"
+                height="64"
+                :src="group.root.imgUrl ? FILE_STORAGE_INTEGRATION_ROUTES.baseURL +
+                FILE_STORAGE_INTEGRATION_ROUTES.api +
+                FILE_STORAGE_INTEGRATION_ROUTES.classes_images_bucket +
+                FILE_STORAGE_INTEGRATION_ROUTES.download + '/' + group.root.imgUrl :
+                'https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"
+                alt="external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2"
+              />
+            </ion-avatar>
+            <ion-icon
+              aria-hidden="false"
+              :icon="chevronForwardOutline"
+              slot="end"
+              @click="goToFullClass(group.root)"
+            />
+            <ion-label>
+              <div class="room-name">{{ group.root.name }}</div>
+            </ion-label>
+          </ion-item>
+
+          <ion-item
+            v-else-if="group.subs.length"
+            :button="true"
+            color="dark"
+          >
+            <ion-checkbox
+              slot="end"
+              :checked="isClassGroupSelected(group)"
+              :indeterminate="isClassGroupIndeterminate(group)"
+              @ionChange="toggleClassGroup(group)"
+            />
+            <ion-avatar aria-hidden="false" slot="start">
+              <img
+                width="64"
+                height="64"
+                :src="group.subs[0].imgUrl ? FILE_STORAGE_INTEGRATION_ROUTES.baseURL +
+                FILE_STORAGE_INTEGRATION_ROUTES.api +
+                FILE_STORAGE_INTEGRATION_ROUTES.classes_images_bucket +
+                FILE_STORAGE_INTEGRATION_ROUTES.download + '/' + group.subs[0].imgUrl :
+                'https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"
+                alt="external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2"
+              />
+            </ion-avatar>
+            <ion-icon
+              aria-hidden="false"
+              :icon="chevronForwardOutline"
+              slot="end"
+              @click="goToFullClass(group.subs[0])"
+            />
+            <ion-label>
+              <div class="room-name">{{ group.subs[0].name }}</div>
+            </ion-label>
+          </ion-item>
+
+          <ion-item
+            v-for="sub in group.root ? group.subs : group.subs.slice(1)"
+            :key="sub.code + (sub.id ?? '')"
+            :button="true"
+            color="dark"
+            class="group-sub-item"
+          >
+            <ion-checkbox
+              slot="end"
+              :checked="isClassSelected(sub)"
+              @ionChange="toggleClass(sub)"
+            />
+            <ion-avatar aria-hidden="false" slot="start">
+              <img
+                width="64"
+                height="64"
+                :src="sub.imgUrl ? FILE_STORAGE_INTEGRATION_ROUTES.baseURL +
+                FILE_STORAGE_INTEGRATION_ROUTES.api +
+                FILE_STORAGE_INTEGRATION_ROUTES.classes_images_bucket +
+                FILE_STORAGE_INTEGRATION_ROUTES.download + '/' + sub.imgUrl :
+                'https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"
+                alt="external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2"
+              />
+            </ion-avatar>
+            <ion-icon
+              aria-hidden="false"
+              :icon="chevronForwardOutline"
+              slot="end"
+              @click="goToFullClass(sub)"
+            />
+            <ion-label>
+              <div class="room-name">{{ sub.name }}</div>
+            </ion-label>
+          </ion-item>
+        </template>
         <div style="min-height: 50px"></div>
       </ion-list>
 
@@ -182,5 +336,9 @@ const previousStep = () => {
   align-content: center;
   justify-content: center;
   overflow: auto;
+}
+
+.group-sub-item {
+  padding-left: 18px;
 }
 </style>

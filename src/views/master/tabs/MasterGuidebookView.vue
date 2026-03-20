@@ -153,6 +153,92 @@ watch([roomId, baseRuleType], () => {
   backgrounds.value = [];
 }, { flush: "sync" });
 
+type RaceGroup = {
+  key: string;
+  root: RaceDto | null;
+  subs: RaceDto[];
+};
+
+type ClassGroup = {
+  key: string;
+  root: ClazzDto | null;
+  subs: ClazzDto[];
+};
+
+const raceGroups = computed<RaceGroup[]>(() => {
+  const groupsByRootCode = new Map<string, { root: RaceDto | null; subs: RaceDto[] }>();
+
+  for (const race of races.value) {
+    const rootCode = race.speciesCode ? race.speciesCode : race.code;
+    const group = groupsByRootCode.get(rootCode) ?? { root: null, subs: [] as RaceDto[] };
+    if (!groupsByRootCode.has(rootCode)) {
+      groupsByRootCode.set(rootCode, group);
+    }
+    if (race.speciesCode) {
+      group.subs.push(race);
+    } else {
+      group.root = race;
+    }
+  }
+
+  const out: RaceGroup[] = Array.from(groupsByRootCode.entries()).map(([key, value]) => ({
+    key,
+    root: value.root,
+    subs: value.subs,
+  }));
+
+  for (const g of out) {
+    g.subs = [...g.subs].sort(
+      (a, b) => (a.name ?? a.code).localeCompare(b.name ?? b.code, "ru", { sensitivity: "base" }),
+    );
+  }
+
+  out.sort((a, b) => {
+    const aLabel = a.root?.name ?? a.subs[0]?.name ?? a.key;
+    const bLabel = b.root?.name ?? b.subs[0]?.name ?? b.key;
+    return aLabel.localeCompare(bLabel, "ru", { sensitivity: "base" });
+  });
+
+  return out;
+});
+
+const classGroups = computed<ClassGroup[]>(() => {
+  const groupsByRootCode = new Map<string, { root: ClazzDto | null; subs: ClazzDto[] }>();
+
+  for (const clazz of classes.value) {
+    const rootCode = clazz.groupCode ? clazz.groupCode : clazz.code;
+    const group = groupsByRootCode.get(rootCode) ?? { root: null, subs: [] as ClazzDto[] };
+    if (!groupsByRootCode.has(rootCode)) {
+      groupsByRootCode.set(rootCode, group);
+    }
+    if (clazz.groupCode) {
+      group.subs.push(clazz);
+    } else {
+      group.root = clazz;
+    }
+  }
+
+  const out: ClassGroup[] = Array.from(groupsByRootCode.entries()).map(([key, value]) => ({
+    key,
+    root: value.root,
+    subs: value.subs,
+  }));
+
+  for (const g of out) {
+    g.subs = [...g.subs].sort(
+      (a, b) => (a.name ?? a.code).localeCompare(b.name ?? b.code, "ru", { sensitivity: "base" }),
+    );
+  }
+
+  out.sort((a, b) => {
+    const aLabel = a.root?.name ?? a.subs[0]?.name ?? a.key;
+    const bLabel = b.root?.name ?? b.subs[0]?.name ?? b.key;
+    return aLabel.localeCompare(bLabel, "ru", { sensitivity: "base" });
+  });
+
+  return out;
+});
+
 // Локальный дебаунс для поиска заклинаний и предметов,
 // чтобы не перерендеривать большие списки на каждый ввод символа
 const debouncedSpellSearchQuery = ref("");
@@ -633,20 +719,49 @@ onIonViewDidEnter(async () => {
 
     <!-- Расы -->
     <div v-show="currentSection === 'races'" class="segment-content">
-      <ion-list v-if="!loading && races.length" class="guidebook-list">
-        <ion-item
-          v-for="race in races"
-          :key="race.code + (race.id ?? '')"
-          :button="true"
-          color="dark"
-          @click="goToRace(race)"
-        >
-          <ion-avatar slot="start">
-            <img :src="getRaceImageUrl(race.imgUrl)" alt="" />
-          </ion-avatar>
-          <ion-icon :icon="chevronForwardOutline" slot="end" />
-          <ion-label>{{ race.name }}</ion-label>
-        </ion-item>
+      <ion-list v-if="!loading && raceGroups.length" class="guidebook-list">
+        <template v-for="group in raceGroups" :key="group.key">
+          <ion-item
+            v-if="group.root"
+            :button="true"
+            color="dark"
+            @click="goToRace(group.root)"
+          >
+            <ion-avatar slot="start">
+              <img :src="getRaceImageUrl(group.root.imgUrl)" alt="" />
+            </ion-avatar>
+            <ion-icon :icon="chevronForwardOutline" slot="end" />
+            <ion-label>{{ group.root.name }}</ion-label>
+          </ion-item>
+
+          <ion-item
+            v-else-if="group.subs.length"
+            :button="true"
+            color="dark"
+            @click="goToRace(group.subs[0])"
+          >
+            <ion-avatar slot="start">
+              <img :src="getRaceImageUrl(group.subs[0].imgUrl)" alt="" />
+            </ion-avatar>
+            <ion-icon :icon="chevronForwardOutline" slot="end" />
+            <ion-label>{{ group.subs[0].name }}</ion-label>
+          </ion-item>
+
+          <ion-item
+            v-for="sub in group.root ? group.subs : group.subs.slice(1)"
+            :key="sub.code + (sub.id ?? '')"
+            :button="true"
+            color="dark"
+            class="group-sub-item"
+            @click="goToRace(sub)"
+          >
+            <ion-avatar slot="start">
+              <img :src="getRaceImageUrl(sub.imgUrl)" alt="" />
+            </ion-avatar>
+            <ion-icon :icon="chevronForwardOutline" slot="end" />
+            <ion-label>{{ sub.name }}</ion-label>
+          </ion-item>
+        </template>
       </ion-list>
       <div v-else-if="loading" class="loading-placeholder">Загрузка...</div>
       <div v-else class="empty-placeholder">Нет рас в этой комнате</div>
@@ -654,20 +769,49 @@ onIonViewDidEnter(async () => {
 
     <!-- Классы -->
     <div v-show="currentSection === 'classes'" class="segment-content">
-      <ion-list v-if="!loading && classes.length" class="guidebook-list">
-        <ion-item
-          v-for="clazz in classes"
-          :key="clazz.code + (clazz.id ?? '')"
-          :button="true"
-          color="dark"
-          @click="goToClass(clazz)"
-        >
-          <ion-avatar slot="start">
-            <img :src="getClassImageUrl(clazz.imgUrl)" alt="" />
-          </ion-avatar>
-          <ion-icon :icon="chevronForwardOutline" slot="end" />
-          <ion-label>{{ clazz.name }}</ion-label>
-        </ion-item>
+      <ion-list v-if="!loading && classGroups.length" class="guidebook-list">
+        <template v-for="group in classGroups" :key="group.key">
+          <ion-item
+            v-if="group.root"
+            :button="true"
+            color="dark"
+            @click="goToClass(group.root)"
+          >
+            <ion-avatar slot="start">
+              <img :src="getClassImageUrl(group.root.imgUrl)" alt="" />
+            </ion-avatar>
+            <ion-icon :icon="chevronForwardOutline" slot="end" />
+            <ion-label>{{ group.root.name }}</ion-label>
+          </ion-item>
+
+          <ion-item
+            v-else-if="group.subs.length"
+            :button="true"
+            color="dark"
+            @click="goToClass(group.subs[0])"
+          >
+            <ion-avatar slot="start">
+              <img :src="getClassImageUrl(group.subs[0].imgUrl)" alt="" />
+            </ion-avatar>
+            <ion-icon :icon="chevronForwardOutline" slot="end" />
+            <ion-label>{{ group.subs[0].name }}</ion-label>
+          </ion-item>
+
+          <ion-item
+            v-for="sub in group.root ? group.subs : group.subs.slice(1)"
+            :key="sub.code + (sub.id ?? '')"
+            :button="true"
+            color="dark"
+            class="group-sub-item"
+            @click="goToClass(sub)"
+          >
+            <ion-avatar slot="start">
+              <img :src="getClassImageUrl(sub.imgUrl)" alt="" />
+            </ion-avatar>
+            <ion-icon :icon="chevronForwardOutline" slot="end" />
+            <ion-label>{{ sub.name }}</ion-label>
+          </ion-item>
+        </template>
       </ion-list>
       <div v-else-if="loading" class="loading-placeholder">Загрузка...</div>
       <div v-else class="empty-placeholder">Нет классов в этой комнате</div>
@@ -1190,5 +1334,9 @@ ion-searchbar {
   justify-content: flex-end;
   gap: 8px;
   margin-top: 6px;
+}
+
+.group-sub-item {
+  padding-left: 18px;
 }
 </style>

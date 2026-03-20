@@ -74,7 +74,6 @@ const isRaceSelected = (race: RaceDto) =>
     roomCreationStore.races.some((r) => r.code === race.code);
 
 const toggleRace = (race: RaceDto) => {
-  console.log(roomCreationStore.races.length);
   const idx = roomCreationStore.races.findIndex((r) => r.code === race.code);
   if (idx >= 0) {
     roomCreationStore.races = roomCreationStore.races.filter((r) => r.code !== race.code);
@@ -83,18 +82,90 @@ const toggleRace = (race: RaceDto) => {
   }
 };
 
+type RaceGroup = {
+  key: string;
+  root: RaceDto | null;
+  subs: RaceDto[];
+};
+
+const raceGroups = computed<RaceGroup[]>(() => {
+  const groupsByRootCode = new Map<string, { root: RaceDto | null; subs: RaceDto[] }>();
+
+  for (const race of races.value) {
+    const rootCode = race.speciesCode ? race.speciesCode : race.code;
+    const existing = groupsByRootCode.get(rootCode);
+    if (!existing) {
+      groupsByRootCode.set(rootCode, {root: race.speciesCode ? null : race, subs: []});
+    } else if (!race.speciesCode) {
+      // Root race (speciesCode is null/undefined)
+      existing.root = race;
+    } else {
+      existing.subs.push(race);
+      continue;
+    }
+
+    const g = groupsByRootCode.get(rootCode)!;
+    if (race.speciesCode) {
+      g.subs.push(race);
+    }
+  }
+
+  const out: RaceGroup[] = Array.from(groupsByRootCode.entries()).map(([key, value]) => ({
+    key,
+    root: value.root,
+    subs: value.subs,
+  }));
+
+  for (const g of out) {
+    g.subs = [...g.subs].sort((a, b) => (a.name ?? a.code).localeCompare(b.name ?? b.code, "ru", {sensitivity: "base"}));
+  }
+
+  out.sort((a, b) => {
+    const aLabel = a.root?.name ?? a.subs[0]?.name ?? a.key;
+    const bLabel = b.root?.name ?? b.subs[0]?.name ?? b.key;
+    return aLabel.localeCompare(bLabel, "ru", {sensitivity: "base"});
+  });
+
+  return out;
+});
+
+function getGroupItems(group: RaceGroup): RaceDto[] {
+  if (group.root) return [group.root, ...group.subs];
+  return [...group.subs];
+}
+
+function isRaceGroupSelected(group: RaceGroup): boolean {
+  const items = getGroupItems(group);
+  return items.length > 0 && items.every((r) => isRaceSelected(r));
+}
+
+function isRaceGroupIndeterminate(group: RaceGroup): boolean {
+  const items = getGroupItems(group);
+  const selectedCount = items.filter((r) => isRaceSelected(r)).length;
+  return selectedCount > 0 && selectedCount < items.length;
+}
+
+function toggleRaceGroup(group: RaceGroup): void {
+  const items = getGroupItems(group);
+  if (!items.length) return;
+
+  const allSelected = items.every((r) => isRaceSelected(r));
+  if (allSelected) {
+    const codesToRemove = new Set(items.map((r) => r.code));
+    roomCreationStore.races = roomCreationStore.races.filter((r) => !codesToRemove.has(r.code));
+    return;
+  }
+
+  const selectedCodes = new Set(roomCreationStore.races.map((r) => r.code));
+  roomCreationStore.races = [
+    ...roomCreationStore.races,
+    ...items.filter((r) => !selectedCodes.has(r.code)),
+  ];
+}
+
 const goToFullRace = (race: RaceDto) => {
   racesFullStore.race = race;
   ionRouter.navigate("/guidebook/races/" + race.code, 'forward', 'push')
-}
-
-const onRowClick = (race: RaceDto, e: Event) => {
-  const target = e.target as HTMLElement
-  if (target.closest?.('ion-checkbox')) {
-    toggleRace(race)
-  } else {
-    goToFullRace(race)
-  }
 }
 
 const nextStep = () => {
@@ -127,24 +198,111 @@ const createItem = () => {
         />
       </ion-item>
 
-      <ion-list v-show="races.length !== 0" class="room-list">
-        <ion-item v-for="(race, index) in races" :key="race.code + (race.id ?? '')" :button="true" color="dark"
-                  >
-          <ion-checkbox slot="end" :checked="isRaceSelected(race)"/>
-          <ion-avatar aria-hidden="false" slot="start">
-            <img width="64" height="64"
-                 :src="race.imgUrl ? FILE_STORAGE_INTEGRATION_ROUTES.baseURL +
-                 FILE_STORAGE_INTEGRATION_ROUTES.api +
-                 FILE_STORAGE_INTEGRATION_ROUTES.races_images_bucket +
-                 FILE_STORAGE_INTEGRATION_ROUTES.download + '/' + race.imgUrl :
-                 'https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"
-                 alt="external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2"/>
-          </ion-avatar>
-          <ion-icon aria-hidden="false" :icon="chevronForwardOutline" slot="end" @click="onRowClick(race, $event)"></ion-icon>
-          <ion-label>
-            <div class="room-name">{{ race.name }}</div>
-          </ion-label>
-        </ion-item>
+      <ion-list v-show="raceGroups.length !== 0" class="room-list">
+        <template v-for="group in raceGroups" :key="group.key">
+          <ion-item
+            v-if="group.root"
+            :button="true"
+            color="dark"
+          >
+            <ion-checkbox
+              slot="end"
+              :checked="isRaceGroupSelected(group)"
+              :indeterminate="isRaceGroupIndeterminate(group)"
+              @ionChange="toggleRaceGroup(group)"
+            />
+            <ion-avatar aria-hidden="false" slot="start">
+              <img
+                width="64"
+                height="64"
+                :src="group.root.imgUrl ? FILE_STORAGE_INTEGRATION_ROUTES.baseURL +
+                FILE_STORAGE_INTEGRATION_ROUTES.api +
+                FILE_STORAGE_INTEGRATION_ROUTES.races_images_bucket +
+                FILE_STORAGE_INTEGRATION_ROUTES.download + '/' + group.root.imgUrl :
+                'https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"
+                alt="external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2"
+              />
+            </ion-avatar>
+            <ion-icon
+              aria-hidden="false"
+              :icon="chevronForwardOutline"
+              slot="end"
+              @click="goToFullRace(group.root)"
+            />
+            <ion-label>
+              <div class="room-name">{{ group.root.name }}</div>
+            </ion-label>
+          </ion-item>
+
+          <ion-item
+            v-else-if="group.subs.length"
+            :button="true"
+            color="dark"
+          >
+            <ion-checkbox
+              slot="end"
+              :checked="isRaceGroupSelected(group)"
+              :indeterminate="isRaceGroupIndeterminate(group)"
+              @ionChange="toggleRaceGroup(group)"
+            />
+            <ion-avatar aria-hidden="false" slot="start">
+              <img
+                width="64"
+                height="64"
+                :src="group.subs[0].imgUrl ? FILE_STORAGE_INTEGRATION_ROUTES.baseURL +
+                FILE_STORAGE_INTEGRATION_ROUTES.api +
+                FILE_STORAGE_INTEGRATION_ROUTES.races_images_bucket +
+                FILE_STORAGE_INTEGRATION_ROUTES.download + '/' + group.subs[0].imgUrl :
+                'https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"
+                alt="external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2"
+              />
+            </ion-avatar>
+            <ion-icon
+              aria-hidden="false"
+              :icon="chevronForwardOutline"
+              slot="end"
+              @click="goToFullRace(group.subs[0])"
+            />
+            <ion-label>
+              <div class="room-name">{{ group.subs[0].name }}</div>
+            </ion-label>
+          </ion-item>
+
+          <ion-item
+            v-for="sub in group.root ? group.subs : group.subs.slice(1)"
+            :key="sub.code + (sub.id ?? '')"
+            :button="true"
+            color="dark"
+            class="group-sub-item"
+          >
+            <ion-checkbox
+              slot="end"
+              :checked="isRaceSelected(sub)"
+              @ionChange="toggleRace(sub)"
+            />
+            <ion-avatar aria-hidden="false" slot="start">
+              <img
+                width="64"
+                height="64"
+                :src="sub.imgUrl ? FILE_STORAGE_INTEGRATION_ROUTES.baseURL +
+                FILE_STORAGE_INTEGRATION_ROUTES.api +
+                FILE_STORAGE_INTEGRATION_ROUTES.races_images_bucket +
+                FILE_STORAGE_INTEGRATION_ROUTES.download + '/' + sub.imgUrl :
+                'https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"
+                alt="external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2"
+              />
+            </ion-avatar>
+            <ion-icon
+              aria-hidden="false"
+              :icon="chevronForwardOutline"
+              slot="end"
+              @click="goToFullRace(sub)"
+            />
+            <ion-label>
+              <div class="room-name">{{ sub.name }}</div>
+            </ion-label>
+          </ion-item>
+        </template>
         <div style="min-height: 50px"></div>
       </ion-list>
 
@@ -189,5 +347,9 @@ const createItem = () => {
   align-content: center;
   justify-content: center;
   overflow: auto;
+}
+
+.group-sub-item {
+  padding-left: 18px;
 }
 </style>
