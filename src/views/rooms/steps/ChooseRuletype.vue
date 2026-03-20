@@ -134,7 +134,7 @@ const nextStep = async () => {
               v-model="roomRules"
           >
             <ion-select-option value="DND5E">Днд 5e</ion-select-option>
-            <ion-select-option value="DND2024">Днд 2024</ion-select-option>
+            <ion-select-option value="DND2024">Днд 5.5e</ion-select-option>
             <ion-select-option value="HOMEBREW">Хоумбрю</ion-select-option>
           </ion-select>
         </ion-item>
@@ -147,7 +147,7 @@ const nextStep = async () => {
               v-model="roomRootRules"
           >
             <ion-select-option value="DND5E">Днд 5e</ion-select-option>
-            <ion-select-option value="DND2024">Днд 2024</ion-select-option>
+            <ion-select-option value="DND2024">Днд 5.5e</ion-select-option>
           </ion-select>
         </ion-item>
         <ion-fab slot="fixed" vertical="bottom" horizontal="end">
