@@ -85,7 +85,12 @@ html {
 }
 
 body {
+  --ion-safe-area-top: env(safe-area-inset-top);
+  --ion-safe-area-bottom: env(safe-area-inset-bottom);
+}
+body {
     min-height: 100%;
     min-height: 100dvh;
     padding: var(--sat) var(--sar) var(--sab) var(--sal);
 }
+
