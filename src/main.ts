@@ -40,7 +40,7 @@ import './theme/variables.css';
 import {createPinia} from "pinia";
 
 const app = createApp(App)
-    .use(IonicVue, {mode: 'md'})
+    .use(IonicVue)
     .use(router)
     .use(createPinia())
     .use(VueCookies);
