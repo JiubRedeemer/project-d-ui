@@ -507,65 +507,65 @@ ion-page {
 }
 
 .abilities.openSubheader {
-  margin-top: 50%;
+  margin-top: 120px;
 }
 
 .attacks.openSubheader {
-  margin-top: 50%;
+  margin-top: 120px;
 }
 
 .bio.openSubheader {
-  margin-top: 50%;
+  margin-top: 120px;
 }
 
 .traits.openSubheader {
-  margin-top: 50%;
+  margin-top: 120px;
 }
 
 .inventory.openSubheader {
-  margin-top: 50%;
+  margin-top: 120px;
 }
 
 .notes.openSubheader {
-  margin-top: 50%;
+  margin-top: 120px;
 }
 
 .magic.openSubheader {
-  margin-top: 50%;
+  margin-top: 120px;
 }
 
 .abilities {
-  margin-top: 35%;
+  margin-top: 64px;
   transition: margin-top 0.3s ease;
 }
 
 .attacks {
-  margin-top: 35%;
+  margin-top: 64px;
   transition: margin-top 0.3s ease;
 }
 
 .bio {
-  margin-top: 35%;
+  margin-top: 64px;
   transition: margin-top 0.3s ease;
 }
 
 .traits {
-  margin-top: 35%;
+  margin-top: 64px;
   transition: margin-top 0.3s ease;
 }
 
 .inventory {
-  margin-top: 35%;
+  margin-top: 64px;
   transition: margin-top 0.3s ease;
 }
 
 .notes {
-  margin-top: 35%;
+  margin-top: 64px;
   transition: margin-top 0.3s ease;
 }
 
 .magic {
-  margin-top: 35%;
+  margin-top: 64px;
   transition: margin-top 0.3s ease;
 }
 
