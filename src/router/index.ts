@@ -25,6 +25,7 @@ import CreateRace from "@/views/common/createEntity/CreateRace.vue";
 import CreateClass from "@/views/common/createEntity/CreateClass.vue";
 import CreateBackground from "@/views/common/createEntity/CreateBackground.vue";
 import MasterView from "@/views/master/MasterView.vue";
+import CharacterFilesView from "@/views/character/CharacterFilesView.vue";
 import CreateNpcView from "@/views/npcs/CreateNpcView.vue";
 import NpcFullView from "@/views/npcs/NpcFullView.vue";
 import SearchNpcView from "@/views/npcs/SearchNpcView.vue";
@@ -98,6 +99,11 @@ const routes: Array<RouteRecordRaw> = [
         path: '/rooms/:roomId/characters/:characterId',
         component: PlayerView,
         name: 'playerView'
+    },
+    {
+        path: '/rooms/:roomId/characters/:characterId/files',
+        component: CharacterFilesView,
+        name: 'characterFilesView'
     },
     {
         path: '/rooms/:roomId/characters/:characterId/inventory/:itemId',

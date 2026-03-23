@@ -194,6 +194,7 @@ function closeModal() {
             <div class="stat stat-full">
               <div class="stat-name">Компоненты</div>
               <div class="stat-value">{{ spell.components || "—" }}</div>
+              <div class="stat-value">{{ spell.materialComponents || "" }}</div>
             </div>
           </div>
         </div>

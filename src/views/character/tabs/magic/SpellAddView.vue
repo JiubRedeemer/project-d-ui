@@ -225,6 +225,7 @@ function loadEditingSpell(s: SpellDto) {
     distance: s.distance ?? "",
     duration: s.duration ?? "",
     components: s.components ?? "",
+    materialComponents: s.materialComponents ?? "",
     description: s.description ?? "",
     ritual: s.ritual ?? false,
     customization: s.customization ?? false,
@@ -443,6 +444,15 @@ onUnmounted(() => {
               color="primary"
               v-model="spell.components"
               placeholder="Напр. V, S, M"
+            />
+          </div>
+          <div class="stat-section">
+            <div class="stat-section-name">Материальные компоненты</div>
+            <ion-input
+                fill="outline"
+                color="primary"
+                v-model="spell.materialComponents"
+                placeholder="Напр. 1 алмаз"
             />
           </div>
           <div class="stat-section toggle-row">
