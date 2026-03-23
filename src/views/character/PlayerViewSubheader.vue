@@ -217,7 +217,7 @@ const getDexArmoryClass = () : number => {
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, 40%);
+  transform: translate(-50%, 30%);
   color: var(--ion-color-light-contrast);
   font-size: 12px;
   font-weight: bold;
