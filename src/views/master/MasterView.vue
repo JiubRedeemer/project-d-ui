@@ -11,10 +11,11 @@ import {
   onIonViewDidEnter,
   onIonViewDidLeave
 } from "@ionic/vue";
-import {bookOutline, peopleOutline} from "ionicons/icons";
+import {bookOutline, documentTextOutline, peopleOutline} from "ionicons/icons";
 import MasterHeader from "@/views/master/MasterHeader.vue";
 import MasterCharacterListView from "@/views/master/tabs/MasterCharacterListView.vue";
 import MasterGuidebookView from "@/views/master/tabs/MasterGuidebookView.vue";
+import MasterFilesView from "@/views/master/tabs/MasterFilesView.vue";
 import {useRoute} from "vue-router";
 import {useRoomStore} from "@/stores/RoomStore";
 import {ref} from "vue";
@@ -102,6 +103,19 @@ onIonViewDidLeave(() => {
           </div>
         </ion-content>
       </ion-tab>
+      <ion-tab tab="files">
+        <ion-content
+          class="ion-padding"
+          :fullscreen="true"
+          color="dark"
+          direction="y"
+          :scroll-x="false"
+        >
+          <div class="tab-content files">
+            <MasterFilesView v-if="asyncDone"/>
+          </div>
+        </ion-content>
+      </ion-tab>
       <ion-tab-bar slot="bottom" color="dark" class="tab-bar" :translucent="true">
         <ion-tab-button tab="characters">
           <div class="tab-icon-wrapper">
@@ -113,6 +127,11 @@ onIonViewDidLeave(() => {
             <ion-icon :icon="bookOutline" />
           </div>
         </ion-tab-button>
+<!--        <ion-tab-button tab="files">-->
+<!--          <div class="tab-icon-wrapper">-->
+<!--            <ion-icon :icon="documentTextOutline" />-->
+<!--          </div>-->
+<!--        </ion-tab-button>-->
       </ion-tab-bar>
     </IonTabs>
   </ion-page>
@@ -164,7 +183,8 @@ onIonViewDidLeave(() => {
 }
 
 .characters,
-.guidebook {
+.guidebook,
+.files {
   margin-top: 32px;
   padding-top: 0;
 }

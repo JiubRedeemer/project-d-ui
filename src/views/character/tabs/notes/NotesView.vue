@@ -3,8 +3,8 @@ import {onMounted, ref} from "vue";
 import {useRoute} from "vue-router";
 import axios from "axios";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
-import {IonButton, IonButtons, IonChip, IonIcon, IonInput, IonLabel, IonTextarea, onIonViewDidEnter} from "@ionic/vue";
-import {addOutline, createOutline, saveOutline, trashOutline} from "ionicons/icons";
+import {IonButton, IonButtons, IonChip, IonIcon, IonInput, IonLabel, IonTextarea, onIonViewDidEnter, useIonRouter} from "@ionic/vue";
+import {addOutline, attachOutline, createOutline, saveOutline, trashOutline} from "ionicons/icons";
 
 import {marked} from "marked";
 
@@ -21,6 +21,7 @@ interface NoteSection {
 }
 
 const route = useRoute();
+const ionRouter = useIonRouter();
 
 const notes = ref<any[]>([]);
 const notebook = ref<any | null>(null);
@@ -199,6 +200,12 @@ const deleteNote = async (noteId: string) => {
 
 const loadNotesData = () => {
   loadNotebook();
+};
+
+const openFilesView = () => {
+  const roomId = String(route.params.roomId);
+  const characterId = String(route.params.characterId);
+  ionRouter.navigate(`/rooms/${roomId}/characters/${characterId}/files`, "forward", "push");
 };
 
 onMounted(loadNotesData);
@@ -394,6 +401,12 @@ const getSheetAccentStyle = (section: NoteSection) => {
       <ion-icon slot="icon-only" :icon="addOutline" />
     </ion-button>
   </div>
+
+<!--  <div class="files-open-button">-->
+<!--    <ion-button size="large" shape="round" color="secondary" @click="openFilesView">-->
+<!--      <ion-icon slot="icon-only" :icon="attachOutline" />-->
+<!--    </ion-button>-->
+<!--  </div>-->
 </template>
 
 <style scoped>
@@ -699,5 +712,19 @@ const getSheetAccentStyle = (section: NoteSection) => {
   align-items: center;
   padding: 8px 0;
   padding-bottom: max(8px, env(safe-area-inset-bottom, 0));
+}
+
+.files-open-button {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: transparent;
+  display: flex;
+  justify-content: start;
+  align-items: center;
+  padding: 8px 0;
+  padding-bottom: max(8px, env(safe-area-inset-bottom, 0));
+  pointer-events: none;
 }
 </style>

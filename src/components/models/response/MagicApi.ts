@@ -37,6 +37,7 @@ export interface SpellDto {
     distance?: string;
     duration?: string;
     components?: string;
+    materialComponents?: string;
     description?: string;
     createdAt?: string;
     /** When creating a spell, set to the character ID; stored as createdBy */
