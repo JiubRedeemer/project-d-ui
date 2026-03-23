@@ -583,5 +583,66 @@ ion-page {
 .subheader-block.openSubheader {
   max-height: 140%; /* Высота в развернутом состоянии */
 }
+
+
+@supports (font: -apple-system-body) {
+
+    .abilities {
+      margin-top: 120px;
+    }
+
+    .attacks {
+      margin-top: 120px;
+    }
+
+    .bio {
+      margin-top: 120px;
+    }
+
+    .traits {
+      margin-top: 120px;
+    }
+
+    .inventory {
+      margin-top: 120px;
+    }
+
+    .notes {
+      margin-top: 120px;
+    }
+
+    .magic {
+      margin-top: 120px;
+    }
+
+    .abilities.openSubheader {
+      margin-top: 180px;
+    }
+
+    .attacks.openSubheader {
+      margin-top: 180px;
+    }
+
+    .bio.openSubheader {
+      margin-top: 180px;
+    }
+
+    .traits.openSubheader {
+      margin-top: 180px;
+    }
+
+    .inventory.openSubheader {
+      margin-top: 180px;
+    }
+
+    .notes.openSubheader {
+      margin-top: 180px;
+    }
+
+    .magic.openSubheader {
+      margin-top: 180px;
+    }
+
+}
 </style>
 
