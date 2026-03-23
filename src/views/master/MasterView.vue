@@ -127,11 +127,11 @@ onIonViewDidLeave(() => {
             <ion-icon :icon="bookOutline" />
           </div>
         </ion-tab-button>
-<!--        <ion-tab-button tab="files">-->
-<!--          <div class="tab-icon-wrapper">-->
-<!--            <ion-icon :icon="documentTextOutline" />-->
-<!--          </div>-->
-<!--        </ion-tab-button>-->
+        <ion-tab-button tab="files">
+          <div class="tab-icon-wrapper">
+            <ion-icon :icon="documentTextOutline" />
+          </div>
+        </ion-tab-button>
       </ion-tab-bar>
     </IonTabs>
   </ion-page>
