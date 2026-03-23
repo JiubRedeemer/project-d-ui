@@ -414,6 +414,7 @@ async function deleteCharacterSkill(id: string) {
         </div>
       </div>
     </div>
+  <div class="security-block" style="height: 50px;"></div>
   </div>
   <div class="add-new-button">
     <ion-button color="secondary" size="large" shape="round" @click="openEditCharacterSkillModal(true, undefined)">

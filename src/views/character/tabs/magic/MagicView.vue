@@ -539,6 +539,7 @@ onIonViewDidEnter(loadMagicData);
             </div>
           </div>
         </div>
+          <div class="security-block" style="height: 50px;"></div>
       </template>
 
       <div v-if="!loading && !error && (!spellBook?.spells?.length)" class="empty">
