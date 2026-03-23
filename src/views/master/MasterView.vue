@@ -188,4 +188,12 @@ onIonViewDidLeave(() => {
   margin-top: 32px;
   padding-top: 0;
 }
+
+@supports (font: -apple-system-body) {
+    .characters,
+    .guidebook,
+    .files {
+      margin-top: 90px;
+    }
+}
 </style>
