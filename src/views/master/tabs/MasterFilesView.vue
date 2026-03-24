@@ -165,10 +165,6 @@ const previewKind = ref<"image" | "pdf" | "text" | "other">("other");
 const previewText = ref<string | null>(null);
 const imagePreviewEl = ref<HTMLImageElement | null>(null);
 let imageViewer: Viewer | null = null;
-const pdfViewerBaseUrl = `${import.meta.env.BASE_URL}node-viewerjs/`;
-const pdfViewerSrc = computed(() =>
-  previewUrl.value ? `${pdfViewerBaseUrl}index.html?type=pdf#${previewUrl.value}` : ""
-);
 
 const isLikelyImageFile = (filename: string): boolean => {
   const lower = filename.toLowerCase();
@@ -214,7 +210,12 @@ async function openPreview(file: UserFile) {
 
   try {
     const currentUserId = await ensureUserId();
-    const blob = await downloadUserFileById(file.id, currentUserId);
+    const rawBlob = await downloadUserFileById(file.id, currentUserId);
+    const blob =
+      isLikelyPdfFile(file.filename) && rawBlob.type !== "application/pdf"
+        ? new Blob([rawBlob], { type: "application/pdf" })
+        : rawBlob;
+
     previewType.value = blob.type || null;
     previewUrl.value = URL.createObjectURL(blob);
     previewKind.value = detectPreviewKind(file.filename, previewType.value);
@@ -553,7 +554,7 @@ async function onFileSelected(event: Event) {
           <template v-else-if="previewKind === 'pdf'">
             <iframe
               v-if="previewUrl"
-              :src="pdfViewerSrc"
+              :src="previewUrl"
               class="master-files__preview-frame"
               title="PDF preview"
             />
