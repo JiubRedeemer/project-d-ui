@@ -19,6 +19,8 @@ export default defineConfig({
         enabled: true,
       },
       workbox: {
+        // Keep the SW build stable when a generated app bundle exceeds Workbox's 2 MiB default.
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         /**
          * When offline (or network is down), serve cached API responses so the UI can
          * render the last data that was successfully loaded.
