@@ -3,7 +3,16 @@ import {onMounted, ref} from "vue";
 import {useRoute} from "vue-router";
 import axios from "axios";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
-import {IonButton, IonButtons, IonChip, IonIcon, IonInput, IonLabel, IonTextarea, onIonViewDidEnter, useIonRouter} from "@ionic/vue";
+import {
+  IonButton,
+  IonChip,
+  IonIcon,
+  IonInput,
+  IonLabel,
+  IonTextarea,
+  onIonViewDidEnter,
+  useIonRouter
+} from "@ionic/vue";
 import {addOutline, attachOutline, createOutline, saveOutline, trashOutline} from "ionicons/icons";
 
 import {marked} from "marked";
@@ -234,7 +243,7 @@ const autoGrow = (event: Event) => {
 const getSheetAccentStyle = (section: NoteSection) => {
   const color = section.tags?.[0]?.color;
   if (!color) return {};
-  return { borderLeftColor: color };
+  return {borderLeftColor: color};
 };
 
 </script>
@@ -258,7 +267,8 @@ const getSheetAccentStyle = (section: NoteSection) => {
               contenteditable="true"
               @input="updateHeaderSectionText($event, section)"
           >{{ section.name }}</h2>
-          <div v-if="section.tags?.length" class="notes-card__tags-dots" :class="{ 'notes-card__tags-dots--expanded': isBlockExpanded === index }">
+          <div v-if="section.tags?.length" class="notes-card__tags-dots"
+               :class="{ 'notes-card__tags-dots--expanded': isBlockExpanded === index }">
             <template v-if="isBlockExpanded === index">
               <ion-chip
                   v-for="(tag, tIndex) in section.tags"
@@ -319,24 +329,26 @@ const getSheetAccentStyle = (section: NoteSection) => {
                     fill="outline"
                     class="tag-input"
                 />
-                <input type="color" v-model="tag.color" class="tag-color-picker" aria-label="Цвет тега" />
+                <input type="color" v-model="tag.color" class="tag-color-picker" aria-label="Цвет тега"/>
                 <ion-chip :style="{ backgroundColor: tag.color }" @click="removeTagField('edit', tagIdx)">
                   <ion-label>{{ tag.name || 'Без имени' }}</ion-label>
                 </ion-chip>
               </div>
               <ion-button size="small" shape="round" color="primary" @click="addNewTagField('edit')">
-                <ion-icon slot="icon-only" :icon="addOutline" />
+                <ion-icon slot="icon-only" :icon="addOutline"/>
               </ion-button>
             </div>
           </template>
 
           <div class="notes-card__actions">
-            <ion-button shape="round" size="small" color="primary" @click.stop="updateNote(section.notebookId, section.id)">
-              <ion-icon slot="start" :icon="saveOutline" />
+            <ion-button shape="round" size="small" color="primary"
+                        @click.stop="updateNote(section.notebookId, section.id)">
+              <ion-icon slot="start" :icon="saveOutline"/>
               Сохранить
             </ion-button>
-            <ion-button shape="round" size="small" fill="outline" color="danger" @click.stop="deleteNote(section.id)" aria-label="Удалить">
-              <ion-icon slot="icon-only" :icon="trashOutline" />
+            <ion-button shape="round" size="small" fill="outline" color="danger" @click.stop="deleteNote(section.id)"
+                        aria-label="Удалить">
+              <ion-icon slot="icon-only" :icon="trashOutline"/>
             </ion-button>
           </div>
         </div>
@@ -370,21 +382,21 @@ const getSheetAccentStyle = (section: NoteSection) => {
 
           <div class="tags-block notes-card__tags-edit">
             <div v-for="(tag, tagIdx) in newTags" :key="tagIdx" class="tag-field">
-              <ion-input v-model="tag.name" placeholder="Имя тега" fill="outline" class="tag-input" />
-              <input type="color" v-model="tag.color" class="tag-color-picker" aria-label="Цвет тега" />
+              <ion-input v-model="tag.name" placeholder="Имя тега" fill="outline" class="tag-input"/>
+              <input type="color" v-model="tag.color" class="tag-color-picker" aria-label="Цвет тега"/>
               <ion-chip :style="{ backgroundColor: tag.color }" @click="removeTagField('new', tagIdx)">
                 <ion-label>{{ tag.name || 'Без имени' }}</ion-label>
-                <ion-icon slot="end" :icon="trashOutline" />
+                <ion-icon slot="end" :icon="trashOutline"/>
               </ion-chip>
             </div>
             <ion-button size="small" shape="round" color="primary" @click="addNewTagField('new')">
-              <ion-icon slot="icon-only" :icon="addOutline" />
+              <ion-icon slot="icon-only" :icon="addOutline"/>
             </ion-button>
           </div>
 
           <div class="notes-card__actions">
             <ion-button shape="round" size="small" color="primary" @click="addNote">
-              <ion-icon slot="start" :icon="saveOutline" />
+              <ion-icon slot="start" :icon="saveOutline"/>
               Сохранить
             </ion-button>
             <ion-button shape="round" size="small" fill="outline" color="danger" @click="isBlockExpanded = null">
@@ -398,15 +410,15 @@ const getSheetAccentStyle = (section: NoteSection) => {
 
   <div class="add-new-button">
     <ion-button size="large" shape="round" color="secondary" @click="isBlockExpanded = 'new'">
-      <ion-icon slot="icon-only" :icon="addOutline" />
+      <ion-icon slot="icon-only" :icon="addOutline"/>
     </ion-button>
+    <div class="files-open-button">
+      <ion-button size="large" shape="round" color="secondary" @click="openFilesView">
+        <ion-icon slot="icon-only" :icon="attachOutline"/>
+      </ion-button>
+    </div>
   </div>
 
-<!--  <div class="files-open-button">-->
-<!--    <ion-button size="large" shape="round" color="secondary" @click="openFilesView">-->
-<!--      <ion-icon slot="icon-only" :icon="attachOutline" />-->
-<!--    </ion-button>-->
-<!--  </div>-->
 </template>
 
 <style scoped>
@@ -619,13 +631,29 @@ const getSheetAccentStyle = (section: NoteSection) => {
   padding-left: 1.25em;
 }
 
-.note-markdown :deep(h1) { font-size: 1.15em; }
-.note-markdown :deep(h2) { font-size: 1.05em; }
-.note-markdown :deep(h3) { font-size: 1em; }
+.note-markdown :deep(h1) {
+  font-size: 1.15em;
+}
 
-.notes-card__preview :deep(h1) { font-size: 1em; }
-.notes-card__preview :deep(h2) { font-size: 0.95em; }
-.notes-card__preview :deep(h3) { font-size: 0.9em; }
+.note-markdown :deep(h2) {
+  font-size: 1.05em;
+}
+
+.note-markdown :deep(h3) {
+  font-size: 1em;
+}
+
+.notes-card__preview :deep(h1) {
+  font-size: 1em;
+}
+
+.notes-card__preview :deep(h2) {
+  font-size: 0.95em;
+}
+
+.notes-card__preview :deep(h3) {
+  font-size: 0.9em;
+}
 
 .notes-card__textarea {
   width: 100%;
@@ -705,26 +733,31 @@ const getSheetAccentStyle = (section: NoteSection) => {
   bottom: 0;
   left: 0;
   right: 0;
-  width: 100%;
   background: transparent;
   display: flex;
   justify-content: center;
   align-items: center;
   padding: 8px 0;
   padding-bottom: max(8px, env(safe-area-inset-bottom, 0));
+  pointer-events: none;
+  z-index: 20;
 }
 
 .files-open-button {
   position: fixed;
   bottom: 0;
   left: 0;
-  width: 100%;
   background: transparent;
   display: flex;
-  justify-content: start;
+  justify-content: flex-start;
   align-items: center;
-  padding: 8px 0;
+  padding: 8px 12px;
   padding-bottom: max(8px, env(safe-area-inset-bottom, 0));
-  pointer-events: none;
+  z-index: 21;
+}
+
+.add-new-button ion-button,
+.files-open-button ion-button {
+  pointer-events: auto;
 }
 </style>

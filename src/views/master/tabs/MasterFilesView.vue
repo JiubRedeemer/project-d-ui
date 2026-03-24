@@ -7,25 +7,30 @@ import {
   IonLabel,
   IonList,
   IonModal,
+  IonReorder,
+  IonReorderGroup,
   onIonViewWillEnter,
   toastController,
 } from "@ionic/vue";
 import { add, closeCircleOutline, documentTextOutline, eyeOutline, imageOutline } from "ionicons/icons";
 import { computed, nextTick, onMounted, ref } from "vue";
+import { useRoute } from "vue-router";
 import axios from "axios";
 import { GATEWAY_INTEGRATION_ROUTES } from "@/config/integrationRoutes";
 import type { UserFile } from "@/api/fileStorageApi.types";
 import {
+  changeUserFileVisible,
   downloadUserFileById,
   deleteUserFileById,
   readAllUserFilesByUserId,
-  getUserFileDownloadUrl,
   uploadUserFile,
 } from "@/api/fileStorageApi";
 import Viewer from "viewerjs";
 import "viewerjs/dist/viewer.css";
 
 const userId = ref<string>("");
+const route = useRoute();
+const roomId = computed(() => String(route.params.roomId ?? ""));
 const userFiles = ref<UserFile[]>([]);
 const didLoadOnce = ref(false);
 
@@ -83,6 +88,9 @@ const sortedUserFiles = computed(() => {
   });
 });
 
+const visibleForAllFiles = computed(() => sortedUserFiles.value.filter((f) => f.visible));
+const visibleOnlyForMeFiles = computed(() => sortedUserFiles.value.filter((f) => !f.visible));
+
 onIonViewWillEnter(async () => {
   if (userId.value) {
     await refreshFiles();
@@ -127,7 +135,11 @@ async function uploadAndRefresh(file: File) {
   errorMessage.value = null;
 
   try {
-    await uploadUserFile(currentUserId, file, storedFilename);
+    const currentRoomId = roomId.value;
+    if (!currentRoomId) {
+      throw new Error("Room id is required for file upload");
+    }
+    await uploadUserFile(currentUserId, currentRoomId, true, file, storedFilename);
     await refreshFiles();
   } catch (e) {
     console.error("Upload failed:", e);
@@ -189,6 +201,8 @@ const detectPreviewKind = (filename: string, mimeType: string | null | undefined
   return "other";
 };
 
+const isChangingVisible = ref(false);
+
 async function openPreview(file: UserFile) {
   selectedForPreview.value = file;
   previewUrl.value = null;
@@ -199,13 +213,13 @@ async function openPreview(file: UserFile) {
   previewText.value = null;
 
   try {
-    const downloadUrl = getUserFileDownloadUrl(file.id);
-    // For image/pdf/unknown we can give viewer actual URL (not blob:) so viewer can HEAD and detect type.
-    previewUrl.value = downloadUrl;
+    const currentUserId = await ensureUserId();
+    const blob = await downloadUserFileById(file.id, currentUserId);
+    previewType.value = blob.type || null;
+    previewUrl.value = URL.createObjectURL(blob);
+    previewKind.value = detectPreviewKind(file.filename, previewType.value);
 
     if (previewKind.value === "text") {
-      const blob = await downloadUserFileById(file.id);
-      previewType.value = blob.type || null;
       previewText.value = await blob.text();
     }
 
@@ -215,11 +229,39 @@ async function openPreview(file: UserFile) {
         imageViewer?.destroy();
         imageViewer = new Viewer(imagePreviewEl.value, {
           inline: true,
+          backdrop: false,
           button: false,
           navbar: false,
-          toolbar: false,
-          title: false,
+          movable: true,
+          zoomable: true,
+          zoomOnTouch: true,
+          zoomOnWheel: true,
+          scalable: false,
+          transition: true,
           keyboard: true,
+          toggleOnDblclick: true,
+          initialCoverage: 0.95,
+          minZoomRatio: 0.1,
+          maxZoomRatio: 20,
+          toolbar: {
+            zoomIn: {
+              show: 1,
+              size: "large",
+            },
+            zoomOut: {
+              show: 1,
+              size: "large",
+            },
+            oneToOne: {
+              show: 1,
+              size: "large",
+            },
+            reset: {
+              show: 1,
+              size: "large",
+            },
+          },
+          title: false,
         });
         imageViewer.show();
       }
@@ -264,12 +306,69 @@ function openInNewTab() {
   window.open(previewUrl.value, "_blank", "noopener,noreferrer");
 }
 
+async function changeVisibleAndRefresh(file: UserFile, visible: boolean) {
+  if (file.visible === visible || isChangingVisible.value) return;
+
+  try {
+    const currentUserId = await ensureUserId();
+    const currentRoomId = roomId.value;
+    if (!currentRoomId) {
+      throw new Error("Room id is required for changing visibility");
+    }
+
+    isChangingVisible.value = true;
+    await changeUserFileVisible(currentUserId, currentRoomId, visible, file.filename);
+    await refreshFiles();
+  } catch (e) {
+    console.error("Change visible failed:", e);
+    const toast = await toastController.create({
+      message: "Не удалось изменить видимость файла",
+      duration: 2000,
+      position: "top",
+      color: "danger",
+    });
+    await toast.present();
+  } finally {
+    isChangingVisible.value = false;
+  }
+}
+
+async function onIonicReorder(event: CustomEvent<{ from: number; to: number; complete: (listOrReorder?: boolean) => void }>) {
+  const from = event.detail.from;
+  const to = event.detail.to;
+  const dividerIndex = visibleForAllFiles.value.length;
+
+  // Keep backend ordering unchanged; we only use drop zone to switch visibility.
+  event.detail.complete(false);
+
+  // Divider is not a file row.
+  if (from === dividerIndex) return;
+
+  const sourceFiles = [...visibleForAllFiles.value, ...visibleOnlyForMeFiles.value];
+  const sourceIndex = from > dividerIndex ? from - 1 : from;
+  const movedFile = sourceFiles[sourceIndex];
+  if (!movedFile) return;
+
+  let targetVisible: boolean;
+  if (to < dividerIndex) {
+    targetVisible = true;
+  } else if (to > dividerIndex) {
+    targetVisible = false;
+  } else {
+    // Dropped on divider; interpret as move to opposite group.
+    targetVisible = !movedFile.visible;
+  }
+
+  await changeVisibleAndRefresh(movedFile, targetVisible);
+}
+
 async function onDelete(file: UserFile) {
   const ok = window.confirm(`Удалить файл "${displayedFileName(file.filename)}"?`);
   if (!ok) return;
 
   try {
-    await deleteUserFileById(file.id);
+    const currentUserId = await ensureUserId();
+    await deleteUserFileById(file.id, currentUserId);
     await refreshFiles();
     if (selectedForPreview.value?.id === file.id) closePreview();
   } catch (e) {
@@ -312,47 +411,105 @@ async function onFileSelected(event: Event) {
       {{ errorMessage }}
     </div>
 
-    <ion-list class="master-files__list">
-      <ion-item v-if="isLoading" color="dark">
-        <ion-label>Загрузка списка...</ion-label>
+    <div v-if="isLoading" class="master-files__loading-list">
+      Загрузка списка...
+    </div>
+
+    <div v-else-if="sortedUserFiles.length === 0" class="master-files__loading-list">
+      Нет файлов
+    </div>
+
+    <ion-list v-else class="master-files__list">
+      <ion-item lines="none" class="master-files__group-header" color="dark">
+        <ion-label class="master-files__group-title">Видимые для всех</ion-label>
       </ion-item>
 
-      <ion-item
-        v-else-if="sortedUserFiles.length === 0"
-        color="dark"
+      <ion-reorder-group
+        class="master-files__groups"
+        :disabled="isChangingVisible"
+        @ionItemReorder="onIonicReorder"
       >
-        <ion-label>Нет файлов</ion-label>
-      </ion-item>
-
-      <ion-item
-        v-for="f in sortedUserFiles"
-        :key="f.id"
-        color="dark"
-      >
-        <ion-icon
-          :icon="isLikelyImageFile(f.filename) ? imageOutline : documentTextOutline"
-          slot="start"
-        />
-        <ion-label>
-          <div class="master-files__filename">{{ displayedFileName(f.filename) }}</div>
-          <div class="master-files__meta">{{ f.uploadedAt }}</div>
-        </ion-label>
-        <ion-button
-          fill="clear"
-          slot="end"
-          :disabled="isPreviewOpen && isPreviewLoading"
-          @click="openPreview(f)"
+        <ion-item
+          v-for="f in visibleForAllFiles"
+          :key="`public-${f.id}`"
+          color="dark"
         >
-          <ion-icon :icon="eyeOutline" />
-        </ion-button>
-        <ion-button fill="clear" slot="end" color="danger" @click="onDelete(f)">
-          <ion-icon :icon="closeCircleOutline" />
-        </ion-button>
+          <ion-reorder slot="start" />
+          <ion-icon
+            :icon="isLikelyImageFile(f.filename) ? imageOutline : documentTextOutline"
+            slot="start"
+          />
+          <ion-label>
+            <div class="master-files__filename">{{ displayedFileName(f.filename) }}</div>
+            <div class="master-files__meta">{{ f.uploadedAt }}</div>
+          </ion-label>
+          <ion-button
+            fill="clear"
+            slot="end"
+            :disabled="isPreviewOpen && isPreviewLoading"
+            @click="openPreview(f)"
+          >
+            <ion-icon :icon="eyeOutline" />
+          </ion-button>
+          <ion-button fill="clear" slot="end" color="danger" @click="onDelete(f)">
+            <ion-icon :icon="closeCircleOutline" />
+          </ion-button>
+        </ion-item>
+
+        <ion-item lines="full" class="master-files__group-divider" color="dark">
+          <ion-label class="master-files__group-title">Видимые только для меня</ion-label>
+        </ion-item>
+
+        <ion-item
+          v-for="f in visibleOnlyForMeFiles"
+          :key="`private-${f.id}`"
+          color="dark"
+        >
+          <ion-reorder slot="start" />
+          <ion-icon
+            :icon="isLikelyImageFile(f.filename) ? imageOutline : documentTextOutline"
+            slot="start"
+          />
+          <ion-label>
+            <div class="master-files__filename">{{ displayedFileName(f.filename) }}</div>
+            <div class="master-files__meta">{{ f.uploadedAt }}</div>
+          </ion-label>
+          <ion-button
+            fill="clear"
+            slot="end"
+            :disabled="isPreviewOpen && isPreviewLoading"
+            @click="openPreview(f)"
+          >
+            <ion-icon :icon="eyeOutline" />
+          </ion-button>
+          <ion-button fill="clear" slot="end" color="danger" @click="onDelete(f)">
+            <ion-icon :icon="closeCircleOutline" />
+          </ion-button>
+        </ion-item>
+      </ion-reorder-group>
+
+      <ion-item
+        v-if="visibleForAllFiles.length === 0"
+        lines="none"
+        color="dark"
+      >
+        <ion-label class="master-files__empty-group">
+          В верхней группе нет файлов. Перетащите сюда из нижней.
+        </ion-label>
+      </ion-item>
+      <ion-item
+        v-if="visibleOnlyForMeFiles.length === 0"
+        lines="none"
+        color="dark"
+      >
+        <ion-label class="master-files__empty-group">
+          В нижней группе нет файлов. Перетащите сюда из верхней.
+        </ion-label>
       </ion-item>
     </ion-list>
 
     <ion-modal :is-open="isPreviewOpen" @didDismiss="closePreview">
-      <ion-header>
+      <ion-header v-if="previewKind !== 'image'">
         <ion-toolbar color="dark">
           <ion-label class="master-files__modal-title">
             {{ displayedPreviewName || "Файл" }}
@@ -363,19 +520,34 @@ async function onFileSelected(event: Event) {
         </ion-toolbar>
       </ion-header>
 
-      <ion-content class="ion-padding" color="dark">
+      <ion-content
+        :class="previewKind === 'image' ? 'master-files__preview-content--image' : 'ion-padding'"
+        color="dark"
+      >
+        <ion-button
+          v-if="previewKind === 'image' && !isPreviewLoading"
+          class="master-files__image-close-button"
+          fill="clear"
+          color="light"
+          @click="closePreview"
+        >
+          <ion-icon :icon="closeCircleOutline" />
+        </ion-button>
+
         <div v-if="isPreviewLoading" class="master-files__loading">
           Загрузка файла...
         </div>
 
         <div v-else>
           <template v-if="previewKind === 'image'">
-            <img
-              v-if="previewUrl"
-              ref="imagePreviewEl"
-              :src="previewUrl"
-              class="master-files__preview-image"
-            />
+            <div class="master-files__image-lightbox">
+              <img
+                v-if="previewUrl"
+                ref="imagePreviewEl"
+                :src="previewUrl"
+                class="master-files__preview-image"
+              />
+            </div>
           </template>
 
           <template v-else-if="previewKind === 'pdf'">
@@ -432,6 +604,27 @@ async function onFileSelected(event: Event) {
   background: transparent;
 }
 
+.master-files__groups {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.master-files__group {
+  border: 1px dashed rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
+  padding: 8px;
+}
+
+.master-files__group-title {
+  font-size: 13px;
+  font-weight: 700;
+  margin: 4px 8px 8px;
+  color: var(--ion-color-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .master-files__file-input--hidden {
   display: none;
 }
@@ -460,11 +653,59 @@ async function onFileSelected(event: Event) {
   color: var(--ion-color-medium);
 }
 
+.master-files__loading-list {
+  color: var(--ion-color-medium);
+  padding: 8px;
+}
+
+.master-files__empty-group {
+  color: var(--ion-color-medium);
+  font-size: 12px;
+}
+
+.master-files__preview-content--image {
+  --padding-top: 0;
+  --padding-bottom: 0;
+  --padding-start: 0;
+  --padding-end: 0;
+}
+
+.master-files__image-lightbox {
+  width: 100%;
+  min-height: 100%;
+  background: #050505;
+}
+
+.master-files__image-close-button {
+  position: absolute;
+  top: max(8px, env(safe-area-inset-top, 0));
+  right: 8px;
+  z-index: 50;
+  --background: rgba(0, 0, 0, 0.35);
+  --border-radius: 999px;
+}
+
 .master-files__preview-image {
-  max-width: 100%;
-  max-height: 70vh;
+  width: 100%;
+  height: calc(100vh - env(safe-area-inset-top, 0) - env(safe-area-inset-bottom, 0));
   object-fit: contain;
-  border-radius: 8px;
+  border-radius: 0;
+}
+
+:deep(.viewer-container) {
+  width: 100%;
+  min-height: calc(100vh - env(safe-area-inset-top, 0) - env(safe-area-inset-bottom, 0));
+  border-radius: 0;
+  background: #050505;
+}
+
+:deep(.viewer-canvas) {
+  background: #050505;
+}
+
+:deep(.viewer-toolbar > ul) {
+  transform: scale(0.9);
+  margin-bottom: 16px;
 }
 
 .master-files__preview-frame {
