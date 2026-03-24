@@ -621,7 +621,8 @@ onIonViewDidEnter(loadMagicData);
 .spell-cell-level {
   color: var(--ion-color-light);
   font-size: 12px;
-  min-width: 70px;
+  min-width: 80px;
+  font-weight: 500;
 }
 
 .spell-cell-dots {
@@ -657,6 +658,13 @@ onIonViewDidEnter(loadMagicData);
   border: 1px solid #7c5cc4;
   background: transparent;
   box-shadow: 0 0 0 1px rgba(124, 92, 196, 0.25);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.spell-cell-dot:hover {
+  transform: scale(1.08);
+  box-shadow: 0 0 0 1px rgba(179, 140, 255, 0.45), 0 0 8px rgba(179, 140, 255, 0.45);
 }
 
 .spell-cell-dot.filled {
@@ -750,5 +758,169 @@ onIonViewDidEnter(loadMagicData);
   justify-content: center;
   align-items: center;
   padding: 8px 0 max(8px, env(safe-area-inset-bottom, 0));
+}
+
+@media (min-width: 1024px) {
+  .magic-body {
+    padding-bottom: 92px;
+  }
+
+  .sectionHeader {
+    margin-top: 16px;
+    margin-bottom: 10px;
+    font-size: 20px;
+    font-weight: 600;
+  }
+
+  .spell-cells {
+    border-radius: 16px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+    border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
+  }
+
+  .spell-cells-header {
+    margin-bottom: 10px;
+  }
+
+  .spell-cells-title {
+    font-size: 18px;
+  }
+
+  .spell-cells-grid {
+    gap: 8px;
+  }
+
+  .spell-cell-row {
+    background: rgba(var(--ion-color-dark-rgb), 0.18);
+    border-radius: 10px;
+    padding: 7px 10px;
+    border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
+  }
+
+  .spell-cell-level {
+    font-size: 12px;
+    min-width: 96px;
+  }
+
+  .spell-cell-dots {
+    flex: 1;
+    justify-content: flex-start;
+    gap: 7px;
+  }
+
+  .spell-cell-dot {
+    width: 10px;
+    height: 10px;
+  }
+
+  .spell-cell-actions {
+    gap: 4px;
+  }
+
+  .spell-cell-actions ion-button {
+    height: 24px;
+    --padding-start: 7px;
+    --padding-end: 7px;
+    --padding-top: 5px;
+    --padding-bottom: 5px;
+    margin: 0;
+  }
+
+  .spell-cell-actions ion-icon {
+    width: 13px;
+    height: 13px;
+  }
+
+  .spell-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(440px, 1fr));
+    gap: 10px 12px;
+    align-items: start;
+  }
+
+  .section {
+    border-radius: 16px;
+    padding: 10px 12px;
+    max-height: none;
+    min-height: 92px;
+    margin-bottom: 0;
+    border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
+    transition: border-color 0.2s ease, transform 0.2s ease;
+  }
+
+  .section:hover {
+    border-color: rgba(var(--ion-color-primary-rgb), 0.45);
+    transform: translateY(-1px);
+  }
+
+  .section-start-block {
+    flex: 1;
+    min-width: 0;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .image-block {
+    width: 60px;
+    height: 60px;
+    flex: 0 0 60px;
+  }
+
+  .spell-image {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+  }
+
+  .stats-block {
+    min-width: 0;
+    padding-top: 2px;
+  }
+
+  .item-name {
+    font-size: 15px;
+    line-height: 1.2;
+    margin-bottom: 6px;
+  }
+
+  .item-stats {
+    max-width: none;
+    max-height: none;
+    font-size: 12px;
+    line-height: 1.25;
+    opacity: 0.9;
+  }
+
+  .star-button-block {
+    min-width: 56px;
+    margin-left: 10px;
+  }
+
+  .star-button::part(native) {
+    width: 42px;
+    height: 42px;
+  }
+
+  .star-button ion-icon {
+    width: 22px;
+    height: 22px;
+  }
+
+  .add-new-button {
+    left: auto;
+    right: 22px;
+    bottom: 18px;
+    width: auto;
+    padding: 0;
+    justify-content: flex-end;
+    pointer-events: none;
+  }
+
+  .add-new-button ion-button {
+    pointer-events: auto;
+    margin: 0;
+    --box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  }
 }
 </style>

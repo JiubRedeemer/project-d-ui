@@ -215,4 +215,56 @@ const createRoom = async () => {
   flex-direction: column;
   width: 100%;
 }
+
+@media (min-width: 1024px) {
+  .form-wrapper {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px;
+    display: grid;
+    grid-template-columns: minmax(320px, 430px) minmax(420px, 1fr);
+    grid-template-areas:
+      "image name"
+      "image description"
+      "image rules"
+      "image base";
+    align-items: start;
+    column-gap: 22px;
+    row-gap: 14px;
+  }
+
+  .image-wrapper {
+    grid-area: image;
+    height: 420px;
+    border-radius: 18px;
+    border: 1px solid rgba(var(--ion-color-light-rgb), 0.12);
+    overflow: hidden;
+  }
+
+  .background-large-image {
+    border-radius: 18px;
+  }
+
+  .background-large-image-overlay {
+    border-radius: 0;
+  }
+
+  .input-block {
+    margin: 0;
+    border-radius: 12px;
+    border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
+    --inner-padding-start: 10px;
+    --inner-padding-end: 10px;
+  }
+
+  .input-block:nth-of-type(1) { grid-area: name; }
+  .input-block:nth-of-type(2) { grid-area: description; }
+  .input-block:nth-of-type(3) { grid-area: rules; }
+  .input-block:nth-of-type(4) { grid-area: base; }
+
+  ion-fab {
+    margin-right: 14px;
+    margin-bottom: 14px;
+  }
+}
 </style>

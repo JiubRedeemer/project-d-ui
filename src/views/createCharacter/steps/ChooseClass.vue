@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div>
     <div class="wrapper">
       <div class="class-header">
@@ -47,21 +47,23 @@
                   <p class="class-name">{{ selectedClass.name }}</p>
                 </div>
               </div>
-              <div class="abilities-container">
-                <ion-chip v-for="(ability, i) in selectedClass.stats.savingThrowsAbilities" :key="i">
-                  <ion-icon :icon="arrowUp" color="success"></ion-icon>
-                  <ion-label>{{ ability.name }}</ion-label>
-                </ion-chip>
-                <ion-chip>
-                  <ion-icon :icon="heart" color="danger"></ion-icon>
-                  <ion-label>{{
-                      selectedClass.stats.hpDice.substring(0, selectedClass.stats.hpDice.length - 4)
-                    }}
-                  </ion-label>
-                </ion-chip>
-              </div>
-              <div class="class-description">
-                <p class="class-text">{{ selectedClass.description }}</p>
+              <div class="class-info">
+                <div class="abilities-container">
+                  <ion-chip v-for="(ability, i) in selectedClass.stats.savingThrowsAbilities" :key="i">
+                    <ion-icon :icon="arrowUp" color="success"></ion-icon>
+                    <ion-label>{{ ability.name }}</ion-label>
+                  </ion-chip>
+                  <ion-chip>
+                    <ion-icon :icon="heart" color="danger"></ion-icon>
+                    <ion-label>{{
+                        selectedClass.stats.hpDice.substring(0, selectedClass.stats.hpDice.length - 4)
+                      }}
+                    </ion-label>
+                  </ion-chip>
+                </div>
+                <div class="class-description">
+                  <p class="class-text">{{ selectedClass.description }}</p>
+                </div>
               </div>
             </div>
           </swiper-slide>
@@ -280,6 +282,10 @@ function onChooseClass(clazz?: ClassResponse) {
   justify-content: center;
 }
 
+.class-info {
+  width: 100%;
+}
+
 .image-wrapper {
   position: relative;
   width: 100%;
@@ -334,5 +340,84 @@ swiper-slide {
   display: flex;
   flex-wrap: nowrap;
   gap: 8px;
+}
+
+@media (min-width: 1024px) {
+  .wrapper {
+    max-width: 1240px;
+    margin: 0 auto;
+  }
+
+  .class-header {
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .classSmallList {
+    width: calc(100% - 52px);
+  }
+
+  .class-image {
+    padding: 6px;
+  }
+
+  .classLargeList {
+    padding-top: 0;
+  }
+
+  .class-container {
+    display: grid;
+    grid-template-columns: minmax(360px, 460px) minmax(440px, 1fr);
+    gap: 16px 20px;
+    align-items: start;
+  }
+
+  .image-wrapper {
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid rgba(var(--ion-color-light-rgb), 0.12);
+    background: var(--ion-color-medium);
+  }
+
+  .background-large-image {
+    width: 100%;
+    border-radius: 0;
+    display: block;
+  }
+
+  .class-overlay {
+    border-radius: 0;
+    padding: 12px;
+  }
+
+  .class-description {
+    margin-top: 0;
+    padding: 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
+    background: rgba(var(--ion-color-medium-rgb), 0.22);
+    min-height: 220px;
+  }
+
+  .class-text {
+    margin-top: 0;
+    line-height: 1.45;
+    text-align: left;
+  }
+
+  .abilities-container {
+    margin-top: 2px;
+    flex-wrap: wrap;
+  }
+
+  .class-info {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  swiper-slide {
+    width: auto;
+  }
 }
 </style>

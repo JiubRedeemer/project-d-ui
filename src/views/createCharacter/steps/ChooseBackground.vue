@@ -296,4 +296,80 @@ swiper-slide {
   width: 10vw;
   height: auto;
 }
+
+@media (min-width: 1024px) {
+  .wrapper {
+    max-width: 1240px;
+    margin: 0 auto;
+  }
+
+  .background-header {
+    margin-bottom: 12px;
+  }
+
+  .backgroundSmallList {
+    width: 100%;
+  }
+
+  .background-image {
+    padding: 6px;
+  }
+
+  .backgroundLargeList {
+    padding-top: 0;
+  }
+
+  .background-container {
+    display: grid;
+    grid-template-columns: minmax(360px, 460px) minmax(440px, 1fr);
+    gap: 16px 20px;
+    align-items: start;
+  }
+
+  .image-wrapper {
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid rgba(var(--ion-color-light-rgb), 0.12);
+    background: var(--ion-color-medium);
+  }
+
+  .background-large-image {
+    width: 100%;
+    border-radius: 0;
+    display: block;
+  }
+
+  .background-overlay {
+    border-radius: 0;
+    padding: 12px;
+  }
+
+  .background-description,
+  .abilities-modifiers-block,
+  .traits-block {
+    margin-top: 0;
+    padding: 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
+    background: rgba(var(--ion-color-medium-rgb), 0.22);
+    text-align: left;
+  }
+
+  .background-text {
+    margin-top: 0;
+    line-height: 1.45;
+  }
+
+  .abilities-modifiers-block {
+    margin-top: 10px;
+  }
+
+  .traits-block {
+    margin-top: 10px;
+  }
+
+  swiper-slide {
+    width: auto;
+  }
+}
 </style>

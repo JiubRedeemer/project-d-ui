@@ -2,7 +2,7 @@
 import {IonButton, IonIcon, IonModal} from "@ionic/vue";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {useRoute} from "vue-router";
-import {ref} from "vue";
+import {computed, onMounted, onUnmounted, ref} from "vue";
 import {checkmarkOutline} from "ionicons/icons";
 import {HEADERS} from "@/config/localisations";
 import HpEditBlock from "@/views/character/tabs/common/HpEditBlock.vue";
@@ -22,6 +22,10 @@ const emit = defineEmits(["closeHpModal"]); // Добавляем событие
 const showEditHpModal = ref(false); // Управляем видимостью модалки
 const inputValue = ref();
 inputValue.value = characterStore.character.bonusSpeed;
+const isDesktop = ref<boolean>(window.innerWidth >= 1024);
+
+const modalBreakpoints = computed(() => (isDesktop.value ? undefined : [0, 1]));
+const modalInitialBreakpoint = computed(() => (isDesktop.value ? undefined : 1));
 
 async function onSubmit() {
   emit('closeHpModal');
@@ -34,14 +38,27 @@ const closeEditHpModal = () => {
   showEditHpModal.value = false;
 };
 
+const onResize = () => {
+  isDesktop.value = window.innerWidth >= 1024;
+};
+
+onMounted(() => {
+  window.addEventListener("resize", onResize);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("resize", onResize);
+});
+
 </script>
 
 <template>
   <ion-modal
       :is-open="isOpen"
       @didDismiss="emit('closeHpModal')"
-      :initial-breakpoint="1"
-      :breakpoints="[0, 1]"
+      :initial-breakpoint="modalInitialBreakpoint"
+      :breakpoints="modalBreakpoints"
+      :class="{ 'desktop-modal': isDesktop }"
   >
     <div class="block">
       <div class="header">
@@ -105,5 +122,47 @@ ion-modal {
   --height: auto;
   --width: 90%;
   --background: var(--ion-color-dark);
+}
+
+@media (min-width: 1024px) {
+  .block {
+    height: auto;
+    min-height: 420px;
+    max-height: min(80vh, 760px);
+    padding: 8px;
+  }
+
+  .header {
+    padding: 14px 16px 10px 16px;
+    font-size: 1.25rem;
+    align-items: center;
+    border-bottom: 1px solid rgba(var(--ion-color-light-rgb), 0.12);
+  }
+
+  .name {
+    font-weight: 600;
+  }
+
+  .value {
+    font-size: 1.05rem;
+    color: var(--ion-color-light);
+  }
+
+  .input-block {
+    padding: 16px;
+    overflow-y: auto;
+  }
+
+  .footer {
+    padding: 12px 16px 14px 16px;
+    border-top: 1px solid rgba(var(--ion-color-light-rgb), 0.12);
+  }
+
+  ion-modal.desktop-modal {
+    --width: min(860px, 88vw);
+    --height: auto;
+    --max-height: 86vh;
+    --border-radius: 14px;
+  }
 }
 </style>

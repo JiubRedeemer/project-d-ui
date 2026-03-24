@@ -88,4 +88,43 @@ function onChooseWeight(weight: number) {
   margin-top: 5%;
 }
 
+@media (min-width: 1024px) {
+  .wrapper {
+    max-width: 760px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .image-wrapper {
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid rgba(var(--ion-color-light-rgb), 0.12);
+    background: var(--ion-color-medium);
+  }
+
+  .background-large-image {
+    border-radius: 0;
+    max-height: 420px;
+    width: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .background-large-image-overlay {
+    border-radius: 0;
+    padding: 12px;
+  }
+
+  .input-block {
+    margin-top: 0;
+  }
+
+  ion-fab[horizontal="end"] {
+    right: 22px;
+    bottom: 18px;
+  }
+}
+
 </style>

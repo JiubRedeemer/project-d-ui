@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref } from "vue";
 import { useRoute } from "vue-router";
 import {
   IonBackButton,
@@ -42,6 +42,10 @@ const previewKind = ref<"image" | "pdf" | "text" | "other">("other");
 const previewText = ref<string | null>(null);
 const imagePreviewEl = ref<HTMLImageElement | null>(null);
 let imageViewer: Viewer | null = null;
+const isDesktop = ref<boolean>(window.innerWidth >= 1024);
+const onResize = () => {
+  isDesktop.value = window.innerWidth >= 1024;
+};
 
 async function getMyId(): Promise<string> {
   const myIdResponse = await axios.get(`${GATEWAY_INTEGRATION_ROUTES.baseURL}/users/myId`, {
@@ -212,6 +216,14 @@ function openInNewTab() {
 }
 
 onIonViewWillEnter(loadFiles);
+
+onMounted(() => {
+  window.addEventListener("resize", onResize);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("resize", onResize);
+});
 </script>
 
 <template>
@@ -250,7 +262,11 @@ onIonViewWillEnter(loadFiles);
         </ion-item>
       </ion-list>
 
-      <ion-modal :is-open="isPreviewOpen" @didDismiss="closePreview">
+      <ion-modal
+        :is-open="isPreviewOpen"
+        @didDismiss="closePreview"
+        :class="{ 'character-files__preview-modal--desktop': isDesktop }"
+      >
         <ion-header v-if="previewKind !== 'image'">
           <ion-toolbar color="dark">
             <ion-label class="character-files__modal-title">
@@ -333,6 +349,10 @@ onIonViewWillEnter(loadFiles);
 </template>
 
 <style scoped>
+ion-content {
+  --padding-bottom: 18px;
+}
+
 .character-files__list {
   background: transparent;
 }
@@ -430,6 +450,51 @@ onIonViewWillEnter(loadFiles);
 
 .character-files__non-image p {
   margin: 0 0 12px 0;
+}
+
+@media (min-width: 1024px) {
+  ion-content {
+    --padding-bottom: 24px;
+  }
+
+  .character-files__list {
+    border: 1px solid rgba(var(--ion-color-light-rgb), 0.1);
+    border-radius: 14px;
+    overflow: hidden;
+    background: rgba(var(--ion-color-medium-rgb), 0.15);
+  }
+
+  .character-files__list ion-item {
+    --min-height: 58px;
+    --inner-padding-top: 6px;
+    --inner-padding-bottom: 6px;
+    --border-color: rgba(var(--ion-color-light-rgb), 0.08);
+  }
+
+  .character-files__filename {
+    font-size: 14px;
+  }
+
+  .character-files__meta {
+    font-size: 11px;
+  }
+
+  ion-modal.character-files__preview-modal--desktop {
+    --width: min(1160px, 92vw);
+    --height: min(86vh, 920px);
+    --border-radius: 14px;
+    --background: var(--ion-color-dark);
+  }
+
+  .character-files__preview-frame {
+    height: min(78vh, 820px);
+  }
+
+  .character-files__preview-text {
+    max-height: min(68vh, 760px);
+    font-size: 13px;
+    line-height: 1.45;
+  }
 }
 </style>
 

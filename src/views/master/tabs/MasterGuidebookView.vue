@@ -147,11 +147,25 @@ function getCacheKey() {
   return `${roomId.value}:${baseRuleType.value ?? ""}`;
 }
 
-watch([roomId, baseRuleType], () => {
-  races.value = [];
-  classes.value = [];
-  backgrounds.value = [];
-}, { flush: "sync" });
+watch(
+  [roomId, baseRuleType],
+  ([nextRoomId, nextBaseRuleType], [prevRoomId, prevBaseRuleType]) => {
+    // While navigating to FullView routes roomId can be absent; do not wipe lists.
+    if (!nextRoomId) return;
+
+    const changed = nextRoomId !== prevRoomId || nextBaseRuleType !== prevBaseRuleType;
+    if (!changed) return;
+
+    races.value = [];
+    classes.value = [];
+    backgrounds.value = [];
+
+    if (currentSection.value !== "list") {
+      void ensureSectionDataLoaded(currentSection.value);
+    }
+  },
+  { flush: "post" }
+);
 
 type RaceGroup = {
   key: string;
@@ -301,7 +315,7 @@ const spellsByLevel = computed(() => {
 });
 
 async function loadRaces() {
-  if (!roomId.value || !baseRuleType.value) return;
+  if (!roomId.value) return;
   const key = getCacheKey();
   const cached = guidebookCache.get(key);
   if (cached?.races.length) {
@@ -320,7 +334,7 @@ async function loadRaces() {
 }
 
 async function loadClasses() {
-  if (!roomId.value || !baseRuleType.value) return;
+  if (!roomId.value) return;
   const key = getCacheKey();
   const cached = guidebookCache.get(key);
   if (cached?.classes.length) {
@@ -339,7 +353,7 @@ async function loadClasses() {
 }
 
 async function loadBackgrounds() {
-  if (!roomId.value || !baseRuleType.value) return;
+  if (!roomId.value) return;
   const key = getCacheKey();
   const cached = guidebookCache.get(key);
   if (cached?.backgrounds.length) {
@@ -660,17 +674,26 @@ function goToCreateNpc() {
 
 function goToSection(section: Section) {
   currentSection.value = section;
-  if (section === "races" && races.value.length === 0) loadRaces();
-  else if (section === "classes" && classes.value.length === 0) loadClasses();
-  else if (section === "backgrounds" && backgrounds.value.length === 0) loadBackgrounds();
-  else if (section === "spells" && spells.value.length === 0) {
-    loadSpellClassesForRoom();
-    loadSpells();
-  } else if (section === "npcs") loadNpcs();
+  void ensureSectionDataLoaded(section);
 }
 
 function goBack() {
   currentSection.value = "list";
+}
+
+async function ensureSectionDataLoaded(section: Section) {
+  if (section === "races" && races.value.length === 0) {
+    await loadRaces();
+  } else if (section === "classes" && classes.value.length === 0) {
+    await loadClasses();
+  } else if (section === "backgrounds" && backgrounds.value.length === 0) {
+    await loadBackgrounds();
+  } else if (section === "spells") {
+    if (spellClasses.value.length === 0) await loadSpellClassesForRoom();
+    if (spells.value.length === 0) await loadSpells();
+  } else if (section === "npcs" && npcs.value.length === 0) {
+    await loadNpcs();
+  }
 }
 
 const sectionTitles: Record<string, string> = {
@@ -684,6 +707,9 @@ const sectionTitles: Record<string, string> = {
 
 onIonViewDidEnter(async () => {
   if (!roomStore.room?.id) await roomStore.getRoomInfo(roomId.value);
+  if (currentSection.value !== "list") {
+    await ensureSectionDataLoaded(currentSection.value);
+  }
 });
 </script>
 
@@ -1104,7 +1130,6 @@ onIonViewDidEnter(async () => {
 }
 
 .section-header {
-  margin-top: 50px;
   display: flex;
   align-items: center;
   gap: 8px;

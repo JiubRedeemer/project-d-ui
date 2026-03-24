@@ -331,6 +331,7 @@ function closeModal() {
   font-weight: 500;
   color: white;
   overflow: scroll;
+  scrollbar-width: none;
   max-height: 100px;
 }
 
@@ -410,4 +411,5 @@ ion-modal {
 .description-html :deep(detail-tooltip) {
   display: inline;
 }
+
 </style>
