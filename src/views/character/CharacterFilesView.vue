@@ -264,6 +264,7 @@ onIonViewWillEnter(loadFiles);
 
         <ion-content
           :class="previewKind === 'image' ? 'character-files__preview-content--image' : 'ion-padding'"
+          :scroll-y="previewKind !== 'image'"
           color="dark"
         >
           <ion-button
@@ -293,12 +294,17 @@ onIonViewWillEnter(loadFiles);
             </template>
 
             <template v-else-if="previewKind === 'pdf'">
-              <iframe
+              <object
                 v-if="previewUrl"
-                :src="previewUrl"
+                :data="previewUrl"
+                type="application/pdf"
                 class="character-files__preview-frame"
-                title="PDF preview"
-              />
+              >
+                <div class="character-files__non-image">
+                  <p>Не удалось встроенно отобразить PDF</p>
+                  <ion-button @click="openInNewTab">Открыть PDF</ion-button>
+                </div>
+              </object>
               <div v-else class="character-files__non-image">
                 <p>Тип: {{ previewType || "unknown" }}</p>
                 <ion-button @click="openInNewTab">Открыть</ion-button>
@@ -365,6 +371,7 @@ onIonViewWillEnter(loadFiles);
   width: 100%;
   min-height: 100%;
   background: #050505;
+  touch-action: none;
 }
 
 .character-files__image-close-button {
@@ -392,6 +399,7 @@ onIonViewWillEnter(loadFiles);
 
 :deep(.viewer-canvas) {
   background: #050505;
+  touch-action: none;
 }
 
 :deep(.viewer-toolbar > ul) {

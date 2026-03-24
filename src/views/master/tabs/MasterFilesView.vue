@@ -523,6 +523,7 @@ async function onFileSelected(event: Event) {
 
       <ion-content
         :class="previewKind === 'image' ? 'master-files__preview-content--image' : 'ion-padding'"
+        :scroll-y="previewKind !== 'image'"
         color="dark"
       >
         <ion-button
@@ -552,12 +553,17 @@ async function onFileSelected(event: Event) {
           </template>
 
           <template v-else-if="previewKind === 'pdf'">
-            <iframe
+            <object
               v-if="previewUrl"
-              :src="previewUrl"
+              :data="previewUrl"
+              type="application/pdf"
               class="master-files__preview-frame"
-              title="PDF preview"
-            />
+            >
+              <div class="master-files__non-image">
+                <p>Не удалось встроенно отобразить PDF</p>
+                <ion-button @click="openInNewTab">Открыть PDF</ion-button>
+              </div>
+            </object>
             <div v-else class="master-files__non-image">
               <p>Тип: {{ previewType || "unknown" }}</p>
               <ion-button @click="openInNewTab">Открыть</ion-button>
@@ -675,6 +681,7 @@ async function onFileSelected(event: Event) {
   width: 100%;
   min-height: 100%;
   background: #050505;
+  touch-action: none;
 }
 
 .master-files__image-close-button {
@@ -702,6 +709,7 @@ async function onFileSelected(event: Event) {
 
 :deep(.viewer-canvas) {
   background: #050505;
+  touch-action: none;
 }
 
 :deep(.viewer-toolbar > ul) {
