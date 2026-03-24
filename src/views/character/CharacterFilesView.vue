@@ -42,10 +42,6 @@ const previewKind = ref<"image" | "pdf" | "text" | "other">("other");
 const previewText = ref<string | null>(null);
 const imagePreviewEl = ref<HTMLImageElement | null>(null);
 let imageViewer: Viewer | null = null;
-const pdfViewerBaseUrl = `${import.meta.env.BASE_URL}node-viewerjs/`;
-const pdfViewerSrc = computed(() =>
-  previewUrl.value ? `${pdfViewerBaseUrl}index.html?type=pdf#${previewUrl.value}` : ""
-);
 
 async function getMyId(): Promise<string> {
   const myIdResponse = await axios.get(`${GATEWAY_INTEGRATION_ROUTES.baseURL}/users/myId`, {
@@ -135,7 +131,12 @@ async function openPreview(file: UserFile) {
 
   try {
     const currentUserId = await ensureUserId();
-    const blob = await downloadUserFileById(file.id, currentUserId);
+    const rawBlob = await downloadUserFileById(file.id, currentUserId);
+    const blob =
+      isLikelyPdfFile(file.filename) && rawBlob.type !== "application/pdf"
+        ? new Blob([rawBlob], { type: "application/pdf" })
+        : rawBlob;
+
     previewType.value = blob.type || null;
     previewUrl.value = URL.createObjectURL(blob);
     previewKind.value = detectPreviewKind(file.filename, previewType.value);
@@ -294,7 +295,7 @@ onIonViewWillEnter(loadFiles);
             <template v-else-if="previewKind === 'pdf'">
               <iframe
                 v-if="previewUrl"
-                :src="pdfViewerSrc"
+                :src="previewUrl"
                 class="character-files__preview-frame"
                 title="PDF preview"
               />
