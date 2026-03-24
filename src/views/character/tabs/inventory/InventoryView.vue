@@ -506,6 +506,7 @@ async function takeMoney() {
         </div>
       </div>
     </div>
+      <div class="security-block" style="height: 50px;"></div>
   </div>
   <div class="add-new-button">
     <ion-button size="large" shape="round" color="secondary" @click="openSearchView">
