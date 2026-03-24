@@ -17,9 +17,11 @@ export type FileBucketEnum =
 
 export type UserFile = {
     id: Uuid;
+    roomId: Uuid;
     filename: string;
     bucket: string; // expected to be 'other' for this feature
-    userId: string;
+    userId: Uuid;
     uploadedAt: string; // date-time
+    visible: boolean;
 };
 
