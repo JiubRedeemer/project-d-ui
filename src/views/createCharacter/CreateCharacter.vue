@@ -172,52 +172,52 @@ function convertCharacterData() {
 <template>
   <ion-page>
     <ion-content class="ion-padding" color="dark">
-      <div class="header-block">
+      <div class="header-block create-character-header">
         <CreateCharacterHeader :header-text="stepNames[step.current]" :step="step" :total-steps="stepNames.length"/>
       </div>
-      <div v-show="step.current === 0">
+      <div class="create-character-flow" v-show="step.current === 0">
         <ChooseRace :characterData="characterData" :currentStep="step"/>
       </div>
-      <div v-show="step.current === 1">
+      <div class="create-character-flow" v-show="step.current === 1">
         <ChooseName :characterData="characterData" :currentStep="step"/>
       </div>
-      <div v-show="step.current === 2">
+      <div class="create-character-flow" v-show="step.current === 2">
         <ChooseAge :characterData="characterData" :currentStep="step"/>
       </div>
-      <div v-show="step.current === 3">
+      <div class="create-character-flow" v-show="step.current === 3">
         <ChooseHeight :characterData="characterData" :currentStep="step"/>
       </div>
-      <div v-show="step.current === 4">
+      <div class="create-character-flow" v-show="step.current === 4">
         <ChooseWeight :characterData="characterData" :currentStep="step"/>
       </div>
-      <div v-show="hasDnd2024Backgrounds && step.current === 5">
+      <div class="create-character-flow" v-show="hasDnd2024Backgrounds && step.current === 5">
         <ChooseBackground :characterData="characterData" :currentStep="step"/>
       </div>
-      <div v-show="step.current === historyStep">
+      <div class="create-character-flow" v-show="step.current === historyStep">
         <ChooseHistory :characterData="characterData" :currentStep="step"/>
       </div>
-      <div v-show="step.current === personalityStep">
+      <div class="create-character-flow" v-show="step.current === personalityStep">
         <ChoosePersonality :characterData="characterData" :currentStep="step"/>
       </div>
-      <div v-show="step.current === idealsStep">
+      <div class="create-character-flow" v-show="step.current === idealsStep">
         <ChooseIdeals :characterData="characterData" :currentStep="step"/>
       </div>
-      <div v-show="step.current === attachmentsStep">
+      <div class="create-character-flow" v-show="step.current === attachmentsStep">
         <ChooseAttachments :characterData="characterData" :currentStep="step"/>
       </div>
-      <div v-show="step.current === weaknessesStep">
+      <div class="create-character-flow" v-show="step.current === weaknessesStep">
         <ChooseWeaknesses :characterData="characterData" :currentStep="step"/>
       </div>
-      <div v-show="step.current === relationshipsStep">
+      <div class="create-character-flow" v-show="step.current === relationshipsStep">
         <ChooseRelationships :characterData="characterData" :currentStep="step"/>
       </div>
-      <div v-show="step.current === classStep">
+      <div class="create-character-flow" v-show="step.current === classStep">
         <ChooseClass :characterData="characterData" :currentStep="step"/>
       </div>
-      <div v-show="step.current === abilitiesStep">
+      <div class="create-character-flow" v-show="step.current === abilitiesStep">
         <ChooseAbilities :characterData="characterData" :currentStep="step"/>
       </div>
-      <div v-show="step.current === skillsStep">
+      <div class="create-character-flow" v-show="step.current === skillsStep">
         <ChooseSkills :characterData="characterData" :currentStep="step"/>
       </div>
     </ion-content>
@@ -227,5 +227,86 @@ function convertCharacterData() {
 <style>
 .header-block {
   padding-bottom: 3%;
+}
+
+@media (min-width: 1024px) {
+  .create-character-header {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding-bottom: 14px;
+  }
+
+  .create-character-flow {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 0 8px 92px;
+  }
+
+  .create-character-flow .race-header,
+  .create-character-flow .class-header,
+  .create-character-flow .background-header {
+    grid-column: 1 / -1;
+  }
+
+  .create-character-flow .raceLargeList,
+  .create-character-flow .classLargeList,
+  .create-character-flow .backgroundLargeList,
+  .create-character-flow .ability-list,
+  .create-character-flow ion-list {
+    width: 100%;
+  }
+
+  .create-character-flow .image-wrapper {
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid rgba(var(--ion-color-light-rgb), 0.12);
+    background: var(--ion-color-medium);
+  }
+
+  .create-character-flow .background-large-image {
+    border-radius: 0 !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    height: auto;
+  }
+
+  .create-character-flow .race-description,
+  .create-character-flow .class-description,
+  .create-character-flow .background-description,
+  .create-character-flow .support-text,
+  .create-character-flow .background-modifiers-block {
+    border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
+    border-radius: 12px;
+    padding: 12px;
+    margin-top: 10px;
+    text-align: left;
+  }
+
+  .create-character-flow .input-block {
+    margin-top: 0 !important;
+  }
+
+  .create-character-flow ion-textarea.input-block,
+  .create-character-flow ion-input.input-block {
+    width: 100%;
+  }
+
+  .create-character-flow .ability-header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .create-character-flow .ability-header .coins {
+    float: none;
+    margin-left: auto;
+  }
+
+  .create-character-flow ion-fab[horizontal="end"] {
+    right: 22px;
+    bottom: 18px;
+  }
 }
 </style>

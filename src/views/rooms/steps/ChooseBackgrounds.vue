@@ -192,4 +192,55 @@ const previousStep = () => {
   justify-content: center;
   overflow: auto;
 }
+
+@media (min-width: 1024px) {
+  .room-list {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 8px 10px 96px;
+    border-radius: 14px;
+    border: 1px solid rgba(var(--ion-color-light-rgb), 0.1);
+    background: rgba(var(--ion-color-medium-rgb), 0.16);
+  }
+
+  .room-list ion-item {
+    --min-height: 72px;
+    --inner-padding-top: 8px;
+    --inner-padding-bottom: 8px;
+    --border-color: rgba(var(--ion-color-light-rgb), 0.08);
+  }
+
+  .room-list ion-avatar {
+    width: 52px;
+    height: 52px;
+  }
+
+  .room-name {
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .room-list-placeholder-wrapper {
+    position: static;
+    min-height: 40vh;
+  }
+
+  ion-fab[horizontal="start"] {
+    left: 22px;
+    right: auto;
+    bottom: 18px;
+  }
+
+  ion-fab[horizontal="center"] {
+    left: 84px;
+    right: auto;
+    transform: none;
+    bottom: 18px;
+  }
+
+  ion-fab[horizontal="end"] {
+    right: 22px;
+    bottom: 18px;
+  }
+}
 </style>

@@ -13,7 +13,7 @@ import {
   toastController,
 } from "@ionic/vue";
 import { add, closeCircleOutline, documentTextOutline, eyeOutline, imageOutline } from "ionicons/icons";
-import { computed, nextTick, onMounted, ref } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref } from "vue";
 import { useRoute } from "vue-router";
 import axios from "axios";
 import { GATEWAY_INTEGRATION_ROUTES } from "@/config/integrationRoutes";
@@ -33,6 +33,10 @@ const route = useRoute();
 const roomId = computed(() => String(route.params.roomId ?? ""));
 const userFiles = ref<UserFile[]>([]);
 const didLoadOnce = ref(false);
+const isDesktop = ref<boolean>(window.innerWidth >= 1024);
+const onResize = () => {
+  isDesktop.value = window.innerWidth >= 1024;
+};
 
 const fileInput = ref<HTMLInputElement | null>(null);
 const isLoading = ref(false);
@@ -106,6 +110,8 @@ onIonViewWillEnter(async () => {
 });
 
 onMounted(async () => {
+  window.addEventListener("resize", onResize);
+
   if (didLoadOnce.value) return;
   didLoadOnce.value = true;
   try {
@@ -114,6 +120,10 @@ onMounted(async () => {
   } catch (e) {
     console.error("Failed to load files on mount:", e);
   }
+});
+
+onUnmounted(() => {
+  window.removeEventListener("resize", onResize);
 });
 
 async function ensureUserId(): Promise<string> {
@@ -509,7 +519,11 @@ async function onFileSelected(event: Event) {
       </ion-item>
     </ion-list>
 
-    <ion-modal :is-open="isPreviewOpen" @didDismiss="closePreview">
+    <ion-modal
+      :is-open="isPreviewOpen"
+      @didDismiss="closePreview"
+      :class="{ 'master-files__preview-modal--desktop': isDesktop }"
+    >
       <ion-header v-if="previewKind !== 'image'">
         <ion-toolbar color="dark">
           <ion-label class="master-files__modal-title">
@@ -605,6 +619,7 @@ async function onFileSelected(event: Event) {
 <style scoped>
 .master-files {
   width: 100%;
+  padding-bottom: 84px;
 }
 
 .master-files__list {
@@ -753,6 +768,82 @@ async function onFileSelected(event: Event) {
   justify-content: center;
   align-items: center;
   padding: 8px 0 max(8px, env(safe-area-inset-bottom, 0));
+}
+
+@media (min-width: 1024px) {
+  .master-files {
+    padding-bottom: 96px;
+  }
+
+  .master-files__list {
+    border: 1px solid rgba(var(--ion-color-light-rgb), 0.1);
+    border-radius: 14px;
+    overflow: hidden;
+    background: rgba(var(--ion-color-medium-rgb), 0.15);
+  }
+
+  .master-files__group-header,
+  .master-files__group-divider {
+    --min-height: 40px;
+  }
+
+  .master-files__group-title {
+    font-size: 12px;
+    margin: 0;
+    color: var(--ion-color-light-shade);
+  }
+
+  .master-files__list ion-item {
+    --min-height: 58px;
+    --inner-padding-top: 6px;
+    --inner-padding-bottom: 6px;
+    --border-color: rgba(var(--ion-color-light-rgb), 0.08);
+  }
+
+  .master-files__filename {
+    font-size: 14px;
+  }
+
+  .master-files__meta {
+    font-size: 11px;
+  }
+
+  .master-files__loading-list {
+    padding: 14px 10px;
+  }
+
+  .add-new-button {
+    left: auto;
+    right: 22px;
+    bottom: 18px;
+    width: auto;
+    padding: 0;
+    justify-content: flex-end;
+    pointer-events: none;
+  }
+
+  .add-new-button ion-button {
+    pointer-events: auto;
+    margin: 0;
+    --box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  }
+
+  ion-modal.master-files__preview-modal--desktop {
+    --width: min(1160px, 92vw);
+    --height: min(86vh, 920px);
+    --border-radius: 14px;
+    --background: var(--ion-color-dark);
+  }
+
+  .master-files__preview-frame {
+    height: min(78vh, 820px);
+  }
+
+  .master-files__preview-text {
+    max-height: min(68vh, 760px);
+    font-size: 13px;
+    line-height: 1.45;
+  }
 }
 </style>
 

@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div>
     <div class="wrapper">
       <div class="race-header">
@@ -348,5 +348,80 @@ swiper-slide {
   justify-content: center;
   width: 10vw;
   height: auto;
+}
+
+@media (min-width: 1024px) {
+  .wrapper {
+    max-width: 1240px;
+    margin: 0 auto;
+  }
+
+  .race-header {
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .raceSmallList {
+    width: calc(100% - 52px);
+  }
+
+  .race-image {
+    padding: 6px;
+  }
+
+  .raceLargeList {
+    padding-top: 0;
+  }
+
+  .race-container {
+    display: grid;
+    grid-template-columns: minmax(360px, 460px) minmax(440px, 1fr);
+    gap: 16px 20px;
+    align-items: start;
+  }
+
+  .image-wrapper {
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid rgba(var(--ion-color-light-rgb), 0.12);
+    background: var(--ion-color-medium);
+  }
+
+  .background-large-image {
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+    height: auto;
+    border-radius: 0;
+    display: block;
+  }
+
+  .race-overlay {
+    border-radius: 0;
+    padding: 12px;
+  }
+
+  .race-name {
+    font-size: 1.35rem;
+  }
+
+  .race-description {
+    margin-top: 0;
+    padding: 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
+    background: rgba(var(--ion-color-medium-rgb), 0.22);
+    min-height: 220px;
+  }
+
+  .race-text {
+    margin-top: 0;
+    line-height: 1.45;
+    text-align: left;
+  }
+
+  swiper-slide {
+    width: auto;
+  }
 }
 </style>

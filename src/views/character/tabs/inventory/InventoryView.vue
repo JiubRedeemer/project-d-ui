@@ -95,11 +95,25 @@ const changeInUseForItem = async (itemId: string) => {
   }
 }
 
-const equippedItems = computed(() => inventoryStore.inventory?.items?.filter(item => item.inUse));
-const armorItems = computed(() => inventoryStore.inventory?.items?.filter(item => item.item.type === "ARMOR"));
-const weaponItems = computed(() => inventoryStore.inventory?.items?.filter(item => item.item.type === "WEAPON"));
-const magicItems = computed(() => inventoryStore.inventory?.items?.filter(item => item.item.type === "MAGIC_ITEM"));
-const otherItems = computed(() => inventoryStore.inventory?.items?.filter(item => item.item.type === "OTHER"));
+const sortItemsById = (items: InventoryItem[]) => {
+  return [...items].sort((a, b) => a.id.localeCompare(b.id));
+};
+
+const equippedItems = computed(() =>
+  sortItemsById((inventoryStore.inventory?.items ?? []).filter((item) => item.inUse))
+);
+const armorItems = computed(() =>
+  sortItemsById((inventoryStore.inventory?.items ?? []).filter((item) => item.item.type === "ARMOR"))
+);
+const weaponItems = computed(() =>
+  sortItemsById((inventoryStore.inventory?.items ?? []).filter((item) => item.item.type === "WEAPON"))
+);
+const magicItems = computed(() =>
+  sortItemsById((inventoryStore.inventory?.items ?? []).filter((item) => item.item.type === "MAGIC_ITEM"))
+);
+const otherItems = computed(() =>
+  sortItemsById((inventoryStore.inventory?.items ?? []).filter((item) => item.item.type === "OTHER"))
+);
 const totalWeight = computed(() => inventoryStore.inventory?.totalWeight || 0);
 
 const weightLimit = characterStore.character.abilities.filter(ability => ability.code === "STR")[0].value * 10;
@@ -699,5 +713,157 @@ async function takeMoney() {
 
 .rarity-legendary {
   border-color: orange;
+}
+
+@media (min-width: 1024px) {
+  .inventory-header {
+    align-items: stretch;
+    gap: 10px;
+    margin-bottom: 12px;
+    padding-top: 0;
+  }
+
+  .weight {
+    font-size: 14px;
+    color: var(--ion-color-light);
+    text-align: right;
+    opacity: 0.9;
+  }
+
+  .money-root {
+    margin-top: 0;
+    border-radius: 14px;
+    border: 1px solid rgba(var(--ion-color-light-rgb), 0.1);
+  }
+
+  .money {
+    min-height: 46px;
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .money-title {
+    font-size: 15px;
+  }
+
+  .money-submit-buttons {
+    margin-top: 8px;
+    padding-bottom: 10px;
+  }
+
+  .inventory-body {
+    padding-bottom: 96px;
+  }
+
+  .sectionHeader {
+    margin-top: 16px;
+    margin-bottom: 10px;
+    font-size: 20px;
+    font-weight: 600;
+  }
+
+  .equipped,
+  .armor,
+  .weapon,
+  .magic-items,
+  .other {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(440px, 1fr));
+    gap: 10px 12px;
+    align-items: start;
+  }
+
+  .section {
+    border-radius: 16px;
+    padding: 10px 12px;
+    max-height: none;
+    min-height: 88px;
+    margin-bottom: 0;
+    border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
+    transition: border-color 0.2s ease, transform 0.2s ease;
+  }
+
+  .section:hover {
+    border-color: rgba(var(--ion-color-primary-rgb), 0.45);
+    transform: translateY(-1px);
+  }
+
+  .section-start-block {
+    flex: 1;
+    min-width: 0;
+    align-items: flex-start;
+    gap: 12px;
+    cursor: pointer;
+  }
+
+  .image-block {
+    width: 60px;
+    height: 60px;
+    flex: 0 0 60px;
+  }
+
+  .item-image {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+  }
+
+  .stats-block {
+    min-width: 0;
+    width: 100%;
+    justify-content: flex-start;
+    padding-top: 2px;
+  }
+
+  .item-name {
+    margin-bottom: 6px;
+    font-size: 15px;
+    line-height: 1.2;
+  }
+
+  .item-stats {
+    font-size: 12px;
+    line-height: 1.25;
+    opacity: 0.9;
+  }
+
+  .buttons-block {
+    width: auto;
+    margin-top: 0;
+    margin-left: 10px;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .counter-buttons {
+    margin-right: 0;
+    margin-top: 0;
+    height: 34px;
+    border-radius: 999px;
+    background: rgba(var(--ion-color-dark-rgb), 0.22);
+    padding: 0 4px;
+  }
+
+  .counter-buttons ion-label {
+    min-width: 22px;
+    text-align: center;
+    font-weight: 600;
+  }
+
+  .add-new-button {
+    left: auto;
+    right: 22px;
+    bottom: 18px;
+    width: auto;
+    padding: 0;
+    justify-content: flex-end;
+    pointer-events: none;
+  }
+
+  .add-new-button ion-button {
+    pointer-events: auto;
+    margin: 0;
+    --box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  }
 }
 </style>

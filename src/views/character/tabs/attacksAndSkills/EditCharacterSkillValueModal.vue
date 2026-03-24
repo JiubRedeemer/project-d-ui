@@ -386,6 +386,7 @@ const uploadToMinio = async (file: File): Promise<string> => {
   color: white;
   overflow: scroll;
   max-height: 100px;
+  scrollbar-width: none;
 }
 
 .stat-subvalue {

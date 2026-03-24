@@ -220,5 +220,87 @@ onMounted(async () => {
   display: flex;
   justify-content: center;
 }
+
+.container {
+  padding-bottom: 90px;
+}
+
+@media (min-width: 1024px) {
+  .container {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 18px 20px 96px;
+    display: grid;
+    grid-template-columns: minmax(320px, 400px) minmax(560px, 1fr);
+    gap: 18px 20px;
+    align-items: start;
+  }
+
+  .header {
+    grid-column: 1;
+    position: sticky;
+    top: 14px;
+  }
+
+  .avatar-wrap {
+    width: 100%;
+    margin: 0;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid rgba(var(--ion-color-light-rgb), 0.12);
+    background: var(--ion-color-medium);
+  }
+
+  .avatar-img {
+    width: 100%;
+    height: min(62vh, 560px);
+    object-fit: cover;
+    border-radius: 0;
+  }
+
+  .unique-badge {
+    top: 12px;
+    right: 12px;
+  }
+
+  .body {
+    grid-column: 2;
+  }
+
+  .description {
+    margin: 0;
+    padding: 14px;
+    line-height: 1.45;
+    border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
+    border-radius: 12px;
+  }
+
+  .stat {
+    margin-top: 14px;
+  }
+
+  .stat-header {
+    font-size: 20px;
+    padding-left: 0;
+    margin-bottom: 6px;
+  }
+
+  .stat-chip {
+    margin-left: 0;
+    margin-right: 8px;
+    margin-bottom: 8px;
+  }
+
+  .stat-row {
+    padding-left: 0;
+    padding-right: 0;
+    gap: 8px;
+  }
+
+  ion-fab {
+    left: 22px;
+    bottom: 18px;
+  }
+}
 </style>
 

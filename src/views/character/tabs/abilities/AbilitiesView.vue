@@ -235,7 +235,7 @@ function calculateCheckValue(value: any, ability: AbilityDto) {
 
 <template>
   <div class="abilities" v-if="resultAbilities">
-    <div class="ability-item">
+    <div class="ability-item ability-item--proficiency">
       <div class="skill-item skill-item--proficiency">
         <div class="skill-name">Бонус мастерства</div>
         <div class="skill-value">{{ characterStore.character.proficiencyBonus }}</div>
@@ -405,5 +405,136 @@ function calculateCheckValue(value: any, ability: AbilityDto) {
 ion-content {
   --padding-start: 0;
   --padding-end: 0;
+}
+
+@media (min-width: 1024px) {
+  .abilities {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+    margin-top: -8px;
+  }
+
+  .ability-item {
+    margin-top: 0;
+    padding: 14px;
+    border-radius: 16px;
+    border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
+  }
+
+  .ability-item--proficiency {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--ion-color-medium-tint) 78%, transparent);
+  }
+
+  .ability-item--proficiency .skill-item--proficiency {
+    width: 100%;
+    margin-top: 0;
+    min-height: 28px;
+    height: 28px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: transparent;
+    border: 1px solid rgba(var(--ion-color-light-rgb), 0.18);
+  }
+
+  .ability-item--proficiency .skill-name {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+
+  .ability-item--proficiency .skill-value {
+    width: 22px;
+    height: 22px;
+    font-size: 12px;
+  }
+
+  .ability-header {
+    display: grid;
+    grid-template-columns: minmax(280px, 1fr) minmax(260px, 360px);
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .ability {
+    width: 100%;
+    height: auto;
+    min-height: 54px;
+    padding: 10px 16px;
+  }
+
+  .ability-name {
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  .ability-value {
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .ability-side-block {
+    width: 100%;
+    padding-left: 0;
+    gap: 8px;
+  }
+
+  .check,
+  .saving-throw {
+    height: auto;
+    min-height: 24px;
+    padding: 6px 8px;
+    font-size: 13px;
+  }
+
+  .check-value,
+  .saving-throw-value {
+    width: 22px;
+    min-width: 22px;
+    height: 22px;
+    font-size: 12px;
+  }
+
+  .skills {
+    margin-top: 10px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(240px, 1fr));
+    gap: 8px 10px;
+  }
+
+  .skill-item {
+    margin-top: 0;
+    height: auto;
+    min-height: 34px;
+    padding: 6px 10px;
+    border-radius: 14px;
+  }
+
+  .skill-name {
+    padding-left: 8px;
+    font-size: 14px;
+  }
+
+  .skill-value {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+  }
+
+  .skill-up {
+    width: 22px;
+    height: 22px;
+  }
+}
+
+@media (min-width: 1400px) {
+  .abilities {
+    grid-template-columns: repeat(2, minmax(420px, 1fr));
+  }
 }
 </style>
