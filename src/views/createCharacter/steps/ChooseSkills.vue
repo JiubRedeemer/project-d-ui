@@ -25,16 +25,32 @@
       </ion-list>
     </div>
   </div>
-  <ion-fab slot="fixed" vertical="bottom" horizontal="end" @click="onChooseSkills">
-    <ion-fab-button color="primary">
-      <ion-icon :icon="checkmarkOutline" color="dark"></ion-icon>
-    </ion-fab-button>
-  </ion-fab>
+
+  <div class="add-new-button">
+    <ion-button
+        size="large"
+        shape="round"
+        color="primary"
+        @click="onChooseSkills"
+    >
+      <ion-icon slot="icon-only" :icon="arrowForwardOutline" />
+    </ion-button>
+  </div>
 </template>
 
 <script setup lang="ts">
-import {IonFab, IonFabButton, IonIcon, IonItem, IonList, IonSelect, IonSelectOption, useIonRouter} from "@ionic/vue";
-import {checkmarkOutline} from "ionicons/icons";
+import {
+  IonButton,
+  IonFab,
+  IonFabButton,
+  IonIcon,
+  IonItem,
+  IonList,
+  IonSelect,
+  IonSelectOption,
+  useIonRouter
+} from "@ionic/vue";
+import {arrowForwardOutline, checkmarkOutline} from "ionicons/icons";
 import {computed, ref, watch} from "vue";
 import axios from "axios";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
@@ -122,5 +138,17 @@ ion-item {
 ion-select {
   flex-grow: 1;
   margin-right: 10px;
+}
+
+.add-new-button {
+  z-index: 10;
+  position: fixed;
+  bottom: 0;
+  right: 20px;
+  width: 100%;
+  display: flex;
+  justify-content: end;
+  align-items: center;
+  padding: 8px 0 max(8px, env(safe-area-inset-bottom, 0));
 }
 </style>

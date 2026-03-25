@@ -279,7 +279,6 @@ function convertCharacterData() {
     border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
     border-radius: 12px;
     padding: 12px;
-    margin-top: 10px;
     text-align: left;
   }
 

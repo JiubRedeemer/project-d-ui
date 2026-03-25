@@ -40,6 +40,16 @@ function getRaceTraitsOrdered() {
   });
 }
 
+function getBackgroundTraitsOrdered() {
+  return characterStore.character.backgroundInfo?.stats?.traits?.sort((a, b) => {
+    if (a.description?.length && b.description?.length)
+      return a.description.length - b.description.length;
+    else if (a.description?.length && !b.description?.length) return 1;
+    else if (!a.description?.length && b.description?.length) return -1;
+    else return 0;
+  });
+}
+
 function getCharacterTraitsOrdered() {
   return characterStore.character?.traits?.sort((a, b) => {
     if (a.description?.length && b.description?.length)
@@ -104,12 +114,18 @@ async function deleteTrait(traitId: string) {
         <div class="feel-value">{{ getPassiveByInt() }}</div>
       </div>
     </div>
-    <div class="sectionHeader">Владения</div>
+    <div class="sectionHeader">Владения вида</div>
     <div class="traits">
       <div class="race-trait section" v-for="(trait, index) in getRaceTraitsOrdered()" :key="index">
         <div class="trait-name">{{ trait.name }}</div>
         <div class="description">{{ trait.description }}</div>
       </div>
+      <div class="sectionHeader">Владения предыстории</div>
+      <div class="background-trait section" v-for="(trait, index) in getBackgroundTraitsOrdered()" :key="index">
+        <div class="trait-name">{{ trait.name }}</div>
+        <div class="description">{{ trait.description }}</div>
+      </div>
+      <div class="sectionHeader" v-if="getCharacterTraitsOrdered()">Пользовательские владения</div>
       <div class="character-trait section" v-for="(trait, index) in getCharacterTraitsOrdered()" :key="index">
         <div class="trait-header">
           <div class="trait-name">{{ trait.name }}</div>
@@ -130,15 +146,15 @@ async function deleteTrait(traitId: string) {
   </div>
   <div class="add-new-button">
     <ion-button size="large" shape="round" color="secondary" @click="openCreateTraitModal">
-      <ion-icon slot="icon-only" :icon="addOutline" />
+      <ion-icon slot="icon-only" :icon="addOutline"/>
     </ion-button>
   </div>
-  <CreateTraitModal :is-open="showCreateTraitModal" @close="closeCreateTraitModal" />
+  <CreateTraitModal :is-open="showCreateTraitModal" @close="closeCreateTraitModal"/>
 </template>
 
 <style scoped>
 
-.passive-feels{
+.passive-feels {
   border-radius: 20px;
   background-color: var(--ion-color-medium);
   padding: 10px;

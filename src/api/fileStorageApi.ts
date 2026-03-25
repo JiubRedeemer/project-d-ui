@@ -127,9 +127,9 @@ export async function deleteUserFileById(id: Uuid, userId: Uuid): Promise<Uuid> 
     return data;
 }
 
-export async function readAllUserFilesByUserId(userId: Uuid): Promise<UserFile[]> {
+export async function readAllUserFilesByUserId(roomId: string, userId: Uuid): Promise<UserFile[]> {
     const { data } = await axios.get<UserFile[]>(
-        `${userFilesBaseUrl()}/user/${encodeURIComponent(userId)}`,
+        `${userFilesBaseUrl()}/room/${roomId}/user/${encodeURIComponent(userId)}`,
         { headers: authHeaders() }
     );
 
