@@ -29,6 +29,9 @@ import CharacterFilesView from "@/views/character/CharacterFilesView.vue";
 import CreateNpcView from "@/views/npcs/CreateNpcView.vue";
 import NpcFullView from "@/views/npcs/NpcFullView.vue";
 import SearchNpcView from "@/views/npcs/SearchNpcView.vue";
+import CreateClassView from "@/views/master/tabs/CreateClassView.vue";
+import CreateRaceView from "@/views/master/tabs/CreateRaceView.vue";
+import CreateBackgroundView from "@/views/master/tabs/CreateBackgroundView.vue";
 
 const routes: Array<RouteRecordRaw> = [
     {
@@ -189,6 +192,21 @@ const routes: Array<RouteRecordRaw> = [
         path: '/rooms/:roomId/master',
         component: MasterView,
         name: 'masterView',
+    },
+    {
+        path: '/rooms/:roomId/master/create/clazz',
+        component: CreateClassView,
+        name: 'createClassView',
+    },
+    {
+        path: '/rooms/:roomId/master/create/race',
+        component: CreateRaceView,
+        name: 'createRaceView',
+    },
+    {
+        path: '/rooms/:roomId/master/create/background',
+        component: CreateBackgroundView,
+        name: 'createBackgroundView',
     }
 ]
 
