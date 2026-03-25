@@ -73,7 +73,7 @@ async function refreshFiles() {
   isLoading.value = true;
   errorMessage.value = null;
   try {
-    userFiles.value = await readAllUserFilesByUserId(userId.value);
+    userFiles.value = await readAllUserFilesByUserId(route.params.roomId as string, userId.value);
   } catch (e) {
     console.error("Failed to load user files:", e);
     errorMessage.value = "Не удалось загрузить список файлов";
