@@ -21,15 +21,20 @@
     ></ion-textarea>
   </div>
 
-  <ion-fab slot="fixed" vertical="bottom" horizontal="end" @click="onChooseHistory(inputHistory)">
-    <ion-fab-button color="primary">
-      <ion-icon :icon="arrowForwardOutline" color="dark"></ion-icon>
-    </ion-fab-button>
-  </ion-fab>
+  <div class="add-new-button">
+    <ion-button
+        size="large"
+        shape="round"
+        color="primary"
+        @click="onChooseHistory(inputHistory)"
+    >
+      <ion-icon slot="icon-only" :icon="arrowForwardOutline" />
+    </ion-button>
+  </div>
 </template>
 
 <script setup lang="ts">
-import {IonFab, IonFabButton, IonIcon, IonTextarea} from "@ionic/vue";
+import {IonButton, IonFab, IonFabButton, IonIcon, IonTextarea} from "@ionic/vue";
 import {arrowForwardOutline} from "ionicons/icons";
 import {TEXTS} from "@/config/localisations";
 import backgroundImage from "@/static/images/backgrounds/image_SELECT_HISTORY.png";
@@ -125,6 +130,18 @@ function onChooseHistory(history: string) {
     right: 22px;
     bottom: 18px;
   }
+}
+
+.add-new-button {
+  z-index: 10;
+  position: fixed;
+  bottom: 0;
+  right: 20px;
+  width: 100%;
+  display: flex;
+  justify-content: end;
+  align-items: center;
+  padding: 8px 0 max(8px, env(safe-area-inset-bottom, 0));
 }
 
 

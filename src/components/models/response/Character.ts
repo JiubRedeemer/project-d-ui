@@ -1,5 +1,5 @@
 import {ChargesRefill} from "@/components/models/response/InventoryResponse";
-import {RaceTraitDto} from "@/api/rulebookApi.types";
+import {BackgroundDto, BackgroundTraitDto, RaceTraitDto} from "@/api/rulebookApi.types";
 
 export interface Character {
     id: string;
@@ -10,6 +10,8 @@ export interface Character {
     clazzInfo: ClassInfo;
     raceCode: string;
     raceInfo: RaceInfo;
+    backgroundCode: string;
+    backgroundInfo: BackgroundDto;
     proficiencyBonus: number;
     armoryClass: number;
     bonusArmoryClass: number;
@@ -40,6 +42,13 @@ export interface RaceInfo {
     name: string;
     imgUrl: string;
     traits: RaceTraitDto[];
+}
+
+export interface BackgroundInfo {
+    code: string;
+    name: string;
+    imgUrl: string;
+    traits: BackgroundTraitDto[];
 }
 
 export interface Ability {

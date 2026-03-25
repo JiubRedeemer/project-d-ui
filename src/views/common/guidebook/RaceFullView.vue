@@ -46,6 +46,17 @@ const getImageUrl = (imgUrl: string | undefined | null) => {
 const previousStep = () => {
   ionRouter.back();
 }
+
+function getTraitsOrdered(race: RaceDto | null) {
+  if(!race) return [];
+  return race?.stats?.traits?.sort((a, b) => {
+    if (a.description?.length && b.description?.length)
+      return a.description.length - b.description.length;
+    else if (a.description?.length && !b.description?.length) return 1;
+    else if (!a.description?.length && b.description?.length) return -1;
+    else return 0;
+  });
+}
 </script>
 
 <template>
@@ -86,6 +97,25 @@ const previousStep = () => {
                 }}
               </ion-label>
             </ion-chip>
+          </div>
+          <div
+              v-if="(fullRaceStore.race?.stats?.traits?.length ?? 0) > 0"
+              class="race-traits"
+          >
+            <p class="traits-title">Черты</p>
+
+            <div class="traits-list">
+              <div
+                  v-for="trait in getTraitsOrdered(fullRaceStore.race ?? null) ?? []"
+                  :key="trait.id"
+                  class="trait-block"
+              >
+                <ion-chip size="small">
+                  <ion-label>{{ trait.name }}</ion-label>
+                </ion-chip>
+                <p class="trait-description">{{ trait.description }}</p>
+              </div>
+            </div>
           </div>
           <div class="stat" v-show="subspecies.length > 0">
             <div class="stat-header">Подвиды</div>
@@ -268,4 +298,35 @@ const previousStep = () => {
     bottom: 18px;
   }
 }
+
+
+.race-traits {
+  margin-top: 12px;
+  width: 100%;
+}
+
+.traits-title {
+  font-size: 0.9rem;
+  color: var(--ion-color-primary);
+  margin: 0 0 6px 0;
+}
+
+.traits-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.trait-block {
+  width: 100%;
+}
+
+.trait-description {
+  margin: 6px 0 0;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.4;
+  text-align: left;
+}
+
 </style>

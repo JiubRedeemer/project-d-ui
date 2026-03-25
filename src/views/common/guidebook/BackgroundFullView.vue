@@ -60,6 +60,16 @@ const previousStep = () => {
               </ion-label>
             </ion-chip>
           </div>
+          <div v-if="fullBackgroundStore?.background?.stats?.traits?.length" class="traits-block">
+            <div class="stat-header">Черта</div>
+            <div class="trait" v-for="trait in fullBackgroundStore?.background?.stats.traits" :key="trait.id">
+              <ion-chip color="primary">{{trait.name}}</ion-chip>
+              <p class="trait-description">
+                {{ trait.description}}
+              </p>
+            </div>
+          </div>
+
           <div style="height: 10vh"></div>
         </div>
       </div>
@@ -119,6 +129,13 @@ const previousStep = () => {
 .container {
   padding-bottom: 90px;
 }
+.traits-block {
+  padding: 10px;
+  margin-top: 12px;
+  width: 100%;
+}
+
+
 
 @media (min-width: 1024px) {
   .container {
@@ -185,6 +202,18 @@ const previousStep = () => {
   ion-fab {
     left: 22px;
     bottom: 18px;
+  }
+
+  .traits-block {
+    margin-top: 0;
+    padding: 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
+    background: rgba(var(--ion-color-medium-rgb), 0.22);
+    text-align: left;
+  }
+  .traits-block {
+    margin-top: 10px;
   }
 }
 </style>

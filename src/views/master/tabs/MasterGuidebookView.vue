@@ -1364,4 +1364,35 @@ ion-searchbar {
 .group-sub-item {
   padding-left: 18px;
 }
+
+
+.race-traits {
+  margin-top: 12px;
+  width: 100%;
+}
+
+.traits-title {
+  font-size: 0.9rem;
+  color: var(--ion-color-primary);
+  margin: 0 0 6px 0;
+}
+
+.traits-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.trait-block {
+  width: 100%;
+}
+
+.trait-description {
+  margin: 6px 0 0;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.4;
+  text-align: left;
+}
+
 </style>

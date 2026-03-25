@@ -75,11 +75,16 @@
       </div>
     </div>
   </div>
-  <ion-fab slot="fixed" vertical="bottom" horizontal="end" @click="onChooseAbilities(abilities)">
-    <ion-fab-button color="primary">
-      <ion-icon :icon="arrowForwardOutline" color="dark"></ion-icon>
-    </ion-fab-button>
-  </ion-fab>
+  <div class="add-new-button">
+    <ion-button
+        size="large"
+        shape="round"
+        color="primary"
+        @click="onChooseAbilities(abilities)"
+    >
+      <ion-icon slot="icon-only" :icon="arrowForwardOutline" />
+    </ion-button>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -484,5 +489,17 @@ ion-item {
 
 .background-slots ion-chip {
   cursor: pointer;
+}
+
+.add-new-button {
+  z-index: 10;
+  position: fixed;
+  bottom: 0;
+  right: 20px;
+  width: 100%;
+  display: flex;
+  justify-content: end;
+  align-items: center;
+  padding: 8px 0 max(8px, env(safe-area-inset-bottom, 0));
 }
 </style>

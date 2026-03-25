@@ -27,6 +27,7 @@ import {
 } from "@/api/fileStorageApi";
 import Viewer from "viewerjs";
 import "viewerjs/dist/viewer.css";
+import {v4 as uuidv4} from "uuid";
 
 const userId = ref<string>("");
 const route = useRoute();
@@ -44,11 +45,13 @@ const isUploading = ref(false);
 const errorMessage = ref<string | null>(null);
 
 const displayedFileName = (storedFilename: string): string => {
-  if (!userId.value) return storedFilename;
-  if (storedFilename.startsWith(userId.value)) {
-    return storedFilename.slice(userId.value.length);
+  const underscoreIndex = storedFilename.indexOf('_');
+
+  if (underscoreIndex === -1) {
+    return storedFilename; // если "_" нет — возвращаем как есть
   }
-  return storedFilename;
+
+  return storedFilename.slice(underscoreIndex + 1);
 };
 
 async function getMyId(): Promise<string> {
@@ -139,7 +142,7 @@ function triggerFileInput() {
 async function uploadAndRefresh(file: File) {
   const currentUserId = await ensureUserId();
   const originalName = file.name;
-  const storedFilename = `${currentUserId}${originalName}`; // userId + исходное_название_файла
+  const storedFilename = `${uuidv4()}_${originalName}`; // userId + исходное_название_файла
 
   isUploading.value = true;
   errorMessage.value = null;

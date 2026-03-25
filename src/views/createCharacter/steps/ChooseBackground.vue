@@ -47,26 +47,34 @@
                 </ion-chip>
               </div>
               <div v-if="selectedBackground.stats?.traits?.length" class="traits-block">
-                <p class="traits-title">Черты</p>
-                <ion-chip v-for="trait in selectedBackground.stats.traits" :key="trait.id" size="small">
-                  <ion-label>{{ trait.name }}</ion-label>
-                </ion-chip>
+                <p class="traits-title">Черта</p>
+                <div class="trait" v-for="trait in selectedBackground.stats.traits" :key="trait.id">
+                  <ion-chip>{{trait.name}}</ion-chip>
+                  <p class="trait-description">
+                    {{ trait.description}}
+                  </p>
+                </div>
               </div>
             </div>
           </swiper-slide>
         </swiper>
       </div>
     </div>
-    <ion-fab slot="fixed" vertical="bottom" horizontal="end" @click="onChooseBackground(selectedBackground)">
-      <ion-fab-button color="primary">
-        <ion-icon :icon="arrowForwardOutline" color="dark"></ion-icon>
-      </ion-fab-button>
-    </ion-fab>
+  </div>
+  <div class="add-new-button">
+    <ion-button
+        size="large"
+        shape="round"
+        color="primary"
+        @click="onChooseBackground(selectedBackground)"
+    >
+      <ion-icon slot="icon-only" :icon="arrowForwardOutline" />
+    </ion-button>
   </div>
 </template>
 
 <script setup lang="ts">
-import {IonChip, IonFab, IonFabButton, IonIcon, IonicSlides, IonLabel} from "@ionic/vue";
+import {IonButton, IonChip, IonFab, IonFabButton, IonIcon, IonicSlides, IonLabel} from "@ionic/vue";
 import {computed, onMounted, ref} from "vue";
 import {Swiper, SwiperSlide} from "swiper/vue";
 import {arrowForwardOutline} from "ionicons/icons";
@@ -371,5 +379,17 @@ swiper-slide {
   swiper-slide {
     width: auto;
   }
+}
+
+.add-new-button {
+  z-index: 10;
+  position: fixed;
+  bottom: 0;
+  right: 20px;
+  width: 100%;
+  display: flex;
+  justify-content: end;
+  align-items: center;
+  padding: 8px 0 max(8px, env(safe-area-inset-bottom, 0));
 }
 </style>

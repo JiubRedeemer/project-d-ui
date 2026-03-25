@@ -53,6 +53,26 @@
               </div>
               <div class="race-description">
                 <p class="race-text">{{ getSelectedRaceForGroup(i)?.description }}</p>
+
+                <div
+                    v-if="(getSelectedRaceForGroup(i)?.stats?.traits?.length ?? 0) > 0"
+                    class="race-traits"
+                >
+                  <p class="traits-title">Черты</p>
+
+                  <div class="traits-list">
+                    <div
+                        v-for="trait in getTraitsOrdered(getSelectedRaceForGroup(i) ?? null) ?? []"
+                        :key="trait.id"
+                        class="trait-block"
+                    >
+                      <ion-chip size="small">
+                        <ion-label>{{ trait.name }}</ion-label>
+                      </ion-chip>
+                      <p class="trait-description">{{ trait.description }}</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </swiper-slide>
@@ -60,11 +80,17 @@
       </div>
     </div>
   </div>
-  <ion-fab slot="fixed" vertical="bottom" horizontal="end" @click="onChooseRace(selectedRace)">
-    <ion-fab-button color="primary">
-      <ion-icon :icon="arrowForwardOutline" color="dark"></ion-icon>
-    </ion-fab-button>
-  </ion-fab>
+
+  <div class="add-new-button">
+    <ion-button
+        size="large"
+        shape="round"
+        color="primary"
+        @click="onChooseRace(selectedRace)"
+    >
+      <ion-icon slot="icon-only" :icon="arrowForwardOutline" />
+    </ion-button>
+  </div>
   <ion-action-sheet
       :is-open="isSubraceListOpen"
       header="Выберите подвид"
@@ -74,10 +100,21 @@
 </template>
 
 <script setup lang="ts">
-import {IonActionSheet, IonButton, IonChip, IonFab, IonFabButton, IonIcon, IonicSlides, IonLabel, IonSkeletonText, IonThumbnail} from "@ionic/vue";
+import {
+  IonActionSheet,
+  IonButton,
+  IonChip,
+  IonFab,
+  IonFabButton,
+  IonIcon,
+  IonicSlides,
+  IonLabel,
+  IonSkeletonText,
+  IonThumbnail
+} from "@ionic/vue";
 import {computed, onMounted, ref} from "vue";
 import {Swiper, SwiperSlide} from "swiper/vue";
-import {arrowForwardOutline, menuOutline} from "ionicons/icons";
+import {add, arrowForwardOutline, menuOutline} from "ionicons/icons";
 import axios from "axios";
 import {Swiper as SwiperType} from "swiper/types";
 import {useRoute} from "vue-router";
@@ -146,6 +183,17 @@ const subraceActionButtons = computed(() => [
     role: "cancel",
   },
 ]);
+
+function getTraitsOrdered(race: RaceResponse | null) {
+  if(!race) return [];
+  return race?.stats?.traits?.sort((a, b) => {
+    if (a.description?.length && b.description?.length)
+      return a.description.length - b.description.length;
+    else if (a.description?.length && !b.description?.length) return 1;
+    else if (!a.description?.length && b.description?.length) return -1;
+    else return 0;
+  });
+}
 
 function getGroupPreviewRace(group: RaceGroupResponse) {
   return (group.species || group.subspecies?.[0]) as RaceResponse | undefined;
@@ -335,6 +383,47 @@ function onChooseRace(race?: RaceResponse) {
   margin-top: 10px;
 }
 
+.add-new-button {
+  z-index: 10;
+  position: fixed;
+  bottom: 0;
+  right: 20px;
+  width: 100%;
+  display: flex;
+  justify-content: end;
+  align-items: center;
+  padding: 8px 0 max(8px, env(safe-area-inset-bottom, 0));
+}
+
+.race-traits {
+  margin-top: 12px;
+  width: 100%;
+}
+
+.traits-title {
+  font-size: 0.9rem;
+  color: var(--ion-color-primary);
+  margin: 0 0 6px 0;
+}
+
+.traits-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.trait-block {
+  width: 100%;
+}
+
+.trait-description {
+  margin: 6px 0 0;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.4;
+  text-align: left;
+}
+
 .race-text {
   font-size: 1rem;
   color: white;
@@ -406,12 +495,16 @@ swiper-slide {
   }
 
   .race-description {
-    margin-top: 0;
     padding: 14px;
     border-radius: 12px;
     border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
     background: rgba(var(--ion-color-medium-rgb), 0.22);
     min-height: 220px;
+    margin-top: 0;
+  }
+
+  .race-traits {
+    margin-top: 10px;
   }
 
   .race-text {
@@ -423,5 +516,17 @@ swiper-slide {
   swiper-slide {
     width: auto;
   }
+}
+
+.add-new-button {
+  z-index: 10;
+  position: fixed;
+  bottom: 0;
+  right: 20px;
+  width: 100%;
+  display: flex;
+  justify-content: end;
+  align-items: center;
+  padding: 8px 0 max(8px, env(safe-area-inset-bottom, 0));
 }
 </style>
