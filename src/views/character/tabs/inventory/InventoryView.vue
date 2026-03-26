@@ -23,6 +23,9 @@ import WalletView from "@/views/character/tabs/inventory/WalletView.vue";
 import { useWalletStore } from "@/stores/WalletStore";
 import { useSubheaderOpenedStore } from "@/stores/SubheaderStore";
 import { useInventoryStore } from "@/stores/InventoryStore";
+import goldenCoinIcon from "@/static/icons/GoldenCoin.svg";
+import silverCoinIcon from "@/static/icons/SilverCoin.svg";
+import copperCoinIcon from "@/static/icons/CopperCoin.svg";
 
 const ionRouter = useIonRouter();
 
@@ -297,17 +300,22 @@ async function takeMoney() {
       :style="{ maxHeight: walletStore.moneyExpanded ? moneyRootMaxHeight : '40px' }">
       <div class="money" @click="expandMoneyBlock()">
         <div class="money-title">{{ HEADERS.wallet.rus }}:</div>
-        <div class="coin">
-          <div class="coin-count">{{ walletStore.userMoney?.copperCount }}</div>
-          <div class="coin-img copper" @click="walletStore.wallet.type = 'copper_coin'"></div>
-        </div>
-        <div class="coin">
-          <div class="coin-count">{{ walletStore.userMoney?.silverCount }}</div>
-          <div class="coin-img silver" @click="walletStore.wallet.type = 'silver_coin'"></div>
-        </div>
-        <div class="coin">
-          <div class="coin-count">{{ walletStore.userMoney?.goldenCount }}</div>
-          <div class="coin-img golden" @click="walletStore.wallet.type = 'golden_coin'"></div>
+        <div class="coins-group">
+          <button class="coin-chip copper" :class="{ selected: walletStore.wallet.type === 'copper_coin' }" type="button"
+            aria-label="Медные монеты" @click.stop="walletStore.wallet.type = 'copper_coin'">
+            <ion-icon class="coin-icon" :src="copperCoinIcon" aria-hidden="true" />
+            <span class="coin-value">{{ walletStore.userMoney?.copperCount ?? 0 }}</span>
+          </button>
+          <button class="coin-chip silver" :class="{ selected: walletStore.wallet.type === 'silver_coin' }" type="button"
+            aria-label="Серебряные монеты" @click.stop="walletStore.wallet.type = 'silver_coin'">
+            <ion-icon class="coin-icon" :src="silverCoinIcon" aria-hidden="true" />
+            <span class="coin-value">{{ walletStore.userMoney?.silverCount ?? 0 }}</span>
+          </button>
+          <button class="coin-chip golden" :class="{ selected: walletStore.wallet.type === 'golden_coin' }" type="button"
+            aria-label="Золотые монеты" @click.stop="walletStore.wallet.type = 'golden_coin'">
+            <ion-icon class="coin-icon" :src="goldenCoinIcon" aria-hidden="true" />
+            <span class="coin-value">{{ walletStore.userMoney?.goldenCount ?? 0 }}</span>
+          </button>
         </div>
       </div>
       <div class="money-input">
@@ -641,6 +649,7 @@ async function takeMoney() {
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
   padding-left: 10px;
   padding-right: 10px;
   font-size: 14px;
@@ -662,12 +671,12 @@ async function takeMoney() {
   justify-content: space-between;
 }
 
-.coin {
+.coins-group {
   display: flex;
   flex-direction: row;
-  gap: 10px;
+  gap: 6px;
   align-items: center;
-  font-weight: bold;
+  margin-left: auto;
 }
 
 .money-title {
@@ -675,24 +684,90 @@ async function takeMoney() {
   font-weight: bold;
 }
 
-.coin-img {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  /* делает круг */
-  display: inline-block;
+.coin-chip {
+  height: 30px;
+  min-width: 66px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 0 10px 0 7px;
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.12);
+  background: linear-gradient(180deg, rgba(var(--ion-color-dark-rgb), 0.18), rgba(var(--ion-color-dark-rgb), 0.13));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 4px 10px rgba(0, 0, 0, 0.20);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
 }
 
-.copper.coin-img {
-  background-color: var(--coin-color-copper);
+.coin-chip:active {
+  transform: translateY(1px) scale(0.98);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 3px 8px rgba(0, 0, 0, 0.2);
 }
 
-.silver.coin-img {
-  background-color: var(--coin-color-silver);
+.coin-icon {
+  width: 17px;
+  height: 17px;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.28));
 }
 
-.golden.coin-img {
-  background-color: var(--coin-color-gold);
+.coin-value {
+  min-width: 24px;
+  text-align: right;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--ion-color-light);
+  font-variant-numeric: tabular-nums;
+}
+
+.coin-chip.copper {
+  background:
+    radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0) 60%),
+    linear-gradient(180deg, rgba(193, 128, 0, 0.26), rgba(193, 128, 0, 0.10));
+  border-color: rgba(193, 128, 0, 0.40);
+}
+
+.coin-chip.silver {
+  background:
+    radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0) 60%),
+    linear-gradient(180deg, rgba(216, 216, 216, 0.26), rgba(216, 216, 216, 0.10));
+  border-color: rgba(216, 216, 216, 0.40);
+}
+
+.coin-chip.golden {
+  background:
+    radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0) 60%),
+    linear-gradient(180deg, rgba(255, 251, 0, 0.26), rgba(255, 251, 0, 0.10));
+  border-color: rgba(255, 251, 0, 0.40);
+}
+
+.coin-chip.selected {
+  /* общий базовый эффект (чуть заметнее, но без "неона") */
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10), 0 5px 12px rgba(0, 0, 0, 0.22);
+}
+
+.coin-chip.golden.selected {
+  border-color: rgba(255, 251, 0, 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    0 0 0 2px rgba(255, 251, 0, 0.14),
+    0 6px 14px rgba(0, 0, 0, 0.22);
+}
+
+.coin-chip.silver.selected {
+  border-color: rgba(216, 216, 216, 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    0 0 0 2px rgba(216, 216, 216, 0.14),
+    0 6px 14px rgba(0, 0, 0, 0.22);
+}
+
+.coin-chip.copper.selected {
+  border-color: rgba(193, 128, 0, 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    0 0 0 2px rgba(193, 128, 0, 0.14),
+    0 6px 14px rgba(0, 0, 0, 0.22);
 }
 
 .rarity-common {
@@ -744,6 +819,15 @@ async function takeMoney() {
 
   .money-title {
     font-size: 15px;
+  }
+
+  .coins-group {
+    gap: 8px;
+  }
+
+  .coin-chip {
+    min-width: 72px;
+    height: 32px;
   }
 
   .money-submit-buttons {

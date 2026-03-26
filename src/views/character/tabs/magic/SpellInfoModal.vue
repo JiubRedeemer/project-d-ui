@@ -20,6 +20,7 @@ const props = defineProps<{
   isOpen: boolean;
   item: SpellBookItemDto | null;
   spellBookId: string | null;
+  readonly?: boolean;
 }>();
 
 const emit = defineEmits<{ (e: "closeSpellInfoModal"): void }>();
@@ -163,7 +164,12 @@ function closeModal() {
               :alt="getSpellName(spell)"
             />
           </div>
-          <ion-button fill="clear" size="small" @click="togglePrepared">
+          <ion-button
+            v-if="!props.readonly"
+            fill="clear"
+            size="small"
+            @click="togglePrepared"
+          >
             <ion-icon :icon="star" :class="{ filled: item.inUse }"/>
           </ion-button>
         </div>
@@ -223,7 +229,7 @@ function closeModal() {
             Закрыть
           </ion-button>
 
-          <div class="small-buttons">
+          <div v-if="!props.readonly" class="small-buttons">
             <ion-button
                 size="small"
                 fill="solid"
