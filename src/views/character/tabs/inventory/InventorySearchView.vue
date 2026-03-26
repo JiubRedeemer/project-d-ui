@@ -11,11 +11,13 @@ import {
   IonLabel,
   IonPage,
   IonSearchbar,
+  IonSegment,
+  IonSegmentButton,
   IonToolbar,
   toastController,
   useIonRouter
 } from "@ionic/vue";
-import {ref} from "vue";
+import {onMounted, ref} from "vue";
 import {Item} from "@/components/models/response/InventoryResponse";
 import axios from "axios";
 import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
@@ -30,7 +32,7 @@ const route = useRoute();
 const ionRouter = useIonRouter();
 const router = useRouter();
 const findItems = ref<Item[]>([]);
-const queryString = ref<string>();
+const queryString = ref<string>("");
 const isLoadingItems = ref(false);
 const activeSearchToken = ref(0);
 const AUTOLOAD_THRESHOLD_PX = 180;
@@ -38,6 +40,9 @@ const contentScrollHost = ref<HTMLElement | null>(null);
 const hasMoreItems = ref(true);
 const selectedItem = ref<Item | null>(null);
 const showFullViewModal = ref(false);
+type SearchScope = "all" | "owned";
+const activeSearchScope = ref<SearchScope>("all");
+const SEARCH_LIMIT = 20;
 
 function openFullView(item: Item) {
   selectedItem.value = item;
@@ -54,22 +59,42 @@ async function addFromFullView(item: Item, count: number) {
   closeFullView();
 }
 
+function handleDeleteItem(itemId: string) {
+  findItems.value = findItems.value.filter((item) => item.id !== itemId);
+}
+
 async function handleInput(event: any) {
   const query = String(event?.detail?.value ?? event?.target?.value ?? "").toLowerCase().trim();
-  if (query.length <= 1) {
-    findItems.value = [];
-    hasMoreItems.value = false;
-    isLoadingItems.value = false;
-    return;
-  }
+  queryString.value = query;
 
   activeSearchToken.value += 1;
   const searchToken = activeSearchToken.value;
-  queryString.value = query;
   findItems.value = []; // Очистка списка
   hasMoreItems.value = true;
   await loadItems(query, null, null, searchToken, true);
 }
+
+async function handleSearchScopeChange(event: CustomEvent) {
+  activeSearchScope.value = (event.detail.value ?? "all") as SearchScope;
+  findItems.value = [];
+  hasMoreItems.value = false;
+  isLoadingItems.value = false;
+
+  const query = queryString.value?.trim() ?? "";
+
+  activeSearchToken.value += 1;
+  const searchToken = activeSearchToken.value;
+  hasMoreItems.value = true;
+  await loadItems(query, null, null, searchToken, true);
+}
+
+onMounted(async () => {
+  activeSearchToken.value += 1;
+  const searchToken = activeSearchToken.value;
+  findItems.value = [];
+  hasMoreItems.value = true;
+  await loadItems("", null, null, searchToken, true);
+});
 
 async function loadItems(
     query: string | undefined,
@@ -83,14 +108,27 @@ async function loadItems(
   isLoadingItems.value = true;
 
   try {
+    const searchPath = activeSearchScope.value === "owned"
+      ? `${GATEWAY_INTEGRATION_ROUTES.search}/owned`
+      : GATEWAY_INTEGRATION_ROUTES.search;
+    const requestBody: {
+      searchQuery: string;
+      limit: number;
+      lastSeenCreatedAt?: string;
+      lastSeenId?: string;
+    } = {
+      searchQuery: query ?? "",
+      limit: SEARCH_LIMIT,
+    };
+
+    if (lastSeenCreatedAt && lastSeenId) {
+      requestBody.lastSeenCreatedAt = lastSeenCreatedAt;
+      requestBody.lastSeenId = lastSeenId;
+    }
+
     const response = await axios.post(
-        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.items}${GATEWAY_INTEGRATION_ROUTES.search}`,
-        {
-          searchQuery: query,
-          limit: 150,
-          lastSeenCreatedAt,
-          lastSeenId
-        },
+        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.items}${searchPath}`,
+        requestBody,
         {
           headers: {
             "Content-Type": "application/json",
@@ -106,7 +144,7 @@ async function loadItems(
       count: item.count ?? 1
     }));
 
-    if (newItems.length < 150) {
+    if (newItems.length < SEARCH_LIMIT) {
       hasMoreItems.value = false;
     }
 
@@ -184,11 +222,17 @@ async function loadMoreItems() {
 
   const lastItem = findItems.value[findItems.value.length - 1];
   const cursorCreatedAt = lastItem.createdAt?.toString().replace(/(\+\d{2}:\d{2}|Z)$/, "") ?? null;
+  const cursorId = lastItem.id ?? null;
+
+  if (!cursorCreatedAt || !cursorId) {
+    hasMoreItems.value = false;
+    return;
+  }
 
   await loadItems(
       queryString.value,
       cursorCreatedAt,
-      lastItem.id ?? null,
+      cursorId,
       activeSearchToken.value,
       false
   );
@@ -264,14 +308,28 @@ function openAddView() {
   <ion-page>
     <ion-header class="search-header">
       <ion-toolbar>
-        <ion-buttons slot="start">
-          <ion-back-button/>
-        </ion-buttons>
-        <ion-searchbar
-            placeholder="Найти предмет"
-            class="search-line"
-            @ionInput="handleInput($event)">
-        </ion-searchbar>
+        <div class="header-top-row">
+          <ion-buttons class="toolbar-back-buttons">
+            <ion-back-button default-href="/" text="" class="toolbar-back-button"/>
+          </ion-buttons>
+          <ion-searchbar
+              placeholder="Найти предмет"
+              class="search-line"
+              @ionInput="handleInput($event)">
+          </ion-searchbar>
+        </div>
+        <ion-segment
+            :value="activeSearchScope"
+            @ionChange="handleSearchScopeChange"
+            class="search-scope-tabs"
+        >
+          <ion-segment-button value="all">
+            <ion-label>Всё</ion-label>
+          </ion-segment-button>
+          <ion-segment-button value="owned">
+            <ion-label>Мои предметы</ion-label>
+          </ion-segment-button>
+        </ion-segment>
       </ion-toolbar>
     </ion-header>
 
@@ -359,6 +417,7 @@ function openAddView() {
         :room-id="String(route.params.roomId)"
         @close="closeFullView"
         @add-to-inventory="addFromFullView"
+        @delete-item="handleDeleteItem"
     />
   </ion-page>
 </template>
@@ -368,8 +427,31 @@ function openAddView() {
   --background: var(--ion-color-dark);
 }
 
+.search-header ion-toolbar {
+  --padding-top: calc(6px + env(safe-area-inset-top, 0px));
+  --padding-start: 8px;
+  --padding-end: 8px;
+  --padding-bottom: 10px;
+}
+
+.header-top-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar-back-buttons {
+  flex: 0 0 auto;
+}
+
+.toolbar-back-button {
+  --color: var(--ion-color-light);
+  --icon-font-size: 20px;
+  min-width: 36px;
+}
+
 .found {
-  margin-bottom: 70px;
+  margin: 8px 0 70px;
 }
 
 .section {
@@ -421,7 +503,31 @@ function openAddView() {
 
 ion-searchbar {
   --border-radius: 20px;
-  --background: #2B2930;
+  --background: #2b2930;
+  --box-shadow: none;
+  --placeholder-color: rgba(255, 255, 255, 0.6);
+  --color: var(--ion-color-light);
+  padding: 0;
+  flex: 1;
+}
+
+.search-scope-tabs {
+  margin: 10px 4px 0;
+  --background: #221f2a;
+  border-radius: 14px;
+  padding: 3px;
+}
+
+.search-scope-tabs ion-segment-button {
+  --color: rgba(255, 255, 255, 0.78);
+  --color-checked: var(--ion-color-light);
+  --indicator-color: rgba(var(--ion-color-primary-rgb), 0.28);
+  --indicator-box-shadow: none;
+  min-height: 34px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .buttons-block {
