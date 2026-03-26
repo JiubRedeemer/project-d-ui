@@ -110,7 +110,7 @@ function getTraitsOrdered(race: RaceDto | null) {
                   :key="trait.id"
                   class="trait-block"
               >
-                <ion-chip size="small">
+                <ion-chip size="small" color="primary">
                   <ion-label>{{ trait.name }}</ion-label>
                 </ion-chip>
                 <p class="trait-description">{{ trait.description }}</p>
@@ -306,12 +306,13 @@ function getTraitsOrdered(race: RaceDto | null) {
 }
 
 .traits-title {
-  font-size: 0.9rem;
-  color: var(--ion-color-primary);
-  margin: 0 0 6px 0;
+  font-size: 20px;
+  padding-left: 10px;
+  margin-bottom: 5px;
 }
 
 .traits-list {
+  padding: 10px;
   display: flex;
   flex-direction: column;
   gap: 10px;
