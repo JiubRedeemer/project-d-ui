@@ -13,7 +13,7 @@ import {
 import axios from "axios";
 import { FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES } from "@/config/integrationRoutes";
 import { useRoute } from "vue-router";
-import { computed, onMounted, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { InventoryItem } from "@/components/models/response/InventoryResponse";
 import { add, caretUpCircleOutline, manOutline, remove } from "ionicons/icons";
 import { useInventoryItemStore } from "@/stores/InventoryItemStore";
@@ -38,6 +38,7 @@ const characterStore = useCharacterStore();
 const subheaderOpenedStore = useSubheaderOpenedStore();
 const walletStore = useWalletStore();
 const { isOpen, keyboardHeight } = useKeyboard();
+const moneyRootRef = ref<HTMLElement | null>(null);
 
 const moneyRootMaxHeight = computed(() => {
   if (isOpen.value && keyboardHeight.value > 0) {
@@ -47,8 +48,65 @@ const moneyRootMaxHeight = computed(() => {
   // По умолчанию, если клавиатура не открыта, используем фиксированную высоту
   return '1150px';
 });
+const ensureMoneyBlockVisible = async () => {
+  if (!walletStore.moneyExpanded || !moneyRootRef.value) {
+    return;
+  }
+
+  await nextTick();
+  const moneyElement = moneyRootRef.value;
+  const contentElement = moneyElement.closest("ion-content") as HTMLIonContentElement | null;
+
+  if (!contentElement) {
+    moneyElement.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+
+  const scrollElement = await contentElement.getScrollElement();
+  const moneyRect = moneyElement.getBoundingClientRect();
+  const scrollRect = scrollElement.getBoundingClientRect();
+  const safeTopPadding = 8;
+  const safeBottomPadding = 8;
+  const keyboardViewportBottom = isOpen.value && keyboardHeight.value > 0
+    ? window.innerHeight - keyboardHeight.value - safeBottomPadding
+    : scrollRect.bottom - safeBottomPadding;
+  const visibleTop = scrollRect.top + safeTopPadding;
+  const visibleBottom = Math.min(scrollRect.bottom - safeBottomPadding, keyboardViewportBottom);
+
+  let deltaY = 0;
+  if (moneyRect.top < visibleTop) {
+    deltaY = moneyRect.top - visibleTop;
+  } else if (moneyRect.bottom > visibleBottom) {
+    deltaY = moneyRect.bottom - visibleBottom;
+  }
+
+  if (Math.abs(deltaY) > 2) {
+    await contentElement.scrollByPoint(0, deltaY, 250);
+  }
+};
+
+watch(
+  () => walletStore.moneyExpanded,
+  (expanded) => {
+    if (!expanded) {
+      return;
+    }
+
+    void ensureMoneyBlockVisible();
+    window.setTimeout(() => {
+      void ensureMoneyBlockVisible();
+    }, 300);
+  }
+);
+
 watch(keyboardHeight, () => {
-  console.log(`Is Keyboard Open: ${isOpen.value}, Keyboard Height: ${keyboardHeight.value}`);
+  if (!walletStore.moneyExpanded) {
+    return;
+  }
+
+  window.setTimeout(() => {
+    void ensureMoneyBlockVisible();
+  }, 60);
 });
 
 const loadInventoryData = async () => {
@@ -297,6 +355,7 @@ async function takeMoney() {
     <ion-progress-bar :value="totalWeight / weightLimit"
       :color="((totalWeight / weightLimit) >= 1) ? 'danger' : 'primary'"></ion-progress-bar>
     <div class="money-root" :class="{ openMoney: walletStore.moneyExpanded }"
+      ref="moneyRootRef"
       :style="{ maxHeight: walletStore.moneyExpanded ? moneyRootMaxHeight : '40px' }">
       <div class="money" @click="expandMoneyBlock()">
         <div class="money-title">{{ HEADERS.wallet.rus }}:</div>
