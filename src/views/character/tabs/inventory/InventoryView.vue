@@ -66,7 +66,8 @@ const ensureMoneyBlockVisible = async () => {
   const moneyRect = moneyElement.getBoundingClientRect();
   const scrollRect = scrollElement.getBoundingClientRect();
   const safeTopPadding = 8;
-  const safeBottomPadding = 8;
+  const safeBottomPadding = 24;
+  const extraScrollOffset = 24;
   const keyboardViewportBottom = isOpen.value && keyboardHeight.value > 0
     ? window.innerHeight - keyboardHeight.value - safeBottomPadding
     : scrollRect.bottom - safeBottomPadding;
@@ -75,9 +76,9 @@ const ensureMoneyBlockVisible = async () => {
 
   let deltaY = 0;
   if (moneyRect.top < visibleTop) {
-    deltaY = moneyRect.top - visibleTop;
+    deltaY = moneyRect.top - visibleTop - extraScrollOffset;
   } else if (moneyRect.bottom > visibleBottom) {
-    deltaY = moneyRect.bottom - visibleBottom;
+    deltaY = moneyRect.bottom - visibleBottom + extraScrollOffset;
   }
 
   if (Math.abs(deltaY) > 2) {
