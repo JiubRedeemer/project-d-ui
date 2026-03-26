@@ -233,14 +233,20 @@ const raceGroups = computed<RaceGroup[]>(() => {
 
 const classGroups = computed<ClassGroup[]>(() => {
   const groupsByRootCode = new Map<string, { root: ClazzDto | null; subs: ClazzDto[] }>();
+  const normalize = (value: string | null | undefined) => (value ?? "").trim();
 
   for (const clazz of classes.value) {
-    const rootCode = clazz.groupCode ? clazz.groupCode : clazz.code;
+    const code = normalize(clazz.code);
+    const groupCode = normalize(clazz.groupCode);
+    const hasParentClass = groupCode.length > 0 && groupCode !== code;
+    const rootCode = hasParentClass ? groupCode : code;
+    if (!rootCode) continue;
+
     const group = groupsByRootCode.get(rootCode) ?? {root: null, subs: [] as ClazzDto[]};
     if (!groupsByRootCode.has(rootCode)) {
       groupsByRootCode.set(rootCode, group);
     }
-    if (clazz.groupCode) {
+    if (hasParentClass) {
       group.subs.push(clazz);
     } else {
       group.root = clazz;
