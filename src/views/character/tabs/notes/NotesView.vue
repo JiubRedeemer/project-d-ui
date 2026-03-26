@@ -746,10 +746,10 @@ const getSheetAccentStyle = (section: NoteSection) => {
 .files-open-button {
   position: fixed;
   bottom: 0;
-  left: 0;
+  right: 0;
   background: transparent;
   display: flex;
-  justify-content: flex-start;
+  justify-content: flex-end;
   align-items: center;
   padding: 8px 12px;
   padding-bottom: max(8px, env(safe-area-inset-bottom, 0));

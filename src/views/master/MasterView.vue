@@ -315,6 +315,27 @@ onIonViewDidLeave(() => {
   border: 1px solid var(--ion-color-primary);
 }
 
+/* Подсветка выбранной вкладки (Ionic проставляет класс tab-selected) */
+.tab-bar ion-tab-button.tab-selected .tab-icon-wrapper {
+  background: var(--ion-color-secondary);
+  border-color: var(--ion-color-tertiary);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ion-color-primary) 35%, transparent),
+    0 8px 16px rgba(0, 0, 0, 0.35);
+  transform: translateY(-2px);
+}
+
+.tab-bar ion-tab-button.tab-selected ion-icon {
+  color: var(--ion-color-dark);
+}
+
+.tab-bar ion-tab-button .tab-icon-wrapper {
+  transition: transform 140ms ease, box-shadow 140ms ease, background-color 140ms ease, border-color 140ms ease;
+}
+
+.tab-bar ion-tab-button ion-icon {
+  transition: color 140ms ease;
+}
+
 .tab-bar {
   background: var(--ion-color-medium);
   border-radius: 20px;

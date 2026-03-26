@@ -10,6 +10,8 @@ import {
     IonIcon,
     IonPage,
     IonSearchbar,
+    IonSelect,
+    IonSelectOption,
     IonToggle,
     IonToolbar,
     onIonViewDidEnter,
@@ -26,12 +28,14 @@ import {
 } from "@/api/magicApi";
 import type { SpellDto } from "@/components/models/response/MagicApi";
 import type { SpellClass } from "@/components/models/response/MagicApi";
+import type { SpellBookItemDto } from "@/components/models/response/MagicApi";
 import {
     FILE_STORAGE_INTEGRATION_ROUTES,
     SPELL_IMAGE_PLACEHOLDER,
 } from "@/config/integrationRoutes";
 import { useCharacterStore } from "@/stores/CharacterStore";
 import { useMagicStore } from "@/stores/MagicStore";
+import SpellInfoModal from "@/views/character/tabs/magic/SpellInfoModal.vue";
 
 const route = useRoute();
 const ionRouter = useIonRouter();
@@ -45,8 +49,12 @@ const characterId = computed(() => String(route.params.characterId));
 const allSpells = ref<SpellDto[]>([]);
 const searchQuery = ref("");
 const forMyClass = ref(true);
+const selectedSchool = ref<string>(""); // "" => all schools
+const selectedLevel = ref<string>(""); // "" => all levels
 const loading = ref(true);
 const addingSpellId = ref<string | null>(null);
+const selectedSpellId = ref<string | null>(null);
+const showSpellModal = ref(false);
 
 const spellBookId = computed(() => magicStore.spellBook?.id ?? null);
 const spellsInBook = computed(
@@ -75,7 +83,36 @@ const filteredSpells = computed(() => {
             return name.toLowerCase().includes(q);
         });
     }
+
+    if (selectedSchool.value) {
+        list = list.filter((s) => (s.school ?? "") === selectedSchool.value);
+    }
+    if (selectedLevel.value) {
+        list = list.filter((s) => String(s.level ?? "0") === selectedLevel.value);
+    }
+
     return list;
+});
+
+const availableSchools = computed(() => {
+    const set = new Set<string>();
+    for (const spell of allSpells.value) {
+        if (spell.school) set.add(spell.school);
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "ru"));
+});
+
+const availableLevels = computed(() => {
+    const set = new Set<string>();
+    for (const spell of allSpells.value) {
+        set.add(String(spell.level ?? "0"));
+    }
+    return Array.from(set).sort((a, b) => {
+        const na = parseInt(a, 10);
+        const nb = parseInt(b, 10);
+        if (!Number.isFinite(na) || !Number.isFinite(nb)) return a.localeCompare(b, "ru");
+        return na - nb;
+    });
 });
 
 const spellsByLevel = computed(() => {
@@ -88,6 +125,18 @@ const spellsByLevel = computed(() => {
     return Array.from(byLevel.entries()).sort(
         ([a], [b]) => parseInt(a, 10) - parseInt(b, 10)
     );
+});
+
+const selectedSpellItem = computed<SpellBookItemDto | null>(() => {
+    const sid = selectedSpellId.value;
+    if (!sid) return null;
+    const spell = allSpells.value.find((s) => s.id === sid);
+    if (!spell) return null;
+    return {
+        spellId: sid,
+        spell,
+        inUse: false,
+    };
 });
 
 function getSpellName(spell: SpellDto): string {
@@ -182,12 +231,25 @@ async function loadSpellBook() {
     }
 }
 
+function openSpellModal(spell: SpellDto) {
+    if (!spell.id) return;
+    selectedSpellId.value = spell.id;
+    showSpellModal.value = true;
+}
+
+function closeSpellModal() {
+    showSpellModal.value = false;
+    selectedSpellId.value = null;
+}
+
 onIonViewDidEnter(async () => {
     await loadSpellBook();
     await loadSpells();
 });
 
 watch(forMyClass, () => {
+    selectedSchool.value = "";
+    selectedLevel.value = "";
     loadSpells();
 });
 
@@ -220,6 +282,37 @@ function openAddSpellView() {
         >
           Для моего класса
         </ion-toggle>
+        <ion-select
+          v-model="selectedSchool"
+          interface="popover"
+          placeholder="Школа"
+          aria-label="Фильтр по школе заклинания"
+        >
+          <ion-select-option value="">Все школы</ion-select-option>
+          <ion-select-option
+            v-for="s in availableSchools"
+            :key="s"
+            :value="s"
+          >
+            {{ s }}
+          </ion-select-option>
+        </ion-select>
+
+        <ion-select
+          v-model="selectedLevel"
+          interface="popover"
+          placeholder="Уровень"
+          aria-label="Фильтр по уровню заклинания"
+        >
+          <ion-select-option value="">Все уровни</ion-select-option>
+          <ion-select-option
+            v-for="lvl in availableLevels"
+            :key="lvl"
+            :value="lvl"
+          >
+            {{ getLevelLabel(lvl) }}
+          </ion-select-option>
+        </ion-select>
       </div>
     </ion-header>
     <ion-content>
@@ -228,7 +321,7 @@ function openAddSpellView() {
         <template v-for="[level, spells] in spellsByLevel" :key="level">
           <h1 class="sectionHeader">{{ getLevelLabel(level) }}</h1>
           <div class="section" v-for="spell in spells" :key="spell.id">
-            <div class="section-start-block">
+            <div class="section-start-block" @click="openSpellModal(spell)">
               <div class="image-block">
                 <img
                   width="55"
@@ -274,6 +367,14 @@ function openAddSpellView() {
         <ion-icon :icon="add" color="dark"/>
       </ion-fab-button>
     </ion-fab>
+
+    <SpellInfoModal
+      :isOpen="showSpellModal"
+      :item="selectedSpellItem"
+      :spell-book-id="spellBookId"
+      :readonly="true"
+      @closeSpellInfoModal="closeSpellModal"
+    />
   </ion-page>
 </template>
 
@@ -385,6 +486,10 @@ ion-content {
 
 ion-searchbar {
   --border-radius: 20px;
-  --background: #2b2930;
+  --background: #2B2930;
+}
+
+.found, ion-toolbar, ion-content, .filter-row {
+  --background: var(--ion-color-dark);
 }
 </style>

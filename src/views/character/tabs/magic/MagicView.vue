@@ -16,6 +16,8 @@ const magicStore = useMagicStore();
 const spellBook = computed(() => magicStore.spellBook);
 const loading = ref(true);
 const error = ref<string | null>(null);
+const explodingCrystalKeys = ref<Record<string, boolean>>({});
+const crystalExplosionTimers = new Map<string, number>();
 
 const spellBookId = computed(() => spellBook.value?.id ?? null);
 const roomId = computed(() => String(route.params.roomId));
@@ -298,6 +300,8 @@ async function useSpell(item: SpellBookItemDto) {
         return;
     }
     try {
+        const spentCrystalIndex = cell.currentCount ?? 0;
+        triggerCrystalExplosion(level, spentCrystalIndex);
         const updated = await useSpellCell(cell.id);
         if (magicStore.spellBook) {
             magicStore.setSpellBook({
@@ -318,6 +322,31 @@ async function useSpell(item: SpellBookItemDto) {
         });
         await toast.present();
     }
+}
+
+function getCrystalKey(level: number, index: number): string {
+    return `${level}-${index}`;
+}
+
+function isCrystalExploding(level: number, index: number): boolean {
+    return Boolean(explodingCrystalKeys.value[getCrystalKey(level, index)]);
+}
+
+function triggerCrystalExplosion(level: number, index: number) {
+    if (index <= 0) return;
+    const key = getCrystalKey(level, index);
+    explodingCrystalKeys.value = { ...explodingCrystalKeys.value, [key]: true };
+
+    const oldTimer = crystalExplosionTimers.get(key);
+    if (oldTimer) window.clearTimeout(oldTimer);
+
+    const timerId = window.setTimeout(() => {
+        const next = { ...explodingCrystalKeys.value };
+        delete next[key];
+        explodingCrystalKeys.value = next;
+        crystalExplosionTimers.delete(key);
+    }, 480);
+    crystalExplosionTimers.set(key, timerId);
 }
 
 function openSearchView() {
@@ -412,7 +441,10 @@ onIonViewDidEnter(loadMagicData);
                 v-for="n in getCellMaxCount(level)"
                 :key="n"
                 class="spell-cell-dot"
-                :class="{ filled: n <= getCellCurrentCount(level) }"
+                :class="{
+                  filled: n <= getCellCurrentCount(level),
+                  exploding: isCrystalExploding(level, n),
+                }"
                 @click="refillOneSpellCell(level)"
               />
             </div>
@@ -444,7 +476,10 @@ onIonViewDidEnter(loadMagicData);
                 v-for="n in getCellMaxCount(classSpellCellLevel)"
                 :key="n"
                 class="spell-cell-dot"
-                :class="{ filled: n <= getCellCurrentCount(classSpellCellLevel) }"
+                :class="{
+                  filled: n <= getCellCurrentCount(classSpellCellLevel),
+                  exploding: isCrystalExploding(classSpellCellLevel, n),
+                }"
                 @click="refillOneSpellCell(classSpellCellLevel)"
               />
               <span v-if="getCellMaxCount(classSpellCellLevel) === 0" class="spell-cell-empty">—</span>
@@ -654,10 +689,21 @@ onIonViewDidEnter(loadMagicData);
 .spell-cell-dot {
   width: 9px;
   height: 9px;
-  border-radius: 50%;
-  border: 1px solid #7c5cc4;
-  background: transparent;
-  box-shadow: 0 0 0 1px rgba(124, 92, 196, 0.25);
+  display: inline-block;
+  position: relative;
+  overflow: visible;
+  border-radius: 4px;
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.55);
+  background:
+    radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0) 42%),
+    linear-gradient(
+      145deg,
+      rgba(var(--ion-color-primary-rgb), 0.36),
+      rgba(var(--ion-color-primary-rgb), 0.18)
+    );
+  box-shadow:
+    inset 0 0 0 1px rgba(208, 196, 255, 0.12),
+    0 0 4px rgba(var(--ion-color-primary-rgb), 0.25);
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
 }
@@ -668,9 +714,119 @@ onIonViewDidEnter(loadMagicData);
 }
 
 .spell-cell-dot.filled {
-  background: #b38cff;
-  border-color: #b38cff;
-  box-shadow: 0 0 6px rgba(179, 140, 255, 0.6);
+  border-color: rgba(var(--ion-color-primary-rgb), 0.95);
+  background:
+    radial-gradient(circle at 38% 30%, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 45%),
+    linear-gradient(
+      145deg,
+      rgba(var(--ion-color-primary-rgb), 0.96),
+      rgba(var(--ion-color-primary-rgb), 0.78)
+    );
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.42),
+    0 0 8px rgba(var(--ion-color-primary-rgb), 0.62),
+    0 0 14px rgba(var(--ion-color-primary-rgb), 0.4);
+}
+
+.spell-cell-dot::before,
+.spell-cell-dot::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 2px;
+  height: 2px;
+  border-radius: 2px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(0.4);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.spell-cell-dot.exploding {
+  animation: crystal-pop 460ms ease-out forwards;
+}
+
+.spell-cell-dot.exploding::before {
+  opacity: 1;
+  animation: crystal-shards-1 480ms ease-out forwards;
+}
+
+.spell-cell-dot.exploding::after {
+  opacity: 1;
+  animation: crystal-shards-2 480ms ease-out forwards;
+}
+
+@keyframes crystal-pop {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+    filter: brightness(1);
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.42),
+      0 0 8px rgba(var(--ion-color-primary-rgb), 0.62),
+      0 0 14px rgba(var(--ion-color-primary-rgb), 0.4);
+  }
+  45% {
+    transform: scale(1.75) rotate(12deg);
+    opacity: 0.95;
+    filter: brightness(1.4);
+    box-shadow:
+      0 0 0 5px rgba(var(--ion-color-primary-rgb), 0.2),
+      0 0 24px rgba(var(--ion-color-primary-rgb), 0.85),
+      0 0 34px rgba(var(--ion-color-primary-rgb), 0.6);
+  }
+  100% {
+    transform: scale(0.15) rotate(26deg);
+    opacity: 0;
+    filter: brightness(1.8);
+    box-shadow:
+      0 0 0 10px rgba(214, 244, 255, 0),
+      0 0 0 rgba(136, 218, 255, 0),
+      0 0 0 rgba(173, 128, 255, 0);
+  }
+}
+
+@keyframes crystal-shards-1 {
+  0% {
+    opacity: 0.95;
+    transform: translate(-50%, -50%) scale(0.4);
+    box-shadow:
+      0 0 0 0 rgba(var(--ion-color-primary-rgb), 0),
+      0 0 0 0 rgba(var(--ion-color-primary-rgb), 0),
+      0 0 0 0 rgba(var(--ion-color-primary-rgb), 0),
+      0 0 0 0 rgba(var(--ion-color-primary-rgb), 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1);
+    box-shadow:
+      -14px -10px 0 0 rgba(var(--ion-color-primary-rgb), 0.95),
+      13px -8px 0 0 rgba(255, 255, 255, 0.9),
+      -11px 12px 0 0 rgba(var(--ion-color-primary-rgb), 0.85),
+      12px 11px 0 0 rgba(var(--ion-color-primary-rgb), 0.72);
+  }
+}
+
+@keyframes crystal-shards-2 {
+  0% {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) rotate(0deg) scale(0.3);
+    box-shadow:
+      0 0 0 0 rgba(var(--ion-color-primary-rgb), 0),
+      0 0 0 0 rgba(var(--ion-color-primary-rgb), 0),
+      0 0 0 0 rgba(var(--ion-color-primary-rgb), 0),
+      0 0 0 0 rgba(var(--ion-color-primary-rgb), 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(18deg) scale(1);
+    box-shadow:
+      0 -16px 0 0 rgba(var(--ion-color-primary-rgb), 0.85),
+      16px 0 0 0 rgba(var(--ion-color-primary-rgb), 0.75),
+      0 15px 0 0 rgba(255, 255, 255, 0.82),
+      -15px 1px 0 0 rgba(var(--ion-color-primary-rgb), 0.7);
+  }
 }
 
 .spell-cell-empty {
