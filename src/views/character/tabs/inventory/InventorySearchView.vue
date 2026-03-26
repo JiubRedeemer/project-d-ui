@@ -42,7 +42,7 @@ const selectedItem = ref<Item | null>(null);
 const showFullViewModal = ref(false);
 type SearchScope = "all" | "owned";
 const activeSearchScope = ref<SearchScope>("all");
-const SEARCH_LIMIT = 20;
+const SEARCH_LIMIT = 100;
 
 function openFullView(item: Item) {
   selectedItem.value = item;
