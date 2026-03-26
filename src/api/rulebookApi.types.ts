@@ -8,46 +8,46 @@
 export type AbilityModifierDto = {
   code: string;
   value: number;
-  count: number;
+  count?: number | null;
 };
 
 export type RaceTraitDto = {
-  id: string;
-  raceStatsId: string;
+  id?: string;
+  raceStatsId?: string;
   name: string;
-  code: string;
-  description?: string | null;
+  code?: string;
+  description: string;
 };
 
 export type RaceProficiencyTypeEnum = "WEAPON" | "ARMOR" | "INSTRUMENT" | "ABILITY";
 
 export type RaceProficiencyDto = {
-  id: string;
-  raceStatsId: string;
+  id?: string;
+  raceStatsId?: string;
   type: RaceProficiencyTypeEnum;
   code: string;
 };
 
 export type RaceStatsDto = {
-  id: string;
-  maxAge: number;
-  maxHeight: number;
-  maxWeight: number;
+  id?: string;
+  maxAge?: number | null;
+  maxHeight?: number | null;
+  maxWeight?: number | null;
   baseSpeed?: number | null;
   abilityModifiers: AbilityModifierDto[];
-  traits: RaceTraitDto[];
-  proficiencies: RaceProficiencyDto[];
+  traits?: RaceTraitDto[];
+  proficiencies?: RaceProficiencyDto[];
 };
 
 export type RaceDto = {
-  id: string;
+  id?: string;
   roomId: string;
   name: string;
-  description?: string | null;
-  code: string;
+  description: string;
+  code?: string;
   speciesCode?: string | null;
   imgUrl?: string | null;
-  stats?: RaceStatsDto;
+  stats: RaceStatsDto;
 };
 
 export type RaceGroupDto = {
@@ -139,33 +139,33 @@ export type SkillResponse = {
 export type BackgroundProficiencyTypeEnum = "SKILL" | "TOOL";
 
 export type BackgroundProficiencyDto = {
-  id: string;
-  backgroundStatsId: string;
+  id?: string;
+  backgroundStatsId?: string;
   type: BackgroundProficiencyTypeEnum;
   code: string;
 };
 
 export type BackgroundTraitDto = {
-  id: string;
-  backgroundStatsId: string;
+  id?: string;
+  backgroundStatsId?: string;
   name: string;
-  code: string;
-  description?: string | null;
+  code?: string;
+  description: string;
 };
 
 export type BackgroundStatsDto = {
-  id: string;
-  abilityModifiers?: string[] | null;
-  traits?: BackgroundTraitDto[] | null;
-  proficiencies?: BackgroundProficiencyDto[] | null;
+  id?: string;
+  abilityModifiers: string[];
+  traits?: BackgroundTraitDto[];
+  proficiencies?: BackgroundProficiencyDto[];
 };
 
 export type BackgroundDto = {
-  id: string;
+  id?: string;
   roomId: string;
   name: string;
-  description?: string | null;
-  code: string;
+  description: string;
+  code?: string;
   imgUrl?: string | null;
-  stats?: BackgroundStatsDto | null;
+  stats: BackgroundStatsDto;
 };

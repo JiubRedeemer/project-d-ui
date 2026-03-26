@@ -20,7 +20,7 @@ import {
 import {HEADERS, TEXTS} from "@/config/localisations";
 import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {add, addOutline, close, closeCircleOutline, pencilOutline, saveOutline, trashOutline} from "ionicons/icons";
-import {onBeforeMount, ref, watch} from "vue";
+import {computed, onBeforeMount, ref, watch} from "vue";
 import {useCreateInventoryItemStore} from "@/stores/CreateInventoryItemStore";
 import axios from "axios";
 import {v4 as uuidv4} from 'uuid';
@@ -31,6 +31,7 @@ import {useInventoryStore} from "@/stores/InventoryStore";
 
 const router = useRouter();
 const route = useRoute();
+const hasCharacterContext = computed(() => Boolean(route.params.characterId));
 const previewImage = ref<string | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
 const createInventoryItemStore = useCreateInventoryItemStore();
@@ -513,11 +514,13 @@ async function saveItem() {
       );
       router.back();
 
-      if (oldItemId.value && oldItemId.value !== itemId) {
-        await deleteFromInventory(oldItemId.value);
-        await addItemToInventory(itemId);
-      } else if (!oldItemId.value) {
-        await addItemToInventory(itemId);
+      if (hasCharacterContext.value) {
+        if (oldItemId.value && oldItemId.value !== itemId) {
+          await deleteFromInventory(oldItemId.value);
+          await addItemToInventory(itemId);
+        } else if (!oldItemId.value) {
+          await addItemToInventory(itemId);
+        }
       }
     } catch (error) {
       console.error("Ошибка при получении данных:", error);
@@ -1304,7 +1307,7 @@ const getSkillImageUrl = (imgUrl: string | undefined) => {
     </ion-content>
     <EditItemSkillValueModal v-if="showEditItemSkillModal"
                              :isOpen="showEditItemSkillModal"
-                             :character-id="String(route.params.characterId)"
+                             :character-id="String(route.params.characterId ?? '')"
                              :is-editing="isEditingItemSkill"
                              :item-skill="editingItemSkill"
                              @closeEditItemSkillModal="closeEditItemSkillModal"

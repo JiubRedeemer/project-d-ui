@@ -111,6 +111,24 @@ function setModifierCount(index: number, count: number) {
   if (list && list[index]) list[index].count = count;
 }
 
+const traits = computed(() => createRaceStore.race.stats?.traits ?? []);
+
+function addTrait() {
+  const stats = createRaceStore.race.stats;
+  if (!stats) return;
+  const list = [...(stats.traits ?? [])];
+  list.push({name: "", description: ""});
+  stats.traits = list;
+}
+
+function removeTrait(index: number) {
+  const list = createRaceStore.race.stats?.traits;
+  if (!list) return;
+  const next = [...list];
+  next.splice(index, 1);
+  createRaceStore.race.stats!.traits = next;
+}
+
 const triggerFileInput = () => fileInput.value?.click();
 
 function slugCode(name: string): string {
@@ -142,15 +160,29 @@ async function onSave() {
   if (!roomId) return;
 
   const code = r.code?.trim() || slugCode(r.name);
+  const normalizedTraits = (r.stats?.traits ?? [])
+    .map((t) => {
+      const name = t.name?.trim() ?? "";
+      const description = t.description?.trim() ?? "";
+      if (!name || !description) return null;
+      const traitCode = t.code?.trim() || slugCode(`${r.name}_${name}`);
+      return {...t, name, description, code: traitCode};
+    })
+    .filter((t): t is NonNullable<typeof t> => Boolean(t));
   const raceDto: RaceDto = {
     id: r.id || "",
     roomId,
     name: r.name.trim(),
-    description: r.description?.trim() || null,
+    description: r.description?.trim() || "",
     code,
     speciesCode: r.speciesCode || null,
     imgUrl: r.imgUrl || null,
-    stats: r.stats,
+    stats: {
+      ...(r.stats as RaceStatsDto),
+      abilityModifiers: r.stats?.abilityModifiers ?? [],
+      traits: normalizedTraits,
+      proficiencies: r.stats?.proficiencies ?? [],
+    },
   };
 
   isSaving.value = true;
@@ -223,6 +255,9 @@ onBeforeMount(async () => {
   }
   if (!createRaceStore.race.stats.abilityModifiers) {
     createRaceStore.race.stats.abilityModifiers = [];
+  }
+  if (!createRaceStore.race.stats.traits) {
+    createRaceStore.race.stats.traits = [];
   }
 
   const roomId =
@@ -388,6 +423,41 @@ onBeforeMount(async () => {
               </ion-select-option>
             </ion-select>
           </div>
+
+          <div class="stat-section">
+            <div class="stat-section-name">Трейты</div>
+            <p class="helper-text">Добавьте особенности вида: имя и описание.</p>
+            <div
+                v-for="(trait, index) in traits"
+                :key="index"
+                class="trait-row"
+            >
+              <ion-input
+                  type="text"
+                  fill="outline"
+                  color="primary"
+                  :clear-input="true"
+                  v-model="trait.name"
+                  placeholder="Название трейта"
+                  class="trait-name-input"
+              />
+              <ion-textarea
+                  fill="outline"
+                  color="primary"
+                  :clear-input="true"
+                  v-model="trait.description"
+                  placeholder="Описание трейта"
+                  class="trait-desc-input"
+                  :rows="2"
+              />
+              <button type="button" class="clear-row-btn" aria-label="Удалить" @click="removeTrait(index)">
+                <ion-icon :icon="closeCircleOutline"></ion-icon>
+              </button>
+            </div>
+            <ion-button fill="solid" color="primary" class="add-bonus-btn" @click="addTrait">
+              <ion-icon :icon="add"></ion-icon>
+            </ion-button>
+          </div>
         </div>
       </div>
 
@@ -551,6 +621,19 @@ onBeforeMount(async () => {
   --border-radius: 50%;
   width: 48px;
   height: 48px;
+}
+
+.trait-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.trait-name-input,
+.trait-desc-input {
+  --background: var(--ion-color-dark-shade);
+  border-radius: 8px;
 }
 </style>
 
