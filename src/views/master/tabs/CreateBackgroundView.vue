@@ -55,6 +55,7 @@ const abilityOptions = computed(() => {
 });
 
 const abilityModifiers = computed(() => createBackgroundStore.background.stats?.abilityModifiers ?? []);
+const traits = computed(() => createBackgroundStore.background.stats?.traits ?? []);
 
 function abilityModifierOptionsForIndex(index: number) {
   const list = abilityModifiers.value;
@@ -92,6 +93,22 @@ function setAbilityModifier(index: number, code: string) {
   if (list && list[index] !== undefined) list[index] = code;
 }
 
+function addTrait() {
+  const stats = createBackgroundStore.background.stats;
+  if (!stats) return;
+  const list = [...(stats.traits ?? [])];
+  list.push({name: "", description: ""});
+  stats.traits = list;
+}
+
+function removeTrait(index: number) {
+  const list = createBackgroundStore.background.stats?.traits;
+  if (!list) return;
+  const next = [...list];
+  next.splice(index, 1);
+  createBackgroundStore.background.stats!.traits = next;
+}
+
 function slugCode(name: string): string {
   const base = name.trim().toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "") || "background";
   const existing = new Set(guidebookStore.backgrounds.map((b) => b.code));
@@ -120,14 +137,28 @@ async function onSave() {
   if (!roomId) return;
 
   const code = b.code?.trim() || slugCode(b.name);
+  const normalizedTraits = (b.stats?.traits ?? [])
+    .map((t) => {
+      const name = t.name?.trim() ?? "";
+      const description = t.description?.trim() ?? "";
+      if (!name || !description) return null;
+      const traitCode = t.code?.trim() || slugCode(`${b.name}_${name}`);
+      return {...t, name, description, code: traitCode};
+    })
+    .filter((t): t is NonNullable<typeof t> => Boolean(t));
   const dto: BackgroundDto = {
     id: b.id || "",
     roomId,
     name: b.name.trim(),
-    description: b.description?.trim() || null,
+    description: b.description?.trim() || "",
     code,
     imgUrl: b.imgUrl || null,
-    stats: b.stats ?? undefined,
+    stats: {
+      ...(b.stats as BackgroundStatsDto),
+      abilityModifiers: b.stats?.abilityModifiers ?? [],
+      traits: normalizedTraits,
+      proficiencies: b.stats?.proficiencies ?? [],
+    },
   };
 
   isSaving.value = true;
@@ -193,12 +224,15 @@ onBeforeMount(async () => {
     createBackgroundStore.background.stats = {
       id: "",
       abilityModifiers: [],
-      traits: null,
-      proficiencies: null,
+      traits: [],
+      proficiencies: [],
     } as BackgroundStatsDto;
   }
   if (!createBackgroundStore.background.stats.abilityModifiers) {
     createBackgroundStore.background.stats.abilityModifiers = [];
+  }
+  if (!createBackgroundStore.background.stats.traits) {
+    createBackgroundStore.background.stats.traits = [];
   }
 
   const roomId =
@@ -293,6 +327,41 @@ onBeforeMount(async () => {
               </button>
             </div>
             <ion-button fill="solid" color="primary" class="add-bonus-btn" @click="addAbilityModifier">
+              <ion-icon :icon="add" />
+            </ion-button>
+          </div>
+
+          <div class="stat-section">
+            <div class="stat-section-name">Трейты</div>
+            <p class="helper-text">Добавьте особенности предыстории: имя и описание.</p>
+            <div
+              v-for="(trait, index) in traits"
+              :key="index"
+              class="trait-row"
+            >
+              <ion-input
+                type="text"
+                fill="outline"
+                color="primary"
+                :clear-input="true"
+                v-model="trait.name"
+                placeholder="Название трейта"
+                class="trait-name-input"
+              />
+              <ion-textarea
+                fill="outline"
+                color="primary"
+                :clear-input="true"
+                v-model="trait.description"
+                placeholder="Описание трейта"
+                class="trait-desc-input"
+                :rows="2"
+              />
+              <button type="button" class="clear-row-btn" aria-label="Удалить" @click="removeTrait(index)">
+                <ion-icon :icon="closeCircleOutline" />
+              </button>
+            </div>
+            <ion-button fill="solid" color="primary" class="add-bonus-btn" @click="addTrait">
               <ion-icon :icon="add" />
             </ion-button>
           </div>
@@ -435,6 +504,19 @@ onBeforeMount(async () => {
   --border-radius: 50%;
   width: 48px;
   height: 48px;
+}
+
+.trait-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.trait-name-input,
+.trait-desc-input {
+  --background: var(--ion-color-dark-shade);
+  border-radius: 8px;
 }
 
 .buttons-block {

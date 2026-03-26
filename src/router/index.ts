@@ -207,6 +207,11 @@ const routes: Array<RouteRecordRaw> = [
         path: '/rooms/:roomId/master/create/background',
         component: CreateBackgroundView,
         name: 'createBackgroundView',
+    },
+    {
+        path: '/rooms/:roomId/master/create/item',
+        component: InventoryItemAddView,
+        name: 'createItemView',
     }
 ]
 

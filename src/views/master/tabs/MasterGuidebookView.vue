@@ -48,6 +48,7 @@ import {useFullBackgroundStore} from "@/stores/FullBackgroundStore";
 import {useCreateClassStore} from "@/stores/createEntity/CreateClassStore";
 import {useCreateRaceStore} from "@/stores/createEntity/CreateRaceStore";
 import {useCreateBackgroundStore} from "@/stores/createEntity/CreateBackgroundStore";
+import {useCreateInventoryItemStore} from "@/stores/CreateInventoryItemStore";
 import type {Character} from "@/components/models/response/Character";
 import axios from "axios";
 import MasterGuidebookItemModal from "@/views/master/modals/MasterGuidebookItemModal.vue";
@@ -61,6 +62,7 @@ const fullRaceStore = useFullRaceStore();
 const fullClassStore = useFullClassStore();
 const fullBackgroundStore = useFullBackgroundStore();
 const guidebookStore = useGuidebookStore();
+const createInventoryItemStore = useCreateInventoryItemStore();
 
 type Section = "list" | "races" | "classes" | "backgrounds" | "items" | "spells" | "npcs";
 const currentSection = ref<Section>("list");
@@ -841,6 +843,12 @@ const createBackground = () => {
   s.background = {} as BackgroundDto;
   ionRouter.navigate('/rooms/' + id + '/master/create/background', "forward", "push");
 };
+
+const createItem = () => {
+  const id = roomId.value;
+  createInventoryItemStore.clearAll();
+  ionRouter.navigate('/rooms/' + id + '/master/create/item', "forward", "push");
+};
 </script>
 
 <template>
@@ -1068,6 +1076,16 @@ const createBackground = () => {
         </div>
         <div v-else class="empty-placeholder">
           Введите минимум 2 символа для поиска предметов
+        </div>
+        <div class="add-new-button">
+          <ion-button
+              size="large"
+              shape="round"
+              color="primary"
+              @click="createItem()"
+          >
+            <ion-icon slot="icon-only" :icon="addOutline"/>
+          </ion-button>
         </div>
       </div>
 
