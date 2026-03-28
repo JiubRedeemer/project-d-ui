@@ -30,7 +30,6 @@ const abilities = ref<AbilityDto[]>([]);
 const allowedFormats = ["image/jpeg", "image/png", "image/gif", "image/bmp", "image/webp", "image/tiff", "image/svg+xml"];
 
 const abilityOptions = computed(() => {
-  const fromApi = abilities.value.map((a) => ({ code: a.code ?? "", name: a.name ?? a.code }));
   const standard = [
     { code: "STR", name: "Сила" },
     { code: "DEX", name: "Ловкость" },
@@ -39,7 +38,15 @@ const abilityOptions = computed(() => {
     { code: "WIS", name: "Мудрость" },
     { code: "CHA", name: "Харизма" },
   ];
-  return fromApi.length ? fromApi : standard;
+  const map = new Map(standard.map((s) => [s.code, s] as const));
+  for (const a of abilities.value) {
+    const c = a.code?.trim();
+    if (c) map.set(c, { code: c, name: a.name?.trim() || c });
+  }
+  for (const code of createBackgroundStore.background.stats?.abilityModifiers ?? []) {
+    if (code && !map.has(code)) map.set(code, { code, name: code });
+  }
+  return Array.from(map.values());
 });
 
 const abilityModifiers = computed(() => createBackgroundStore.background.stats?.abilityModifiers ?? []);
@@ -247,7 +254,7 @@ onBeforeMount(async () => {
             <p class="helper-text">Характеристики, к которым предыстория даёт бонусы (например, +2 к одной и +1 к другой).</p>
             <div
               v-for="(code, index) in abilityModifiers"
-              :key="index"
+              :key="`${index}-${code}-${abilityOptions.length}`"
               class="bonus-row"
             >
               <ion-select
