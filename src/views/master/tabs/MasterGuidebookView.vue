@@ -117,6 +117,8 @@ const items = ref<Item[]>([]);
 const spells = ref<SpellDto[]>([]);
 const itemSearchQuery = ref("");
 const spellSearchQuery = ref("");
+const selectedSpellSchool = ref("");
+const selectedSpellLevel = ref("");
 const selectedSpellClass = ref<string | "ALL">("ALL");
 const spellClasses = ref<{ value: string; label: string; groupCode?: string | null }[]>([]);
 const spellClassesLoading = ref(false);
@@ -310,6 +312,27 @@ const filteredNpcs = computed(() => {
   return result.sort((a, b) => a.name.localeCompare(b.name, "ru", {sensitivity: "base"}));
 });
 
+const availableSpellSchools = computed(() => {
+  const set = new Set<string>();
+  for (const spell of spells.value) {
+    if (spell.school) set.add(spell.school);
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b, "ru"));
+});
+
+const availableSpellLevels = computed(() => {
+  const set = new Set<string>();
+  for (const spell of spells.value) {
+    set.add(String(spell.level ?? "0"));
+  }
+  return Array.from(set).sort((a, b) => {
+    const na = parseInt(a, 10);
+    const nb = parseInt(b, 10);
+    if (!Number.isFinite(na) || !Number.isFinite(nb)) return a.localeCompare(b, "ru");
+    return na - nb;
+  });
+});
+
 const filteredSpells = computed(() => {
   const q = debouncedSpellSearchQuery.value.toLowerCase();
   let list = spells.value;
@@ -321,6 +344,12 @@ const filteredSpells = computed(() => {
           "";
       return name.toLowerCase().includes(q);
     });
+  }
+  if (selectedSpellSchool.value) {
+    list = list.filter((s) => (s.school ?? "") === selectedSpellSchool.value);
+  }
+  if (selectedSpellLevel.value) {
+    list = list.filter((s) => String(s.level ?? "0") === selectedSpellLevel.value);
   }
   return list;
 });
@@ -577,8 +606,14 @@ async function loadSpellClassesForRoom() {
 }
 
 watch(selectedSpellClass, () => {
+  selectedSpellSchool.value = "";
+  selectedSpellLevel.value = "";
   loadSpells();
 });
+
+function getSpellLevelLabel(level: string): string {
+  return level === "0" ? "Фокусы" : `${level} уровень`;
+}
 
 watch(
     itemSearchQuery,
@@ -1216,7 +1251,7 @@ async function onCatalogApplied(
         <div class="spells-filters">
           <ion-searchbar
               v-model="spellSearchQuery"
-              placeholder="Поиск заклинаний"
+              placeholder="Найти заклинание"
               debounce="200"
           />
           <div class="spell-class-select-wrapper">
@@ -1237,10 +1272,44 @@ async function onCatalogApplied(
               </option>
             </select>
           </div>
+          <div class="spells-filter-row">
+            <IonSelect
+                v-model="selectedSpellSchool"
+                interface="popover"
+                placeholder="Школа"
+                aria-label="Фильтр по школе заклинания"
+                class="spells-filter-select"
+            >
+              <IonSelectOption value="">Все школы</IonSelectOption>
+              <IonSelectOption
+                  v-for="s in availableSpellSchools"
+                  :key="s"
+                  :value="s"
+              >
+                {{ s }}
+              </IonSelectOption>
+            </IonSelect>
+            <IonSelect
+                v-model="selectedSpellLevel"
+                interface="popover"
+                placeholder="Уровень"
+                aria-label="Фильтр по уровню заклинания"
+                class="spells-filter-select"
+            >
+              <IonSelectOption value="">Все уровни</IonSelectOption>
+              <IonSelectOption
+                  v-for="lvl in availableSpellLevels"
+                  :key="lvl"
+                  :value="lvl"
+              >
+                {{ getSpellLevelLabel(lvl) }}
+              </IonSelectOption>
+            </IonSelect>
+          </div>
         </div>
         <div v-if="!loading && filteredSpells.length" class="spells-content">
           <div v-for="[level, levelSpells] in spellsByLevel" :key="level" class="spell-level-group">
-            <div class="spell-level-label">{{ level === "0" ? "Фокусы" : `${level} уровень` }}</div>
+            <div class="spell-level-label">{{ getSpellLevelLabel(level) }}</div>
             <ion-list class="guidebook-list">
               <ion-item
                   v-for="spell in levelSpells"
@@ -1264,6 +1333,7 @@ async function onCatalogApplied(
           </div>
         </div>
         <div v-else-if="loading" class="loading-placeholder">Загрузка...</div>
+        <div v-else-if="spells.length" class="empty-placeholder">Заклинания не найдены</div>
         <div v-else class="empty-placeholder">Нет заклинаний</div>
       </div>
 
@@ -1497,6 +1567,25 @@ ion-searchbar {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.spells-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 0 4px 4px;
+}
+
+.spells-filter-row .spells-filter-select {
+  flex: 1;
+  min-width: 120px;
+  --padding-start: 12px;
+  --padding-end: 12px;
+  background: var(--ion-color-medium);
+  border-radius: 8px;
+  color: var(--ion-color-light);
+  font-size: 14px;
 }
 
 .spell-class-select-wrapper {
