@@ -10,10 +10,11 @@
               @swiper="smallSwiperInstance = $event"
               @slideChange="onSmallSlideChange"
           >
-            <swiper-slide v-for="(bg, i) in backgrounds"
-                          :key="bg.id"
-                          :class="{ 'selected-slide': i === selectedIndex }"
-                          @click="onBackgroundClick(i)"
+            <swiper-slide
+                v-for="(bg, i) in backgrounds"
+                :key="slideKey(bg, i)"
+                :class="{ 'selected-slide': i === selectedIndex }"
+                @click="onBackgroundClick(i)"
             >
               <img :src="getBackgroundImageUrl(bg.imgUrl)" class="background-image"
                    alt="" @error="onImageError"/>
@@ -27,7 +28,7 @@
             @swiper="largeSwiperInstance = $event"
             @slideChange="onLargeSlideChange"
         >
-          <swiper-slide v-for="(bg, i) in backgrounds" :key="bg.id">
+          <swiper-slide v-for="(bg, i) in backgrounds" :key="slideKey(bg, i)">
             <div class="background-container">
               <div class="image-wrapper">
                 <img :src="getBackgroundImageUrl(selectedBackground.imgUrl)" class="background-large-image"
@@ -48,7 +49,7 @@
               </div>
               <div v-if="selectedBackground.stats?.traits?.length" class="traits-block">
                 <p class="traits-title">Черта</p>
-                <div class="trait" v-for="trait in selectedBackground.stats.traits" :key="trait.id">
+                <div class="trait" v-for="(trait, ti) in selectedBackground.stats.traits" :key="trait.id ?? trait.code ?? ti">
                   <ion-chip>{{trait.name}}</ion-chip>
                   <p class="trait-description">
                     {{ trait.description}}
@@ -74,17 +75,19 @@
 </template>
 
 <script setup lang="ts">
-import {IonButton, IonChip, IonFab, IonFabButton, IonIcon, IonicSlides, IonLabel} from "@ionic/vue";
-import {computed, onMounted, ref} from "vue";
+import {IonButton, IonChip, IonIcon, IonicSlides, IonLabel} from "@ionic/vue";
+import {computed, nextTick, onMounted, ref, watch} from "vue";
 import {Swiper, SwiperSlide} from "swiper/vue";
 import {arrowForwardOutline} from "ionicons/icons";
-import axios from "axios";
 import {Swiper as SwiperType} from "swiper/types";
 import {useRoute} from "vue-router";
-import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
-import type {BackgroundDto} from "@/components/models/response/BackgroundDto";
+import {FILE_STORAGE_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import type {BackgroundDto} from "@/api/rulebookApi.types";
+import {getBackgroundsForRoom} from "@/api/rulebookApi";
+import {useRoomStore} from "@/stores/RoomStore";
 
 const route = useRoute();
+const roomStore = useRoomStore();
 
 const backgrounds = ref<BackgroundDto[]>([]);
 const selectedIndex = ref(0);
@@ -99,10 +102,17 @@ const props = defineProps<{
   currentStep: { current: number };
 }>();
 
-function getBackgroundImageUrl(imgUrl: string | undefined): string {
+function slideKey(bg: BackgroundDto, i: number) {
+  const c = bg.code ?? "";
+  const id = bg.id ?? "";
+  return c + id + i;
+}
+
+/** Как в MasterGuidebookView: bucket предысторий, не other_bucket */
+function getBackgroundImageUrl(imgUrl: string | undefined | null): string {
   if (!imgUrl) return BACKGROUND_PLACEHOLDER;
   if (imgUrl.startsWith("http://") || imgUrl.startsWith("https://")) return imgUrl;
-  return `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.other_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.download}/${imgUrl}`;
+  return `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.backgrounds_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.download}/${imgUrl}`;
 }
 
 function onImageError(event: Event) {
@@ -111,27 +121,57 @@ function onImageError(event: Event) {
   target.src = BACKGROUND_PLACEHOLDER;
 }
 
-const backgroundsListUrl = () =>
-  `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.backgrounds}`;
-const backgroundByCodeUrl = (code: string) =>
-  `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.backgrounds}/${code}`;
+function savedBackgroundCode(): string | undefined {
+  const bg = props.characterData?.background as {code?: string} | null | undefined;
+  return bg?.code?.trim() || undefined;
+}
 
-onMounted(async () => {
+function applySelectionFromCharacterData() {
+  const code = savedBackgroundCode();
+  if (!code || !backgrounds.value.length) return;
+  const idx = backgrounds.value.findIndex((b) => (b.code ?? "").trim() === code);
+  if (idx < 0) return;
+  selectedIndex.value = idx;
+  void nextTick(() => {
+    smallSwiperInstance.value?.slideTo(idx, 0, false);
+    largeSwiperInstance.value?.slideTo(idx, 0, false);
+  });
+}
+
+async function loadBackgrounds() {
+  const roomIdParam = route.params.roomId;
+  const roomId = Array.isArray(roomIdParam) ? roomIdParam[0] : roomIdParam;
+  if (!roomId) {
+    backgrounds.value = [];
+    return;
+  }
   try {
-    const response = await axios.get(backgroundsListUrl(), {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + localStorage.getItem("accessToken"),
-      },
-    });
-    backgrounds.value = Array.isArray(response.data) ? response.data : [];
+    if (!roomStore.room?.id || roomStore.room.id !== roomId) {
+      await roomStore.getRoomInfo(roomId);
+    }
+    const baseRuleType = roomStore.room?.baseRuleType ?? undefined;
+    backgrounds.value = await getBackgroundsForRoom(roomId, baseRuleType);
     if (backgrounds.value.length && selectedIndex.value >= backgrounds.value.length) {
       selectedIndex.value = 0;
     }
+    applySelectionFromCharacterData();
   } catch (error) {
     console.error("Ошибка при получении предысторий:", error);
+    backgrounds.value = [];
   }
+}
+
+onMounted(() => {
+  void loadBackgrounds();
 });
+
+watch(
+    () => props.characterData?.background,
+    () => applySelectionFromCharacterData(),
+    {deep: true}
+);
+
+watch(backgrounds, () => applySelectionFromCharacterData(), {flush: "post"});
 
 const selectedBackground = computed(() => backgrounds.value[selectedIndex.value] ?? null);
 

@@ -21,6 +21,7 @@ import {
   chevronForwardOutline,
   cubeOutline,
   documentTextOutline,
+  listOutline,
   menuOutline,
   peopleOutline,
   personOutline,
@@ -51,6 +52,7 @@ import {useCreateBackgroundStore} from "@/stores/createEntity/CreateBackgroundSt
 import {useCreateInventoryItemStore} from "@/stores/CreateInventoryItemStore";
 import type {Character} from "@/components/models/response/Character";
 import axios from "axios";
+import MasterGuidebookAddFromCatalogModal from "@/views/master/modals/MasterGuidebookAddFromCatalogModal.vue";
 import MasterGuidebookItemModal from "@/views/master/modals/MasterGuidebookItemModal.vue";
 import MasterGuidebookSpellModal from "@/views/master/modals/MasterGuidebookSpellModal.vue";
 import {useGuidebookStore} from "@/stores/GuidebookStore";
@@ -375,13 +377,15 @@ async function loadClasses() {
   }
 }
 
-async function loadBackgrounds() {
+async function loadBackgrounds(options?: {force?: boolean}) {
   if (!roomId.value) return;
   const key = getCacheKey();
-  const cached = guidebookCache.get(key);
-  if (cached?.backgrounds.length) {
-    backgrounds.value = cached.backgrounds;
-    return;
+  if (!options?.force) {
+    const cached = guidebookCache.get(key);
+    if (cached?.backgrounds.length) {
+      backgrounds.value = cached.backgrounds;
+      return;
+    }
   }
   loading.value = true;
   try {
@@ -855,6 +859,88 @@ const createItem = () => {
   createInventoryItemStore.clearAll();
   ionRouter.navigate('/rooms/' + id + '/master/create/item', "forward", "push");
 };
+
+const addFromCatalogOpen = ref(false);
+const catalogPickerKind = ref<"races" | "classes" | "backgrounds">("races");
+
+function openAddFromCatalog(kind: "races" | "classes" | "backgrounds") {
+  catalogPickerKind.value = kind;
+  addFromCatalogOpen.value = true;
+}
+
+function closeAddFromCatalog() {
+  addFromCatalogOpen.value = false;
+}
+
+async function refreshAfterCatalogAdd(kind: "races" | "classes" | "backgrounds") {
+  const key = getCacheKey();
+  const entry = guidebookCache.get(key);
+  if (entry) {
+    if (kind === "races") entry.races = [];
+    if (kind === "classes") entry.classes = [];
+    if (kind === "backgrounds") entry.backgrounds = [];
+  }
+  if (kind === "races") {
+    races.value = [];
+    await loadRaces();
+  } else if (kind === "classes") {
+    classes.value = [];
+    await loadClasses();
+  } else {
+    await loadBackgrounds({force: true});
+  }
+}
+
+function mergeCatalogSavedIntoGuidebook(
+  kind: "races" | "classes" | "backgrounds",
+  saved: RaceDto[] | ClazzDto[] | BackgroundDto[]
+) {
+  if (!saved.length) return;
+  const key = getCacheKey();
+  const entry = guidebookCache.get(key) ?? {races: [], classes: [], backgrounds: []};
+
+  if (kind === "races") {
+    const map = new Map<string, RaceDto>();
+    for (const r of races.value) {
+      if (r.code) map.set(r.code, r);
+    }
+    for (const r of saved as RaceDto[]) {
+      if (r.code) map.set(r.code, r);
+    }
+    races.value = Array.from(map.values());
+    guidebookStore.races = races.value;
+    entry.races = races.value;
+  } else if (kind === "classes") {
+    const map = new Map(classes.value.map((c) => [c.code, c] as const));
+    for (const c of saved as ClazzDto[]) {
+      map.set(c.code, c);
+    }
+    classes.value = Array.from(map.values());
+    guidebookStore.classes = classes.value;
+    entry.classes = classes.value;
+  } else {
+    const map = new Map(backgrounds.value.map((b) => [b.code, b] as const));
+    for (const b of saved as BackgroundDto[]) {
+      if (b.code) map.set(b.code, b);
+    }
+    backgrounds.value = Array.from(map.values());
+    guidebookStore.backgrounds = backgrounds.value;
+    entry.backgrounds = backgrounds.value;
+  }
+
+  guidebookCache.set(key, entry);
+  guidebookStore.lastUpdatedAt = Date.now();
+}
+
+async function onCatalogApplied(
+  payload:
+    | {kind: "races"; saved: RaceDto[]}
+    | {kind: "classes"; saved: ClazzDto[]}
+    | {kind: "backgrounds"; saved: BackgroundDto[]}
+) {
+  await refreshAfterCatalogAdd(payload.kind);
+  mergeCatalogSavedIntoGuidebook(payload.kind, payload.saved);
+}
 </script>
 
 <template>
@@ -939,7 +1025,17 @@ const createItem = () => {
           <ion-button
             size="large"
             shape="round"
+            color="medium"
+            title="Из справочника"
+            @click="openAddFromCatalog('races')"
+          >
+            <ion-icon slot="icon-only" :icon="listOutline"/>
+          </ion-button>
+          <ion-button
+            size="large"
+            shape="round"
             color="primary"
+            title="Создать свою"
             @click="createRace()"
           >
             <ion-icon slot="icon-only" :icon="addOutline"/>
@@ -999,7 +1095,17 @@ const createItem = () => {
           <ion-button
               size="large"
               shape="round"
+              color="medium"
+              title="Из справочника"
+              @click="openAddFromCatalog('classes')"
+          >
+            <ion-icon slot="icon-only" :icon="listOutline"/>
+          </ion-button>
+          <ion-button
+              size="large"
+              shape="round"
               color="primary"
+              title="Создать свой"
               @click="createClass()"
           >
             <ion-icon slot="icon-only" :icon="addOutline"/>
@@ -1030,7 +1136,17 @@ const createItem = () => {
           <ion-button
             size="large"
             shape="round"
+            color="medium"
+            title="Из справочника"
+            @click="openAddFromCatalog('backgrounds')"
+          >
+            <ion-icon slot="icon-only" :icon="listOutline"/>
+          </ion-button>
+          <ion-button
+            size="large"
+            shape="round"
             color="primary"
+            title="Создать свою"
             @click="createBackground()"
           >
             <ion-icon slot="icon-only" :icon="addOutline"/>
@@ -1292,6 +1408,14 @@ const createItem = () => {
         :spell="selectedSpell"
         :is-open="showSpellModal"
         @close="closeSpellModal"
+    />
+    <MasterGuidebookAddFromCatalogModal
+        :is-open="addFromCatalogOpen"
+        :kind="catalogPickerKind"
+        :room-id="roomId"
+        :base-rule-type="baseRuleType"
+        @close="closeAddFromCatalog"
+        @applied="onCatalogApplied"
     />
   </div>
 </template>
@@ -1559,8 +1683,9 @@ ion-searchbar {
   right: 20px;
   width: 100%;
   display: flex;
-  justify-content: end;
+  justify-content: flex-end;
   align-items: center;
+  gap: 10px;
   padding: 8px 0 max(8px, env(safe-area-inset-bottom, 0));
 }
 

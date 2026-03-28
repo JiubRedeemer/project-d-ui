@@ -21,9 +21,12 @@ import ChooseBackground from "@/views/createCharacter/steps/ChooseBackground.vue
 import {useRoute} from "vue-router";
 import axios from "axios";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {getBackgroundsForRoom} from "@/api/rulebookApi";
+import {useRoomStore} from "@/stores/RoomStore";
 
 const route = useRoute();
 const ionRouter = useIonRouter();
+const roomStore = useRoomStore();
 
 /** D&D 2024: room has backgrounds from Rulebook API → show background selection step */
 const hasDnd2024Backgrounds = ref(false);
@@ -91,18 +94,18 @@ const classStep = computed(() => (hasDnd2024Backgrounds.value ? 12 : 11));
 const abilitiesStep = computed(() => (hasDnd2024Backgrounds.value ? 13 : 12));
 const skillsStep = computed(() => (hasDnd2024Backgrounds.value ? 14 : 13));
 
-const backgroundsListUrl = () =>
-  `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.backgrounds}`;
-
 onMounted(async () => {
+  const roomIdParam = route.params.roomId;
+  const roomId = Array.isArray(roomIdParam) ? roomIdParam[0] : roomIdParam;
+  if (!roomId) {
+    hasDnd2024Backgrounds.value = false;
+    return;
+  }
   try {
-    const response = await axios.get(backgroundsListUrl(), {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + localStorage.getItem("accessToken"),
-      },
-    });
-    const list = response?.data;
+    if (!roomStore.room?.id || roomStore.room.id !== roomId) {
+      await roomStore.getRoomInfo(roomId);
+    }
+    const list = await getBackgroundsForRoom(roomId, roomStore.room?.baseRuleType ?? undefined);
     hasDnd2024Backgrounds.value = Array.isArray(list) && list.length > 0;
   } catch {
     hasDnd2024Backgrounds.value = false;
