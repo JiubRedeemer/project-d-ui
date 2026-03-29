@@ -20,6 +20,7 @@ export const GATEWAY_INTEGRATION_ROUTES = {
 
     auth: "/auth",
     registration: "/auth/registration",
+    registrationSendVerificationCode: "/auth/registration/send-verification-code",
 
 
     api: "/api",

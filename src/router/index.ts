@@ -49,6 +49,13 @@ const routes: Array<RouteRecordRaw> = [
         name: 'loginPage'
     },
     {
+        path: '/register',
+        redirect: (to) => ({
+            path: '/welcome/register/',
+            query: to.query,
+        }),
+    },
+    {
         path: '/welcome/register/',
         component: RegisterPage,
         name: 'registerPage'
