@@ -55,10 +55,7 @@
                   </ion-chip>
                   <ion-chip>
                     <ion-icon :icon="heart" color="danger"></ion-icon>
-                    <ion-label>{{
-                        selectedClass.stats.hpDice.substring(0, selectedClass.stats.hpDice.length - 4)
-                      }}
-                    </ion-label>
+                    <ion-label>{{ hpDiceChipLabel(selectedClass.stats.hpDice) }}</ion-label>
                   </ion-chip>
                 </div>
                 <div class="class-description">
@@ -98,6 +95,7 @@ import axios from "axios";
 import {Swiper as SwiperType} from "swiper/types";
 import {useRoute} from "vue-router";
 import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {hpDiceChipLabel} from "@/utils/classHpDice";
 
 const route = useRoute();
 

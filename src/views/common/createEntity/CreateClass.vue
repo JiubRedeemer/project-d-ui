@@ -22,6 +22,12 @@ import {
   ClazzStatsDto,
 } from "@/api/rulebookApi.types";
 import {getAbilitiesForRoom, getRootClassesForRoom} from "@/api/rulebookApi";
+import {
+  HP_HIT_DIE_OPTIONS,
+  formatClassHpDice,
+  normalizeClassHpDice,
+  parseClassHpDice,
+} from "@/utils/classHpDice";
 
 const SKILLS_LIST = [
   { name: "Атлетика", code: "ATHL" },
@@ -55,16 +61,6 @@ const abilities = ref<AbilityDto[]>([]);
 const rootClassesList = ref<ClazzDto[]>([]);
 const allowedFormats = ["image/jpeg", "image/png", "image/gif", "image/bmp", "image/webp", "image/tiff", "image/svg+xml"];
 
-const diceOptions = [
-  { value: "d4", label: "d4" },
-  { value: "d6", label: "d6" },
-  { value: "d8", label: "d8" },
-  { value: "d10", label: "d10" },
-  { value: "d12", label: "d12" },
-  { value: "d20", label: "d20" },
-  { value: "d100", label: "d100" },
-];
-
 const abilityOptions = computed(() => {
   const fromApi = abilities.value.map((a) => ({ code: a.code ?? "", name: a.name ?? a.code }));
   const standard = [
@@ -77,6 +73,18 @@ const abilityOptions = computed(() => {
   ];
   return fromApi.length ? fromApi : standard;
 });
+
+const hpDiceParts = computed(() => parseClassHpDice(createClassStore.clazz.stats?.hpDice));
+
+function setHpDiceDie(die: string) {
+  if (!createClassStore.clazz.stats) return;
+  createClassStore.clazz.stats.hpDice = formatClassHpDice(die, hpDiceParts.value.ability);
+}
+
+function setHpDiceAbility(ability: string) {
+  if (!createClassStore.clazz.stats) return;
+  createClassStore.clazz.stats.hpDice = formatClassHpDice(hpDiceParts.value.die, ability);
+}
 
 const savingThrows = computed(() => createClassStore.clazz.stats?.savingThrowsAbilities ?? []);
 
@@ -243,11 +251,12 @@ onBeforeMount(async () => {
   if (!createClassStore.clazz.stats) {
     createClassStore.clazz.stats = {
       id: "",
-      hpDice: "d8",
+      hpDice: "8+CON",
       savingThrowsAbilities: [],
       availableSkills: [],
     } as ClazzStatsDto;
   }
+  createClassStore.clazz.stats.hpDice = normalizeClassHpDice(createClassStore.clazz.stats.hpDice);
   if (!createClassStore.clazz.stats.savingThrowsAbilities) {
     createClassStore.clazz.stats.savingThrowsAbilities = [];
   }
@@ -319,19 +328,43 @@ onBeforeMount(async () => {
 
           <div class="stat-section">
             <div class="stat-section-name">Кость хитов</div>
-            <p class="helper-text">Кость хитов класса (D&D: d6, d8, d10, d12).</p>
-            <ion-select
-              fill="outline"
-              color="primary"
-              :value="createClassStore.clazz.stats?.hpDice ?? 'd8'"
-              @ionChange="(e) => { const v = (e as CustomEvent).detail.value; if (createClassStore.clazz.stats) createClassStore.clazz.stats.hpDice = v; }"
-              interface="popover"
-              class="input-block"
-            >
-              <ion-select-option v-for="d in diceOptions" :key="d.value" :value="d.value">
-                {{ d.label }}
-              </ion-select-option>
-            </ion-select>
+            <p class="helper-text">
+              Сохраняется как «кость + код характеристики», например 8+CON (хиты за уровень: кость + модификатор).
+            </p>
+            <div class="hp-dice-row">
+              <ion-select
+                fill="outline"
+                color="primary"
+                :value="hpDiceParts.die"
+                interface="popover"
+                class="hp-dice-select"
+                placeholder="Кость"
+                @ionChange="(e) => setHpDiceDie((e as CustomEvent).detail.value ?? hpDiceParts.die)"
+              >
+                <ion-select-option v-for="d in HP_HIT_DIE_OPTIONS" :key="d.value" :value="d.value">
+                  {{ d.label }}
+                </ion-select-option>
+              </ion-select>
+              <span class="hp-dice-plus" aria-hidden="true">+</span>
+              <ion-select
+                fill="outline"
+                color="primary"
+                :value="hpDiceParts.ability"
+                interface="popover"
+                class="hp-dice-select hp-dice-select--ability"
+                placeholder="Характеристика"
+                @ionChange="(e) => setHpDiceAbility((e as CustomEvent).detail.value ?? hpDiceParts.ability)"
+              >
+                <ion-select-option
+                  v-for="opt in abilityOptions"
+                  :key="opt.code"
+                  :value="opt.code"
+                >
+                  {{ opt.name }} ({{ opt.code }})
+                </ion-select-option>
+              </ion-select>
+            </div>
+            <p class="helper-text hp-dice-preview">Итог: <code>{{ createClassStore.clazz.stats?.hpDice }}</code></p>
           </div>
 
           <div class="stat-section">
@@ -595,6 +628,41 @@ onBeforeMount(async () => {
   --border-radius: 50%;
   width: 48px;
   height: 48px;
+}
+
+.hp-dice-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.hp-dice-select {
+  flex: 1;
+  min-width: 0;
+  --background: var(--ion-color-dark-shade);
+  border-radius: 8px;
+}
+
+.hp-dice-select--ability {
+  flex: 1.2;
+}
+
+.hp-dice-plus {
+  flex-shrink: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ion-color-light);
+  padding: 0 2px;
+}
+
+.hp-dice-preview {
+  margin-top: 8px;
+}
+
+.hp-dice-preview code {
+  font-size: 13px;
+  color: var(--ion-color-secondary-tint);
 }
 
 .buttons-block {

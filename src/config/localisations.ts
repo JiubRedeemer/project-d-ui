@@ -16,7 +16,38 @@ export const TEXTS = {
         eng: 'You don\'t have any characters in this room yet'
     },
     emptyInviteList: {rus: 'У вас пока нет приглашений', eng: 'Empty room list'},
-
+    roomInviteRegisterHint: {
+        rus: 'Вы перешли по приглашению в комнату. Зарегистрируйтесь с тем же email, на который было отправлено письмо.',
+        eng: 'You opened a room invitation link. Sign up using the same email the invitation was sent to.',
+    },
+    registrationCompleteAddedToRoom: {
+        rus: 'Регистрация завершена, вы добавлены в комнату',
+        eng: 'Registration complete — you have been added to the room',
+    },
+    sendVerificationCode: {
+        rus: 'Отправить код',
+        eng: 'Send code',
+    },
+    enterVerificationCode: {
+        rus: 'Введите код из письма',
+        eng: 'Enter the code from the email',
+    },
+    verificationCodePlaceholder: {
+        rus: '6 цифр',
+        eng: '6 digits',
+    },
+    verificationCodeSentHint: {
+        rus: 'Мы отправили код на указанный email. Введите его ниже.',
+        eng: 'We sent a code to that email. Enter it below.',
+    },
+    verificationCodeInvalidFormat: {
+        rus: 'Код должен состоять из 6 цифр',
+        eng: 'The code must be 6 digits',
+    },
+    verificationCooldownHint: {
+        rus: 'Повторить отправку можно примерно через минуту.',
+        eng: 'You can request another code in about a minute.',
+    },
 
     invalidPassword: {rus: 'Неверный email или пароль', eng: 'Invalid email or password'},
     internalError: {

@@ -10,6 +10,7 @@ import type {ClazzDto} from "@/api/rulebookApi.types";
 import {useRouter} from "vue-router";
 import {useFullClassStore} from "@/stores/FullClassStore";
 import {useRoomStore} from "@/stores/RoomStore";
+import {formatClassHpDiceDisplayRu} from "@/utils/classHpDice";
 
 const fullClassStore = useFullClassStore();
 const roomCreationStore = useRoomCreationStore();
@@ -70,7 +71,7 @@ const previousStep = () => {
             </div>
             <ion-chip class="stat-chip" color="primary">
               <ion-label>
-                {{ fullClassStore.clazz.stats.hpDice }}
+                {{ formatClassHpDiceDisplayRu(fullClassStore.clazz.stats.hpDice) }}
               </ion-label>
             </ion-chip>
           </div>
