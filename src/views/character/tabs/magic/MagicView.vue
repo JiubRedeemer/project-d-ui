@@ -92,7 +92,7 @@ function getDetailsLine2(spell: SpellDto | undefined): string {
 function getSpellImageUrl(imgUrl: string | undefined): string {
     if (!imgUrl) return SPELL_IMAGE_PLACEHOLDER;
     if (imgUrl.startsWith("http")) return imgUrl;
-    return `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.items_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.download}/${imgUrl}`;
+    return `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.spell_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.download}/${imgUrl}`;
 }
 
 function getCellForLevel(level: number): SpellCellDto | undefined {

@@ -678,7 +678,7 @@ function getItemImageUrl(imgUrl: string | undefined) {
 function getSpellImageUrl(imgUrl: string | undefined) {
   if (!imgUrl) return SPELL_IMAGE_PLACEHOLDER;
   if (imgUrl.startsWith("http")) return imgUrl;
-  return `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.items_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.download}/${imgUrl}`;
+  return `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.spell_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.download}/${imgUrl}`;
 }
 
 function getItemName(item: Item) {

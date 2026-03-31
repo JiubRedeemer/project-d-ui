@@ -25,6 +25,7 @@ export interface SpellDto {
     id?: string;
     /** Localized spell names (locale -> name) */
     name?: LocalizedNames;
+    aliasName?: LocalizedNames;
     level?: string;
     spellClass?: string;
     school?: string;
