@@ -1,15 +1,5 @@
 <script setup lang="ts">
-import {
-  IonButton,
-  IonButtons,
-  IonContent,
-  IonHeader,
-  IonIcon,
-  IonModal,
-  IonTitle,
-  IonToolbar
-} from "@ionic/vue";
-import {closeCircleOutline} from "ionicons/icons";
+import {IonButton, IonButtons, IonContent, IonHeader, IonModal, IonTitle, IonToolbar} from "@ionic/vue";
 import type {SpellDto} from "@/components/models/response/MagicApi";
 import {FILE_STORAGE_INTEGRATION_ROUTES, SPELL_IMAGE_PLACEHOLDER} from "@/config/integrationRoutes";
 
@@ -33,7 +23,7 @@ function getSpellName(s: SpellDto | undefined): string {
 function getSpellImageUrl(imgUrl: string | undefined) {
   if (!imgUrl) return SPELL_IMAGE_PLACEHOLDER;
   if (imgUrl.startsWith("http")) return imgUrl;
-  return `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.items_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.download}/${imgUrl}`;
+  return `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.spell_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.download}/${imgUrl}`;
 }
 </script>
 

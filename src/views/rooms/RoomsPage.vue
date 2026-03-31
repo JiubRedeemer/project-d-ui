@@ -3,6 +3,7 @@
 import {
   IonAvatar,
   IonContent,
+  IonFooter,
   IonFab,
   IonFabButton,
   IonIcon,
@@ -15,7 +16,7 @@ import {
   onIonViewDidEnter,
   useIonRouter
 } from "@ionic/vue";
-import {add, chevronForwardOutline} from "ionicons/icons";
+import {add, chevronForwardOutline, informationCircleOutline} from "ionicons/icons";
 import {HEADERS, TEXTS} from "@/config/localisations";
 import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
 import {onBeforeUnmount, onMounted, ref} from "vue";
@@ -30,10 +31,12 @@ const deletePopoverOpen = ref(false);
 const deletePopoverEvent = ref<Event | null>(null);
 const roomToDelete = ref<Room | null>(null);
 const didOpenDeletePopover = ref(false);
+const showLegalInformation = ref(false);
 let longPressTimer: ReturnType<typeof setTimeout> | null = null;
 let pressStartX = 0;
 let pressStartY = 0;
 const MOVE_THRESHOLD_PX = 10;
+const currentYear = new Date().getFullYear();
 
 const http = () => axios.create({
   baseURL: GATEWAY_INTEGRATION_ROUTES.baseURL,
@@ -142,6 +145,10 @@ const goToRoomIfNotLongPress = (roomId: string) => {
   goToRoom(roomId);
 };
 
+const toggleLegalInformation = () => {
+  showLegalInformation.value = !showLegalInformation.value;
+};
+
 
 </script>
 
@@ -206,6 +213,30 @@ const goToRoomIfNotLongPress = (roomId: string) => {
       </ion-popover>
 
     </ion-content>
+    <ion-footer class="rooms-footer" color="dark">
+      <div class="rooms-footer-main">
+        <span>© jiubredeemer {{ currentYear }}</span>
+        <ion-button fill="clear" size="small" @click="toggleLegalInformation">
+          <ion-icon :icon="informationCircleOutline" />
+        </ion-button>
+      </div>
+      <div v-if="showLegalInformation" class="rooms-footer-legal">
+        Данная работа включает материалы из System Reference Document 5.2.1 («SRD 5.2.1») и System
+        Reference Document 5.1 («SRD 5.1») от Wizards of the Coast LLC, доступных по адресам
+        <a href="https://www.dndbeyond.com/srd" target="_blank" rel="noopener noreferrer">
+          https://www.dndbeyond.com/srd
+        </a>
+        и
+        <a href="https://dnd.wizards.com/resources/systems-reference-document" target="_blank" rel="noopener noreferrer">
+          https://dnd.wizards.com/resources/systems-reference-document
+        </a>.
+        Материалы SRD 5.2.1 и SRD 5.1 лицензированы по лицензии Creative Commons Attribution 4.0
+        International, доступной по адресу:
+        <a href="https://creativecommons.org/licenses/by/4.0/legalcode" target="_blank" rel="noopener noreferrer">
+          https://creativecommons.org/licenses/by/4.0/legalcode
+        </a>.
+      </div>
+    </ion-footer>
   </ion-page>
 </template>
 
@@ -241,5 +272,38 @@ const goToRoomIfNotLongPress = (roomId: string) => {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+
+.rooms-footer {
+  --background: var(--ion-color-dark-shade);
+  background-color: var(--ion-color-dark-shade);
+  opacity: 1;
+  border-top: 1px solid var(--ion-color-dark-tint);
+  padding: 6px 10px 10px;
+}
+
+.rooms-footer-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--ion-color-light);
+  font-size: 0.85rem;
+}
+
+.rooms-footer-legal {
+  margin-top: 4px;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: var(--ion-color-light);
+}
+
+.rooms-footer-legal a {
+  color: var(--ion-color-primary);
+  text-decoration: underline;
+}
+
+.rooms-footer-main ion-button {
+  font-size: 0.72rem;
 }
 </style>

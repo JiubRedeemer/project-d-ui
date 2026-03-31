@@ -80,7 +80,11 @@ const filteredSpells = computed(() => {
                 (s.name as Record<string, string>)?.rus ??
                 (s.name as Record<string, string>)?.en ??
                 "";
-            return name.toLowerCase().includes(q);
+            const aliasName =
+                (s.aliasName as Record<string, string>)?.rus ??
+                (s.aliasName as Record<string, string>)?.en ??
+                "";
+            return name.toLowerCase().includes(q) || aliasName.toLowerCase().includes(q);
         });
     }
 
@@ -169,7 +173,7 @@ function getDetailsLine2(spell: SpellDto): string {
 function getSpellImageUrl(imgUrl: string | undefined): string {
     if (!imgUrl) return SPELL_IMAGE_PLACEHOLDER;
     if (imgUrl.startsWith("http")) return imgUrl;
-    return `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.items_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.download}/${imgUrl}`;
+    return `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.spell_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.download}/${imgUrl}`;
 }
 
 function getLevelLabel(level: string): string {
