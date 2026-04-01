@@ -42,7 +42,7 @@ const loadAbilitiesData = async () => {
         {
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${(localStorage.getItem("accessToken") ?? sessionStorage.getItem("accessToken"))}`,
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
           },
         }
     );
@@ -116,7 +116,7 @@ async function updateMastery(skill: any) {
         {
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${(localStorage.getItem("accessToken") ?? sessionStorage.getItem("accessToken"))}`,
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
           },
         }
     );
@@ -133,7 +133,7 @@ async function updateMasteryAbilityCheck(ability: AbilityDto) {
         {
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${(localStorage.getItem("accessToken") ?? sessionStorage.getItem("accessToken"))}`,
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
           },
         }
     );
@@ -150,7 +150,7 @@ async function updateMasteryAbilitySavingThrow(ability: AbilityDto) {
         {
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${(localStorage.getItem("accessToken") ?? sessionStorage.getItem("accessToken"))}`,
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
           },
         }
     );

@@ -452,7 +452,7 @@ async function getMyId() {
       {
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${(localStorage.getItem("accessToken") ?? sessionStorage.getItem("accessToken"))}`,
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
         },
       }
   );
@@ -508,7 +508,7 @@ async function saveItem() {
           , {
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${(localStorage.getItem("accessToken") ?? sessionStorage.getItem("accessToken"))}`,
+              Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
             },
           },
       );
@@ -543,7 +543,7 @@ async function deleteFromInventory(id: string) {
         {
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${(localStorage.getItem("accessToken") ?? sessionStorage.getItem("accessToken"))}`,
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
           },
         }
     );
@@ -562,7 +562,7 @@ async function addItemToInventory(id: string) {
         {
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${(localStorage.getItem("accessToken") ?? sessionStorage.getItem("accessToken"))}`,
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
           },
         }
     );

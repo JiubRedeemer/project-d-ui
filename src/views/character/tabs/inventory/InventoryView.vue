@@ -129,7 +129,7 @@ const fetchMoney = async () => {
       {
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${(localStorage.getItem("accessToken") ?? sessionStorage.getItem("accessToken"))}`,
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
         },
       }
     );
@@ -147,7 +147,7 @@ const changeInUseForItem = async (itemId: string) => {
       {
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${(localStorage.getItem("accessToken") ?? sessionStorage.getItem("accessToken"))}`,
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
         },
       }
     );
@@ -265,7 +265,7 @@ async function changeItemCount(item: InventoryItem, option: string) {
       {
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${(localStorage.getItem("accessToken") ?? sessionStorage.getItem("accessToken"))}`,
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
         },
       }
     );
@@ -294,7 +294,7 @@ async function exchangeMoneyRequest() {
       {
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${(localStorage.getItem("accessToken") ?? sessionStorage.getItem("accessToken"))}`,
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
         },
       }
     );

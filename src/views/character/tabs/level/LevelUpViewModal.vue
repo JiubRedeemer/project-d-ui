@@ -1,4 +1,4 @@
-<script setup lang="ts">
+п»ї<script setup lang="ts">
 import {IonButton, IonIcon, IonInput, IonProgressBar} from "@ionic/vue";
 import {add, close, remove} from "ionicons/icons";
 import {computed, ref, watch} from "vue";
@@ -39,7 +39,7 @@ const addedXp = computed(() => {
 
 const canLevelUp = computed(() => currentXp.value >= nextLevelXp.value);
 const hasInput = computed(() => addedXp.value > 0);
-const levelUpButtonText = computed(() => canLevelUp.value ? "Повысить уровень" : "Повысить уровень принудительно");
+const levelUpButtonText = computed(() => canLevelUp.value ? "РџРѕРІС‹СЃРёС‚СЊ СѓСЂРѕРІРµРЅСЊ" : "РџРѕРІС‹СЃРёС‚СЊ СѓСЂРѕРІРµРЅСЊ РїСЂРёРЅСѓРґРёС‚РµР»СЊРЅРѕ");
 const progressValue = computed(() => {
   if (nextLevelXp.value <= 0) return 0;
   return Math.min(1, Math.max(0, currentXp.value / nextLevelXp.value));
@@ -47,7 +47,7 @@ const progressValue = computed(() => {
 
 const authHeaders = computed(() => ({
   "Content-Type": "application/json",
-  Authorization: `Bearer ${(localStorage.getItem("accessToken") ?? sessionStorage.getItem("accessToken"))}`
+  Authorization: `Bearer ${localStorage.getItem("accessToken")}`
 }));
 
 const buildLevelUrl = () => {
@@ -74,7 +74,7 @@ const updateCurrentXp = async (value: number) => {
     inputValue.value = null;
     await refreshCharacter();
   } catch (error) {
-    console.error("Ошибка при обновлении опыта:", error);
+    console.error("РћС€РёР±РєР° РїСЂРё РѕР±РЅРѕРІР»РµРЅРёРё РѕРїС‹С‚Р°:", error);
   } finally {
     isSubmitting.value = false;
   }
@@ -93,7 +93,7 @@ const levelUp = async (force = false) => {
     );
     await refreshCharacter();
   } catch (error) {
-    console.error("Ошибка при повышении уровня:", error);
+    console.error("РћС€РёР±РєР° РїСЂРё РїРѕРІС‹С€РµРЅРёРё СѓСЂРѕРІРЅСЏ:", error);
   } finally {
     isSubmitting.value = false;
   }
@@ -112,7 +112,7 @@ const levelDown = async (force = false) => {
     );
     await refreshCharacter();
   } catch (error) {
-    console.error("Ошибка при понижении уровня:", error);
+    console.error("РћС€РёР±РєР° РїСЂРё РїРѕРЅРёР¶РµРЅРёРё СѓСЂРѕРІРЅСЏ:", error);
   } finally {
     isSubmitting.value = false;
   }
@@ -141,8 +141,8 @@ const closeModal = () => emit("closeLevelUpModal");
     <div class="levelup">
       <div class="levelup-content">
         <div class="levelup-header">
-          <div class="levelup-title">Уровень {{ currentLevel }}</div>
-          <button type="button" class="levelup-dismiss" aria-label="Закрыть" @click="closeModal">
+          <div class="levelup-title">РЈСЂРѕРІРµРЅСЊ {{ currentLevel }}</div>
+          <button type="button" class="levelup-dismiss" aria-label="Р—Р°РєСЂС‹С‚СЊ" @click="closeModal">
             <IonIcon :icon="close"/>
           </button>
         </div>
@@ -154,7 +154,7 @@ const closeModal = () => emit("closeLevelUpModal");
           </div>
         </div>
 
-        <div class="levelup-label">Изменить текущий опыт</div>
+        <div class="levelup-label">РР·РјРµРЅРёС‚СЊ С‚РµРєСѓС‰РёР№ РѕРїС‹С‚</div>
 
         <div class="levelup-input-wrap">
           <IonInput
@@ -169,7 +169,7 @@ const closeModal = () => emit("closeLevelUpModal");
           />
         </div>
         <div class="levelup-hint">
-          Введите значение опыта и примените: добавить или списать.
+          Р’РІРµРґРёС‚Рµ Р·РЅР°С‡РµРЅРёРµ РѕРїС‹С‚Р° Рё РїСЂРёРјРµРЅРёС‚Рµ: РґРѕР±Р°РІРёС‚СЊ РёР»Рё СЃРїРёСЃР°С‚СЊ.
         </div>
 
         <IonButton
@@ -192,7 +192,7 @@ const closeModal = () => emit("closeLevelUpModal");
           :disabled="isSubmitting"
           @click="levelDown(false)"
         >
-          Понизить уровень
+          РџРѕРЅРёР·РёС‚СЊ СѓСЂРѕРІРµРЅСЊ
         </IonButton>
 
         <div class="levelup-actions">
@@ -204,7 +204,7 @@ const closeModal = () => emit("closeLevelUpModal");
             @click="decreaseXp"
           >
             <IonIcon slot="start" :icon="remove"/>
-            Списать опыт
+            РЎРїРёСЃР°С‚СЊ РѕРїС‹С‚
           </IonButton>
 
           <IonButton
@@ -215,7 +215,7 @@ const closeModal = () => emit("closeLevelUpModal");
             @click="increaseXp"
           >
             <IonIcon slot="start" :icon="add"/>
-            Добавить опыт
+            Р”РѕР±Р°РІРёС‚СЊ РѕРїС‹С‚
           </IonButton>
         </div>
       </div>
