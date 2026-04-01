@@ -21,6 +21,7 @@ import {
 import { closeCircleOutline, documentTextOutline, downloadOutline, eyeOutline, imageOutline } from "ionicons/icons";
 import axios from "axios";
 import { Capacitor } from "@capacitor/core";
+import { Directory, Filesystem } from "@capacitor/filesystem";
 import Viewer from "viewerjs";
 import "viewerjs/dist/viewer.css";
 import type { UserFile } from "@/api/fileStorageApi.types";
@@ -226,17 +227,49 @@ async function downloadFile(file: UserFile) {
     const blob = await downloadUserFileById(file.id, currentUserId);
     const downloadName = file.filename;
 
-    // In Android/iOS WebView, `<a download>` with blob often does not save.
-    // Prefer native share sheet when available.
-    if (Capacitor.isNativePlatform() && "share" in navigator) {
-      const sharedFile = new File([blob], downloadName, { type: blob.type || "application/octet-stream" });
-      const canShareFiles =
-        typeof (navigator as any).canShare === "function" &&
-        (navigator as any).canShare({ files: [sharedFile] });
-      if (canShareFiles) {
-        await (navigator as any).share({ files: [sharedFile], title: downloadName });
-        return;
+    if (Capacitor.isNativePlatform()) {
+      const fileReader = new FileReader();
+      const base64Data = await new Promise<string>((resolve, reject) => {
+        fileReader.onloadend = () => {
+          const result = typeof fileReader.result === "string" ? fileReader.result : "";
+          const payload = result.includes(",") ? result.split(",")[1] : "";
+          if (!payload) {
+            reject(new Error("Failed to convert blob to base64"));
+            return;
+          }
+          resolve(payload);
+        };
+        fileReader.onerror = () => reject(fileReader.error ?? new Error("FileReader error"));
+        fileReader.readAsDataURL(blob);
+      });
+
+      const path = `downloads/${Date.now()}_${downloadName}`;
+
+      try {
+        const permissions = await Filesystem.checkPermissions();
+        if (permissions.publicStorage !== "granted") {
+          await Filesystem.requestPermissions();
+        }
+      } catch (_e) {
+        // Some platforms/directories don't require explicit permission.
       }
+
+      await Filesystem.writeFile({
+        path,
+        data: base64Data,
+        directory: Directory.Documents,
+        recursive: true,
+      });
+
+      await Filesystem.getUri({ path, directory: Directory.Documents });
+      const successToast = await toastController.create({
+        message: `Файл сохранен: ${downloadName}`,
+        duration: 2000,
+        position: "top",
+        color: "success",
+      });
+      await successToast.present();
+      return;
     }
 
     const url = URL.createObjectURL(blob);
