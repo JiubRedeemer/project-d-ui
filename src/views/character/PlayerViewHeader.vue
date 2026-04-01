@@ -3,6 +3,7 @@
 import {IonBackButton, IonButtons, IonTitle, IonToolbar} from "@ionic/vue";
 import LogOutButton from "@/views/common/LogOutButton.vue";
 import {useCharacterStore} from "@/stores/CharacterStore"
+import {computed} from "vue";
 
 
 const characterStore = useCharacterStore()
@@ -14,19 +15,47 @@ const openLevelupModal = () => {
   emit("open-levelup-modal");
 };
 
+/**
+ * Масштаб имени под ширину заголовка на смартфонах (портрет).
+ *
+ * Оценка полезной ширины под `ion-title`: типичный экран 360 CSS px минус back (~48px),
+ * отступы тулбара, блок уровня (~40px) + отступы, LogOut — остаётся порядка 150–175px;
+ * на узких 320px — ближе к 125–145px. Берём консервативный бюджет ~148px, чтобы не
+ * упираться в край на SE/малых Android.
+ *
+ * Визуальная ширина строки ≈ len × (font-size × коэфф. ширины глифа). Для bold 16px
+ * смесь кириллица/латиница ~0.58em ≈ 9.3px на знак (чуть уже, чем «средняя» метрика шрифта).
+ * Ищем scale: len × 9.35 × scale ≤ 148 → scale ≤ 148 / (len × 9.35), не выше 1.
+ */
+const NAME_LINE_BUDGET_PX = 148;
+/** Средняя ширина знака (px) для font-weight: 700, font-size: 16px. */
+const NAME_AVG_CHAR_WIDTH_PX = 9.35;
+const NAME_SCALE_MIN = 0.34;
+
+const nameTextScale = computed(() => {
+  const len = (characterStore.character?.name ?? "").length;
+  if (len === 0) return 1;
+  const raw = NAME_LINE_BUDGET_PX / (len * NAME_AVG_CHAR_WIDTH_PX);
+  const clamped = Math.min(1, raw);
+  const rounded = Math.round(clamped * 100) / 100;
+  return Math.max(NAME_SCALE_MIN, rounded);
+});
 
 
 </script>
 
 <template>
-  <ion-toolbar color="dark">
+  <ion-toolbar class="player-view-toolbar" color="dark">
     <ion-buttons slot="start">
       <ion-back-button/>
     </ion-buttons>
 
     <ion-title slot="start">
       <div class="header-content" v-if="characterStore.character">
-        <div class="name-block">{{ characterStore.character?.name }}</div>
+        <div
+          class="name-block"
+          :style="{ transform: `scale(${nameTextScale})` }"
+        >{{ characterStore.character?.name }}</div>
         <div class="race-class-block">{{ characterStore.character?.raceInfo?.name }} -
           {{ characterStore.character?.clazzInfo?.name }}
         </div>
@@ -54,15 +83,26 @@ const openLevelupModal = () => {
 </template>
 
 <style scoped>
+.player-view-toolbar :deep(ion-title) {
+  overflow: hidden;
+  min-width: 0;
+}
+
 .header-content {
   display: flex;
   flex-direction: column;
   align-items: start;
+  min-width: 0;
+  width: 100%;
 }
 
 .name-block {
   font-size: 16px;
   font-weight: bold;
+  display: inline-block;
+  transform-origin: left center;
+  line-height: 1.2;
+  max-width: 100%;
 }
 
 .race-class-block {

@@ -21,6 +21,7 @@ import {useNpcRelationsStore} from "@/stores/NpcRelationsStore";
 import {deleteCharacterNpcRelationByIdForRoom} from "@/api/npcApi";
 import type { NpcWithRelationIdDto, RelationTypeEnum } from "@/api/npcApi.types";
 import type {CharacterBio} from "@/components/models/response/Character";
+import CachedFileImage from "@/components/CachedFileImage.vue";
 
 type BioStatFieldKey = "age" | "height" | "weight";
 type BioSectionKey =
@@ -324,11 +325,15 @@ onBeforeUnmount(() => {
     <div class="header" v-show="isBlockExpanded == null">
       <div class="avatar" @click="triggerFileInput">
         <img v-if="previewImage" :src="previewImage" class="avatar-img" alt="Room Image"/>
-        <img v-else-if="characterStore.character.characterBio.avatar" :src="FILE_STORAGE_INTEGRATION_ROUTES.baseURL +
+        <CachedFileImage
+          v-else-if="characterStore.character.characterBio.avatar"
+          class="avatar-img"
+          alt="avatar"
+          :src="FILE_STORAGE_INTEGRATION_ROUTES.baseURL +
                  FILE_STORAGE_INTEGRATION_ROUTES.api +
                  FILE_STORAGE_INTEGRATION_ROUTES.avatar_images_bucket +
                  FILE_STORAGE_INTEGRATION_ROUTES.download + '/' + characterStore.character.characterBio.avatar"
-             class="avatar-img" alt="avatar"/>
+        />
         <div v-else class="avatar-img">
           <ion-icon :icon="add" class="placeholder-icon"></ion-icon>
         </div>
