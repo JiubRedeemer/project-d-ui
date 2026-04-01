@@ -2,15 +2,13 @@
 import {IonButton, IonIcon, useIonRouter} from "@ionic/vue";
 
 import {logOutOutline} from "ionicons/icons";
+import {clearAuthTokens} from "@/utils/authTokens";
 
 const ionRouter = useIonRouter();
 
 
 function logout() {
-  localStorage.removeItem("accessToken");
-  localStorage.removeItem("refreshToken");
-  sessionStorage.removeItem("accessToken");
-  sessionStorage.removeItem("refreshToken");
+  clearAuthTokens();
 
   ionRouter.replace('/welcome');
 }

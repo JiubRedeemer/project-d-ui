@@ -5,6 +5,8 @@ import App from './App.vue'
 registerSW({ immediate: true })
 import router from './router';
 import VueCookies from 'vue-cookies'
+import axios from "axios";
+import {getAccessToken, syncAuthTokensFromCookies} from "@/utils/authTokens";
 
 import {IonicVue} from '@ionic/vue';
 
@@ -38,6 +40,32 @@ import '@ionic/vue/css/palettes/dark.always.css';
 /* Theme variables */
 import './theme/variables.css';
 import {createPinia} from "pinia";
+
+syncAuthTokensFromCookies();
+
+axios.interceptors.request.use((config) => {
+    const accessToken = getAccessToken();
+    if (!accessToken) {
+        return config;
+    }
+
+    const currentAuthorization = String(
+        ((config.headers as Record<string, unknown> | undefined)?.Authorization ?? "")
+    );
+    const hasInvalidAuthorization =
+        !currentAuthorization ||
+        currentAuthorization === "Bearer null" ||
+        currentAuthorization === "Bearer undefined";
+
+    if (hasInvalidAuthorization) {
+        config.headers = {
+            ...(config.headers as Record<string, unknown> | undefined),
+            Authorization: `Bearer ${accessToken}`,
+        };
+    }
+
+    return config;
+});
 
 const app = createApp(App)
     .use(IonicVue, {mode: 'md'})
