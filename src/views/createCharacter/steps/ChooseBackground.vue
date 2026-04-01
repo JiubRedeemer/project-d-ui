@@ -102,6 +102,10 @@ const props = defineProps<{
   currentStep: { current: number };
 }>();
 
+function filterVisibleBackgrounds(list: BackgroundDto[]): BackgroundDto[] {
+  return list.filter((bg) => (bg as BackgroundDto & { hidden?: boolean }).hidden !== true);
+}
+
 function slideKey(bg: BackgroundDto, i: number) {
   const c = bg.code ?? "";
   const id = bg.id ?? "";
@@ -150,7 +154,7 @@ async function loadBackgrounds() {
       await roomStore.getRoomInfo(roomId);
     }
     const baseRuleType = roomStore.room?.baseRuleType ?? undefined;
-    backgrounds.value = await getBackgroundsForRoom(roomId, baseRuleType);
+    backgrounds.value = filterVisibleBackgrounds(await getBackgroundsForRoom(roomId, baseRuleType));
     if (backgrounds.value.length && selectedIndex.value >= backgrounds.value.length) {
       selectedIndex.value = 0;
     }

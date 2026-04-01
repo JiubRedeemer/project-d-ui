@@ -16,8 +16,9 @@ import {useCreateRaceStore} from "@/stores/createEntity/CreateRaceStore";
 import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
 import axios from "axios";
 import {AbilityDto, RaceDto, RaceStatsDto} from "@/api/rulebookApi.types";
-import {createRace, getAbilitiesForRoom, getRootRacesForRoom} from "@/api/rulebookApi";
+import {createRace, getAbilitiesForRoom, getRootRacesForRoom, updateRace} from "@/api/rulebookApi";
 import {useGuidebookStore} from "@/stores/GuidebookStore";
+import {useFullRaceStore} from "@/stores/FullRaceStore";
 
 const ZERO_UUID = "00000000-0000-0000-0000-000000000000";
 
@@ -28,6 +29,7 @@ const filePath = ref<string>("");
 
 const createRaceStore = useCreateRaceStore();
 const guidebookStore = useGuidebookStore();
+const fullRaceStore = useFullRaceStore();
 const route = useRoute();
 const router = useRouter();
 
@@ -187,13 +189,19 @@ async function onSave() {
 
   isSaving.value = true;
   try {
-    const saved = await createRace(roomId, raceDto);
+    const saved = raceDto.id
+      ? await updateRace(roomId, raceDto)
+      : await createRace(roomId, raceDto);
 
-    const idx = guidebookStore.races.findIndex((x) => x.code === saved.code);
+    const idx = guidebookStore.races.findIndex(
+      (x) => (saved.id && x.id === saved.id) || (saved.code && x.code === saved.code)
+    );
     guidebookStore.races =
       idx >= 0
         ? [...guidebookStore.races.slice(0, idx), saved, ...guidebookStore.races.slice(idx + 1)]
         : [...guidebookStore.races, saved];
+    fullRaceStore.race = saved;
+    createRaceStore.race = saved;
     guidebookStore.lastUpdatedAt = Date.now();
 
     router.back();

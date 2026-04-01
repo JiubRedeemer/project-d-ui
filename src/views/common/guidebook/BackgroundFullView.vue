@@ -2,12 +2,18 @@
 
 import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
 import {FILE_STORAGE_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
-import {arrowBackOutline} from "ionicons/icons";
+import {arrowBackOutline, createOutline} from "ionicons/icons";
 import {IonChip, IonContent, IonFab, IonFabButton, IonIcon, IonLabel, IonPage} from "@ionic/vue";
 import {useRouter} from "vue-router";
 import {useFullBackgroundStore} from "@/stores/FullBackgroundStore";
+import {useGuidebookStore} from "@/stores/GuidebookStore";
+import {useCreateBackgroundStore} from "@/stores/createEntity/CreateBackgroundStore";
+import {useRoomStore} from "@/stores/RoomStore";
 
 const fullBackgroundStore = useFullBackgroundStore();
+const guidebookStore = useGuidebookStore();
+const createBackgroundStore = useCreateBackgroundStore();
+const roomStore = useRoomStore();
 const ionRouter = useRouter();
 
 
@@ -28,6 +34,14 @@ const getImageUrl = (imgUrl: string | undefined | null) => {
 
 const previousStep = () => {
   ionRouter.back();
+}
+
+function editBackground() {
+  const roomId = guidebookStore.roomId || roomStore.room.id;
+  if (!roomId || !fullBackgroundStore.background) return;
+  createBackgroundStore.roomId = roomId;
+  createBackgroundStore.background = JSON.parse(JSON.stringify(fullBackgroundStore.background));
+  ionRouter.push(`/rooms/${roomId}/master/create/background`);
 }
 </script>
 
@@ -79,6 +93,11 @@ const previousStep = () => {
         <ion-icon :icon="arrowBackOutline" color="light"></ion-icon>
       </ion-fab-button>
     </ion-fab>
+    <ion-fab v-if="guidebookStore.roomId || roomStore.room.id" slot="fixed" vertical="bottom" horizontal="end">
+      <ion-fab-button color="primary" @click="editBackground()">
+        <ion-icon :icon="createOutline" color="light"></ion-icon>
+      </ion-fab-button>
+    </ion-fab>
   </ion-page>
 </template>
 
@@ -87,27 +106,39 @@ const previousStep = () => {
   margin-top: 10px;
   margin-left: 10px;
   margin-right: 10px;
-  padding: 10px;
-  text-align: center;
-  background-color: var(--ion-color-medium);
-  border-radius: 10px;
+  padding: 14px;
+  text-align: left;
+  background: linear-gradient(180deg, rgba(var(--ion-color-medium-rgb), 0.35), rgba(var(--ion-color-medium-rgb), 0.2));
+  border-radius: 14px;
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.1);
+  line-height: 1.5;
 }
 
 .stat {
-  margin-top: 10px;
+  margin-top: 12px;
+  margin-left: 10px;
+  margin-right: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
+  background: rgba(var(--ion-color-medium-rgb), 0.18);
 }
 
 .stat-header {
-  font-size: 24px;
-  padding-left: 10px;
+  font-size: 20px;
+  font-weight: 600;
+  padding-left: 0;
+  margin-bottom: 8px;
 }
 
 .stat-chip {
-  margin-left: 10px;
+  margin-left: 0;
+  margin-right: 8px;
+  margin-bottom: 8px;
 }
 
 .avatar-img {
-  border-radius: 25px;
+  border-radius: 16px;
   align-content: center;
   justify-content: center;
   display: flex;
@@ -119,6 +150,10 @@ const previousStep = () => {
   margin-right: 10px;
   display: flex;
   justify-content: center;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.12);
+  background: rgba(var(--ion-color-medium-rgb), 0.22);
 }
 
 .header {
@@ -130,9 +165,14 @@ const previousStep = () => {
   padding-bottom: 90px;
 }
 .traits-block {
-  padding: 10px;
+  padding: 12px;
   margin-top: 12px;
+  margin-left: 10px;
+  margin-right: 10px;
   width: 100%;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
+  background: rgba(var(--ion-color-medium-rgb), 0.18);
 }
 
 

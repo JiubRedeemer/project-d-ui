@@ -16,14 +16,16 @@ import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
 import {FILE_STORAGE_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import axios from "axios";
 import {AbilityDto, BackgroundDto, BackgroundStatsDto} from "@/api/rulebookApi.types";
-import {createBackground, getAbilitiesForRoom} from "@/api/rulebookApi";
+import {createBackground, getAbilitiesForRoom, updateBackground} from "@/api/rulebookApi";
 import {useGuidebookStore} from "@/stores/GuidebookStore";
+import {useFullBackgroundStore} from "@/stores/FullBackgroundStore";
 
 const fileInput = ref<HTMLInputElement | null>(null);
 const previewImage = ref<string | null>(null);
 
 const createBackgroundStore = useCreateBackgroundStore();
 const guidebookStore = useGuidebookStore();
+const fullBackgroundStore = useFullBackgroundStore();
 const route = useRoute();
 const router = useRouter();
 
@@ -170,13 +172,19 @@ async function onSave() {
 
   isSaving.value = true;
   try {
-    const saved = await createBackground(roomId, dto);
+    const saved = dto.id
+      ? await updateBackground(roomId, dto)
+      : await createBackground(roomId, dto);
 
-    const idx = guidebookStore.backgrounds.findIndex((x) => x.code === saved.code);
+    const idx = guidebookStore.backgrounds.findIndex(
+      (x) => (saved.id && x.id === saved.id) || (saved.code && x.code === saved.code)
+    );
     guidebookStore.backgrounds =
       idx >= 0
         ? [...guidebookStore.backgrounds.slice(0, idx), saved, ...guidebookStore.backgrounds.slice(idx + 1)]
         : [...guidebookStore.backgrounds, saved];
+    fullBackgroundStore.background = saved;
+    createBackgroundStore.background = saved;
     guidebookStore.lastUpdatedAt = Date.now();
 
     router.back();

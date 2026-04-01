@@ -87,17 +87,19 @@
 </template>
 
 <script setup lang="ts">
-import {IonActionSheet, IonButton, IonChip, IonFab, IonFabButton, IonIcon, IonicSlides, IonLabel} from "@ionic/vue";
+import {IonActionSheet, IonButton, IonChip, IonIcon, IonicSlides, IonLabel} from "@ionic/vue";
 import {computed, onMounted, ref} from "vue";
 import {Swiper, SwiperSlide} from "swiper/vue";
 import {arrowForwardOutline, arrowUp, heart, menuOutline} from "ionicons/icons";
-import axios from "axios";
 import {Swiper as SwiperType} from "swiper/types";
 import {useRoute} from "vue-router";
-import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {FILE_STORAGE_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {hpDiceChipLabel} from "@/utils/classHpDice";
+import {getClassesForRoom} from "@/api/rulebookApi";
+import {useRoomStore} from "@/stores/RoomStore";
 
 const route = useRoute();
+const roomStore = useRoomStore();
 
 const classGroups = ref<ClassGroupResponse[]>([]);
 const selectedGroupIndex = ref(0);
@@ -110,6 +112,64 @@ type ClassGroupResponse = {
   clazz?: ClassResponse | null;
   subClazzes?: ClassResponse[] | null;
 };
+
+function isVisibleForPlayer(clazz: ClassResponse | null | undefined): boolean {
+  return clazz != null && (clazz as ClassResponse & { hidden?: boolean }).hidden !== true;
+}
+
+function filterVisibleClassGroups(groups: ClassGroupResponse[]): ClassGroupResponse[] {
+  return groups
+    .map((group) => {
+      const clazz = isVisibleForPlayer(group.clazz) ? group.clazz : null;
+      const subClazzes = (group.subClazzes ?? []).filter((item) => isVisibleForPlayer(item));
+      return { clazz, subClazzes };
+    })
+    .filter((group) => Boolean(group.clazz) || (group.subClazzes?.length ?? 0) > 0);
+}
+
+function toClassGroups(classes: ClassResponse[]): ClassGroupResponse[] {
+  const groupsByRootCode = new Map<string, { clazz: ClassResponse | null; subClazzes: ClassResponse[] }>();
+  const normalize = (value: string | null | undefined) => (value ?? "").trim();
+
+  for (const clazz of classes) {
+    const code = normalize(clazz.code);
+    const groupCode = normalize((clazz as ClassResponse & { groupCode?: string | null }).groupCode);
+    const hasParentClass = groupCode.length > 0 && groupCode !== code;
+    const rootCode = hasParentClass ? groupCode : code;
+    if (!rootCode) continue;
+
+    const group = groupsByRootCode.get(rootCode) ?? {clazz: null, subClazzes: [] as ClassResponse[]};
+    if (!groupsByRootCode.has(rootCode)) {
+      groupsByRootCode.set(rootCode, group);
+    }
+    if (hasParentClass) {
+      group.subClazzes.push(clazz);
+    } else if (!group.clazz) {
+      group.clazz = clazz;
+    } else {
+      group.subClazzes.push(clazz);
+    }
+  }
+
+  const out: ClassGroupResponse[] = Array.from(groupsByRootCode.entries()).map(([_, value]) => ({
+    clazz: value.clazz,
+    subClazzes: value.subClazzes,
+  }));
+
+  for (const g of out) {
+    g.subClazzes = [...(g.subClazzes ?? [])].sort((a, b) =>
+      (a.name ?? a.code).localeCompare(b.name ?? b.code, "ru", {sensitivity: "base"})
+    );
+  }
+
+  out.sort((a, b) => {
+    const aLabel = a.clazz?.name ?? a.subClazzes?.[0]?.name ?? "";
+    const bLabel = b.clazz?.name ?? b.subClazzes?.[0]?.name ?? "";
+    return aLabel.localeCompare(bLabel, "ru", {sensitivity: "base"});
+  });
+
+  return out;
+}
 
 const props = defineProps({
   characterData: Object,
@@ -131,17 +191,15 @@ function onImageError(event: Event) {
 
 onMounted(async () => {
   try {
-    const response = await axios.get(
-        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.roomClassesGrouped}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: "Bearer " + localStorage.getItem("accessToken"),
-          },
-        }
-    );
-
-    classGroups.value = (response.data || []) as ClassGroupResponse[];
+    const roomIdParam = route.params.roomId;
+    const roomId = Array.isArray(roomIdParam) ? roomIdParam[0] : roomIdParam;
+    if (!roomId) return;
+    if (!roomStore.room?.id || roomStore.room.id !== roomId) {
+      await roomStore.getRoomInfo(roomId);
+    }
+    const baseRuleType = roomStore.room?.baseRuleType ?? undefined;
+    const classes = await getClassesForRoom(roomId, baseRuleType);
+    classGroups.value = filterVisibleClassGroups(toClassGroups(classes as unknown as ClassResponse[]));
     selectDefaultClassForGroup(0);
   } catch (error) {
     console.error("Ошибка при получении данных:", error);

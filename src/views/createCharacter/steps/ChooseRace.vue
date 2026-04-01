@@ -104,8 +104,6 @@ import {
   IonActionSheet,
   IonButton,
   IonChip,
-  IonFab,
-  IonFabButton,
   IonIcon,
   IonicSlides,
   IonLabel,
@@ -114,13 +112,15 @@ import {
 } from "@ionic/vue";
 import {computed, onMounted, ref} from "vue";
 import {Swiper, SwiperSlide} from "swiper/vue";
-import {add, arrowForwardOutline, menuOutline} from "ionicons/icons";
-import axios from "axios";
+import {arrowForwardOutline, menuOutline} from "ionicons/icons";
 import {Swiper as SwiperType} from "swiper/types";
 import {useRoute} from "vue-router";
-import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {FILE_STORAGE_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {getRacesForRoom} from "@/api/rulebookApi";
+import {useRoomStore} from "@/stores/RoomStore";
 
 const route = useRoute();
+const roomStore = useRoomStore();
 
 const raceGroups = ref<RaceGroupResponse[]>([]);
 const racesPlaceholder = ref([1, 2, 3, 4, 5, 6, 7, 8, 9]);
@@ -137,6 +137,71 @@ type RaceGroupResponse = {
   subspecies?: RaceResponse[] | null;
 };
 
+function isVisibleForPlayer(race: RaceResponse | null | undefined): boolean {
+  return race != null && (race as RaceResponse & { hidden?: boolean }).hidden !== true;
+}
+
+function filterVisibleRaceGroups(groups: RaceGroupResponse[]): RaceGroupResponse[] {
+  return groups
+    .map((group) => {
+      const species = isVisibleForPlayer(group.species) ? group.species : null;
+      const subspecies = (group.subspecies ?? []).filter((race) => isVisibleForPlayer(race));
+      return { species, subspecies };
+    })
+    .filter((group) => Boolean(group.species) || (group.subspecies?.length ?? 0) > 0);
+}
+
+function toRaceGroups(races: RaceResponse[]): RaceGroupResponse[] {
+  const groupsByRootCode = new Map<string, { species: RaceResponse | null; subspecies: RaceResponse[] }>();
+  const normalize = (value: string | null | undefined) => (value ?? "").trim();
+
+  for (const race of races) {
+    const code = normalize(race.code);
+    const speciesCode = normalize((race as RaceResponse & { speciesCode?: string | null }).speciesCode);
+    const imgUrl = normalize((race as RaceResponse & { imgUrl?: string | null }).imgUrl);
+    const rootCode = speciesCode || code;
+    if (!rootCode) continue;
+
+    const isDeclaredRoot = speciesCode.length === 0 || speciesCode === code;
+    const isSpeciesImageRoot = speciesCode.length > 0 && imgUrl === speciesCode;
+    const isRoot = isDeclaredRoot || isSpeciesImageRoot;
+
+    const group = groupsByRootCode.get(rootCode) ?? {species: null, subspecies: [] as RaceResponse[]};
+    if (!groupsByRootCode.has(rootCode)) {
+      groupsByRootCode.set(rootCode, group);
+    }
+
+    if (isRoot) {
+      if (!group.species) {
+        group.species = race;
+      } else {
+        group.subspecies.push(race);
+      }
+    } else {
+      group.subspecies.push(race);
+    }
+  }
+
+  const out: RaceGroupResponse[] = Array.from(groupsByRootCode.entries()).map(([_, value]) => ({
+    species: value.species,
+    subspecies: value.subspecies,
+  }));
+
+  for (const g of out) {
+    g.subspecies = [...(g.subspecies ?? [])].sort((a, b) =>
+      (a.name ?? a.code).localeCompare(b.name ?? b.code, "ru", {sensitivity: "base"})
+    );
+  }
+
+  out.sort((a, b) => {
+    const aLabel = a.species?.name ?? a.subspecies?.[0]?.name ?? "";
+    const bLabel = b.species?.name ?? b.subspecies?.[0]?.name ?? "";
+    return aLabel.localeCompare(bLabel, "ru", {sensitivity: "base"});
+  });
+
+  return out;
+}
+
 const props = defineProps({
   characterData: Object,
   currentStep: Object,
@@ -144,16 +209,15 @@ const props = defineProps({
 
 onMounted(async () => {
   try {
-    const response = await axios.get(
-        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.roomRacesGrouped}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: "Bearer " + localStorage.getItem("accessToken"),
-          },
-        }
-    );
-    raceGroups.value = (response.data || []) as RaceGroupResponse[];
+    const roomIdParam = route.params.roomId;
+    const roomId = Array.isArray(roomIdParam) ? roomIdParam[0] : roomIdParam;
+    if (!roomId) return;
+    if (!roomStore.room?.id || roomStore.room.id !== roomId) {
+      await roomStore.getRoomInfo(roomId);
+    }
+    const baseRuleType = roomStore.room?.baseRuleType ?? undefined;
+    const races = await getRacesForRoom(roomId, baseRuleType);
+    raceGroups.value = filterVisibleRaceGroups(toRaceGroups(races as unknown as RaceResponse[]));
     selectDefaultRaceForGroup(0);
     racesLoaded.value = true;
   } catch (error) {
