@@ -18,7 +18,7 @@ import {computed, ref} from "vue";
 import 'swiper/css';
 import '@ionic/vue/css/ionic-swiper.css';
 import {arrowBack} from "ionicons/icons";
-import axios from "axios";
+import axios, {isAxiosError} from "axios";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {useRouter} from "vue-router";
 import {persistAuthTokens} from "@/utils/authTokens";
@@ -122,19 +122,28 @@ const login = async () => {
 
       await router.replace('/rooms');
     }
-  } catch (error) {
-    if (error.response?.status == 406) {
-      await showInvalidValidationToast(error.response?.data?.code)
+  } catch (error: unknown) {
+    if (isAxiosError(error)) {
+      const status = error.response?.status;
+      const code = error.response?.data?.code;
+      const invalidPasswordStatuses = [401, 403, 406];
+      const invalidPasswordCodes = ["INVALID_PASSWORD", "INVALID_CREDENTIALS"];
+
+      if (invalidPasswordStatuses.includes(status ?? 0) || invalidPasswordCodes.includes(String(code))) {
+        await showInvalidPasswordToast();
+      } else {
+        await showInternalErrorToast();
+      }
     } else {
-      await showInternalErrorToast()
+      await showInternalErrorToast();
     }
 
     console.error("Login failed:", error);
   }
 
-  async function showInvalidValidationToast(code: any) {
+  async function showInvalidPasswordToast() {
     const toast = await toastController.create({
-      message: code,
+      message: TEXTS.invalidPassword.rus,
       duration: 1500,
       position: 'top'
     })
