@@ -1,7 +1,18 @@
 <script setup lang="ts">
-import {IonBadge, IonBackButton, IonButton, IonButtons, IonHeader, IonIcon, IonTitle, IonToolbar, useIonRouter} from "@ionic/vue";
+import {
+  IonBadge,
+  IonBackButton,
+  IonButton,
+  IonButtons,
+  IonHeader,
+  IonIcon,
+  IonSearchbar,
+  IonTitle,
+  IonToolbar,
+  useIonRouter
+} from "@ionic/vue";
 import {arrowBack, notificationsOutline, searchOutline} from "ionicons/icons";
-import {onBeforeMount, ref} from "vue";
+import {computed, onBeforeMount, ref} from "vue";
 import axios from "axios";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import LogOutButton from "@/views/common/LogOutButton.vue";
@@ -10,8 +21,21 @@ const notifications = ref<{ count: number; }>({count: 0});
 const ionRouter = useIonRouter();
 
 const props = defineProps({
-  headerName: String
+  headerName: String,
+  searchable: {
+    type: Boolean,
+    default: false
+  },
+  searchQuery: {
+    type: String,
+    default: ""
+  }
 });
+const emit = defineEmits<{
+  (e: "update:searchQuery", value: string): void;
+}>();
+const searchOpen = ref(false);
+const hasSearchQuery = computed(() => props.searchQuery.trim().length > 0);
 
 const setupNotificationCount = async () => {
   const http = axios.create({
@@ -33,6 +57,18 @@ onBeforeMount(() => {
   setupNotificationCount()
 })
 
+function toggleSearch() {
+  if (!props.searchable) return;
+  if (searchOpen.value && hasSearchQuery.value) {
+    emit("update:searchQuery", "");
+    return;
+  }
+  searchOpen.value = !searchOpen.value;
+  if (!searchOpen.value) {
+    emit("update:searchQuery", "");
+  }
+}
+
 </script>
 
 <template>
@@ -45,7 +81,7 @@ onBeforeMount(() => {
             <ion-icon slot="icon-only" :icon="arrowBack"></ion-icon>
           </ion-button>
           <ion-back-button v-else/>
-          <ion-button size="small">
+          <ion-button v-if="searchable" size="small" @click="toggleSearch">
             <ion-icon slot="icon-only" :ios="searchOutline" :md="searchOutline"></ion-icon>
           </ion-button>
         </ion-buttons>
@@ -59,6 +95,13 @@ onBeforeMount(() => {
         </ion-buttons>
       </ion-toolbar>
     </ion-buttons>
+    <ion-toolbar v-if="searchable && (searchOpen || hasSearchQuery)" color="dark" class="search-toolbar">
+      <ion-searchbar
+        :model-value="searchQuery"
+        placeholder="Поиск"
+        @ionInput="emit('update:searchQuery', (($event as CustomEvent).detail.value ?? '').toString())"
+      />
+    </ion-toolbar>
   </ion-header>
 </template>
 

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+  defineProps,
   IonAvatar,
   IonButton,
   IonButtons,
@@ -30,7 +31,7 @@ import {
   sparkles,
   sparklesOutline
 } from "ionicons/icons";
-import {computed, ref, watch} from "vue";
+import {computed, onMounted, ref, watch, withDefaults} from "vue";
 import {useRoute} from "vue-router";
 import {
   getBackgroundsForRoom,
@@ -76,7 +77,20 @@ const guidebookStore = useGuidebookStore();
 const createInventoryItemStore = useCreateInventoryItemStore();
 
 type Section = "list" | "races" | "classes" | "backgrounds" | "items" | "spells" | "npcs";
+const props = withDefaults(defineProps<{ lockedSection?: Section | null; externalSearchQuery?: string }>(), {
+  lockedSection: null,
+  externalSearchQuery: ""
+});
 const currentSection = ref<Section>("list");
+const isLockedSection = computed(() => props.lockedSection !== null);
+
+watch(
+  () => props.lockedSection,
+  (section) => {
+    currentSection.value = section ?? "list";
+  },
+  {immediate: true}
+);
 
 const SECTIONS: { id: Section; label: string; icon: string }[] = [
   {id: "races", label: "Расы", icon: "peopleOutline"},
@@ -259,6 +273,21 @@ const raceGroups = computed<RaceGroup[]>(() => {
   return out;
 });
 
+const normalizedExternalSearchQuery = computed(() => props.externalSearchQuery.trim().toLowerCase());
+const filteredRaceGroups = computed<RaceGroup[]>(() => {
+  const q = normalizedExternalSearchQuery.value;
+  if (!q || currentSection.value !== "races") return raceGroups.value;
+  return raceGroups.value
+    .map((group) => {
+      const rootMatches = group.root?.name?.toLowerCase().includes(q) ?? false;
+      const subs = group.subs.filter((sub) => sub.name?.toLowerCase().includes(q));
+      if (rootMatches) return group;
+      if (!rootMatches && !subs.length) return null;
+      return { ...group, root: null, subs };
+    })
+    .filter((g): g is RaceGroup => Boolean(g));
+});
+
 const classGroups = computed<ClassGroup[]>(() => {
   const groupsByRootCode = new Map<string, { root: ClazzDto | null; subs: ClazzDto[] }>();
   const normalize = (value: string | null | undefined) => (value ?? "").trim();
@@ -302,6 +331,26 @@ const classGroups = computed<ClassGroup[]>(() => {
   return out;
 });
 
+const filteredClassGroups = computed<ClassGroup[]>(() => {
+  const q = normalizedExternalSearchQuery.value;
+  if (!q || currentSection.value !== "classes") return classGroups.value;
+  return classGroups.value
+    .map((group) => {
+      const rootMatches = group.root?.name?.toLowerCase().includes(q) ?? false;
+      const subs = group.subs.filter((sub) => sub.name?.toLowerCase().includes(q));
+      if (rootMatches) return group;
+      if (!rootMatches && !subs.length) return null;
+      return { ...group, root: null, subs };
+    })
+    .filter((g): g is ClassGroup => Boolean(g));
+});
+
+const filteredBackgrounds = computed(() => {
+  const q = normalizedExternalSearchQuery.value;
+  if (!q || currentSection.value !== "backgrounds") return backgrounds.value;
+  return backgrounds.value.filter((bg) => (bg.name ?? "").toLowerCase().includes(q));
+});
+
 // Локальный дебаунс для поиска заклинаний и предметов,
 // чтобы не перерендеривать большие списки на каждый ввод символа
 const debouncedSpellSearchQuery = ref("");
@@ -333,6 +382,10 @@ const filteredNpcs = computed(() => {
   if (npcFilterType.value) result = result.filter((n) => n.type === npcFilterType.value);
   if (npcFilterClass.value) result = result.filter((n) => n.clazzCode === npcFilterClass.value);
   if (npcFilterRace.value) result = result.filter((n) => n.raceCode === npcFilterRace.value);
+  const q = normalizedExternalSearchQuery.value;
+  if (q && currentSection.value === "npcs") {
+    result = result.filter((n) => (n.name ?? "").toLowerCase().includes(q));
+  }
   return result.sort((a, b) => a.name.localeCompare(b.name, "ru", {sensitivity: "base"}));
 });
 
@@ -635,6 +688,20 @@ watch(selectedSpellClass, () => {
   loadSpells();
 });
 
+watch(
+  () => props.externalSearchQuery,
+  (q) => {
+    const normalized = q.trim();
+    if (currentSection.value === "items" && itemSearchQuery.value !== normalized) {
+      itemSearchQuery.value = normalized;
+    }
+    if (currentSection.value === "spells" && spellSearchQuery.value !== normalized) {
+      spellSearchQuery.value = normalized;
+    }
+  },
+  {immediate: true}
+);
+
 function getSpellLevelLabel(level: string): string {
   return level === "0" ? "Фокусы" : `${level} уровень`;
 }
@@ -884,12 +951,31 @@ function goToCreateNpc() {
 }
 
 function goToSection(section: Section) {
-  currentSection.value = section;
-  void ensureSectionDataLoaded(section);
+  if (isLockedSection.value) return;
+  ionRouter.push(`/rooms/${roomId.value}/master/guidebook/${section}`);
 }
 
 function goBack() {
+  if (isLockedSection.value) {
+    ionRouter.push(`/rooms/${roomId.value}/master`);
+    return;
+  }
   currentSection.value = "list";
+}
+
+async function initializeView() {
+  if (!roomId.value) return;
+  guidebookStore.roomId = roomId.value;
+  if (!roomStore.room?.id) {
+    await roomStore.getRoomInfo(roomId.value);
+  }
+  if (roomStore.room?.baseRuleType) {
+    guidebookStore.baseRuleType = roomStore.room.baseRuleType;
+  }
+  hydrateFromStoreIfPossible();
+  if (currentSection.value !== "list") {
+    await ensureSectionDataLoaded(currentSection.value);
+  }
 }
 
 async function ensureSectionDataLoaded(section: Section) {
@@ -921,18 +1007,12 @@ const sectionTitles: Record<string, string> = {
 };
 
 onIonViewDidEnter(async () => {
-  guidebookStore.roomId = roomId.value;
-  if (!roomStore.room?.id) {
-    await roomStore.getRoomInfo(roomId.value);
-  }
-  if (roomStore.room?.baseRuleType) {
-    guidebookStore.baseRuleType = roomStore.room.baseRuleType;
-  }
-  // Also hydrate local lists from store when returning.
-  hydrateFromStoreIfPossible();
-  if (currentSection.value !== "list") {
-    await ensureSectionDataLoaded(currentSection.value);
-  }
+  await initializeView();
+});
+
+onMounted(() => {
+  // For nested usage in dedicated guidebook routes where ion lifecycle may not fire.
+  void initializeView();
 });
 
 const createClass = () => {
@@ -1057,7 +1137,7 @@ async function onCatalogApplied(
 <template>
   <div class="guidebook">
     <!-- Список разделов -->
-    <div v-show="currentSection === 'list'" class="sections-list">
+    <div v-show="!isLockedSection && currentSection === 'list'" class="sections-list">
       <ion-list class="guidebook-list">
         <ion-item
             v-for="section in SECTIONS"
@@ -1075,7 +1155,7 @@ async function onCatalogApplied(
 
     <!-- Контент раздела с кнопкой назад -->
     <template v-if="currentSection !== 'list'">
-      <div class="section-header">
+      <div v-if="!isLockedSection" class="section-header">
         <ion-buttons>
           <ion-button fill="clear" @click="goBack">
             <ion-icon :icon="menuOutline"/>
@@ -1086,8 +1166,8 @@ async function onCatalogApplied(
 
       <!-- Расы -->
       <div v-show="currentSection === 'races'" class="segment-content">
-        <ion-list v-if="!loading && raceGroups.length" class="guidebook-list">
-          <template v-for="group in raceGroups" :key="group.key">
+        <ion-list v-if="!loading && filteredRaceGroups.length" class="guidebook-list">
+          <template v-for="group in filteredRaceGroups" :key="group.key">
             <ion-item
                 v-if="group.root"
                 :button="true"
@@ -1171,8 +1251,8 @@ async function onCatalogApplied(
 
       <!-- Классы -->
       <div v-show="currentSection === 'classes'" class="segment-content">
-        <ion-list v-if="!loading && classGroups.length" class="guidebook-list">
-          <template v-for="group in classGroups" :key="group.key">
+        <ion-list v-if="!loading && filteredClassGroups.length" class="guidebook-list">
+          <template v-for="group in filteredClassGroups" :key="group.key">
             <ion-item
                 v-if="group.root"
                 :button="true"
@@ -1256,9 +1336,9 @@ async function onCatalogApplied(
 
       <!-- Предыстории -->
       <div v-show="currentSection === 'backgrounds'" class="segment-content">
-        <ion-list v-if="!loading && backgrounds.length" class="guidebook-list">
+        <ion-list v-if="!loading && filteredBackgrounds.length" class="guidebook-list">
           <ion-item
-              v-for="bg in backgrounds"
+              v-for="bg in filteredBackgrounds"
               :key="bg.code + (bg.id ?? '')"
               :button="true"
               color="dark"
