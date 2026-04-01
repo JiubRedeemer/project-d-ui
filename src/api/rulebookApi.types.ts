@@ -42,6 +42,7 @@ export type RaceStatsDto = {
 export type RaceDto = {
   id?: string;
   roomId: string;
+  hidden?: boolean;
   name: string;
   description: string;
   code?: string;
@@ -89,6 +90,7 @@ export type ClazzStatsDto = {
 export type ClazzDto = {
   id: string;
   roomId: string;
+  hidden?: boolean;
   name: string;
   description?: string | null;
   code: string;
@@ -163,6 +165,7 @@ export type BackgroundStatsDto = {
 export type BackgroundDto = {
   id?: string;
   roomId: string;
+  hidden?: boolean;
   name: string;
   description: string;
   code?: string;

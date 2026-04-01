@@ -3,7 +3,7 @@
 import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
 import {useRoomCreationStore} from "@/stores/RoomCreationStore";
 import {FILE_STORAGE_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
-import {arrowBackOutline} from "ionicons/icons";
+import {arrowBackOutline, createOutline} from "ionicons/icons";
 import {IonChip, IonContent, IonFab, IonFabButton, IonIcon, IonLabel, IonPage} from "@ionic/vue";
 import {onMounted, ref} from "vue";
 import type {ClazzDto} from "@/api/rulebookApi.types";
@@ -11,10 +11,14 @@ import {useRouter} from "vue-router";
 import {useFullClassStore} from "@/stores/FullClassStore";
 import {useRoomStore} from "@/stores/RoomStore";
 import {formatClassHpDiceDisplayRu} from "@/utils/classHpDice";
+import {useGuidebookStore} from "@/stores/GuidebookStore";
+import {useCreateClassStore} from "@/stores/createEntity/CreateClassStore";
 
 const fullClassStore = useFullClassStore();
 const roomCreationStore = useRoomCreationStore();
 const roomStore = useRoomStore();
+const guidebookStore = useGuidebookStore();
+const createClassStore = useCreateClassStore();
 const subClasses = ref<ClazzDto[]>([]);
 const ionRouter = useRouter();
 
@@ -46,6 +50,14 @@ const getImageUrl = (imgUrl: string | undefined | null) => {
 
 const previousStep = () => {
   ionRouter.back();
+}
+
+function editClass() {
+  const roomId = guidebookStore.roomId || roomStore.room.id;
+  if (!roomId || !fullClassStore.clazz) return;
+  createClassStore.roomId = roomId;
+  createClassStore.clazz = JSON.parse(JSON.stringify(fullClassStore.clazz));
+  ionRouter.push(`/rooms/${roomId}/master/create/clazz`);
 }
 </script>
 
@@ -106,6 +118,11 @@ const previousStep = () => {
         <ion-icon :icon="arrowBackOutline" color="light"></ion-icon>
       </ion-fab-button>
     </ion-fab>
+    <ion-fab v-if="guidebookStore.roomId || roomStore.room.id" slot="fixed" vertical="bottom" horizontal="end">
+      <ion-fab-button color="primary" @click="editClass()">
+        <ion-icon :icon="createOutline" color="light"></ion-icon>
+      </ion-fab-button>
+    </ion-fab>
   </ion-page>
 </template>
 
@@ -114,23 +131,35 @@ const previousStep = () => {
   margin-top: 10px;
   margin-left: 10px;
   margin-right: 10px;
-  padding: 10px;
-  text-align: center;
-  background-color: var(--ion-color-medium);
-  border-radius: 10px;
+  padding: 14px;
+  text-align: left;
+  background: linear-gradient(180deg, rgba(var(--ion-color-medium-rgb), 0.35), rgba(var(--ion-color-medium-rgb), 0.2));
+  border-radius: 14px;
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.1);
+  line-height: 1.5;
 }
 
 .stat {
-  margin-top: 10px;
+  margin-top: 12px;
+  margin-left: 10px;
+  margin-right: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
+  background: rgba(var(--ion-color-medium-rgb), 0.18);
 }
 
 .stat-header {
-  font-size: 24px;
-  padding-left: 10px;
+  font-size: 20px;
+  font-weight: 600;
+  padding-left: 0;
+  margin-bottom: 8px;
 }
 
 .stat-chip {
-  margin-left: 10px;
+  margin-left: 0;
+  margin-right: 8px;
+  margin-bottom: 8px;
 }
 
 .stat-subspecies {
@@ -140,15 +169,16 @@ const previousStep = () => {
 }
 
 .stat-subspecies-item {
-  margin-left: 10px;
-  margin-right: 10px;
+  margin-left: 0;
+  margin-right: 0;
   padding: 10px;
   display: flex;
   align-items: center;
   gap: 0.5rem;
   width: 100%;
-  background-color: var(--ion-color-medium);
-  border-radius: 10px;
+  background-color: rgba(var(--ion-color-medium-rgb), 0.34);
+  border-radius: 12px;
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
 }
 
 .stat-subspecies-img {
@@ -163,7 +193,7 @@ const previousStep = () => {
 }
 
 .avatar-img {
-  border-radius: 25px;
+  border-radius: 16px;
   align-content: center;
   justify-content: center;
   display: flex;
@@ -175,6 +205,10 @@ const previousStep = () => {
   margin-right: 10px;
   display: flex;
   justify-content: center;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.12);
+  background: rgba(var(--ion-color-medium-rgb), 0.22);
 }
 
 .header {

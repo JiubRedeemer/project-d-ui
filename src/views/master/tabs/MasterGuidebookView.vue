@@ -21,6 +21,8 @@ import {
   chevronForwardOutline,
   cubeOutline,
   documentTextOutline,
+  eyeOffOutline,
+  eyeOutline,
   listOutline,
   menuOutline,
   peopleOutline,
@@ -30,7 +32,14 @@ import {
 } from "ionicons/icons";
 import {computed, ref, watch} from "vue";
 import {useRoute} from "vue-router";
-import {getBackgroundsForRoom, getClassesForRoom, getRacesForRoom} from "@/api/rulebookApi";
+import {
+  getBackgroundsForRoom,
+  getClassesForRoom,
+  getRacesForRoom,
+  setBackgroundHidden,
+  setClassHidden,
+  setRaceHidden
+} from "@/api/rulebookApi";
 import type {BackgroundDto, ClazzDto, RaceDto} from "@/api/rulebookApi.types";
 import {Item} from "@/components/models/response/InventoryResponse";
 import type {SpellDto} from "@/components/models/response/MagicApi";
@@ -200,17 +209,32 @@ type ClassGroup = {
 
 const raceGroups = computed<RaceGroup[]>(() => {
   const groupsByRootCode = new Map<string, { root: RaceDto | null; subs: RaceDto[] }>();
+  const normalize = (value: string | null | undefined) => (value ?? "").trim();
 
   for (const race of races.value) {
-    const rootCode = race.speciesCode ? race.speciesCode : race.code;
+    const code = normalize(race.code);
+    const speciesCode = normalize(race.speciesCode);
+    const imgUrl = normalize(race.imgUrl);
+    const rootCode = speciesCode || code;
+    if (!rootCode) continue;
+    const isDeclaredRoot = speciesCode.length === 0 || speciesCode === code;
+    // Fallback for backend payloads where code is UUID and speciesCode is catalog key (e.g. ELF),
+    // while root entity still has species image code equal to speciesCode.
+    const isSpeciesImageRoot = speciesCode.length > 0 && imgUrl === speciesCode;
+    const isRoot = isDeclaredRoot || isSpeciesImageRoot;
+
     const group = groupsByRootCode.get(rootCode) ?? {root: null, subs: [] as RaceDto[]};
     if (!groupsByRootCode.has(rootCode)) {
       groupsByRootCode.set(rootCode, group);
     }
-    if (race.speciesCode) {
-      group.subs.push(race);
+    if (isRoot) {
+      if (!group.root) {
+        group.root = race;
+      } else {
+        group.subs.push(race);
+      }
     } else {
-      group.root = race;
+      group.subs.push(race);
     }
   }
 
@@ -651,6 +675,58 @@ function goToBackground(bg: BackgroundDto) {
   ionRouter.navigate(`/guidebook/backgrounds/${bg.code}`, "forward", "push");
 }
 
+function isHidden(entity: { hidden?: boolean } | null | undefined): boolean {
+  return entity?.hidden === true;
+}
+
+async function toggleRaceHidden(race: RaceDto) {
+  if (!race.id) {
+    alert("Невозможно изменить скрытие: отсутствует id расы.");
+    return;
+  }
+  try {
+    const saved = await setRaceHidden(race.id, !isHidden(race));
+    races.value = races.value.map((r) => (r.id === saved.id || r.code === saved.code ? saved : r));
+    guidebookStore.races = races.value;
+    guidebookStore.lastUpdatedAt = Date.now();
+  } catch (e) {
+    console.error("Failed to toggle race hidden:", e);
+    alert("Не удалось изменить видимость расы.");
+  }
+}
+
+async function toggleClassHidden(clazz: ClazzDto) {
+  if (!clazz.id) {
+    alert("Невозможно изменить скрытие: отсутствует id класса.");
+    return;
+  }
+  try {
+    const saved = await setClassHidden(clazz.id, !isHidden(clazz));
+    classes.value = classes.value.map((c) => (c.id === saved.id || c.code === saved.code ? saved : c));
+    guidebookStore.classes = classes.value;
+    guidebookStore.lastUpdatedAt = Date.now();
+  } catch (e) {
+    console.error("Failed to toggle class hidden:", e);
+    alert("Не удалось изменить видимость класса.");
+  }
+}
+
+async function toggleBackgroundHidden(bg: BackgroundDto) {
+  if (!bg.id) {
+    alert("Невозможно изменить скрытие: отсутствует id предыстории.");
+    return;
+  }
+  try {
+    const saved = await setBackgroundHidden(bg.id, !isHidden(bg));
+    backgrounds.value = backgrounds.value.map((b) => (b.id === saved.id || b.code === saved.code ? saved : b));
+    guidebookStore.backgrounds = backgrounds.value;
+    guidebookStore.lastUpdatedAt = Date.now();
+  } catch (e) {
+    console.error("Failed to toggle background hidden:", e);
+    alert("Не удалось изменить видимость предыстории.");
+  }
+}
+
 function getRaceImageUrl(imgUrl: string | undefined | null) {
   return imgUrl
       ? `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.races_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.download}/${imgUrl}`
@@ -1021,7 +1097,12 @@ async function onCatalogApplied(
               <ion-avatar slot="start">
                 <img :src="getRaceImageUrl(group.root.imgUrl)" alt=""/>
               </ion-avatar>
-              <ion-icon :icon="chevronForwardOutline" slot="end"/>
+              <div slot="end" class="row-end-actions">
+                <button type="button" class="row-action-btn" @click.stop="toggleRaceHidden(group.root)">
+                  <ion-icon :icon="isHidden(group.root) ? eyeOffOutline : eyeOutline" :color="isHidden(group.root) ? 'danger' : 'secondary'"/>
+                </button>
+                <ion-icon :icon="chevronForwardOutline"/>
+              </div>
               <ion-label>{{ group.root.name }}</ion-label>
             </ion-item>
 
@@ -1034,7 +1115,12 @@ async function onCatalogApplied(
               <ion-avatar slot="start">
                 <img :src="getRaceImageUrl(group.subs[0].imgUrl)" alt=""/>
               </ion-avatar>
-              <ion-icon :icon="chevronForwardOutline" slot="end"/>
+              <div slot="end" class="row-end-actions">
+                <button type="button" class="row-action-btn" @click.stop="toggleRaceHidden(group.subs[0])">
+                  <ion-icon :icon="isHidden(group.subs[0]) ? eyeOffOutline : eyeOutline" :color="isHidden(group.subs[0]) ? 'danger' : 'secondary'"/>
+                </button>
+                <ion-icon :icon="chevronForwardOutline"/>
+              </div>
               <ion-label>{{ group.subs[0].name }}</ion-label>
             </ion-item>
 
@@ -1049,7 +1135,12 @@ async function onCatalogApplied(
               <ion-avatar slot="start">
                 <img :src="getRaceImageUrl(sub.imgUrl)" alt=""/>
               </ion-avatar>
-              <ion-icon :icon="chevronForwardOutline" slot="end"/>
+              <div slot="end" class="row-end-actions">
+                <button type="button" class="row-action-btn" @click.stop="toggleRaceHidden(sub)">
+                  <ion-icon :icon="isHidden(sub) ? eyeOffOutline : eyeOutline" :color="isHidden(sub) ? 'danger' : 'secondary'"/>
+                </button>
+                <ion-icon :icon="chevronForwardOutline"/>
+              </div>
               <ion-label>{{ sub.name }}</ion-label>
             </ion-item>
           </template>
@@ -1091,7 +1182,12 @@ async function onCatalogApplied(
               <ion-avatar slot="start">
                 <img :src="getClassImageUrl(group.root.imgUrl)" alt=""/>
               </ion-avatar>
-              <ion-icon :icon="chevronForwardOutline" slot="end"/>
+              <div slot="end" class="row-end-actions">
+                <button type="button" class="row-action-btn" @click.stop="toggleClassHidden(group.root)">
+                  <ion-icon :icon="isHidden(group.root) ? eyeOffOutline : eyeOutline" :color="isHidden(group.root) ? 'danger' : 'secondary'"/>
+                </button>
+                <ion-icon :icon="chevronForwardOutline"/>
+              </div>
               <ion-label>{{ group.root.name }}</ion-label>
             </ion-item>
 
@@ -1104,7 +1200,12 @@ async function onCatalogApplied(
               <ion-avatar slot="start">
                 <img :src="getClassImageUrl(group.subs[0].imgUrl)" alt=""/>
               </ion-avatar>
-              <ion-icon :icon="chevronForwardOutline" slot="end"/>
+              <div slot="end" class="row-end-actions">
+                <button type="button" class="row-action-btn" @click.stop="toggleClassHidden(group.subs[0])">
+                  <ion-icon :icon="isHidden(group.subs[0]) ? eyeOffOutline : eyeOutline" :color="isHidden(group.subs[0]) ? 'danger' : 'secondary'"/>
+                </button>
+                <ion-icon :icon="chevronForwardOutline"/>
+              </div>
               <ion-label>{{ group.subs[0].name }}</ion-label>
             </ion-item>
 
@@ -1119,7 +1220,12 @@ async function onCatalogApplied(
               <ion-avatar slot="start">
                 <img :src="getClassImageUrl(sub.imgUrl)" alt=""/>
               </ion-avatar>
-              <ion-icon :icon="chevronForwardOutline" slot="end"/>
+              <div slot="end" class="row-end-actions">
+                <button type="button" class="row-action-btn" @click.stop="toggleClassHidden(sub)">
+                  <ion-icon :icon="isHidden(sub) ? eyeOffOutline : eyeOutline" :color="isHidden(sub) ? 'danger' : 'secondary'"/>
+                </button>
+                <ion-icon :icon="chevronForwardOutline"/>
+              </div>
               <ion-label>{{ sub.name }}</ion-label>
             </ion-item>
           </template>
@@ -1161,7 +1267,12 @@ async function onCatalogApplied(
             <ion-avatar slot="start">
               <img :src="getBackgroundImageUrl(bg.imgUrl)" alt=""/>
             </ion-avatar>
-            <ion-icon :icon="chevronForwardOutline" slot="end"/>
+            <div slot="end" class="row-end-actions">
+              <button type="button" class="row-action-btn" @click.stop="toggleBackgroundHidden(bg)">
+                <ion-icon :icon="isHidden(bg) ? eyeOffOutline : eyeOutline" :color="isHidden(bg) ? 'danger' : 'secondary'"/>
+              </button>
+              <ion-icon :icon="chevronForwardOutline"/>
+            </div>
             <ion-label>{{ bg.name }}</ion-label>
           </ion-item>
         </ion-list>
@@ -1762,6 +1873,23 @@ ion-searchbar {
 
 .group-sub-item {
   padding-left: 18px;
+}
+
+.row-end-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.row-action-btn {
+  border: none;
+  background: transparent;
+  color: var(--ion-color-medium);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  cursor: pointer;
 }
 
 

@@ -1,34 +1,17 @@
 <script setup lang="ts">
 import {add, closeCircleOutline, saveOutline} from "ionicons/icons";
-import {
-  IonButton,
-  IonIcon,
-  IonInput,
-  IonPage,
-  IonSelect,
-  IonSelectOption,
-  IonTextarea,
-} from "@ionic/vue";
-import {onBeforeMount, ref, computed} from "vue";
+import {IonButton, IonIcon, IonInput, IonPage, IonSelect, IonSelectOption, IonTextarea,} from "@ionic/vue";
+import {computed, onBeforeMount, ref} from "vue";
 import {useRoute, useRouter} from "vue-router";
 import {useCreateClassStore} from "@/stores/createEntity/CreateClassStore";
-import {useRoomCreationStore} from "@/stores/RoomCreationStore";
 import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
 import {FILE_STORAGE_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import axios from "axios";
-import {
-  AbilityDto,
-  ClazzDto,
-  ClazzStatsDto,
-} from "@/api/rulebookApi.types";
-import {createClass, getAbilitiesForRoom, getRootClassesForRoom} from "@/api/rulebookApi";
+import {AbilityDto, ClazzDto, ClazzStatsDto,} from "@/api/rulebookApi.types";
+import {createClass, getAbilitiesForRoom, getRootClassesForRoom, updateClass} from "@/api/rulebookApi";
 import {useGuidebookStore} from "@/stores/GuidebookStore";
-import {
-  HP_HIT_DIE_OPTIONS,
-  formatClassHpDice,
-  normalizeClassHpDice,
-  parseClassHpDice,
-} from "@/utils/classHpDice";
+import {useFullClassStore} from "@/stores/FullClassStore";
+import {formatClassHpDice, HP_HIT_DIE_OPTIONS, normalizeClassHpDice, parseClassHpDice,} from "@/utils/classHpDice";
 
 const SKILLS_LIST = [
   { name: "Атлетика", code: "ATHL" },
@@ -56,6 +39,7 @@ const ZERO_UUID = "00000000-0000-0000-0000-000000000000";
 const fileInput = ref<HTMLInputElement | null>(null);
 const previewImage = ref<string | null>(null);
 const createClassStore = useCreateClassStore();
+const fullClassStore = useFullClassStore();
 const route = useRoute();
 const router = useRouter();
 const abilities = ref<AbilityDto[]>([]);
@@ -260,12 +244,18 @@ async function onSave() {
   };
   isSaving.value = true;
   try {
-    const saved = await createClass(roomId, clazzDto);
-    const idx = store.classes.findIndex((x) => x.code === saved.code);
+    const saved = clazzDto.id
+      ? await updateClass(roomId, clazzDto)
+      : await createClass(roomId, clazzDto);
+    const idx = store.classes.findIndex(
+      (x) => (saved.id && x.id === saved.id) || (saved.code && x.code === saved.code)
+    );
     store.classes =
       idx >= 0
         ? [...store.classes.slice(0, idx), saved, ...store.classes.slice(idx + 1)]
         : [...store.classes, saved];
+    fullClassStore.clazz = saved;
+    createClassStore.clazz = saved;
     store.lastUpdatedAt = Date.now();
     router.back();
   } catch (e) {

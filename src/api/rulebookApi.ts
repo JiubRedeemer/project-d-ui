@@ -18,6 +18,10 @@ function baseUrl(roomId: string): string {
     return `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${roomId}`;
 }
 
+function apiBaseUrl(): string {
+    return `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}`;
+}
+
 function authHeaders(): Record<string, string> {
     return {
         "Content-Type": "application/json",
@@ -45,6 +49,15 @@ export async function getRacesForRoom(roomId: string, forceRuleTypeEnum: string 
 
 export async function createRace(roomId: string, body: RaceDto): Promise<RaceDto> {
     const {data} = await axios.put<RaceDto>(
+        `${baseUrl(roomId)}${GATEWAY_INTEGRATION_ROUTES.roomRaces}`,
+        body,
+        {headers: authHeaders()}
+    );
+    return data;
+}
+
+export async function updateRace(roomId: string, body: RaceDto): Promise<RaceDto> {
+    const {data} = await axios.patch<RaceDto>(
         `${baseUrl(roomId)}${GATEWAY_INTEGRATION_ROUTES.roomRaces}`,
         body,
         {headers: authHeaders()}
@@ -91,6 +104,15 @@ export async function getClassesForRoom(roomId: string, forceRuleTypeEnum: strin
 
 export async function createClass(roomId: string, body: ClazzDto): Promise<ClazzDto> {
     const {data} = await axios.put<ClazzDto>(
+        `${baseUrl(roomId)}${GATEWAY_INTEGRATION_ROUTES.roomClasses}`,
+        body,
+        {headers: authHeaders()}
+    );
+    return data;
+}
+
+export async function updateClass(roomId: string, body: ClazzDto): Promise<ClazzDto> {
+    const {data} = await axios.patch<ClazzDto>(
         `${baseUrl(roomId)}${GATEWAY_INTEGRATION_ROUTES.roomClasses}`,
         body,
         {headers: authHeaders()}
@@ -204,6 +226,18 @@ export async function createBackground(
     return data;
 }
 
+export async function updateBackground(
+    roomId: string,
+    body: BackgroundDto
+): Promise<BackgroundDto> {
+    const {data} = await axios.patch<BackgroundDto>(
+        `${baseUrl(roomId)}${GATEWAY_INTEGRATION_ROUTES.backgrounds}`,
+        body,
+        {headers: authHeaders()}
+    );
+    return data;
+}
+
 export async function getBackgroundByCodeForRoom(
     roomId: string,
     code: string
@@ -211,6 +245,33 @@ export async function getBackgroundByCodeForRoom(
     const {data} = await axios.get<BackgroundDto>(
         `${baseUrl(roomId)}${GATEWAY_INTEGRATION_ROUTES.backgrounds}/${encodeURIComponent(code)}`,
         {headers: authHeaders()}
+    );
+    return data;
+}
+
+export async function setRaceHidden(id: string, hidden: boolean): Promise<RaceDto> {
+    const {data} = await axios.patch<RaceDto>(
+        `${apiBaseUrl()}${GATEWAY_INTEGRATION_ROUTES.roomRaces}/hidden/${encodeURIComponent(id)}`,
+        null,
+        {headers: authHeaders(), params: {hidden}}
+    );
+    return data;
+}
+
+export async function setClassHidden(id: string, hidden: boolean): Promise<ClazzDto> {
+    const {data} = await axios.patch<ClazzDto>(
+        `${apiBaseUrl()}${GATEWAY_INTEGRATION_ROUTES.roomClasses}/hidden/${encodeURIComponent(id)}`,
+        null,
+        {headers: authHeaders(), params: {hidden}}
+    );
+    return data;
+}
+
+export async function setBackgroundHidden(id: string, hidden: boolean): Promise<BackgroundDto> {
+    const {data} = await axios.patch<BackgroundDto>(
+        `${apiBaseUrl()}${GATEWAY_INTEGRATION_ROUTES.backgrounds}/hidden/${encodeURIComponent(id)}`,
+        null,
+        {headers: authHeaders(), params: {hidden}}
     );
     return data;
 }
