@@ -48,10 +48,10 @@ export default defineConfig({
             },
           },
           {
-            // Images/files (avatars, items, etc.) are usually GET downloads.
+            // Файлы изображений: отдаём из кэша сразу, параллельно обновляем с сети (следующий запрос получит свежее).
             urlPattern: ({ url }) => url.pathname.startsWith('/files/'),
             method: 'GET',
-            handler: 'CacheFirst',
+            handler: 'StaleWhileRevalidate',
             options: {
               cacheName: 'files-cache',
               expiration: {

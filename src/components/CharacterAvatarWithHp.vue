@@ -2,6 +2,7 @@
 import {IonAvatar} from "@ionic/vue";
 import {computed} from "vue";
 import {Character} from "@/components/models/response/Character";
+import CachedFileImage from "@/components/CachedFileImage.vue";
 import {getCharacterAvatarUrl, CHARACTER_AVATAR_PLACEHOLDER} from "@/utils/characterAvatar";
 
 const props = withDefaults(
@@ -50,7 +51,7 @@ const strokeDashoffset = computed(() => 100 - hpPercent.value);
       />
     </svg>
     <ion-avatar class="avatar-inner" :style="{ width: sizePx + 'px', height: sizePx + 'px' }">
-      <img
+      <CachedFileImage
         :width="sizePx"
         :height="sizePx"
         :src="getCharacterAvatarUrl(character)"

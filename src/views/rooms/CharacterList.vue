@@ -27,6 +27,7 @@ import axios from "axios";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {useRoute} from "vue-router";
 import {Character} from "@/components/models/response/Character";
+import CachedFileImage from "@/components/CachedFileImage.vue";
 import {getCharacterAvatarUrl, CHARACTER_AVATAR_PLACEHOLDER} from "@/utils/characterAvatar";
 
 const ionRouter = useIonRouter();
@@ -201,10 +202,13 @@ const sendInvite = async () => {
         <ion-item v-for="character in sortedCharacters" :key="character.id" :button="true" color="dark"
                   @click="goToCharacter(character.id)">
           <ion-avatar aria-hidden="false" slot="start">
-            <img width="64" height="64"
-                 :src="getCharacterAvatarUrl(character)"
-                 alt=""
-                 @error="($event.target as HTMLImageElement).src = CHARACTER_AVATAR_PLACEHOLDER"/>
+            <CachedFileImage
+              width="64"
+              height="64"
+              :src="getCharacterAvatarUrl(character)"
+              alt=""
+              @error="($event.target as HTMLImageElement).src = CHARACTER_AVATAR_PLACEHOLDER"
+            />
           </ion-avatar>
           <ion-icon aria-hidden="false" :icon="chevronForwardOutline" slot="end"></ion-icon>
           <ion-label>
