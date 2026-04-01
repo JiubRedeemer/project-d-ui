@@ -20,6 +20,7 @@ import {
 } from "@ionic/vue";
 import { closeCircleOutline, documentTextOutline, downloadOutline, eyeOutline, imageOutline } from "ionicons/icons";
 import axios from "axios";
+import { Capacitor } from "@capacitor/core";
 import Viewer from "viewerjs";
 import "viewerjs/dist/viewer.css";
 import type { UserFile } from "@/api/fileStorageApi.types";
@@ -223,14 +224,32 @@ async function downloadFile(file: UserFile) {
   try {
     const currentUserId = await ensureUserId();
     const blob = await downloadUserFileById(file.id, currentUserId);
+    const downloadName = file.filename;
+
+    // In Android/iOS WebView, `<a download>` with blob often does not save.
+    // Prefer native share sheet when available.
+    if (Capacitor.isNativePlatform() && "share" in navigator) {
+      const sharedFile = new File([blob], downloadName, { type: blob.type || "application/octet-stream" });
+      const canShareFiles =
+        typeof (navigator as any).canShare === "function" &&
+        (navigator as any).canShare({ files: [sharedFile] });
+      if (canShareFiles) {
+        await (navigator as any).share({ files: [sharedFile], title: downloadName });
+        return;
+      }
+    }
+
     const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = file.filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    try {
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = downloadName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } finally {
+      URL.revokeObjectURL(url);
+    }
   } catch (e) {
     console.error("Download failed:", e);
     const toast = await toastController.create({
