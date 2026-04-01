@@ -16,29 +16,28 @@ const openLevelupModal = () => {
 };
 
 /**
- * Масштаб имени под ширину заголовка на смартфонах (портрет).
- *
- * Оценка полезной ширины под `ion-title`: типичный экран 360 CSS px минус back (~48px),
- * отступы тулбара, блок уровня (~40px) + отступы, LogOut — остаётся порядка 150–175px;
- * на узких 320px — ближе к 125–145px. Берём консервативный бюджет ~148px, чтобы не
- * упираться в край на SE/малых Android.
- *
- * Визуальная ширина строки ≈ len × (font-size × коэфф. ширины глифа). Для bold 16px
- * смесь кириллица/латиница ~0.58em ≈ 9.3px на знак (чуть уже, чем «средняя» метрика шрифта).
- * Ищем scale: len × 9.35 × scale ≤ 148 → scale ≤ 148 / (len × 9.35), не выше 1.
+ * Сжатие имени через `transform: scale()` — те же коэффициенты и порядок, что `hpTextScale`
+ * в HpBar.vue. «Эффективная длина» = длина имени минус запас под ширину тулбара (как в HP
+ * total = длины чисел + «/»). Для очень длинных имён — дополнительные ступени ниже 0.75.
  */
-const NAME_LINE_BUDGET_PX = 148;
-/** Средняя ширина знака (px) для font-weight: 700, font-size: 16px. */
-const NAME_AVG_CHAR_WIDTH_PX = 9.35;
+const NAME_TOOLBAR_HEADROOM = 8;
 const NAME_SCALE_MIN = 0.34;
 
 const nameTextScale = computed(() => {
   const len = (characterStore.character?.name ?? "").length;
   if (len === 0) return 1;
-  const raw = NAME_LINE_BUDGET_PX / (len * NAME_AVG_CHAR_WIDTH_PX);
-  const clamped = Math.min(1, raw);
-  const rounded = Math.round(clamped * 100) / 100;
-  return Math.max(NAME_SCALE_MIN, rounded);
+  if (len <= NAME_TOOLBAR_HEADROOM) return 1;
+
+  const total = len - NAME_TOOLBAR_HEADROOM;
+
+  if (total <= 5) return 0.8;
+  if (total <= 7) return 0.7;
+  if (total <= 9) return 0.5;
+  if (total <= 11) return 0.82;
+  if (total <= 24) return 0.75;
+  if (total <= 32) return 0.6;
+  if (total <= 42) return 0.5;
+  return NAME_SCALE_MIN;
 });
 
 
@@ -50,7 +49,7 @@ const nameTextScale = computed(() => {
       <ion-back-button/>
     </ion-buttons>
 
-    <ion-title slot="start">
+    <ion-title >
       <div class="header-content" v-if="characterStore.character">
         <div
           class="name-block"
@@ -101,7 +100,8 @@ const nameTextScale = computed(() => {
   font-weight: bold;
   display: inline-block;
   transform-origin: left center;
-  line-height: 1.2;
+  line-height: 1;
+  margin-right: 0;
   max-width: 100%;
 }
 
