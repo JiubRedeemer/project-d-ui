@@ -60,7 +60,7 @@ const useSkill = async (skill: InventoryItemSkill | CharacterSkill) => {
           {
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+              Authorization: `Bearer ${(localStorage.getItem("accessToken") ?? sessionStorage.getItem("accessToken"))}`,
             }
           }
       );
@@ -71,7 +71,7 @@ const useSkill = async (skill: InventoryItemSkill | CharacterSkill) => {
           {
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+              Authorization: `Bearer ${(localStorage.getItem("accessToken") ?? sessionStorage.getItem("accessToken"))}`,
             }
           }
       );
@@ -235,7 +235,7 @@ async function saveItemCombatBonus(value: number) {
         {
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+            Authorization: `Bearer ${(localStorage.getItem("accessToken") ?? sessionStorage.getItem("accessToken"))}`,
           },
         }
     );
@@ -264,7 +264,7 @@ async function saveCharacterSkill(characterSkill: CharacterSkill) {
       {
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          Authorization: `Bearer ${(localStorage.getItem("accessToken") ?? sessionStorage.getItem("accessToken"))}`,
         }
       }
   );
@@ -277,7 +277,7 @@ async function deleteCharacterSkill(id: string) {
       {
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          Authorization: `Bearer ${(localStorage.getItem("accessToken") ?? sessionStorage.getItem("accessToken"))}`,
         }
       }
   );

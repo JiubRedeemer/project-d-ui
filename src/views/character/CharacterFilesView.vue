@@ -54,7 +54,7 @@ async function getMyId(): Promise<string> {
   const myIdResponse = await axios.get(`${GATEWAY_INTEGRATION_ROUTES.baseURL}/users/myId`, {
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+      Authorization: `Bearer ${(localStorage.getItem("accessToken") ?? sessionStorage.getItem("accessToken"))}`,
     },
   });
 

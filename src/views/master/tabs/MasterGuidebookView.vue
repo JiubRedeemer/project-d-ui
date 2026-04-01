@@ -607,7 +607,7 @@ async function searchItems(replaceResults = true) {
         {
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("accessToken")}`
+            Authorization: `Bearer ${(localStorage.getItem("accessToken") ?? sessionStorage.getItem("accessToken"))}`
           }
         }
     );
@@ -868,7 +868,7 @@ async function loadRoomCharactersIfNeeded() {
       baseURL: GATEWAY_INTEGRATION_ROUTES.baseURL,
       headers: {
         "Content-type": "application/json",
-        Authorization: "Bearer " + localStorage.getItem("accessToken"),
+        Authorization: "Bearer " + (localStorage.getItem("accessToken") ?? sessionStorage.getItem("accessToken")),
       },
     });
 

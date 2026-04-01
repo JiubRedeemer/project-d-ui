@@ -66,7 +66,7 @@ const setupCharacters = async () => {
     baseURL: GATEWAY_INTEGRATION_ROUTES.baseURL,
     headers: {
       "Content-type": "application/json",
-      "Authorization": "Bearer " + localStorage.getItem("accessToken")
+      "Authorization": "Bearer " + (localStorage.getItem("accessToken") ?? sessionStorage.getItem("accessToken"))
     },
   });
 
@@ -82,7 +82,7 @@ const getRoleInRoom = async () => {
     baseURL: GATEWAY_INTEGRATION_ROUTES.baseURL,
     headers: {
       "Content-type": "application/json",
-      "Authorization": "Bearer " + localStorage.getItem("accessToken")
+      "Authorization": "Bearer " + (localStorage.getItem("accessToken") ?? sessionStorage.getItem("accessToken"))
     },
   });
 
@@ -148,7 +148,7 @@ const sendInvite = async () => {
         {
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("accessToken")}`
+            Authorization: `Bearer ${(localStorage.getItem("accessToken") ?? sessionStorage.getItem("accessToken"))}`
           }
         }
     );
