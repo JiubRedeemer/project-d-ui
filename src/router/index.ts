@@ -32,6 +32,12 @@ import SearchNpcView from "@/views/npcs/SearchNpcView.vue";
 import CreateClassView from "@/views/master/tabs/CreateClassView.vue";
 import CreateRaceView from "@/views/master/tabs/CreateRaceView.vue";
 import CreateBackgroundView from "@/views/master/tabs/CreateBackgroundView.vue";
+import MasterGuidebookRacesView from "@/views/master/tabs/guidebook/MasterGuidebookRacesView.vue";
+import MasterGuidebookClassesView from "@/views/master/tabs/guidebook/MasterGuidebookClassesView.vue";
+import MasterGuidebookBackgroundsView from "@/views/master/tabs/guidebook/MasterGuidebookBackgroundsView.vue";
+import MasterGuidebookItemsView from "@/views/master/tabs/guidebook/MasterGuidebookItemsView.vue";
+import MasterGuidebookSpellsView from "@/views/master/tabs/guidebook/MasterGuidebookSpellsView.vue";
+import MasterGuidebookNpcsView from "@/views/master/tabs/guidebook/MasterGuidebookNpcsView.vue";
 
 const routes: Array<RouteRecordRaw> = [
     {
@@ -219,6 +225,36 @@ const routes: Array<RouteRecordRaw> = [
         path: '/rooms/:roomId/master/create/item',
         component: InventoryItemAddView,
         name: 'createItemView',
+    },
+    {
+        path: '/rooms/:roomId/master/guidebook/races',
+        component: MasterGuidebookRacesView,
+        name: 'masterGuidebookRacesView',
+    },
+    {
+        path: '/rooms/:roomId/master/guidebook/classes',
+        component: MasterGuidebookClassesView,
+        name: 'masterGuidebookClassesView',
+    },
+    {
+        path: '/rooms/:roomId/master/guidebook/backgrounds',
+        component: MasterGuidebookBackgroundsView,
+        name: 'masterGuidebookBackgroundsView',
+    },
+    {
+        path: '/rooms/:roomId/master/guidebook/items',
+        component: MasterGuidebookItemsView,
+        name: 'masterGuidebookItemsView',
+    },
+    {
+        path: '/rooms/:roomId/master/guidebook/spells',
+        component: MasterGuidebookSpellsView,
+        name: 'masterGuidebookSpellsView',
+    },
+    {
+        path: '/rooms/:roomId/master/guidebook/npcs',
+        component: MasterGuidebookNpcsView,
+        name: 'masterGuidebookNpcsView',
     }
 ]
 
