@@ -106,7 +106,7 @@ export const FILE_STORAGE_INTEGRATION_ROUTES = {
     skills_images_bucket: "/skills-images",
     races_images_bucket: "/races-images",
     classes_images_bucket: "/classes-images",
-    backgrounds_images_bucket: "/backgrounds-images",
+    backgrounds_images_bucket: "/background-images",
     spell_images_bucket: "/spell-images",
     npc_images_bucket: "/npc-images",
     upload: "/upload",
