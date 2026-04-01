@@ -22,7 +22,6 @@ import '@ionic/vue/css/ionic-swiper.css';
 import {arrowBack} from "ionicons/icons";
 import axios, {isAxiosError} from "axios";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
-import {persistAuthTokens} from "@/utils/authTokens";
 
 const ROOM_INVITE_TOKEN_STORAGE = "roomInviteToken";
 
@@ -375,7 +374,10 @@ const register = async (): Promise<boolean> => {
     const res = await http.post(GATEWAY_INTEGRATION_ROUTES.registration, body);
 
     if (res.status === 200) {
-      persistAuthTokens(res.data.accessToken, res.data.refreshToken);
+      localStorage.setItem("accessToken", res.data.accessToken);
+      localStorage.setItem("refreshToken", res.data.refreshToken);
+      sessionStorage.setItem("accessToken", res.data.accessToken);
+      sessionStorage.setItem("refreshToken", res.data.refreshToken);
 
       sessionStorage.removeItem(ROOM_INVITE_TOKEN_STORAGE);
       roomInviteToken.value = null;

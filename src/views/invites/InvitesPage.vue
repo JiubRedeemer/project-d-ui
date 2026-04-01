@@ -43,7 +43,7 @@ const setupRooms = async () => {
     baseURL: GATEWAY_INTEGRATION_ROUTES.baseURL,
     headers: {
       "Content-type": "application/json",
-      "Authorization": "Bearer " + (localStorage.getItem("accessToken") ?? sessionStorage.getItem("accessToken")),
+      "Authorization": "Bearer " + localStorage.getItem("accessToken"),
     },
   });
 
@@ -64,7 +64,7 @@ const acceptInvite = async (inviteId: string) => {
     baseURL: GATEWAY_INTEGRATION_ROUTES.baseURL,
     headers: {
       "Content-type": "application/json",
-      "Authorization": "Bearer " + (localStorage.getItem("accessToken") ?? sessionStorage.getItem("accessToken")),
+      "Authorization": "Bearer " + localStorage.getItem("accessToken"),
     },
   });
 
@@ -88,7 +88,7 @@ const declineInvite = async (inviteId: string) => {
     baseURL: GATEWAY_INTEGRATION_ROUTES.baseURL,
     headers: {
       "Content-type": "application/json",
-      "Authorization": "Bearer " + (localStorage.getItem("accessToken") ?? sessionStorage.getItem("accessToken")),
+      "Authorization": "Bearer " + localStorage.getItem("accessToken"),
     },
   });
 

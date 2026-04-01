@@ -15,7 +15,7 @@ export const useCharacterStore = defineStore('characterStore', {
                     {
                         headers: {
                             "Content-Type": "application/json",
-                            Authorization: "Bearer " + (localStorage.getItem("accessToken") ?? sessionStorage.getItem("accessToken")),
+                            Authorization: "Bearer " + localStorage.getItem("accessToken"),
                         },
                     }
                 );
