@@ -21,6 +21,7 @@ import {arrowBack} from "ionicons/icons";
 import axios from "axios";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {useRouter} from "vue-router";
+import {persistAuthTokens} from "@/utils/authTokens";
 
 const router = useRouter();
 
@@ -117,10 +118,7 @@ const login = async () => {
     });
 
     if (res.status >= 200 && res.status < 300) {
-      localStorage.setItem("accessToken", res.data.accessToken);
-      localStorage.setItem("refreshToken", res.data.refreshToken);
-      sessionStorage.setItem("accessToken", res.data.accessToken);
-      sessionStorage.setItem("refreshToken", res.data.refreshToken);
+      persistAuthTokens(res.data.accessToken, res.data.refreshToken);
 
       await router.replace('/rooms');
     }
