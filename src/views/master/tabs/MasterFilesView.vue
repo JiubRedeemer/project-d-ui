@@ -12,7 +12,7 @@ import {
   onIonViewWillEnter,
   toastController,
 } from "@ionic/vue";
-import { add, closeCircleOutline, documentTextOutline, eyeOutline, imageOutline } from "ionicons/icons";
+import { add, closeCircleOutline, documentTextOutline, downloadOutline, eyeOutline, imageOutline } from "ionicons/icons";
 import { computed, nextTick, onMounted, onUnmounted, ref } from "vue";
 import { useRoute } from "vue-router";
 import axios from "axios";
@@ -43,6 +43,7 @@ const fileInput = ref<HTMLInputElement | null>(null);
 const isLoading = ref(false);
 const isUploading = ref(false);
 const errorMessage = ref<string | null>(null);
+const MAX_PREVIEW_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 
 const displayedFileName = (storedFilename: string): string => {
   const underscoreIndex = storedFilename.indexOf('_');
@@ -52,6 +53,17 @@ const displayedFileName = (storedFilename: string): string => {
   }
 
   return storedFilename.slice(underscoreIndex + 1);
+};
+
+const getFileSizeBytes = (file: UserFile): number | null => {
+  const sizeCandidate = (file as any).size ?? (file as any).fileSize ?? (file as any).contentLength;
+  if (typeof sizeCandidate !== "number" || !Number.isFinite(sizeCandidate)) return null;
+  return sizeCandidate;
+};
+
+const isTooLargeForPreview = (file: UserFile): boolean => {
+  const size = getFileSizeBytes(file);
+  return size !== null && size > MAX_PREVIEW_FILE_SIZE_BYTES;
 };
 
 async function getMyId(): Promise<string> {
@@ -213,6 +225,17 @@ const detectPreviewKind = (filename: string, mimeType: string | null | undefined
 const isChangingVisible = ref(false);
 
 async function openPreview(file: UserFile) {
+  if (isTooLargeForPreview(file)) {
+    const toast = await toastController.create({
+      message: "Файл слишком велик для просмотра (больше 10 МБ)",
+      duration: 2500,
+      position: "top",
+      color: "warning",
+    });
+    await toast.present();
+    return;
+  }
+
   selectedForPreview.value = file;
   previewUrl.value = null;
   previewType.value = null;
@@ -293,6 +316,30 @@ async function openPreview(file: UserFile) {
     await toast.present();
   } finally {
     isPreviewLoading.value = false;
+  }
+}
+
+async function downloadFile(file: UserFile) {
+  try {
+    const currentUserId = await ensureUserId();
+    const blob = await downloadUserFileById(file.id, currentUserId);
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = displayedFileName(file.filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    console.error("Download failed:", e);
+    const toast = await toastController.create({
+      message: "Не удалось скачать файл",
+      duration: 2000,
+      position: "top",
+      color: "danger",
+    });
+    await toast.present();
   }
 }
 
@@ -456,11 +503,18 @@ async function onFileSelected(event: Event) {
           <ion-label>
             <div class="master-files__filename">{{ displayedFileName(f.filename) }}</div>
             <div class="master-files__meta">{{ f.uploadedAt }}</div>
+            <div v-if="isTooLargeForPreview(f)" class="master-files__warning">
+              Файл слишком велик для просмотра (больше 10 МБ)
+            </div>
           </ion-label>
+          <ion-button fill="clear" slot="end" @click="downloadFile(f)">
+            <ion-icon :icon="downloadOutline" />
+          </ion-button>
           <ion-button
             fill="clear"
             slot="end"
-            :disabled="isPreviewOpen && isPreviewLoading"
+            :disabled="(isPreviewOpen && isPreviewLoading) || isTooLargeForPreview(f)"
+            :title="isTooLargeForPreview(f) ? 'Файл слишком велик для просмотра (больше 10 МБ)' : ''"
             @click="openPreview(f)"
           >
             <ion-icon :icon="eyeOutline" />
@@ -487,11 +541,18 @@ async function onFileSelected(event: Event) {
           <ion-label>
             <div class="master-files__filename">{{ displayedFileName(f.filename) }}</div>
             <div class="master-files__meta">{{ f.uploadedAt }}</div>
+            <div v-if="isTooLargeForPreview(f)" class="master-files__warning">
+              Файл слишком велик для просмотра (больше 10 МБ)
+            </div>
           </ion-label>
+          <ion-button fill="clear" slot="end" @click="downloadFile(f)">
+            <ion-icon :icon="downloadOutline" />
+          </ion-button>
           <ion-button
             fill="clear"
             slot="end"
-            :disabled="isPreviewOpen && isPreviewLoading"
+            :disabled="(isPreviewOpen && isPreviewLoading) || isTooLargeForPreview(f)"
+            :title="isTooLargeForPreview(f) ? 'Файл слишком велик для просмотра (больше 10 МБ)' : ''"
             @click="openPreview(f)"
           >
             <ion-icon :icon="eyeOutline" />
@@ -668,6 +729,12 @@ async function onFileSelected(event: Event) {
   font-size: 12px;
   color: var(--ion-color-medium);
   margin-top: 2px;
+}
+
+.master-files__warning {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--ion-color-warning);
 }
 
 .master-files__modal-title {
