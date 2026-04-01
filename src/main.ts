@@ -38,6 +38,9 @@ import '@ionic/vue/css/palettes/dark.always.css';
 /* Theme variables */
 import './theme/variables.css';
 import {createPinia} from "pinia";
+import {syncAuthTokensFromCookies} from "@/utils/authTokens";
+
+syncAuthTokensFromCookies();
 
 const app = createApp(App)
     .use(IonicVue, {mode: 'md'})

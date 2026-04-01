@@ -123,7 +123,7 @@ async function exchangeMoneyRequest(goldenCount: number, silverCount: number, co
         {
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+            Authorization: `Bearer ${(localStorage.getItem("accessToken") ?? sessionStorage.getItem("accessToken"))}`,
           },
         }
     );
