@@ -1030,11 +1030,14 @@ const getSkillImageUrl = (imgUrl: string | undefined) => {
                 v-model="damageValue"
                 label-placement="floating"
                 class="input-block"
-                placeholder="1d6 + 1"
+                placeholder="1d6 + STR / 1d4 + СИЛ"
                 shape=""
                 :class="{ 'invalid-field': invalidFields.includes('damageValue') }"
                 @ionInput="invalidFields = invalidFields.filter(field => field !== 'damageValue')"
             />
+            <div class="damage-hint">
+              Формат: кубики + модификаторы. Примеры: <b>1d6 + STR</b>, <b>2d8 + 1 + WIS</b>, <b>1d4 + СИЛ</b>.
+            </div>
           </div>
           <div class="stat-section damage-type">
             <div class="stat-section-name">{{ HEADERS.damageType.rus }}</div>
@@ -1431,6 +1434,14 @@ ion-modal {
 .stat-section {
   margin-top: 12px;
   font-size: 16px;
+}
+
+.damage-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--ion-color-light);
+  opacity: 0.85;
 }
 
 .customization {

@@ -7,7 +7,7 @@ import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/con
 import {useCharacterStore} from "@/stores/CharacterStore";
 import {InventoryItem, InventoryItemSkill, ItemSkill} from "@/components/models/response/InventoryResponse";
 import {addOutline, contractOutline, handRightOutline, manOutline, skullOutline} from "ionicons/icons";
-import {IonButton, IonIcon, IonProgressBar, useIonRouter} from "@ionic/vue";
+import {IonButton, IonIcon, IonProgressBar, toastController, useIonRouter} from "@ionic/vue";
 import axios from "axios";
 import {useRoute} from "vue-router";
 import EditItemSkillValueModal from "@/views/character/tabs/inventory/EditItemSkillValueModal.vue";
@@ -25,8 +25,18 @@ const inventoryStore = useInventoryStore();
 const characterStore = useCharacterStore();
 const characterSkillsStore = useCharacterSkillsStore();
 
-const str = Math.floor((characterStore.character.abilities.filter(ability => ability.code === "STR")[0].value + characterStore.character.abilities.filter(ability => ability.code === "STR")[0].bonusValue - 10) / 2);
-const dex = Math.floor((characterStore.character.abilities.filter(ability => ability.code === "DEX")[0].value + characterStore.character.abilities.filter(ability => ability.code === "DEX")[0].bonusValue - 10) / 2);
+const getAbilityModifier = (code: string) => {
+  const ability = characterStore.character.abilities.find((item) => item.code === code);
+  if (!ability) return 0;
+  return Math.floor((ability.value + ability.bonusValue - 10) / 2);
+};
+
+const str = computed(() => getAbilityModifier("STR"));
+const dex = computed(() => getAbilityModifier("DEX"));
+const con = computed(() => getAbilityModifier("CON"));
+const int = computed(() => getAbilityModifier("INT"));
+const wis = computed(() => getAbilityModifier("WIS"));
+const cha = computed(() => getAbilityModifier("CHA"));
 
 const equippedItems = computed(() => inventoryStore.inventory?.items?.filter(item => item.inUse && (item.item.type === "WEAPON")));
 const hasEquippedWeapons = computed(() => (equippedItems.value?.length ?? 0) > 0);
@@ -120,8 +130,14 @@ const getItemStats = (item: InventoryItem) => {
 const getDamageText = (item: InventoryItem) => {
   const d = item.item.stats?.damage;
   if (!d) return '';
-  const value = d.value + (calculateDamage(item) > 0 ? " + " + calculateDamage(item) : "") + (calculateDamage(item) < 0 ? " " + calculateDamage(item) : "");
-  if (value) return value;
+  const parsedDamage = replaceDamageAbilityPlaceholders(String(d.value ?? ""), item);
+  const fallbackDamageFromWeaponType = parsedDamage.hasPlaceholders ? 0 : calculateDamageFromWeaponType(item);
+  const totalDamageBonus = fallbackDamageFromWeaponType + getDamageBonus(item);
+  const value = parsedDamage.value
+      + (totalDamageBonus > 0 ? " + " + totalDamageBonus : "")
+      + (totalDamageBonus < 0 ? " " + totalDamageBonus : "");
+  const normalizedValue = normalizeDamageExpression(value);
+  if (normalizedValue) return normalizedValue;
   return '';
 };
 
@@ -143,21 +159,157 @@ const setDamageBonus = (item: InventoryItem, value: number) => {
 
 const calculateAttack = (item: InventoryItem) => {
   if (item.item.subtype === 'EHW' || item.item.subtype === 'AHW' || item.item.subtype === 'SHW') {
-    return characterStore.character.proficiencyBonus + str + getAttackBonus(item);
+    return characterStore.character.proficiencyBonus + str.value + getAttackBonus(item);
   } else if (item.item.subtype === 'ERW' || item.item.subtype === 'ARW' || item.item.subtype === 'SRW') {
-    return characterStore.character.proficiencyBonus + dex + getAttackBonus(item);
+    return characterStore.character.proficiencyBonus + dex.value + getAttackBonus(item);
   }
   return getAttackBonus(item);
 };
 
-const calculateDamage = (item: InventoryItem) => {
+const calculateDamageFromWeaponType = (item: InventoryItem) => {
   if (item.item.subtype === 'EHW' || item.item.subtype === 'AHW' || item.item.subtype === 'SHW') {
-    return str + getDamageBonus(item);
+    return str.value;
   } else if (item.item.subtype === 'ERW' || item.item.subtype === 'ARW' || item.item.subtype === 'SRW') {
-    return dex + getDamageBonus(item);
+    return dex.value;
   }
-  return getDamageBonus(item);
+  return 0;
 };
+
+const getAbilityPlaceholders = (): Record<string, number> => ({
+  STR: str.value,
+  DEX: dex.value,
+  CON: con.value,
+  INT: int.value,
+  WIS: wis.value,
+  CHA: cha.value,
+  СИЛА: str.value,
+  СИЛ: str.value,
+  ЛОВКОСТЬ: dex.value,
+  ЛОВК: dex.value,
+  ЛОВ: dex.value,
+  ТЕЛОСЛОЖЕНИЕ: con.value,
+  ТЕЛ: con.value,
+  ИНТЕЛЛЕКТ: int.value,
+  ИНТ: int.value,
+  МУДРОСТЬ: wis.value,
+  МУД: wis.value,
+  МДР: wis.value,
+  ХАРИЗМА: cha.value,
+  ХАР: cha.value,
+});
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function getDefaultDamageAbilityAliases(item: InventoryItem): string[] {
+  // Backward compatibility: old default placeholders should be ignored,
+  // because STR/DEX modifiers are already applied by weapon subtype.
+  if (item.item.subtype === 'EHW' || item.item.subtype === 'AHW' || item.item.subtype === 'SHW') {
+    return ["STR", "СИЛА", "СИЛ"];
+  }
+  if (item.item.subtype === 'ERW' || item.item.subtype === 'ARW' || item.item.subtype === 'SRW') {
+    return ["DEX", "ЛОВКОСТЬ", "ЛОВК", "ЛОВ"];
+  }
+  return [];
+}
+
+function replaceDamageAbilityPlaceholders(rawDamage: string, item: InventoryItem): { value: string; hasPlaceholders: boolean } {
+  if (!rawDamage) {
+    return {value: "", hasPlaceholders: false};
+  }
+
+  let value = rawDamage;
+  let hasPlaceholders = false;
+  const ignoredAliases = new Set(getDefaultDamageAbilityAliases(item));
+
+  const abilityPlaceholders = getAbilityPlaceholders();
+  const aliases = Object.keys(abilityPlaceholders).sort((a, b) => b.length - a.length);
+  for (const alias of aliases) {
+    const regex = new RegExp(`(^|[^\\p{L}])(${escapeRegExp(alias)})(?=$|[^\\p{L}])`, "giu");
+    if (!regex.test(value)) {
+      continue;
+    }
+
+    if (ignoredAliases.has(alias)) {
+      value = value.replace(regex, (_fullMatch, prefix) => `${prefix}0`);
+      continue;
+    }
+
+    hasPlaceholders = true;
+    const modifier = abilityPlaceholders[alias];
+    value = value.replace(regex, (_fullMatch, prefix) => `${prefix}${modifier}`);
+  }
+
+  return {value, hasPlaceholders};
+}
+
+function normalizeDamageExpression(rawValue: string): string {
+  if (!rawValue) {
+    return "";
+  }
+
+  let value = rawValue;
+
+  // 1d6 + -1 -> 1d6 - 1
+  value = value.replace(/\+\s*-(\d+)/g, "- $1");
+  // 1d6 - -1 -> 1d6 + 1
+  value = value.replace(/-\s*-(\d+)/g, "+ $1");
+  // Remove explicit zero terms: + 0 / - 0
+  value = value.replace(/\s*[+-]\s*0(?!\d)/g, "");
+  // Cleanup extra spaces
+  value = value.replace(/\s{2,}/g, " ").trim();
+  // Avoid dangling trailing + or -
+  value = value.replace(/[+-]\s*$/, "").trim();
+
+  return collapseNumericModifiers(value);
+}
+
+function collapseNumericModifiers(expression: string): string {
+  if (!expression) {
+    return "";
+  }
+
+  const prepared = expression
+      .replace(/\s+/g, " ")
+      .replace(/^\+/, "")
+      .trim();
+
+  const rawTerms = prepared.match(/[+-]?\s*[^+-]+/g) ?? [];
+  if (!rawTerms.length) {
+    return prepared;
+  }
+
+  const nonNumericTerms: string[] = [];
+  let numericSum = 0;
+
+  for (const rawTerm of rawTerms) {
+    const normalizedTerm = rawTerm.trim();
+    const sign = normalizedTerm.startsWith("-") ? -1 : 1;
+    const unsigned = normalizedTerm.replace(/^[+-]\s*/, "").trim();
+
+    if (/^\d+$/.test(unsigned)) {
+      numericSum += sign * Number(unsigned);
+      continue;
+    }
+
+    const normalizedSign = sign < 0 ? "-" : "+";
+    nonNumericTerms.push(`${normalizedSign} ${unsigned}`);
+  }
+
+  if (numericSum !== 0) {
+    const numericSign = numericSum < 0 ? "-" : "+";
+    nonNumericTerms.push(`${numericSign} ${Math.abs(numericSum)}`);
+  }
+
+  if (!nonNumericTerms.length) {
+    return "0";
+  }
+
+  const [first, ...rest] = nonNumericTerms;
+  const firstClean = first.replace(/^\+\s*/, "");
+  return [firstClean, ...rest].join(" ").trim();
+}
 
 const showEditItemSkillModal = ref(false);
 const isEditingItemSkill = ref(false);
@@ -171,6 +323,8 @@ const editingCharacterSkill = ref<CharacterSkill>();
 const showEditCombatBonusModal = ref(false);
 const editingCombatBonusType = ref<"attack" | "damage">("attack");
 const editingCombatBonusItem = ref<InventoryItem>();
+const pressHintTimeoutId = ref<number | null>(null);
+const longPressTriggered = ref(false);
 
 const inventoryItemStore = useInventoryItemStore();
 const ionRouter = useIonRouter();
@@ -213,6 +367,70 @@ const openEditCombatBonusModal = (item: InventoryItem, type: "attack" | "damage"
   editingCombatBonusItem.value = item;
   editingCombatBonusType.value = type;
   showEditCombatBonusModal.value = true;
+};
+
+const clearPressHintTimer = () => {
+  if (pressHintTimeoutId.value !== null) {
+    window.clearTimeout(pressHintTimeoutId.value);
+    pressHintTimeoutId.value = null;
+  }
+};
+
+const getAttackHintText = (item: InventoryItem): string => {
+  const attackBonus = getAttackBonus(item);
+  if (item.item.subtype === 'EHW' || item.item.subtype === 'AHW' || item.item.subtype === 'SHW') {
+    return `Атака = Бонус мастерства (${characterStore.character.proficiencyBonus}) + СИЛ (${str.value}) + бонус атаки предмета (${attackBonus}) = ${calculateAttack(item)}`;
+  }
+  if (item.item.subtype === 'ERW' || item.item.subtype === 'ARW' || item.item.subtype === 'SRW') {
+    return `Атака = Бонус мастерства (${characterStore.character.proficiencyBonus}) + ЛОВ (${dex.value}) + бонус атаки предмета (${attackBonus}) = ${calculateAttack(item)}`;
+  }
+  return `Атака = бонус атаки предмета (${attackBonus}) = ${calculateAttack(item)}`;
+};
+
+const getDamageHintText = (item: InventoryItem): string => {
+  const baseDamage = String(item.item.stats?.damage?.value ?? "");
+  const replaced = replaceDamageAbilityPlaceholders(baseDamage, item).value;
+  const fallbackDamageFromWeaponType = replaceDamageAbilityPlaceholders(baseDamage, item).hasPlaceholders
+      ? 0
+      : calculateDamageFromWeaponType(item);
+  const itemDamageBonus = getDamageBonus(item);
+  const totalNumericBonus = fallbackDamageFromWeaponType + itemDamageBonus;
+  const normalized = normalizeDamageExpression(
+      replaced
+      + (totalNumericBonus > 0 ? ` + ${totalNumericBonus}` : "")
+      + (totalNumericBonus < 0 ? ` ${totalNumericBonus}` : "")
+  );
+  return `Урон: ${baseDamage}${replaced !== baseDamage ? ` -> ${replaced}` : ""}${totalNumericBonus !== 0 ? `; доп. бонус: ${totalNumericBonus > 0 ? "+" : ""}${totalNumericBonus}` : ""}; итог: ${normalized || "—"}`;
+};
+
+const showCombatHint = async (item: InventoryItem, type: "attack" | "damage") => {
+  const toast = await toastController.create({
+    message: type === "attack" ? getAttackHintText(item) : getDamageHintText(item),
+    duration: 2600,
+    position: "top",
+  });
+  await toast.present();
+};
+
+const onCombatPressStart = (item: InventoryItem, type: "attack" | "damage") => {
+  clearPressHintTimer();
+  longPressTriggered.value = false;
+  pressHintTimeoutId.value = window.setTimeout(() => {
+    longPressTriggered.value = true;
+    void showCombatHint(item, type);
+  }, 450);
+};
+
+const onCombatPressEnd = () => {
+  clearPressHintTimer();
+};
+
+const onCombatShortClick = (item: InventoryItem, type: "attack" | "damage") => {
+  if (longPressTriggered.value) {
+    longPressTriggered.value = false;
+    return;
+  }
+  openEditCombatBonusModal(item, type);
 };
 
 const currentCombatBonusValue = computed(() => {
@@ -327,7 +545,14 @@ async function deleteCharacterSkill(id: string) {
                   style="color: red;">*</span>
             </span>
             </div>
-            <div class="attack" @click="openEditCombatBonusModal(item, 'attack')">
+            <div
+              class="attack"
+              @click="onCombatShortClick(item, 'attack')"
+              @pointerdown="onCombatPressStart(item, 'attack')"
+              @pointerup="onCombatPressEnd()"
+              @pointercancel="onCombatPressEnd()"
+              @pointerleave="onCombatPressEnd()"
+            >
               <div class="attack-value">{{ calculateAttack(item) }}</div>
               <div class="attack-icon">
                 <ion-icon :icon="contractOutline" color="primary" slot="icon-only"/>
@@ -339,7 +564,14 @@ async function deleteCharacterSkill(id: string) {
               <div class="item-stats" v-for="(stat, index) in getItemStats(item)" :key="index">
                 {{ stat }}
               </div>
-              <div class="damage" @click="openEditCombatBonusModal(item, 'damage')">
+              <div
+                class="damage"
+                @click="onCombatShortClick(item, 'damage')"
+                @pointerdown="onCombatPressStart(item, 'damage')"
+                @pointerup="onCombatPressEnd()"
+                @pointercancel="onCombatPressEnd()"
+                @pointerleave="onCombatPressEnd()"
+              >
                 <div class="damage-icon">
                   <ion-icon :icon="skullOutline" color="primary" slot="icon-only"/>
                 </div>
