@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {IonButton, IonIcon, onIonViewDidEnter, toastController, useIonRouter} from "@ionic/vue";
-import {add, addOutline, flashOutline, removeOutline} from "ionicons/icons";
+import {add, addOutline, chevronDownOutline, chevronUpOutline, flashOutline, removeOutline} from "ionicons/icons";
 import {useRoute} from "vue-router";
 import {computed, onMounted, ref} from "vue";
 import {createSpellCellForBook, deleteSpellCell, updateSpellCell, useSpellCell} from "@/api/magicApi";
@@ -46,6 +46,8 @@ const spellCellsByLevel = computed<Record<string, SpellCellDto>>(() => {
 const visibleSpellCellLevels = computed(() =>
     spellCellLevels.filter((level) => getCellMaxCount(level) > 0)
 );
+const hasAnySpells = computed(() => (spellBook.value?.spells?.length ?? 0) > 0);
+const isSpellCellHintExpanded = ref(false);
 
 const DEFAULT_REFILL_REST_TYPE: ChargesRefillEnum = "LONG_REST";
 
@@ -508,6 +510,37 @@ onIonViewDidEnter(loadMagicData);
           </div>
         </div>
       </div>
+      <div
+        class="hint-card hint-card--collapsible"
+        :class="{ collapsed: !isSpellCellHintExpanded }"
+        @click="!isSpellCellHintExpanded && (isSpellCellHintExpanded = true)"
+      >
+        <div class="hint-header">
+          <div class="hint-title">Как редактировать ячейки</div>
+          <ion-button
+            size="small"
+            fill="outline"
+            shape="round"
+            color="light"
+            class="hint-toggle-button"
+            @click.stop
+            @click="isSpellCellHintExpanded = !isSpellCellHintExpanded"
+          >
+            <ion-icon slot="icon-only" :icon="isSpellCellHintExpanded ? chevronUpOutline : chevronDownOutline"></ion-icon>
+          </ion-button>
+        </div>
+        <div v-if="isSpellCellHintExpanded" class="hint-text">
+          Используйте <b>+</b> и <b>-</b> справа от уровня для изменения количества ячеек.
+          Нажатие на кристалл восстанавливает одну потраченную ячейку.<br>
+          Кнопка <b>+</b> в заголовке блока добавляет новый уровень ячеек.
+          Если у уровня останется 1 ячейка, нажмите <b>-</b> еще раз, чтобы удалить этот уровень.
+        </div>
+      </div>
+      <div v-if="!hasAnySpells" class="hint-card hint-card--cta">
+        <div class="hint-title">Как добавить заклинание</div>
+        <div class="hint-text">Нажмите кнопку <b>+</b> внизу экрана, чтобы открыть поиск и добавить заклинание.</div>
+        <div class="hint-arrow" aria-hidden="true">↓</div>
+      </div>
       <h1 class="sectionHeader" v-if="preparedSpells.length > 0">Подготовлено</h1>
       <div class="spell-list" v-if="preparedSpells.length > 0">
         <div class="section" v-for="item in preparedSpells" :key="item.id">
@@ -576,10 +609,6 @@ onIonViewDidEnter(loadMagicData);
         </div>
       </template>
       <div class="security-block" style="height: 50px;"></div>
-      <div v-if="!loading && !error && (!spellBook?.spells?.length)" class="empty">
-        Нет заклинаний
-      </div>
-
       <div class="add-new-button">
         <ion-button size="large" shape="round" color="secondary" @click="openSearchView">
           <ion-icon slot="icon-only" :icon="add"/>
@@ -835,6 +864,95 @@ onIonViewDidEnter(loadMagicData);
 }
 
 .spell-list {
+}
+
+.hint-card {
+  margin: 8px 0 10px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(var(--ion-color-primary-rgb), 0.16), rgba(var(--ion-color-primary-rgb), 0) 45%),
+    linear-gradient(180deg, rgba(var(--ion-color-medium-rgb), 0.48), rgba(var(--ion-color-medium-rgb), 0.30));
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.28);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
+  text-align: center;
+}
+
+.hint-card--cta {
+  animation: hintPulse 2.2s ease-in-out infinite;
+}
+
+.hint-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ion-color-light);
+}
+
+.hint-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.hint-toggle-button {
+  --padding-start: 6px;
+  --padding-end: 6px;
+  --border-width: 1px;
+  min-height: 26px;
+}
+
+.hint-toggle-button ion-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.hint-text {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--ion-color-light);
+  opacity: 0.96;
+}
+
+.hint-arrow {
+  margin-top: 8px;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  color: rgba(var(--ion-color-primary-rgb), 0.95);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  animation: hintArrowBounce 1.2s ease-in-out infinite;
+}
+
+.hint-card--collapsible.collapsed {
+  padding: 6px 10px;
+}
+
+.hint-card--collapsible.collapsed .hint-header {
+  gap: 6px;
+}
+
+@keyframes hintArrowBounce {
+  0%, 100% {
+    transform: translateY(0);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translateY(6px);
+    opacity: 1;
+  }
+}
+
+@keyframes hintPulse {
+  0%, 100% {
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
+    border-color: rgba(var(--ion-color-primary-rgb), 0.28);
+  }
+  50% {
+    box-shadow: 0 10px 24px rgba(var(--ion-color-primary-rgb), 0.28);
+    border-color: rgba(var(--ion-color-primary-rgb), 0.5);
+  }
 }
 
 .section {

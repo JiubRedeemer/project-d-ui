@@ -14,10 +14,11 @@ import {
   IonPage,
   IonSearchbar,
   IonToolbar,
+  onIonViewDidEnter,
   toastController,
 } from "@ionic/vue";
 import {addOutline} from "ionicons/icons";
-import {computed, onMounted, ref} from "vue";
+import {computed, ref} from "vue";
 import {useRoute, useRouter} from "vue-router";
 import {getNpcsByRoomIdForRoom, saveCharacterNpcRelationForRoom} from "@/api/npcApi";
 import type {NpcDto, NpcTypeEnum, RelationTypeEnum} from "@/api/npcApi.types";
@@ -122,8 +123,8 @@ function goToCreateNpc() {
   });
 }
 
-onMounted(() => {
-  loadNpcs();
+onIonViewDidEnter(() => {
+  void loadNpcs();
 });
 </script>
 

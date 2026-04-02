@@ -13,7 +13,7 @@ import {
   onIonViewDidEnter,
   useIonRouter
 } from "@ionic/vue";
-import {addOutline, attachOutline, createOutline, saveOutline, trashOutline} from "ionicons/icons";
+import {addOutline, attachOutline, chevronDownOutline, chevronUpOutline, createOutline, saveOutline, trashOutline} from "ionicons/icons";
 
 import {marked} from "marked";
 
@@ -48,6 +48,7 @@ const isBlockExpanded = ref<number | null>(null);
 const inputSectionText = ref<string | null>(null);
 
 const editingNoteId = ref<string | null>(null);
+const isNotesHintExpanded = ref(false);
 
 const toggleEditMode = (section: NoteSection | null) => {
   if (section === null) {
@@ -251,6 +252,67 @@ const getSheetAccentStyle = (section: NoteSection) => {
 <template>
   <div class="notes-body">
     <h1 class="sectionHeader" v-if="notes.length > 0">Заметки</h1>
+    <div
+      class="notes-hint-card notes-hint-card--collapsible"
+      :class="{ collapsed: !isNotesHintExpanded }"
+      @click="!isNotesHintExpanded && (isNotesHintExpanded = true)"
+    >
+      <div class="notes-hint-header">
+        <div class="notes-hint-title">Подсказка по кнопкам</div>
+        <ion-button
+          size="small"
+          fill="outline"
+          shape="round"
+          color="light"
+          class="notes-hint-toggle-button"
+          @click.stop
+          @click="isNotesHintExpanded = !isNotesHintExpanded"
+        >
+          <ion-icon slot="icon-only" :icon="isNotesHintExpanded ? chevronUpOutline : chevronDownOutline"></ion-icon>
+        </ion-button>
+      </div>
+      <div v-if="isNotesHintExpanded" class="notes-hint-items">
+        <div class="notes-hint-item">
+          <ion-button size="small" shape="round" color="secondary" class="notes-hint-icon-button" disabled>
+            <ion-icon slot="icon-only" :icon="addOutline"/>
+          </ion-button>
+          <span>Добавить новую заметку</span>
+        </div>
+        <div class="notes-hint-item">
+          <ion-button size="small" shape="round" color="secondary" class="notes-hint-icon-button" disabled>
+            <ion-icon slot="icon-only" :icon="attachOutline"/>
+          </ion-button>
+          <span>Открыть файлы комнаты</span>
+        </div>
+        <div class="notes-hint-item">
+          <ion-button fill="clear" size="small" class="notes-hint-icon-button notes-hint-icon-button--inline" disabled>
+            <ion-icon slot="icon-only" :icon="createOutline"/>
+          </ion-button>
+          <span>Перейти в режим редактирования заметки</span>
+        </div>
+        <div class="notes-hint-item">
+          <ion-button shape="round" size="small" color="primary" class="notes-hint-icon-button notes-hint-icon-button--inline" disabled>
+            <ion-icon slot="icon-only" :icon="saveOutline"/>
+          </ion-button>
+          <span>Сохранить изменения</span>
+        </div>
+        <div class="notes-hint-item">
+          <ion-button shape="round" size="small" fill="outline" color="danger" class="notes-hint-icon-button notes-hint-icon-button--inline" disabled>
+            <ion-icon slot="icon-only" :icon="trashOutline"/>
+          </ion-button>
+          <span>Удалить заметку</span>
+        </div>
+      </div>
+    </div>
+    <div v-if="notes.length === 0" class="notes-hint-card notes-hint-card--cta">
+      <div class="notes-hint-title">Как добавить первую заметку</div>
+      <div class="notes-hint-items">
+        <div class="notes-hint-item notes-hint-item--center">
+          Нажмите кнопку <b>+</b> внизу экрана.
+        </div>
+      </div>
+      <div class="notes-hint-arrow" aria-hidden="true">↓</div>
+    </div>
 
     <div class="note-list">
       <article
@@ -439,6 +501,118 @@ const getSheetAccentStyle = (section: NoteSection) => {
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
   align-content: start;
+}
+
+.notes-hint-card {
+  margin-bottom: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 20% 15%, rgba(var(--ion-color-primary-rgb), 0.16), rgba(var(--ion-color-primary-rgb), 0) 45%),
+    linear-gradient(180deg, rgba(var(--ion-color-medium-rgb), 0.48), rgba(var(--ion-color-medium-rgb), 0.32));
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.22);
+}
+
+.notes-hint-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ion-color-light);
+}
+
+.notes-hint-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.notes-hint-toggle-button {
+  --padding-start: 6px;
+  --padding-end: 6px;
+  --border-width: 1px;
+  min-height: 26px;
+  margin: 0;
+}
+
+.notes-hint-toggle-button ion-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.notes-hint-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.notes-hint-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--ion-color-light);
+  opacity: 0.95;
+}
+
+.notes-hint-icon-button {
+  --opacity: 1;
+  margin: 0;
+  min-height: 28px;
+}
+
+.notes-hint-icon-button[disabled] {
+  opacity: 1;
+}
+
+.notes-hint-icon-button--inline {
+  min-height: 24px;
+}
+
+.notes-hint-card--collapsible.collapsed {
+  padding: 6px 10px;
+}
+
+.notes-hint-card--cta {
+  animation: notesHintPulse 2.2s ease-in-out infinite;
+}
+
+.notes-hint-item--center {
+  justify-content: center;
+  text-align: center;
+}
+
+.notes-hint-arrow {
+  margin-top: 8px;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  color: rgba(var(--ion-color-primary-rgb), 0.95);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  text-align: center;
+  animation: notesHintArrowBounce 1.2s ease-in-out infinite;
+}
+
+@keyframes notesHintArrowBounce {
+  0%, 100% {
+    transform: translateY(0);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translateY(6px);
+    opacity: 1;
+  }
+}
+
+@keyframes notesHintPulse {
+  0%, 100% {
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
+    border-color: rgba(var(--ion-color-primary-rgb), 0.22);
+  }
+  50% {
+    box-shadow: 0 10px 24px rgba(var(--ion-color-primary-rgb), 0.28);
+    border-color: rgba(var(--ion-color-primary-rgb), 0.5);
+  }
 }
 
 @media (min-width: 600px) {

@@ -20,14 +20,15 @@ const props = defineProps({
 
 const emit = defineEmits(["closeEditSpeedModal"]); // Добавляем событие закрытия
 const inputValue = ref();
-inputValue.value = characterStore.character.bonusSpeed;
+inputValue.value = characterStore.character.bonusSpeed === 0 ? undefined : characterStore.character.bonusSpeed;
 
 async function onSubmit() {
+  const normalizedBonusValue = Number(inputValue.value ?? 0);
   try {
     await axios.patch(
         `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${characterStore.character.id}${props.url}${GATEWAY_INTEGRATION_ROUTES.bonus}`,
         {
-          bonusValue: inputValue.value,
+          bonusValue: normalizedBonusValue,
         },
         {
           headers: {
@@ -39,7 +40,7 @@ async function onSubmit() {
   } catch (error) {
     console.error("Ошибка при получении данных:", error);
   }
-  characterStore.character.bonusSpeed! = Number(inputValue.value);
+  characterStore.character.bonusSpeed! = normalizedBonusValue;
   console.log(inputValue);
   emit('closeEditSpeedModal');
 }
@@ -76,7 +77,6 @@ function getSpeedBonusSum(itemStats: EquippedItemsStatsResponse | null): number 
             color="primary"
             :clear-input="false"
             v-model="inputValue"
-            :value="characterStore.character.bonusSpeed!"
             label-placement="floating"
             label="Бонусное значение"
             class="input-block"

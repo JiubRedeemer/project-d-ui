@@ -21,15 +21,16 @@ const characterStore = useCharacterStore()
 
 const emit = defineEmits(["closeEditSkillModal"]); // Добавляем событие закрытия
 const inputValue = ref();
-inputValue.value = props.skill?.value?.bonusValue
+inputValue.value = props.skill?.value?.bonusValue === 0 ? undefined : props.skill?.value?.bonusValue
 
 async function onSubmit() {
+  const normalizedBonusValue = Number(inputValue.value ?? 0);
   try {
     await axios.patch(
       `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${characterStore.character.id}${GATEWAY_INTEGRATION_ROUTES.skills}/${props.skill?.value?.code}${GATEWAY_INTEGRATION_ROUTES.mastery}`,
       {
         isMastery: props.skill?.value?.up,
-        bonusValue: inputValue.value,
+        bonusValue: normalizedBonusValue,
         masteryValue: props.skill?.value?.masteryValue
       },
       {
@@ -42,7 +43,7 @@ async function onSubmit() {
   } catch (error) {
     console.error("Ошибка при получении данных:", error);
   }
-  props.skill!.value!.bonusValue! = Number(inputValue.value);
+  props.skill!.value!.bonusValue! = normalizedBonusValue;
   console.log(inputValue);
   emit('closeEditSkillModal')
 }
@@ -61,7 +62,7 @@ async function onSubmit() {
       </div>
       <div class="input-block">
         <ion-input type="number" fill="outline" color="primary" :clear-input="false" v-model="inputValue"
-          :value="props.skill?.value?.bonusValue" label-placement="floating" label="Бонусное значение"
+          label-placement="floating" label="Бонусное значение"
           class="input-block" shape="round" />
       </div>
       <div class="footer">

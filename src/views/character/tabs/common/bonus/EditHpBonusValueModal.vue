@@ -20,16 +20,18 @@ const props = defineProps({
 const emit = defineEmits(["closeBonusValueHpModal"]); // Добавляем событие закрытия
 const inputValue = ref();
 const inputMaxValue = ref();
-inputValue.value = characterStore.character.health.bonusValue;
-inputMaxValue.value = characterStore.character.health.maxHp;
+inputValue.value = characterStore.character.health.bonusValue === 0 ? undefined : characterStore.character.health.bonusValue;
+inputMaxValue.value = characterStore.character.health.maxHp === 0 ? undefined : characterStore.character.health.maxHp;
 
 async function onSubmit() {
+  const normalizedBonusValue = Number(inputValue.value ?? 0);
+  const normalizedMaxValue = Number(inputMaxValue.value ?? 0);
   try {
     console.log(inputValue.value)
     await axios.patch(
         `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${characterStore.character.id}${props.url}${GATEWAY_INTEGRATION_ROUTES.bonus}`,
         {
-          bonusValue: inputValue.value,
+          bonusValue: normalizedBonusValue,
         },
         {
           headers: {
@@ -41,7 +43,7 @@ async function onSubmit() {
     await axios.patch(
         `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${characterStore.character.id}${props.url}${GATEWAY_INTEGRATION_ROUTES.max}`,
         {
-          bonusValue: inputMaxValue.value,
+          bonusValue: normalizedMaxValue,
         },
         {
           headers: {
@@ -81,7 +83,6 @@ async function onSubmit() {
             color="primary"
             :clear-input="false"
             v-model="inputMaxValue"
-            :value="characterStore.character.health!.maxHp"
             label-placement="floating"
             label="Максимальное значение"
             class="input-block"
@@ -94,7 +95,6 @@ async function onSubmit() {
             color="primary"
             :clear-input="false"
             v-model="inputValue"
-            :value="characterStore.character.health!.bonusValue"
             label-placement="floating"
             label="Бонусное значение"
             class="input-block"

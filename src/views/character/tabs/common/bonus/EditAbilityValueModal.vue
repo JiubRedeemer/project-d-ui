@@ -22,14 +22,15 @@ const characterStore = useCharacterStore()
 
 const emit = defineEmits(["closeEditAbilityModal"]); // Добавляем событие закрытия
 const inputValue = ref();
-inputValue.value = props.ability?.value?.bonusValue
+inputValue.value = props.ability?.value?.bonusValue === 0 ? undefined : props.ability?.value?.bonusValue
 
 async function onSubmit() {
+  const normalizedBonusValue = Number(inputValue.value ?? 0);
   try {
     await axios.patch(
         `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${characterStore.character.id}${props.url}${GATEWAY_INTEGRATION_ROUTES.bonus}`,
         {
-          bonusValue: inputValue.value,
+          bonusValue: normalizedBonusValue,
         },
         {
           headers: {
@@ -41,7 +42,7 @@ async function onSubmit() {
   } catch (error) {
     console.error("Ошибка при получении данных:", error);
   }
-  props.ability!.value!.bonusValue! = Number(inputValue.value);
+  props.ability!.value!.bonusValue! = normalizedBonusValue;
   console.log(inputValue);
   await characterStore.updateCharacterInStoreById(route.params.roomId, characterStore.character.id)
   emit('closeEditAbilityModal')
@@ -70,7 +71,6 @@ async function onSubmit() {
             color="primary"
             :clear-input="false"
             v-model="inputValue"
-            :value="props.ability?.value?.bonusValue"
             label-placement="floating"
             label="Бонусное значение"
             class="input-block"

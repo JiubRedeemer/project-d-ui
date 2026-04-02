@@ -635,7 +635,7 @@ ion-page {
   left: 50%;
   transform: translateX(-50%);
   /* IonTabBar с margin 10px обычно занимает ~56px сверху; фиксируем метку чуть выше */
-  bottom: -93px;
+  bottom: -94px;
   z-index: 50;
   pointer-events: auto;
   font-size: 8px;
@@ -652,6 +652,8 @@ ion-page {
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.35);
   color: inherit;
+  white-space: nowrap;      /* Prevents text from wrapping to a new line */
+  overflow: hidden;         /* Hides the text that extends beyond the container */
 }
 
 .tab-bar, .tab-bar ion-tab-button {

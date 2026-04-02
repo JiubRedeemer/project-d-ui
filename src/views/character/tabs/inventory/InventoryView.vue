@@ -176,6 +176,7 @@ const magicItems = computed(() =>
 const otherItems = computed(() =>
   sortItemsById((inventoryStore.inventory?.items ?? []).filter((item) => item.item.type === "OTHER"))
 );
+const hasInventoryItems = computed(() => (inventoryStore.inventory?.items?.length ?? 0) > 0);
 const totalWeight = computed(() => inventoryStore.inventory?.totalWeight || 0);
 
 const weightLimit = characterStore.character.abilities.filter(ability => ability.code === "STR")[0].value * 10;
@@ -362,17 +363,17 @@ async function takeMoney() {
         <div class="money-title">{{ HEADERS.wallet.rus }}:</div>
         <div class="coins-group">
           <button class="coin-chip copper" :class="{ selected: walletStore.wallet.type === 'copper_coin' }" type="button"
-            aria-label="Медные монеты" @click.stop="walletStore.wallet.type = 'copper_coin'">
+            aria-label="Медные монеты" @click.stop="expandMoneyBlock(); walletStore.wallet.type = 'copper_coin'">
             <ion-icon class="coin-icon" :src="copperCoinIcon" aria-hidden="true" />
             <span class="coin-value">{{ walletStore.userMoney?.copperCount ?? 0 }}</span>
           </button>
           <button class="coin-chip silver" :class="{ selected: walletStore.wallet.type === 'silver_coin' }" type="button"
-            aria-label="Серебряные монеты" @click.stop="walletStore.wallet.type = 'silver_coin'">
+            aria-label="Серебряные монеты" @click.stop="expandMoneyBlock(); walletStore.wallet.type = 'silver_coin'">
             <ion-icon class="coin-icon" :src="silverCoinIcon" aria-hidden="true" />
             <span class="coin-value">{{ walletStore.userMoney?.silverCount ?? 0 }}</span>
           </button>
           <button class="coin-chip golden" :class="{ selected: walletStore.wallet.type === 'golden_coin' }" type="button"
-            aria-label="Золотые монеты" @click.stop="walletStore.wallet.type = 'golden_coin'">
+            aria-label="Золотые монеты" @click.stop="expandMoneyBlock(); walletStore.wallet.type = 'golden_coin'">
             <ion-icon class="coin-icon" :src="goldenCoinIcon" aria-hidden="true" />
             <span class="coin-value">{{ walletStore.userMoney?.goldenCount ?? 0 }}</span>
           </button>
@@ -399,6 +400,11 @@ async function takeMoney() {
     </div>
   </div>
   <div class="inventory-body">
+    <div v-if="!hasInventoryItems" class="empty-inventory-hint">
+      <div class="hint-title">Инвентарь пуст</div>
+      <div class="hint-text">Добавьте предметы, нажав на кнопку "+" внизу экрана.</div>
+      <div class="hint-arrow" aria-hidden="true">↓</div>
+    </div>
     <h1 class="sectionHeader" v-if="equippedItems?.length! > 0">{{ HEADERS.equipped.rus }}</h1>
     <div class="equipped" v-if="equippedItems?.length! > 0">
       <div class="section" v-for="item in equippedItems" :key="item.id">
@@ -598,6 +604,64 @@ async function takeMoney() {
 }
 
 .inventory-body {}
+
+.empty-inventory-hint {
+  margin-top: 14px;
+  padding: 14px 14px 10px;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(var(--ion-color-primary-rgb), 0.20), rgba(var(--ion-color-primary-rgb), 0) 45%),
+    linear-gradient(180deg, rgba(var(--ion-color-medium-rgb), 0.48), rgba(var(--ion-color-medium-rgb), 0.30));
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.35);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+  color: var(--ion-color-light);
+  text-align: center;
+  animation: hintPulse 2.2s ease-in-out infinite;
+}
+
+.hint-title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.hint-text {
+  margin-top: 6px;
+  font-size: 14px;
+  line-height: 1.35;
+  opacity: 0.95;
+}
+
+.hint-arrow {
+  margin-top: 8px;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  color: rgba(var(--ion-color-primary-rgb), 0.95);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  animation: hintArrowBounce 1.2s ease-in-out infinite;
+}
+
+@keyframes hintArrowBounce {
+  0%, 100% {
+    transform: translateY(0);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translateY(6px);
+    opacity: 1;
+  }
+}
+
+@keyframes hintPulse {
+  0%, 100% {
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+    border-color: rgba(var(--ion-color-primary-rgb), 0.30);
+  }
+  50% {
+    box-shadow: 0 10px 24px rgba(var(--ion-color-primary-rgb), 0.28);
+    border-color: rgba(var(--ion-color-primary-rgb), 0.55);
+  }
+}
 
 .inventory-header {
   transition: padding-top, margin-top 0.5s ease-in-out;

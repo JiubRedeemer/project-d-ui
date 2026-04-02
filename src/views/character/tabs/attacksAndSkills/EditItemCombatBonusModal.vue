@@ -16,16 +16,17 @@ const inputValue = ref<number | null>(null);
 watch(
   () => [props.isOpen, props.initialValue],
   () => {
-    inputValue.value = Number.isFinite(props.initialValue) ? Number(props.initialValue) : 0;
+    const initialValue = Number.isFinite(props.initialValue) ? Number(props.initialValue) : 0;
+    inputValue.value = initialValue === 0 ? null : initialValue;
   },
   {immediate: true}
 );
 
-const canSubmit = computed(() => inputValue.value !== null && Number.isFinite(Number(inputValue.value)));
+const canSubmit = computed(() => inputValue.value === null || Number.isFinite(Number(inputValue.value)));
 
 const onSave = () => {
   if (!canSubmit.value) return;
-  emit("save", Number(inputValue.value));
+  emit("save", Number(inputValue.value ?? 0));
 };
 </script>
 

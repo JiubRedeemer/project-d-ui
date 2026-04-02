@@ -6,7 +6,7 @@ import {useInventoryStore} from "@/stores/InventoryStore";
 import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {useCharacterStore} from "@/stores/CharacterStore";
 import {InventoryItem, InventoryItemSkill, ItemSkill} from "@/components/models/response/InventoryResponse";
-import {addOutline, contractOutline, handRightOutline, skullOutline} from "ionicons/icons";
+import {addOutline, contractOutline, handRightOutline, manOutline, skullOutline} from "ionicons/icons";
 import {IonButton, IonIcon, IonProgressBar, useIonRouter} from "@ionic/vue";
 import axios from "axios";
 import {useRoute} from "vue-router";
@@ -17,6 +17,7 @@ import {useCharacterSkillsStore} from "@/stores/CharacterSkillsStore";
 import EditCharacterSkillValueModal from "@/views/character/tabs/attacksAndSkills/EditCharacterSkillValueModal.vue";
 import {storeToRefs} from "pinia";
 import EditItemCombatBonusModal from "@/views/character/tabs/attacksAndSkills/EditItemCombatBonusModal.vue";
+import inventoryTabIcon from "@/static/icons/InventoryTab.svg";
 
 const route = useRoute();
 
@@ -28,6 +29,7 @@ const str = Math.floor((characterStore.character.abilities.filter(ability => abi
 const dex = Math.floor((characterStore.character.abilities.filter(ability => ability.code === "DEX")[0].value + characterStore.character.abilities.filter(ability => ability.code === "DEX")[0].bonusValue - 10) / 2);
 
 const equippedItems = computed(() => inventoryStore.inventory?.items?.filter(item => item.inUse && (item.item.type === "WEAPON")));
+const hasEquippedWeapons = computed(() => (equippedItems.value?.length ?? 0) > 0);
 
 const {characterSkills} = storeToRefs(characterSkillsStore)
 
@@ -36,6 +38,8 @@ const skills = computed(() =>
         invItem.skills ?? []
     )
 );
+const hasItemSkills = computed(() => (skills.value?.length ?? 0) > 0);
+const hasCharacterSkills = computed(() => (characterSkills.value?.length ?? 0) > 0);
 
 
 const getItemImageUrl = (imgUrl: string | undefined) => {
@@ -288,8 +292,25 @@ async function deleteCharacterSkill(id: string) {
 
 <template>
   <div class="inventory-body">
-    <h1 class="sectionHeader" v-if="equippedItems?.length! > 0">{{ HEADERS.equipped.rus }}</h1>
-    <div class="equipped" v-if="equippedItems?.length! > 0">
+    <h1 class="sectionHeader">{{ HEADERS.equipped.rus }}</h1>
+    <div v-if="!hasEquippedWeapons" class="hint-card">
+      <div class="hint-title">Атаки оружием</div>
+      <div class="hint-text">
+        Для отображения атак сначала снарядите оружие в инвентаре кнопкой:
+      </div>
+      <div class="hint-equip-button-wrap">
+        <ion-button size="small" shape="round" class="hint-equip-button" fill="solid" disabled>
+          <ion-icon slot="icon-only" :icon="manOutline"></ion-icon>
+        </ion-button>
+      </div>
+      <div class="hint-tab-location">
+        Где найти инвентарь:
+        <span class="tab-button-inventory" aria-hidden="true">
+          <ion-icon :icon="inventoryTabIcon"></ion-icon>
+        </span>
+      </div>
+    </div>
+    <div class="equipped" v-if="hasEquippedWeapons">
       <div class="section" v-for="item in equippedItems" :key="item.id">
         <div class="image-block" @click="openInventoryItem(item)">
           <img width="75px" height="75px" class="item-image" :class="getRarityClass(item.item.rarity)"
@@ -330,8 +351,28 @@ async function deleteCharacterSkill(id: string) {
         </div>
       </div>
     </div>
-    <h1 class="sectionHeader" v-if="skills?.length! > 0">{{ HEADERS.item_skills.rus }}</h1>
-    <div class="skills" v-if="skills?.length! > 0">
+    <h1 class="sectionHeader">{{ HEADERS.item_skills.rus }}</h1>
+    <div v-if="!hasItemSkills" class="hint-card">
+      <div class="hint-title">Навыки от снаряжения</div>
+      <div class="hint-text">
+        Они появятся здесь, когда вы снарядите предметы из инвентаря кнопкой:
+      </div>
+      <div class="hint-equip-button-wrap">
+        <ion-button size="small" shape="round" class="hint-equip-button" fill="solid" disabled>
+          <ion-icon slot="icon-only" :icon="manOutline"></ion-icon>
+        </ion-button>
+      </div>
+      <div class="hint-text hint-text--subtle">
+        Эта кнопка находится на карточке предмета в инвентаре.
+      </div>
+      <div class="hint-tab-location">
+        Где найти инвентарь:
+        <span class="tab-button-inventory" aria-hidden="true">
+          <ion-icon :icon="inventoryTabIcon"></ion-icon>
+        </span>
+      </div>
+    </div>
+    <div class="skills" v-if="hasItemSkills">
       <div class="section-skill" v-for="skill in skills" :key="skill.id">
         <div class="image-block">
           <img width="75px" height="75px" class="item-image"
@@ -373,8 +414,15 @@ async function deleteCharacterSkill(id: string) {
         </div>
       </div>
     </div>
-    <h1 class="sectionHeader" v-if="characterSkills?.length! > 0">{{ HEADERS.character_skills.rus }}</h1>
-    <div class="skills" v-if="characterSkills?.length! > 0">
+    <h1 class="sectionHeader">{{ HEADERS.character_skills.rus }}</h1>
+    <div v-if="!hasCharacterSkills" class="hint-card hint-card--cta">
+      <div class="hint-title">Навыки персонажа</div>
+      <div class="hint-text">
+        Добавьте новый навык по кнопке "+" внизу экрана.
+      </div>
+      <div class="hint-arrow" aria-hidden="true">↓</div>
+    </div>
+    <div class="skills" v-if="hasCharacterSkills">
       <div class="section-skill" v-for="skill in characterSkills" :key="skill.id">
         <div class="image-block">
           <img width="75px" height="75px" class="item-image"
@@ -456,6 +504,116 @@ async function deleteCharacterSkill(id: string) {
 .equipped,
 .skills {
   margin-bottom: 8px;
+}
+
+.hint-card {
+  margin: 8px 0 12px;
+  padding: 14px 14px 12px;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(var(--ion-color-primary-rgb), 0.16), rgba(var(--ion-color-primary-rgb), 0) 45%),
+    linear-gradient(180deg, rgba(var(--ion-color-medium-rgb), 0.48), rgba(var(--ion-color-medium-rgb), 0.30));
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.28);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
+  text-align: center;
+}
+
+.hint-card--cta {
+  animation: hintPulse 2.2s ease-in-out infinite;
+}
+
+.hint-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ion-color-light);
+}
+
+.hint-text {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--ion-color-light);
+  opacity: 0.96;
+}
+
+.hint-text--subtle {
+  margin-top: 4px;
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.hint-equip-button-wrap {
+  margin-top: 8px;
+  display: flex;
+  justify-content: center;
+}
+
+.hint-equip-button {
+  --opacity: 1;
+  --border-radius: 999px;
+}
+
+.hint-equip-button[disabled] {
+  opacity: 1;
+}
+
+.hint-tab-location {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--ion-color-light);
+  opacity: 0.88;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.tab-button-inventory {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(var(--ion-color-dark-rgb), 0.28);
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.18);
+}
+
+.tab-button-inventory ion-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.hint-arrow {
+  margin-top: 8px;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  color: rgba(var(--ion-color-primary-rgb), 0.95);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  animation: hintArrowBounce 1.2s ease-in-out infinite;
+}
+
+@keyframes hintArrowBounce {
+  0%, 100% {
+    transform: translateY(0);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translateY(6px);
+    opacity: 1;
+  }
+}
+
+@keyframes hintPulse {
+  0%, 100% {
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
+    border-color: rgba(var(--ion-color-primary-rgb), 0.28);
+  }
+  50% {
+    box-shadow: 0 10px 24px rgba(var(--ion-color-primary-rgb), 0.28);
+    border-color: rgba(var(--ion-color-primary-rgb), 0.5);
+  }
 }
 
 .stats-block {

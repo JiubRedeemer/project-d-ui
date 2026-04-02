@@ -58,9 +58,33 @@ const toCopper = computed(() => {
 const isGoldenInteger = computed(() => Number.isInteger(toGolden.value));
 const isSilverInteger = computed(() => Number.isInteger(toSilver.value));
 const isCopperInteger = computed(() => Number.isInteger(toCopper.value));
+const exchangeCount = computed(() => Number(walletStore.wallet.count) || 0);
+
+const hasEnoughSourceCoins = computed(() => {
+  if (!walletStore.userMoney) {
+    return false;
+  }
+  if (exchangeCount.value <= 0) {
+    return false;
+  }
+
+  switch (walletStore.wallet.type) {
+    case "golden_coin":
+      return walletStore.userMoney.goldenCount >= exchangeCount.value;
+    case "silver_coin":
+      return walletStore.userMoney.silverCount >= exchangeCount.value;
+    case "copper_coin":
+      return walletStore.userMoney.copperCount >= exchangeCount.value;
+    default:
+      return false;
+  }
+});
 
 async function exchangeCoins(exchangeType: string) {
   if (!(walletStore && walletStore.userMoney && walletStore.wallet && walletStore.wallet.count)) {
+    return;
+  }
+  if (!hasEnoughSourceCoins.value) {
     return;
   }
   switch (exchangeType) {
@@ -150,7 +174,7 @@ async function exchangeMoneyRequest(goldenCount: number, silverCount: number, co
       </ion-select>
     </ion-input>
     <div class="exchange-buttons">
-      <ion-button class="exchange-button" fill="outline" shape="default" expand="block" size="small" :disabled="!isGoldenInteger"
+      <ion-button class="exchange-button" fill="outline" shape="default" expand="block" size="small" :disabled="!isGoldenInteger || !hasEnoughSourceCoins"
                   @click="exchangeCoins('to_golden_coin')">
         <span class="ion-text-left exchange-button-name">Обменять на золотые монеты</span>
         <div class="exchange-end">
@@ -158,7 +182,7 @@ async function exchangeMoneyRequest(goldenCount: number, silverCount: number, co
           <ion-icon class="exchange-button-icon" size="small" slot="end" :src="goldenCoinIcon"></ion-icon>
         </div>
       </ion-button>
-      <ion-button class="exchange-button" fill="outline" shape="default" expand="block" size="small" :disabled="!isSilverInteger"
+      <ion-button class="exchange-button" fill="outline" shape="default" expand="block" size="small" :disabled="!isSilverInteger || !hasEnoughSourceCoins"
                   @click="exchangeCoins('to_silver_coin')">
         <span class="ion-text-left exchange-button-name">Обменять на серебряные монеты</span>
         <div class="exchange-end">
@@ -166,7 +190,7 @@ async function exchangeMoneyRequest(goldenCount: number, silverCount: number, co
           <ion-icon class="exchange-button-icon" size="small" slot="end" :src="silverCoinIcon"></ion-icon>
         </div>
       </ion-button>
-      <ion-button class="exchange-button" fill="outline" shape="default" expand="block" size="small" :disabled="!isCopperInteger"
+      <ion-button class="exchange-button" fill="outline" shape="default" expand="block" size="small" :disabled="!isCopperInteger || !hasEnoughSourceCoins"
                   @click="exchangeCoins('to_copper_coin')">
         <span class="ion-text-left exchange-button-name">Обменять на медные монеты</span>
         <div class="exchange-end">
