@@ -112,6 +112,7 @@ function editBackground() {
   border-radius: 14px;
   border: 1px solid rgba(var(--ion-color-light-rgb), 0.1);
   line-height: 1.5;
+  white-space: pre-line;
 }
 
 .stat {
@@ -164,6 +165,15 @@ function editBackground() {
 .container {
   padding-bottom: 90px;
 }
+
+.trait-description {
+  margin: 6px 0 0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  text-align: left;
+  white-space: pre-line;
+}
+
 .traits-block {
   padding: 12px;
   margin-top: 12px;

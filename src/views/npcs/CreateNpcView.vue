@@ -77,7 +77,7 @@ const npc = ref<SaveNpcRequest>({
   description: null,
   type: "RATIONAL",
   visible: true,
-  unique: false,
+  unique: true,
   clazzCode: null,
   raceCode: null,
   armoryClass: null,

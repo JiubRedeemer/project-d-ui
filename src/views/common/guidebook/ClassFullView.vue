@@ -137,6 +137,7 @@ function editClass() {
   border-radius: 14px;
   border: 1px solid rgba(var(--ion-color-light-rgb), 0.1);
   line-height: 1.5;
+  white-space: pre-line;
 }
 
 .stat {
@@ -190,6 +191,7 @@ function editClass() {
 
 .stat-subspecies-name {
   font-size: 0.95rem;
+  white-space: pre-line;
 }
 
 .avatar-img {

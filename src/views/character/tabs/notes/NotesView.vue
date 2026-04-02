@@ -247,9 +247,50 @@ const getSheetAccentStyle = (section: NoteSection) => {
   return {borderLeftColor: color};
 };
 
+const newNoteCardRef = ref<HTMLElement | null>(null);
+const noteArticleElById: Record<string, HTMLElement> = {};
+
+const setNoteArticleRef = (el: Element | null, id: string) => {
+  if (el) noteArticleElById[id] = el as HTMLElement;
+  else delete noteArticleElById[id];
+};
+
+const pathTouchesRoot = (path: EventTarget[], root: HTMLElement | null): boolean =>
+    Boolean(root && path.includes(root));
+
+const onNotesViewOutsideClick = (e: MouseEvent) => {
+  const path = e.composedPath() as EventTarget[];
+  if (
+      path.some(
+          el =>
+              el instanceof HTMLElement &&
+              (el.classList.contains("add-new-button") || el.classList.contains("files-open-button"))
+      )
+  ) {
+    return;
+  }
+
+  const exp = isBlockExpanded.value;
+  if (exp === null) return;
+
+  if (exp === "new") {
+    if (pathTouchesRoot(path, newNoteCardRef.value)) return;
+    void addNote();
+    return;
+  }
+
+  const index = exp;
+  const section = notes.value[index];
+  if (!section) return;
+  if (pathTouchesRoot(path, noteArticleElById[section.id])) return;
+
+  void updateNote(section.notebookId, section.id);
+};
+
 </script>
 
 <template>
+  <div class="notes-view-root" @click="onNotesViewOutsideClick">
   <div class="notes-body">
     <h1 class="sectionHeader" v-if="notes.length > 0">Заметки</h1>
     <div
@@ -318,6 +359,7 @@ const getSheetAccentStyle = (section: NoteSection) => {
       <article
           v-for="(section, index) in notes"
           :key="section.id"
+          :ref="(el) => setNoteArticleRef(el as Element | null, section.id)"
           :class="{ 'notes-card--expanded': isBlockExpanded === index }"
           class="notes-card"
           v-show="isBlockExpanded === null || isBlockExpanded === index"
@@ -421,7 +463,7 @@ const getSheetAccentStyle = (section: NoteSection) => {
       </article>
 
       <!-- Новая заметка -->
-      <article v-if="isBlockExpanded === 'new'" class="notes-card notes-card--new">
+      <article ref="newNoteCardRef" v-if="isBlockExpanded === 'new'" class="notes-card notes-card--new">
         <h2 class="notes-card__title">Новая заметка</h2>
         <div class="notes-card__body">
           <ion-input
@@ -479,6 +521,7 @@ const getSheetAccentStyle = (section: NoteSection) => {
         <ion-icon slot="icon-only" :icon="attachOutline"/>
       </ion-button>
     </div>
+  </div>
   </div>
 
 </template>

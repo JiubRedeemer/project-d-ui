@@ -146,8 +146,8 @@ export const TEXTS = {
         eng: 'Weight'
     },
     weightEI: {
-        rus: 'Кг',
-        eng: 'Kg'
+        rus: 'Фн.',
+        eng: 'Lb.'
     },
     type: {
         rus: 'Тип',

@@ -1165,7 +1165,7 @@ async function onCatalogApplied(
       </div>
 
       <!-- Расы -->
-      <div v-show="currentSection === 'races'" class="segment-content">
+      <div v-show="currentSection === 'races'" class="segment-content segment-content--preline-labels">
         <ion-list v-if="!loading && filteredRaceGroups.length" class="guidebook-list">
           <template v-for="group in filteredRaceGroups" :key="group.key">
             <ion-item
@@ -1250,7 +1250,7 @@ async function onCatalogApplied(
       </div>
 
       <!-- Классы -->
-      <div v-show="currentSection === 'classes'" class="segment-content">
+      <div v-show="currentSection === 'classes'" class="segment-content segment-content--preline-labels">
         <ion-list v-if="!loading && filteredClassGroups.length" class="guidebook-list">
           <template v-for="group in filteredClassGroups" :key="group.key">
             <ion-item
@@ -1335,7 +1335,7 @@ async function onCatalogApplied(
       </div>
 
       <!-- Предыстории -->
-      <div v-show="currentSection === 'backgrounds'" class="segment-content">
+      <div v-show="currentSection === 'backgrounds'" class="segment-content segment-content--preline-labels">
         <ion-list v-if="!loading && filteredBackgrounds.length" class="guidebook-list">
           <ion-item
               v-for="bg in filteredBackgrounds"
@@ -1715,6 +1715,10 @@ async function onCatalogApplied(
 
 .segment-content {
   min-height: 200px;
+}
+
+.segment-content--preline-labels :deep(ion-label) {
+  white-space: pre-line;
 }
 
 .guidebook-list {
