@@ -2,6 +2,7 @@
 import {
   IonButton,
   IonButtons,
+  IonContent,
   IonIcon,
   IonModal,
   toastController,
@@ -31,6 +32,11 @@ const ionRouter = useIonRouter();
 
 const spell = computed(() => props.item?.spell);
 const spellLevel = computed(() => Number(spell.value?.level ?? 0));
+const isCantrip = computed(() => spellLevel.value === 0);
+const levelBadgeText = computed(() => {
+  if (!Number.isFinite(spellLevel.value)) return "—";
+  return isCantrip.value ? "Заговор" : `${spellLevel.value} уровень`;
+});
 const canUseCell = computed(() => {
   if (!magicStore.spellBook?.spellCells) return false;
   if (!Number.isFinite(spellLevel.value) || spellLevel.value <= 0) return false;
@@ -142,81 +148,92 @@ function onEdit() {
 function closeModal() {
   emit("closeSpellInfoModal");
 }
+
 </script>
 
 <template>
   <ion-modal
     :is-open="props.isOpen"
     @didDismiss="closeModal"
+    :can-dismiss="true"
+    :expand-to-scroll="false"
+    :handle="false"
     :initial-breakpoint="1"
     :breakpoints="[0, 1]"
   >
-    <div class="block" v-if="item && spell">
-      <div class="header">
-        <div class="name">
-          {{ getSpellName(spell) }}
-        </div>
-        <div class="image-row">
-          <div class="image">
-            <img
-              :src="getSpellImageUrl(spell.imgUrl)"
-              class="character-skill-image"
-              :alt="getSpellName(spell)"
-            />
+    <div class="block spell-modal-layout spellbook-theme" v-if="item && spell">
+      <div class="sheet-top-zone">
+        <div class="sheet-top-zone-handle" aria-hidden="true" />
+        <div class="header">
+          <div class="header-top">
+            <div class="name">
+              {{ getSpellName(spell) }}
+            </div>
+            <ion-button
+              v-if="!props.readonly"
+              fill="clear"
+              size="small"
+              class="prepared-button"
+              @click="togglePrepared"
+            >
+              <ion-icon :icon="star" :class="{ filled: item.inUse }" />
+            </ion-button>
           </div>
-          <ion-button
-            v-if="!props.readonly"
-            fill="clear"
-            size="small"
-            @click="togglePrepared"
-          >
-            <ion-icon :icon="star" :class="{ filled: item.inUse }"/>
-          </ion-button>
+          <div class="image-row">
+            <div class="image">
+              <img
+                :src="getSpellImageUrl(spell.imgUrl)"
+                class="character-skill-image"
+                :alt="getSpellName(spell)"
+              />
+            </div>
+            <div class="subtitle">
+              <span class="badge">{{ levelBadgeText }}</span>
+              <span class="badge">{{ spell.school || "Без школы" }}</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="body-block">
-        <div class="stats">
-          <div class="block-name">Заклинание</div>
-          <div class="stats-grid">
-            <div class="stat">
-              <div class="stat-name">Уровень и школа</div>
-              <div class="stat-value">
-                {{ spell.level != null ? spell.level + " уровень" : "—" }}{{ spell.school ? ", " + spell.school : "" }}
+      <ion-content class="spell-ion-content" :scroll-y="true">
+        <div class="body-block">
+          <div class="stats">
+            <div class="block-name">{{ isCantrip ? "Заговор" : "Заклинание" }}</div>
+            <div class="stats-grid">
+              <div class="stat">
+                <div class="stat-name">Время каста</div>
+                <div class="stat-value">{{ spell.useTime || "—" }}</div>
+              </div>
+              <div class="stat">
+                <div class="stat-name">Дистанция</div>
+                <div class="stat-value">{{ spell.distance || "—" }}</div>
+              </div>
+              <div class="stat">
+                <div class="stat-name">Компоненты</div>
+                <div class="stat-value">{{ spell.components || "—" }}</div>
+              </div>
+              <div class="stat stat-duration-right">
+                <div class="stat-name">Длительность</div>
+                <div class="stat-value">{{ spell.duration || "—" }}</div>
               </div>
             </div>
-            <div class="stat">
-              <div class="stat-name">Время каста</div>
-              <div class="stat-value">{{ spell.useTime || "—" }}</div>
-            </div>
-            <div class="stat">
-              <div class="stat-name">Дистанция</div>
-              <div class="stat-value">{{ spell.distance || "—" }}</div>
-            </div>
-            <div class="stat">
-              <div class="stat-name">Длительность</div>
-              <div class="stat-value">{{ spell.duration || "—" }}</div>
-            </div>
-            <div class="stat stat-full">
-              <div class="stat-name">Компоненты</div>
-              <div class="stat-value">{{ spell.components || "—" }}</div>
-              <div class="stat-value">{{ spell.materialComponents || "" }}</div>
+            <div v-if="spell.materialComponents" class="material-components">
+              <div class="stat-name">Материальные компоненты</div>
+              <div class="stat-value">{{ spell.materialComponents }}</div>
             </div>
           </div>
-        </div>
 
-        <div class="description">
-          <div class="block-name">Описание</div>
-          <div class="description-content">
+          <div class="description">
+            <div class="block-name">Описание</div>
             <div
               class="block-value description-html"
               v-html="spell.description || '—'"
             />
           </div>
         </div>
-      </div>
+      </ion-content>
 
-      <div class="footer">
+      <div class="footer spell-footer-bar">
         <ion-buttons>
           <ion-button
               size="default"
@@ -272,86 +289,158 @@ function closeModal() {
   width: 100%;
   display: flex;
   flex-direction: column;
+  height: min(90vh, 850px);
+  max-height: min(90vh, 850px);
+  overflow: hidden;
+}
+
+.spell-modal-layout {
+  min-height: 0;
+}
+
+.sheet-top-zone {
+  flex-shrink: 0;
+}
+
+.sheet-top-zone-handle {
+  width: 40px;
+  height: 5px;
+  border-radius: 999px;
+  margin: 10px auto 6px;
+  background: rgba(var(--ion-color-light-rgb), 0.28);
+}
+
+.body-block {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.spell-ion-content {
+  flex: 1;
+  min-height: 0;
+  --background: transparent;
+}
+
+.spell-footer-bar {
+  flex-shrink: 0;
+  width: 100%;
+  margin: 0;
+  background: rgba(var(--ion-color-dark-rgb), 0.85);
+  border-top: 1px solid rgba(var(--ion-color-primary-rgb), 0.12);
+  box-shadow: 0 -6px 16px rgba(var(--ion-color-dark-rgb), 0.35);
 }
 
 .name {
-  font-size: 1.2rem;
-  font-weight: 600;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--ion-color-light);
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.28);
 }
 
 .stats {
-  background: var(--ion-color-medium);
-  border-radius: 10px;
-  padding: 10px;
-  margin: 5px 5px 10px;
+  background: linear-gradient(
+    180deg,
+    rgba(var(--ion-color-medium-rgb), 0.92),
+    rgba(var(--ion-color-medium-rgb), 0.82)
+  );
+  border: none;
+  border-radius: 14px;
+  padding: 12px;
+  margin: 6px 8px 6px;
+  box-shadow: 0 10px 24px rgba(var(--ion-color-dark-rgb), 0.45);
+  flex: 0 0 auto;
 }
 
 .description {
-  background: var(--ion-color-medium);
-  border-radius: 10px;
-  margin: 5px;
-  padding: 10px;
-  flex: 1;
+  background: linear-gradient(
+    180deg,
+    rgba(var(--ion-color-medium-rgb), 0.95),
+    rgba(var(--ion-color-medium-rgb), 0.86)
+  );
+  border: none;
+  border-radius: 14px;
+  margin: 4px 8px 12px;
+  padding: 16px;
+  flex: 0 0 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
-}
-
-.description-content {
-  max-height: 150px;
-  overflow-y: auto;
-  flex: 1;
-  min-height: 0;
+  box-shadow: 0 10px 24px rgba(var(--ion-color-dark-rgb), 0.45);
 }
 
 .block-name {
-  margin-top: 10px;
-  margin-bottom: 15px;
-  font-weight: 500;
+  margin-top: 2px;
+  margin-bottom: 10px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: rgba(var(--ion-color-primary-rgb), 0.9);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
 }
 
 .stats-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px 5%;
+  gap: 8px 12px;
   width: 100%;
 }
 
 .stat {
   display: flex;
   flex-direction: column;
-  max-width: 170px;
+  max-width: none;
 }
 
-.stat-full {
-  max-width: none;
-  grid-column: 1 / -1;
+.stat-duration-right {
+  grid-column: 2;
+}
+
+.material-components {
+  margin-top: 8px;
 }
 
 .stat-name {
-  color: var(--ion-color-light);
-  opacity: 60%;
+  color: rgba(var(--ion-color-light-rgb), 0.62);
+  font-size: 0.8rem;
+  margin-bottom: 3px;
 }
 
 .stat-value {
-  font-weight: 500;
-  color: white;
-  overflow: scroll;
-  scrollbar-width: none;
-  max-height: 100px;
+  font-weight: 700;
+  color: var(--ion-color-light);
+  overflow: auto;
+  scrollbar-width: thin;
+  max-height: 64px;
+  font-size: 0.98rem;
+  line-height: 1.25;
 }
 
 .header {
-  padding: 10px;
+  padding: 15px 14px 12px;
   display: flex;
   flex-direction: column;
+  border-bottom: none;
+  background: linear-gradient(
+    180deg,
+    rgba(var(--ion-color-medium-rgb), 0.94),
+    rgba(var(--ion-color-medium-rgb), 0.86)
+  );
+}
+
+.header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .image-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-top: 10px;
+  gap: 12px;
+  margin-top: 12px;
 }
 
 .image {
@@ -361,39 +450,93 @@ function closeModal() {
 .footer {
   display: flex;
   justify-content: center;
-  margin: 10px 0;
+  align-items: center;
+  padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+  width: 100%;
+  box-sizing: border-box;
+  flex-shrink: 0;
 }
 
 .small-buttons {
-  margin: 0 20px;
+  display: flex;
+  gap: 10px;
 }
 
 ion-modal {
-  --border-radius: 10px;
-  --height: auto;
-  --background: var(--ion-color-medium-shade);
+  --border-radius: 16px;
+  --height: min(90vh, 800px);
+  --background:
+    linear-gradient(
+      180deg,
+      rgba(var(--ion-color-medium-rgb), 0.98) 0%,
+      rgba(var(--ion-color-dark-rgb), 0.98) 100%
+    );
 }
 
 .character-skill-image {
-  border-radius: 10px;
-  border: 1px solid var(--ion-color-primary);
-  width: 55px;
-  height: 55px;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.35);
+  width: 68px;
+  height: 68px;
   object-fit: cover;
+  box-shadow: 0 8px 18px rgba(var(--ion-color-dark-rgb), 0.55);
+}
+
+.prepared-button ion-icon {
+  font-size: 1.35rem;
+  opacity: 0.72;
+  transition: opacity 0.2s ease, transform 0.2s ease, filter 0.2s ease;
+}
+
+.prepared-button:hover ion-icon {
+  opacity: 1;
+  transform: scale(1.05);
 }
 
 .filled {
-  color: var(--ion-color-primary);
+  color: var(--ion-color-warning);
+  opacity: 1 !important;
+  filter: drop-shadow(0 0 8px rgba(var(--ion-color-warning-rgb), 0.5));
 }
 
 .block-value {
   display: block;
-  line-height: 1.5;
-  color: white;
+  line-height: 1.7;
+  color: var(--ion-color-light);
+  font-size: 0.98rem;
+}
+
+.subtitle {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: none;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(var(--ion-color-secondary-rgb), 0.3),
+      rgba(var(--ion-color-secondary-rgb), 0.2)
+    );
+  box-shadow: 0 4px 10px rgba(var(--ion-color-dark-rgb), 0.2);
+  font-size: 0.78rem;
+  color: rgba(var(--ion-color-light-rgb), 0.96);
+}
+
+.prepared-button {
+  --color: rgba(var(--ion-color-light-rgb), 0.82);
+  --padding-start: 4px;
+  --padding-end: 4px;
 }
 
 .description-html :deep(p) {
-  margin: 0 0 0.75em;
+  margin: 0 0 1em;
 }
 
 .description-html :deep(p:last-child) {
@@ -406,7 +549,7 @@ ion-modal {
 }
 
 .description-html :deep(li) {
-  margin-bottom: 0.25em;
+  margin-bottom: 0.35em;
 }
 
 .description-html :deep(a) {
@@ -416,6 +559,27 @@ ion-modal {
 
 .description-html :deep(detail-tooltip) {
   display: inline;
+}
+
+.spellbook-theme {
+  position: relative;
+  border: none;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.spellbook-theme::before {
+  content: none;
+}
+
+.small-buttons ion-button[color="danger"] {
+  --background: rgba(var(--ion-color-danger-rgb), 0.78);
+}
+
+@media (max-width: 520px) {
+  .small-buttons {
+    margin-left: 8px;
+  }
 }
 
 </style>
