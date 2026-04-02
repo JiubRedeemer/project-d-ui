@@ -380,6 +380,7 @@ function calculateCheckValue(value: any, ability: AbilityDto) {
 }
 
 .skill-name {
+  scrollbar-width: none;
   padding-left: 4px;
 }
 
@@ -516,6 +517,7 @@ ion-content {
   }
 
   .skill-name {
+    scrollbar-width: none;
     padding-left: 8px;
     font-size: 14px;
   }

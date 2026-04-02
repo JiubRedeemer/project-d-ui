@@ -66,6 +66,17 @@ const oldItemId = ref<string>();
 const oldItemCount = ref<number | undefined>();
 const WEIGHT_MAX_LENGTH = 4;
 
+const cloneSkills = (skills: ItemSkill[] | undefined): ItemSkill[] => {
+  if (!skills?.length) {
+    return [];
+  }
+  try {
+    return structuredClone(skills);
+  } catch {
+    return JSON.parse(JSON.stringify(skills)) as ItemSkill[];
+  }
+};
+
 
 const closeEditItemSkillModal = () => {
   showEditItemSkillModal.value = false; // Закрываем модалку
@@ -99,9 +110,19 @@ onBeforeMount(() => {
     };
     createInventoryItemStore.item.description = "";
     createInventoryItemStore.item.rarity = "COMMON";
+    createItemSkills.value = [];
   } else {
     viewType.value = createInventoryItemStore.item.type;
-    damageType.value = createInventoryItemStore.item.stats.damage?.damageType;
+    const existingDamageType = createInventoryItemStore.item.stats.damage?.damageType;
+    // Backward/forward compatibility for damage type codes
+    damageType.value =
+        existingDamageType === "BLUDGEONING"
+            ? "CRUSHING"
+            : existingDamageType === "PIERCING"
+                ? "STABBING"
+                : existingDamageType === "SLASHING"
+                    ? "CHOPPING"
+                    : existingDamageType;
     damageValue.value = createInventoryItemStore.item.stats.damage?.value;
     defaultPrice.value = createInventoryItemStore.item?.stats?.defaultPrice[0];
     defaultPriceCoinType.value = createInventoryItemStore.item?.stats?.defaultPrice[0]?.coinType
@@ -112,6 +133,7 @@ onBeforeMount(() => {
     createInventoryItemStore.item.id = itemId;
     noDexBonusLimit.value = createInventoryItemStore.item.stats.armorClassMaxDexterityBonus === "-1";
     noStrengthRequirement.value = createInventoryItemStore.item.stats.requirement === "-1";
+    createItemSkills.value = cloneSkills(createInventoryItemStore.item.skills);
   }
 });
 
@@ -1026,9 +1048,19 @@ const getSkillImageUrl = (imgUrl: string | undefined) => {
                 :class="{ 'invalid-field': invalidFields.includes('damageType') }"
                 @ionChange="invalidFields = invalidFields.filter(field => field !== 'damageType')"
             >
-              <ion-select-option value="CRUSHING">Дробящий</ion-select-option>
-              <ion-select-option value="STABBING">Колющий</ion-select-option>
-              <ion-select-option value="CHOPPING">Рубящий</ion-select-option>
+              <ion-select-option value="STABBING">Колющий (Piercing)</ion-select-option>
+              <ion-select-option value="CHOPPING">Рубящий (Slashing)</ion-select-option>
+              <ion-select-option value="CRUSHING">Дробящий (Bludgeoning)</ion-select-option>
+              <ion-select-option value="ACID">Кислотный (Acid)</ion-select-option>
+              <ion-select-option value="COLD">Холодом (Cold)</ion-select-option>
+              <ion-select-option value="FIRE">Огненный (Fire)</ion-select-option>
+              <ion-select-option value="FORCE">Силовой (Force)</ion-select-option>
+              <ion-select-option value="LIGHTNING">Молнией (Lightning)</ion-select-option>
+              <ion-select-option value="NECROTIC">Некротический (Necrotic)</ion-select-option>
+              <ion-select-option value="POISON">Ядовитый (Poison)</ion-select-option>
+              <ion-select-option value="PSYCHIC">Психический (Psychic)</ion-select-option>
+              <ion-select-option value="RADIANT">Сияющий (Radiant)</ion-select-option>
+              <ion-select-option value="THUNDER">Громовой (Thunder)</ion-select-option>
             </ion-select>
           </div>
           <div class="stat-section customization">
@@ -1562,6 +1594,7 @@ ion-modal {
 }
 
 .skill-name {
+  scrollbar-width: none;
   font-size: 16px;
   font-weight: bold;
   white-space: nowrap;
@@ -1571,6 +1604,7 @@ ion-modal {
 
 .skill-short-description,
 .skill-limitations {
+  scrollbar-width: none;
   font-size: 12px;
   white-space: nowrap;
   overflow: scroll;

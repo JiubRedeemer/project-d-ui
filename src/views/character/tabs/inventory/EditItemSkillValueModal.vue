@@ -367,13 +367,13 @@ const uploadToMinio = async (file: File): Promise<string> => {
   display: flex;
   flex-direction: column;
   max-width: 170px;
-  --scrollbar-width: none;
+  scrollbar-width: none;
 }
 
 .stat-name {
   color: var(--ion-color-light);
   opacity: 60%;
-  --scrollbar-width: none;
+  scrollbar-width: none;
 }
 
 .stat-value {
@@ -381,7 +381,7 @@ const uploadToMinio = async (file: File): Promise<string> => {
   color: white;
   overflow: scroll;
   max-height: 100px;
-  --scrollbar-width: none;
+  scrollbar-width: none;
 }
 
 .stat-subvalue {

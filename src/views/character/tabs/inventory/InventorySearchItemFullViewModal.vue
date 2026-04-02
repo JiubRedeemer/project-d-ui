@@ -506,12 +506,14 @@ const getSkillImageUrl = (imgUrl: string | undefined) =>
 }
 
 .skill-name {
+  scrollbar-width: none;
   font-size: 16px;
   font-weight: bold;
 }
 
 .skill-short-description,
 .skill-limitations {
+  scrollbar-width: none;
   font-size: 12px;
 }
 

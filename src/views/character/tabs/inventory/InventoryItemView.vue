@@ -313,6 +313,7 @@ const getSkillImageUrl = (imgUrl: string | undefined) => {
 }
 
 .skill-name {
+  scrollbar-width: none;
   font-size: 24px;
 }
 
@@ -472,6 +473,7 @@ const getSkillImageUrl = (imgUrl: string | undefined) => {
 }
 
 .skill-name {
+  scrollbar-width: none;
   font-size: 16px;
   font-weight: bold;
   white-space: nowrap;
@@ -480,6 +482,7 @@ const getSkillImageUrl = (imgUrl: string | undefined) => {
 
 .skill-short-description,
 .skill-limitations {
+  scrollbar-width: none;
   font-size: 12px;
   white-space: nowrap;
   overflow: scroll;
@@ -554,6 +557,7 @@ const getSkillImageUrl = (imgUrl: string | undefined) => {
   }
 
   .stat-value {
+    scrollbar-width: none;
     width: 34px;
     height: 34px;
     font-size: 11px;
@@ -603,6 +607,7 @@ const getSkillImageUrl = (imgUrl: string | undefined) => {
   }
 
   .item-skills {
+    scrollbar-width: none;
     grid-area: item-skills;
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
@@ -624,12 +629,14 @@ const getSkillImageUrl = (imgUrl: string | undefined) => {
   }
 
   .skill-name {
+    scrollbar-width: none;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
   .skill-short-description,
   .skill-limitations {
+    scrollbar-width: none;
     overflow: hidden;
     text-overflow: ellipsis;
   }
