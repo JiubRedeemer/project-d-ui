@@ -70,6 +70,15 @@ const selectedTab = ref<PlayerTabKey>("abilities");
 const isDesktop = ref<boolean>(window.innerWidth >= 1024);
 const DESKTOP_BREAKPOINT_PX = 1024;
 
+const EARLY_VERSION_DEFAULT_TEXT =
+  "Вы используете альфа-версию приложения — спасибо, что вы с нами на этом этапе!";
+const EARLY_VERSION_NON_RU_TEXT =
+  "Отключите VPN, приложение может работать не стабильно";
+
+const ipCountryCode = ref<string | null>(null);
+const isNonRussianIp = computed(() => ipCountryCode.value != null && ipCountryCode.value !== "RU");
+const earlyVersionText = computed(() => (isNonRussianIp.value ? EARLY_VERSION_NON_RU_TEXT : EARLY_VERSION_DEFAULT_TEXT));
+
 const tabs = [
   {key: "abilities", icon: abilitiesTabIcon, label: "Характеристики"},
   {key: "attacks", icon: attacksTabIcon, label: "Атаки и навыки"},
@@ -151,11 +160,56 @@ const onTabsChange = (event: CustomEvent<{ tab: string }>) => {
 
 onMounted(() => {
   window.addEventListener("resize", onResize);
+  void detectIpCountryCode();
 });
 
 onUnmounted(() => {
   window.removeEventListener("resize", onResize);
 });
+
+async function detectIpCountryCode(): Promise<void> {
+  const STORAGE_KEY = "ipCountryCode";
+  const STORAGE_TS_KEY = "ipCountryCodeTs";
+  const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
+
+  try {
+    const cached = sessionStorage.getItem(STORAGE_KEY);
+    const cachedTs = Number(sessionStorage.getItem(STORAGE_TS_KEY));
+    if (cached && /^[A-Z]{2}$/.test(cached) && Number.isFinite(cachedTs) && Date.now() - cachedTs < CACHE_TTL_MS) {
+      ipCountryCode.value = cached;
+      return;
+    }
+  } catch {
+    // ignore storage errors (private mode, etc.)
+  }
+
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 2500);
+  try {
+    // Minimal, CORS-friendly endpoint returning 2-letter country code (e.g. "RU\n")
+    const res = await fetch("https://ipapi.co/country/", {
+      method: "GET",
+      signal: controller.signal,
+      cache: "no-store",
+    });
+    if (!res.ok) return;
+
+    const text = (await res.text()).trim().toUpperCase();
+    if (!/^[A-Z]{2}$/.test(text)) return;
+
+    ipCountryCode.value = text;
+    try {
+      sessionStorage.setItem(STORAGE_KEY, text);
+      sessionStorage.setItem(STORAGE_TS_KEY, String(Date.now()));
+    } catch {
+      // ignore
+    }
+  } catch {
+    // ignore network errors
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
 
 const openEditAbilityModal = (ability: AbilityDto) => {
   selectedAbility.value = ability;
@@ -434,10 +488,12 @@ const openSubheader = () => {
         class="early-version-stub"
         role="button"
         tabindex="0"
-        aria-label="Вы используете альфа-версию приложения — спасибо, что вы с нами на этом этапе!"
+        :aria-label="earlyVersionText"
         @click="onEarlyVersionStubClick"
         @keydown.enter.prevent="onEarlyVersionStubClick"
-      ></div>
+      >
+        <span class="early-version-stub__text">{{ earlyVersionText }}</span>
+      </div>
     </IonTabs>
 
 
@@ -590,8 +646,7 @@ ion-page {
   background-color: var(--ion-color-medium);
 }
 
-.early-version-stub::before {
-  content: "Вы используете альфа-версию приложения — спасибо, что вы с нами на этом этапе!";
+.early-version-stub__text {
   display: inline-block;
   padding: 6px 14px;
   border-radius: 999px;
