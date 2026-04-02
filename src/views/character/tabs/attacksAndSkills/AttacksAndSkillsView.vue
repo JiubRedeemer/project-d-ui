@@ -130,7 +130,7 @@ const getItemStats = (item: InventoryItem) => {
 const getDamageText = (item: InventoryItem) => {
   const d = item.item.stats?.damage;
   if (!d) return '';
-  const parsedDamage = replaceDamageAbilityPlaceholders(String(d.value ?? ""), item);
+  const parsedDamage = replaceDamageAbilityPlaceholders(String(d.value ?? ""));
   const fallbackDamageFromWeaponType = parsedDamage.hasPlaceholders ? 0 : calculateDamageFromWeaponType(item);
   const totalDamageBonus = fallbackDamageFromWeaponType + getDamageBonus(item);
   const value = parsedDamage.value
@@ -202,37 +202,18 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function getDefaultDamageAbilityAliases(item: InventoryItem): string[] {
-  // Backward compatibility: old default placeholders should be ignored,
-  // because STR/DEX modifiers are already applied by weapon subtype.
-  if (item.item.subtype === 'EHW' || item.item.subtype === 'AHW' || item.item.subtype === 'SHW') {
-    return ["STR", "СИЛА", "СИЛ"];
-  }
-  if (item.item.subtype === 'ERW' || item.item.subtype === 'ARW' || item.item.subtype === 'SRW') {
-    return ["DEX", "ЛОВКОСТЬ", "ЛОВК", "ЛОВ"];
-  }
-  return [];
-}
-
-function replaceDamageAbilityPlaceholders(rawDamage: string, item: InventoryItem): { value: string; hasPlaceholders: boolean } {
+function replaceDamageAbilityPlaceholders(rawDamage: string): { value: string; hasPlaceholders: boolean } {
   if (!rawDamage) {
     return {value: "", hasPlaceholders: false};
   }
 
   let value = rawDamage;
   let hasPlaceholders = false;
-  const ignoredAliases = new Set(getDefaultDamageAbilityAliases(item));
-
   const abilityPlaceholders = getAbilityPlaceholders();
   const aliases = Object.keys(abilityPlaceholders).sort((a, b) => b.length - a.length);
   for (const alias of aliases) {
     const regex = new RegExp(`(^|[^\\p{L}])(${escapeRegExp(alias)})(?=$|[^\\p{L}])`, "giu");
     if (!regex.test(value)) {
-      continue;
-    }
-
-    if (ignoredAliases.has(alias)) {
-      value = value.replace(regex, (_fullMatch, prefix) => `${prefix}0`);
       continue;
     }
 
@@ -389,8 +370,9 @@ const getAttackHintText = (item: InventoryItem): string => {
 
 const getDamageHintText = (item: InventoryItem): string => {
   const baseDamage = String(item.item.stats?.damage?.value ?? "");
-  const replaced = replaceDamageAbilityPlaceholders(baseDamage, item).value;
-  const fallbackDamageFromWeaponType = replaceDamageAbilityPlaceholders(baseDamage, item).hasPlaceholders
+  const parsedDamage = replaceDamageAbilityPlaceholders(baseDamage);
+  const replaced = parsedDamage.value;
+  const fallbackDamageFromWeaponType = parsedDamage.hasPlaceholders
       ? 0
       : calculateDamageFromWeaponType(item);
   const itemDamageBonus = getDamageBonus(item);
