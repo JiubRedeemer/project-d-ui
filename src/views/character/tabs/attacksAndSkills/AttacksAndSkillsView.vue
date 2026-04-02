@@ -293,8 +293,8 @@ async function deleteCharacterSkill(id: string) {
       <div class="section" v-for="item in equippedItems" :key="item.id">
         <div class="image-block" @click="openInventoryItem(item)">
           <img width="75px" height="75px" class="item-image" :class="getRarityClass(item.item.rarity)"
-               :src="getItemImageUrl(item.item.imgUrl)"
-               :alt="item.item.name.rus"/>
+               :src="getItemImageUrl(item.item.imgUrl)" :alt="item.item.name.rus"
+               onerror="this.onerror=null; this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"/>
         </div>
         <div class="info-block">
           <div class="header-block">
@@ -336,7 +336,8 @@ async function deleteCharacterSkill(id: string) {
         <div class="image-block">
           <img width="75px" height="75px" class="item-image"
                :src="getSkillImageUrl(skill.skill.imgUrl)"
-               :alt="skill.skill.name.rus"/>
+               :alt="skill.skill.name.rus" onerror="this.onerror=null;
+               this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"/>
         </div>
         <div class="info-block">
           <div class="item-name">

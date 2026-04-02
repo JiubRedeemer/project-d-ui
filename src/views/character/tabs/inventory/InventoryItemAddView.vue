@@ -1393,6 +1393,7 @@ ion-modal {
   align-items: center;
   justify-content: center;
   font-size: 10pt;
+  scrollbar-width: none;
 }
 
 .stat-section {
@@ -1565,6 +1566,7 @@ ion-modal {
   font-weight: bold;
   white-space: nowrap;
   overflow: scroll;
+  scrollbar-width: none;
 }
 
 .skill-short-description,
@@ -1572,6 +1574,7 @@ ion-modal {
   font-size: 12px;
   white-space: nowrap;
   overflow: scroll;
+  scrollbar-width: none;
 }
 
 .skill-buttons-block {

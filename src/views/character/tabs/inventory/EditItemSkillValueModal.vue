@@ -330,6 +330,7 @@ const uploadToMinio = async (file: File): Promise<string> => {
 }
 
 .name {
+  scrollbar-width: none;
   font-size: 1.2rem;
   font-weight: 600;
 }
@@ -339,6 +340,7 @@ const uploadToMinio = async (file: File): Promise<string> => {
   border-radius: 10px;
   padding: 10px;
   margin: 5px 5px 10px;
+  scrollbar-width: none;
 }
 
 .description {
@@ -365,11 +367,13 @@ const uploadToMinio = async (file: File): Promise<string> => {
   display: flex;
   flex-direction: column;
   max-width: 170px;
+  --scrollbar-width: none;
 }
 
 .stat-name {
   color: var(--ion-color-light);
   opacity: 60%;
+  --scrollbar-width: none;
 }
 
 .stat-value {
@@ -377,6 +381,7 @@ const uploadToMinio = async (file: File): Promise<string> => {
   color: white;
   overflow: scroll;
   max-height: 100px;
+  --scrollbar-width: none;
 }
 
 .stat-subvalue {
