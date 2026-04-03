@@ -4,6 +4,7 @@ interface SkillDto {
     up: boolean; // Указывает, прокачан ли навык
     masteryValue: number; // Указывает, сколько раз применяется бонус мастерства
     bonusValue: number; // Кастомное доп значение
+    advantageValue?: number; // 1 - преимущество, 0 - обычный, -1 - помеха
 
 
 }
@@ -16,5 +17,7 @@ interface AbilityDto {
     name: string; // Название способности (например, "Сила")
     masteryCheckValue: number;
     masterySavingThrowValue: number;
+    advantageCheckValue?: number;
+    advantageSavingThrowValue?: number;
     skills?: SkillDto[]; // Список навыков, связанных с этой способностью (опционально)
 }

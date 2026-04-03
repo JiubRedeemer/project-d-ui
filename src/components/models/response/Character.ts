@@ -58,6 +58,8 @@ export interface Ability {
     bonusValue: number;
     masteryCheckValue: number;
     masterySavingThrowValue: number;
+    advantageCheckValue?: number;
+    advantageSavingThrowValue?: number;
     skills: Skill[]
 }
 
@@ -68,6 +70,7 @@ export interface Skill {
     up: boolean;
     bonusValue: number;
     masteryValue: number;
+    advantageValue?: number;
 }
 
 export interface CharacterBio {

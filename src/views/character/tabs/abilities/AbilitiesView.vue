@@ -101,10 +101,13 @@ function enrichCharacterAbility(value: Ability, key: string, map: Map<string, Ab
       code: skill.code,
       up: characterSkillCodes.has(skill.code),
       bonusValue: characterStore.character?.skills.filter(s => s.code === skill.code)[0]?.bonusValue || 0,
-      masteryValue: characterStore.character?.skills.filter(s => s.code === skill.code)[0]?.masteryValue || 0
+      masteryValue: characterStore.character?.skills.filter(s => s.code === skill.code)[0]?.masteryValue || 0,
+      advantageValue: characterStore.character?.skills.filter(s => s.code === skill.code)[0]?.advantageValue || 0
     }));
     value.masteryCheckValue = characterStore.character?.skills.filter(s => s.code === ("CHECK_" + value.code))[0]?.masteryValue || 0;
     value.masterySavingThrowValue = characterStore.character?.skills.filter(s => s.code === ("SAVING_THROW_" + value.code))[0]?.masteryValue || 0;
+    value.advantageCheckValue = characterStore.character?.skills.filter(s => s.code === ("CHECK_" + value.code))[0]?.advantageValue || 0;
+    value.advantageSavingThrowValue = characterStore.character?.skills.filter(s => s.code === ("SAVING_THROW_" + value.code))[0]?.advantageValue || 0;
   }
 }
 
@@ -112,7 +115,12 @@ async function updateMastery(skill: any) {
   try {
     await axios.patch(
         `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${characterStore.character.id}${GATEWAY_INTEGRATION_ROUTES.skills}/${skill.code}${GATEWAY_INTEGRATION_ROUTES.mastery}`,
-        {isMastery: skill.up, masteryValue: skill.masteryValue},
+        {
+          isMastery: skill.masteryValue > 0,
+          masteryValue: skill.masteryValue,
+          bonusValue: skill.bonusValue || 0,
+          advantageValue: skill.advantageValue || 0
+        },
         {
           headers: {
             "Content-Type": "application/json",
@@ -126,10 +134,16 @@ async function updateMastery(skill: any) {
 }
 
 async function updateMasteryAbilityCheck(ability: AbilityDto) {
+  const checkSkill = characterStore.character?.skills.find(s => s.code === `CHECK_${ability.code}`);
   try {
     await axios.patch(
         `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${characterStore.character.id}${GATEWAY_INTEGRATION_ROUTES.skills}/CHECK_${ability.code}${GATEWAY_INTEGRATION_ROUTES.mastery}`,
-        {isMastery: ability.masteryCheckValue >= 1, masteryValue: ability.masteryCheckValue},
+        {
+          isMastery: ability.masteryCheckValue >= 1,
+          masteryValue: ability.masteryCheckValue,
+          bonusValue: checkSkill?.bonusValue ?? 0,
+          advantageValue: ability.advantageCheckValue ?? 0
+        },
         {
           headers: {
             "Content-Type": "application/json",
@@ -143,10 +157,16 @@ async function updateMasteryAbilityCheck(ability: AbilityDto) {
 }
 
 async function updateMasteryAbilitySavingThrow(ability: AbilityDto) {
+  const savingSkill = characterStore.character?.skills.find(s => s.code === `SAVING_THROW_${ability.code}`);
   try {
     await axios.patch(
         `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${characterStore.character.id}${GATEWAY_INTEGRATION_ROUTES.skills}/SAVING_THROW_${ability.code}${GATEWAY_INTEGRATION_ROUTES.mastery}`,
-        {isMastery: ability.masterySavingThrowValue >= 1, masteryValue: ability.masterySavingThrowValue},
+        {
+          isMastery: ability.masterySavingThrowValue >= 1,
+          masteryValue: ability.masterySavingThrowValue,
+          bonusValue: savingSkill?.bonusValue ?? 0,
+          advantageValue: ability.advantageSavingThrowValue ?? 0
+        },
         {
           headers: {
             "Content-Type": "application/json",
@@ -173,6 +193,42 @@ function changeChecked(skill: any) {
   updateMastery(skill);
 }
 
+function changeAdvantage(skill: any) {
+  if (skill.advantageValue === 0 || !skill.advantageValue) {
+    skill.advantageValue = 1;
+  } else if (skill.advantageValue === 1) {
+    skill.advantageValue = -1;
+  } else {
+    skill.advantageValue = 0;
+  }
+  updateMastery(skill);
+}
+
+function getAdvantageLabel(value: number | undefined) {
+  if (value === 1) {
+    return "Преимущество";
+  }
+  if (value === -1) {
+    return "Помеха";
+  }
+  return "Обычный";
+}
+
+function getRollModifierClass(value: number | undefined, kind: "skill" | "check" | "save" = "skill") {
+  const prefix = kind === "skill" ? "skill-value" : kind === "check" ? "check-value" : "saving-throw-value";
+  if (value === 1) {
+    return `${prefix}--roll-adv`;
+  }
+  if (value === -1) {
+    return `${prefix}--roll-dis`;
+  }
+  return `${prefix}--roll-neutral`;
+}
+
+function rollModifierAriaLabel(value: number | undefined, modifier: number) {
+  return `${getAdvantageLabel(value)}. Модификатор ${modifier}`;
+}
+
 function changeCheckedAbilityCheck(ability: AbilityDto) {
   if (ability.masteryCheckValue == 0 || !ability.masteryCheckValue) {
     ability.masteryCheckValue = 1;
@@ -184,6 +240,17 @@ function changeCheckedAbilityCheck(ability: AbilityDto) {
   updateMasteryAbilityCheck(ability);
 }
 
+function changeAdvantageAbilityCheck(ability: AbilityDto) {
+  if (ability.advantageCheckValue === 0 || ability.advantageCheckValue === undefined) {
+    ability.advantageCheckValue = 1;
+  } else if (ability.advantageCheckValue === 1) {
+    ability.advantageCheckValue = -1;
+  } else {
+    ability.advantageCheckValue = 0;
+  }
+  updateMasteryAbilityCheck(ability);
+}
+
 function changeCheckedAbilitySavingThrow(ability: AbilityDto) {
   if (ability.masterySavingThrowValue == 0 || !ability.masterySavingThrowValue) {
     ability.masterySavingThrowValue = 1;
@@ -191,6 +258,17 @@ function changeCheckedAbilitySavingThrow(ability: AbilityDto) {
     ability.masterySavingThrowValue = 2;
   } else if (ability.masterySavingThrowValue == 2) {
     ability.masterySavingThrowValue = 0;
+  }
+  updateMasteryAbilitySavingThrow(ability);
+}
+
+function changeAdvantageAbilitySavingThrow(ability: AbilityDto) {
+  if (ability.advantageSavingThrowValue === 0 || ability.advantageSavingThrowValue === undefined) {
+    ability.advantageSavingThrowValue = 1;
+  } else if (ability.advantageSavingThrowValue === 1) {
+    ability.advantageSavingThrowValue = -1;
+  } else {
+    ability.advantageSavingThrowValue = 0;
   }
   updateMasteryAbilitySavingThrow(ability);
 }
@@ -248,28 +326,66 @@ function calculateCheckValue(value: any, ability: AbilityDto) {
           <div class="ability-value">{{ ability[1].value + ability[1].bonusValue }}</div>
         </div>
         <div class="ability-side-block">
-          <div class="check">
+          <div
+              class="check"
+              :class="{
+                'skill-item--roll-adv': ability[1].advantageCheckValue === 1,
+                'skill-item--roll-dis': ability[1].advantageCheckValue === -1
+              }"
+          >
             <div class="skill-up">
               <AbilityParamUp :checked="ability[1].masteryCheckValue > 0"
                               :doubleChecked="ability[1].masteryCheckValue > 1"
                               @click="changeCheckedAbilityCheck(ability[1])"/>
             </div>
             <div class="check-name">Проверка</div>
-            <div class="check-value">{{ calculateCheckValue(ability[1].value + ability[1].bonusValue, ability[1]) }}</div>
+            <button
+                type="button"
+                class="check-value check-value--roll"
+                :class="getRollModifierClass(ability[1].advantageCheckValue, 'check')"
+                :title="`${getAdvantageLabel(ability[1].advantageCheckValue)} — нажмите, чтобы сменить`"
+                :aria-label="rollModifierAriaLabel(ability[1].advantageCheckValue, calculateCheckValue(ability[1].value + ability[1].bonusValue, ability[1]))"
+                @click.stop="changeAdvantageAbilityCheck(ability[1])"
+            >
+              {{ calculateCheckValue(ability[1].value + ability[1].bonusValue, ability[1]) }}
+            </button>
           </div>
-          <div class="saving-throw">
+          <div
+              class="saving-throw"
+              :class="{
+                'skill-item--roll-adv': ability[1].advantageSavingThrowValue === 1,
+                'skill-item--roll-dis': ability[1].advantageSavingThrowValue === -1
+              }"
+          >
             <div class="skill-up">
               <AbilityParamUp :checked="ability[1].masterySavingThrowValue > 0"
                               :doubleChecked="ability[1].masterySavingThrowValue > 1"
                               @click="changeCheckedAbilitySavingThrow(ability[1])"/>
             </div>
             <div class="saving-throw-name">Спасбросок</div>
-            <div class="saving-throw-value">{{ calculateSavingThrow(ability[1].value + ability[1].bonusValue, ability[1]) }}</div>
+            <button
+                type="button"
+                class="saving-throw-value saving-throw-value--roll"
+                :class="getRollModifierClass(ability[1].advantageSavingThrowValue, 'save')"
+                :title="`${getAdvantageLabel(ability[1].advantageSavingThrowValue)} — нажмите, чтобы сменить`"
+                :aria-label="rollModifierAriaLabel(ability[1].advantageSavingThrowValue, calculateSavingThrow(ability[1].value + ability[1].bonusValue, ability[1]))"
+                @click.stop="changeAdvantageAbilitySavingThrow(ability[1])"
+            >
+              {{ calculateSavingThrow(ability[1].value + ability[1].bonusValue, ability[1]) }}
+            </button>
           </div>
         </div>
       </div>
       <div class="skills" v-if="ability[1].skills && ability[1].skills.length">
-        <div class="skill-item" v-for="(skill, index) in ability[1].skills" :key="index">
+        <div
+            class="skill-item"
+            :class="{
+              'skill-item--roll-adv': skill.advantageValue === 1,
+              'skill-item--roll-dis': skill.advantageValue === -1
+            }"
+            v-for="(skill, index) in ability[1].skills"
+            :key="index"
+        >
           <div class="skill-start-block">
             <div class="skill-up">
               <SkillUp :checked="skill.masteryValue > 0" :doubleChecked="skill.masteryValue > 1"
@@ -277,7 +393,16 @@ function calculateCheckValue(value: any, ability: AbilityDto) {
             </div>
             <div class="skill-name" @click="selectSkill(skill)">{{ skill.name }}</div>
           </div>
-          <div class="skill-value">{{ calculateSkillValue(ability[1].value + ability[1].bonusValue, skill) }}</div>
+          <button
+              type="button"
+              class="skill-value skill-value--roll"
+              :class="getRollModifierClass(skill.advantageValue)"
+              :title="`${getAdvantageLabel(skill.advantageValue)} — нажмите, чтобы сменить`"
+              :aria-label="rollModifierAriaLabel(skill.advantageValue, calculateSkillValue(ability[1].value + ability[1].bonusValue, skill))"
+              @click.stop="changeAdvantage(skill)"
+          >
+            {{ calculateSkillValue(ability[1].value + ability[1].bonusValue, skill) }}
+          </button>
         </div>
       </div>
     </div>
@@ -355,6 +480,25 @@ function calculateCheckValue(value: any, ability: AbilityDto) {
   color: var(--ion-color-primary-contrast);
   background: var(--ion-color-primary);
   border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.check-value--roll,
+.saving-throw-value--roll {
+  margin: 0;
+  padding: 0;
+  border: none;
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  appearance: none;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease, color 0.12s ease;
+}
+
+.check-value--roll:active,
+.saving-throw-value--roll:active {
+  transform: scale(0.94);
 }
 
 .skill-item {
@@ -364,10 +508,17 @@ function calculateCheckValue(value: any, ability: AbilityDto) {
   justify-content: space-between;
   height: 27px;
   margin-top: 10px;
-  padding-left: 4px;
-  padding-right: 4px;
+  padding: 2px 4px;
   background: var(--ion-color-medium-tint);
   border-radius: 20px;
+}
+
+.skill-item--roll-adv {
+  border-right: 2px solid var(--ion-color-success-shade);
+}
+
+.skill-item--roll-dis {
+  border-right: 2px solid var(--ion-color-danger-shade);
 }
 
 .skill-item--proficiency {
@@ -388,19 +539,64 @@ function calculateCheckValue(value: any, ability: AbilityDto) {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
-  font-size: 11px;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
   color: var(--ion-color-primary-contrast);
   background: var(--ion-color-primary);
   border-radius: 50%;
 }
 
+.skill-value--roll {
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease, color 0.12s ease;
+}
+
+.skill-value--roll:active {
+  transform: scale(0.94);
+}
+
+.skill-value--roll-neutral,
+.check-value--roll-neutral,
+.saving-throw-value--roll-neutral {
+  color: var(--ion-color-primary-contrast);
+  background: var(--ion-color-primary);
+  box-shadow: 0 0 0 1px rgba(var(--ion-color-primary-rgb), 0.22);
+  font-size: 12px;
+}
+
+.skill-value--roll-adv,
+.check-value--roll-adv,
+.saving-throw-value--roll-adv {
+  color: var(--ion-color-success-contrast);
+  background: var(--ion-color-success-shade);
+  box-shadow:
+      0 0 0 1px rgba(var(--ion-color-success-rgb), 0.28),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  font-size: 12px;
+}
+
+.skill-value--roll-dis,
+.check-value--roll-dis,
+.saving-throw-value--roll-dis {
+  color: var(--ion-color-danger-contrast);
+  background: var(--ion-color-danger-shade);
+  box-shadow:
+      0 0 0 1px rgba(var(--ion-color-danger-rgb), 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  font-size: 12px;
+}
+
 .skill-up {
   display: flex;
   align-items: center;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
 }
 
 ion-content {
@@ -511,8 +707,8 @@ ion-content {
   .skill-item {
     margin-top: 0;
     height: auto;
-    min-height: 34px;
-    padding: 6px 10px;
+    min-height: 30px;
+    padding: 4px 8px;
     border-radius: 14px;
   }
 
@@ -523,14 +719,14 @@ ion-content {
   }
 
   .skill-value {
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
     font-size: 12px;
   }
 
   .skill-up {
-    width: 22px;
-    height: 22px;
+    width: 20px;
+    height: 20px;
   }
 }
 
