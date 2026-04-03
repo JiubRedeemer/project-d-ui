@@ -100,6 +100,20 @@ const roomRaces = ref<{ value: string; label: string }[]>([]);
 const roomClassesLoading = ref(true);
 const roomRacesLoading = ref(true);
 
+/** ion-select + :value/@ionChange loses sync when sibling inputs re-render; v-model matches SpellAddView. */
+const npcClazzSelect = computed({
+  get: () => npc.value.clazzCode ?? "",
+  set: (v: string) => {
+    npc.value.clazzCode = v === "" ? null : v;
+  },
+});
+const npcRaceSelect = computed({
+  get: () => npc.value.raceCode ?? "",
+  set: (v: string) => {
+    npc.value.raceCode = v === "" ? null : v;
+  },
+});
+
 function triggerFileInput() {
   fileInput.value?.click();
 }
@@ -288,7 +302,7 @@ async function onSave() {
 
 onMounted(() => {
   npc.value.roomId = roomId.value;
-  (async () => {
+  void (async () => {
     try {
       const id = await getMyId();
       if (id?.trim()) npc.value.createdBy = id.trim();
@@ -296,7 +310,10 @@ onMounted(() => {
       console.error("Failed to resolve myId:", e);
     }
   })();
-  (async () => {
+  void (async () => {
+    // Load NPC first when editing so fillFromDto runs before class/race options appear.
+    // Otherwise a slow NPC request could complete after the user picked class/race and wipe the form.
+    await loadNpcIfEditing();
     roomClassesLoading.value = true;
     roomRacesLoading.value = true;
     try {
@@ -322,7 +339,6 @@ onMounted(() => {
       roomRacesLoading.value = false;
     }
   })();
-  loadNpcIfEditing();
 });
 </script>
 
@@ -413,13 +429,7 @@ onMounted(() => {
             <ion-select
               fill="outline"
               color="primary"
-              :value="npc.clazzCode ?? ''"
-              @ionChange="
-                (e) => {
-                  const v = (e as CustomEvent).detail.value;
-                  npc.value.clazzCode = v === '' ? null : v;
-                }
-              "
+              v-model="npcClazzSelect"
               interface="popover"
               :placeholder="
                 roomClassesLoading
@@ -428,7 +438,7 @@ onMounted(() => {
                     ? 'Выберите класс (можно не выбирать)'
                     : 'В комнате нет классов'
               "
-              :disabled="roomClassesLoading"
+              :disabled="roomClassesLoading || isLoading"
               class="input-block"
             >
               <ion-select-option value="">—</ion-select-option>
@@ -447,13 +457,7 @@ onMounted(() => {
             <ion-select
               fill="outline"
               color="primary"
-              :value="npc.raceCode ?? ''"
-              @ionChange="
-                (e) => {
-                  const v = (e as CustomEvent).detail.value;
-                  npc.value.raceCode = v === '' ? null : v;
-                }
-              "
+              v-model="npcRaceSelect"
               interface="popover"
               :placeholder="
                 roomRacesLoading
@@ -462,7 +466,7 @@ onMounted(() => {
                     ? 'Выберите расу (можно не выбирать)'
                     : 'В комнате нет рас'
               "
-              :disabled="roomRacesLoading"
+              :disabled="roomRacesLoading || isLoading"
               class="input-block"
             >
               <ion-select-option value="">—</ion-select-option>
