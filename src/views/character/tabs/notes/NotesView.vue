@@ -125,6 +125,7 @@ const addNote = async () => {
       isBlockExpanded.value = null; // Закрываем все секции
       return;
     }
+    isBlockExpanded.value = null; // Закрываем все секции
     const res = await axios.put(
         `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}/rooms/${roomId}/characters/${characterId}/notes`,
         noteDto,
@@ -140,7 +141,6 @@ const addNote = async () => {
     newNoteName.value = "";
     newNoteText.value = "";
     newTags.value.splice(0); // очищает reactive массив
-    isBlockExpanded.value = null; // Закрываем все секции
   } catch (e) {
     console.error("Ошибка при создании заметки:", e);
   }
@@ -165,6 +165,9 @@ const updateNote = async (notebookId: string, noteId: string) => {
       toggleEditMode(null);
       return;
     }
+    isEditing.value = null;
+    isBlockExpanded.value = null; // Закрываем все секции
+    toggleEditMode(null);
     const res = await axios.patch(
         `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}/rooms/${roomId}/characters/${characterId}/notes/${noteId}`,
         noteDto,
@@ -178,9 +181,6 @@ const updateNote = async (notebookId: string, noteId: string) => {
 
     const idx = notes.value.findIndex(n => n.id === noteId);
     if (idx !== -1) notes.value[idx] = res.data;
-    isEditing.value = null;
-    isBlockExpanded.value = null; // Закрываем все секции
-    toggleEditMode(null);
   } catch (e) {
     console.error("Ошибка при обновлении заметки:", e);
   }
