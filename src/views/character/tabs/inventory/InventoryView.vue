@@ -179,7 +179,7 @@ const otherItems = computed(() =>
 const hasInventoryItems = computed(() => (inventoryStore.inventory?.items?.length ?? 0) > 0);
 const totalWeight = computed(() => inventoryStore.inventory?.totalWeight || 0);
 
-const weightLimit = characterStore.character.abilities.filter(ability => ability.code === "STR")[0].value * 10;
+const weightLimit = characterStore.character.abilities.filter(ability => ability.code === "STR")[0].value * 15;
 
 const getItemImageUrl = (imgUrl: string | undefined) => {
   return imgUrl != null
