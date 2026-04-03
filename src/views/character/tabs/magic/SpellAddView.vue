@@ -17,7 +17,7 @@ import {
   toastController,
 } from "@ionic/vue";
 import { add } from "ionicons/icons";
-import { onUnmounted, ref } from "vue";
+import { computed, onUnmounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import {
   addSpellToBook,
@@ -35,8 +35,17 @@ const route = useRoute();
 const router = useRouter();
 const magicStore = useMagicStore();
 
-const roomId = ref(String(route.params.roomId));
-const characterId = ref(String(route.params.characterId));
+const roomId = computed(() => String(route.params.roomId ?? ""));
+const characterId = computed(() =>
+  route.params.characterId != null ? String(route.params.characterId) : ""
+);
+const hasCharacterContext = computed(() => Boolean(route.params.characterId));
+
+const spellAddBackHref = computed(() =>
+  hasCharacterContext.value
+    ? `/rooms/${roomId.value}/characters/${characterId.value}/magic/search`
+    : `/rooms/${roomId.value}/master/guidebook/spells`
+);
 
 const spell = ref<Partial<SpellDto>>({
   name: { rus: "", en: "" },
@@ -160,7 +169,7 @@ async function saveSpell() {
       name: spell.value.name,
       level: spell.value.level,
       spellClass: spellClassStr,
-      characterId: characterId.value,
+      ...(hasCharacterContext.value ? { characterId: characterId.value } : {}),
       school: spell.value.school || undefined,
       useTime: spell.value.useTime || undefined,
       distance: spell.value.distance || undefined,
@@ -177,7 +186,10 @@ async function saveSpell() {
     };
 
     const editing = magicStore.editingSpell;
-    const isOwner = editing?.id && editing?.createdBy === characterId.value;
+    const isOwner =
+      hasCharacterContext.value &&
+      editing?.id &&
+      editing?.createdBy === characterId.value;
 
     let result: SpellDto;
     if (isOwner) {
@@ -185,7 +197,11 @@ async function saveSpell() {
       await magicStore.updateSpellBookInStore(roomId.value, characterId.value);
     } else {
       result = await createSpell(body);
-      if (result.id && magicStore.spellBook?.id) {
+      if (
+        hasCharacterContext.value &&
+        result.id &&
+        magicStore.spellBook?.id
+      ) {
         const updated = await addSpellToBook(
           magicStore.spellBook.id,
           result.id
@@ -272,7 +288,7 @@ async function loadRoomSpellClasses() {
 }
 
 onIonViewDidEnter(async () => {
-  if (!magicStore.spellBook?.id) {
+  if (hasCharacterContext.value && !magicStore.spellBook?.id) {
     try {
       const book = await getSpellBookByRoomAndCharacter(
         roomId.value,
@@ -300,7 +316,7 @@ onUnmounted(() => {
     <ion-header>
       <ion-toolbar color="dark">
         <ion-buttons slot="start">
-          <ion-back-button :default-href="`/rooms/${roomId}/characters/${characterId}/magic/search`"/>
+          <ion-back-button :default-href="spellAddBackHref"/>
         </ion-buttons>
       </ion-toolbar>
     </ion-header>

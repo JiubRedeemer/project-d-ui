@@ -202,6 +202,7 @@ const renderMarkdown = (text: string | undefined): string => {
 };
 
 const expandBlock = (name: BioSectionKey) => {
+  if (isBlockExpanded.value === name) return;
   isBlockExpanded.value = name;
   inputSectionText.value = getBioValue(characterStore.character.characterBio, name);
 };
@@ -222,6 +223,8 @@ const saveSectionText = async (name: BioSectionKey) => {
     const roomId = route.params.roomId as string;
     const characterId = route.params.characterId as string;
 
+    isBlockExpanded.value = null;
+    inputSectionText.value = null;
     await axios.patch(
         `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${characterId}${GATEWAY_INTEGRATION_ROUTES.bio}/${name}`,
         {value: newValue},
@@ -267,10 +270,6 @@ const saveField = async (field: BioEditableKey, text: string) => {
   } catch (error) {
     console.error("Ошибка при сохранении данных:", error);
   }
-};
-
-const updateInputSectionText = (event: Event) => {
-  inputSectionText.value = getEditableText(event);
 };
 
 const triggerFileInput = () => {
@@ -358,20 +357,25 @@ onBeforeUnmount(() => {
         v-for="section in bioSections"
         :key="section"
         class="bio-section"
+        :class="{ 'bio-section--expanded': isBlockExpanded === section }"
         v-show="isBlockExpanded === null || isBlockExpanded === section"
+        @click="expandBlock(section)"
     >
       <h1 class="sectionHeader">{{ TEXTS[section].rus }}:</h1>
-      <div
-          :class="{ expand: isBlockExpanded === section }"
-          class="section"
-          @click.stop="expandBlock(section)"
-      >
-        <p
-            contenteditable="true"
-            v-html="isBlockExpanded === section ? getBioValue(characterStore.character.characterBio, section) : renderMarkdown(getBioValue(characterStore.character.characterBio, section))"
-            @input="updateInputSectionText($event)"
-        ></p>
-        <ion-buttons slot="end" class="sectionButtons" v-show="isBlockExpanded === section">
+      <div :class="{ expand: isBlockExpanded === section }" class="section">
+        <textarea
+            v-if="isBlockExpanded === section"
+            class="bio-section-textarea"
+            :value="inputSectionText ?? ''"
+            @input="inputSectionText = ($event.target as HTMLTextAreaElement).value"
+            @click.stop
+        />
+        <div
+            v-else
+            class="bio-section-html"
+            v-html="renderMarkdown(getBioValue(characterStore.character.characterBio, section))"
+        />
+        <ion-buttons class="sectionButtons" v-show="isBlockExpanded === section">
           <ion-button @click.stop="saveSectionText(section)">
             <ion-icon slot="icon-only" :icon="saveOutline"></ion-icon>
           </ion-button>
@@ -586,19 +590,28 @@ onBeforeUnmount(() => {
   overflow: hidden;
   height: fit-content;
   max-height: 200px;
-  transition: max-height 4s ease;
-
+  transition: max-height 0.45s ease;
 }
 
 .section.expand {
-  height: fit-content;
-  max-height: 10000px;
-  transition: max-height 4s ease;
+  display: flex;
+  flex-direction: column;
+  max-height: none;
+  /* До низа экрана: заголовок блока, отступы, кнопка сохранения, safe area */
+  height: 67vh;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  transition: min-height 0.35s ease, height 0.35s ease;
+}
 
+@media (min-width: 1024px) {
+  .section.expand {
+    height: 63vh;
+  }
 }
 
 
-.section :deep(p) {
+.bio-section-html :deep(p) {
   margin: 0 0 0.5em;
   font-size: 14px;
   line-height: 1.5;
@@ -606,25 +619,50 @@ onBeforeUnmount(() => {
   word-break: break-word;
 }
 
-.section :deep(p:last-child) {
+.bio-section-html :deep(p:last-child) {
   margin-bottom: 0;
 }
 
-.section :deep(ul),
-.section :deep(ol) {
+.bio-section-textarea {
+  display: block;
+  width: 100%;
+  min-height: 10em;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ion-color-light);
+  word-break: break-word;
+  white-space: pre-wrap;
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.bio-section--expanded .bio-section-textarea {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+}
+
+.bio-section-html :deep(ul),
+.bio-section-html :deep(ol) {
   margin: 0.5em 0;
   padding-left: 1.25em;
 }
 
-.section :deep(h1) {
+.bio-section-html :deep(h1) {
   font-size: 1.15em;
 }
 
-.section :deep(h2) {
+.bio-section-html :deep(h2) {
   font-size: 1.05em;
 }
 
-.section :deep(h3) {
+.bio-section-html :deep(h3) {
   font-size: 1em;
 }
 
@@ -703,6 +741,11 @@ onBeforeUnmount(() => {
   width: 100%;
   display: flex;
   justify-content: end;
+}
+
+.section.expand .sectionButtons {
+  flex-shrink: 0;
+  margin-top: 4px;
 }
 
 .npc-section {
@@ -824,13 +867,5 @@ onBeforeUnmount(() => {
   gap: 8px;
 }
 
-p[contenteditable="true"] {
-  outline: none;
-  cursor: text;
-}
-
-p[contenteditable="true"]:focus {
-  border-color: var(--ion-color-primary);
-}
 
 </style>

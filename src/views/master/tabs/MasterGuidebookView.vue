@@ -1051,6 +1051,11 @@ const createItem = () => {
   ionRouter.navigate('/rooms/' + id + '/master/create/item', "forward", "push");
 };
 
+const createSpell = () => {
+  const id = roomId.value;
+  ionRouter.navigate('/rooms/' + id + '/master/create/spell', "forward", "push");
+};
+
 const addFromCatalogOpen = ref(false);
 const catalogPickerKind = ref<"races" | "classes" | "backgrounds">("races");
 
@@ -1526,6 +1531,11 @@ async function onCatalogApplied(
         <div v-else-if="loading" class="loading-placeholder">Загрузка...</div>
         <div v-else-if="spells.length" class="empty-placeholder">Заклинания не найдены</div>
         <div v-else class="empty-placeholder">Нет заклинаний</div>
+        <div class="add-new-button add-new-button--centered">
+          <ion-button size="large" shape="round" color="secondary" @click="createSpell()">
+            <ion-icon slot="icon-only" :icon="add"/>
+          </ion-button>
+        </div>
       </div>
 
       <!-- NPC -->
@@ -1988,6 +1998,15 @@ ion-searchbar {
   align-items: center;
   gap: 10px;
   padding: 8px 0 max(8px, env(safe-area-inset-bottom, 0));
+}
+
+/** Как в MagicView / InventoryView: плавающая кнопка по центру снизу */
+.add-new-button--centered {
+  left: 0;
+  right: 0;
+  justify-content: center;
+  gap: 0;
+  background: transparent;
 }
 
 </style>

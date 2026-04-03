@@ -227,6 +227,11 @@ const routes: Array<RouteRecordRaw> = [
         name: 'createItemView',
     },
     {
+        path: '/rooms/:roomId/master/create/spell',
+        component: SpellAddView,
+        name: 'masterCreateSpellView',
+    },
+    {
         path: '/rooms/:roomId/master/guidebook/races',
         component: MasterGuidebookRacesView,
         name: 'masterGuidebookRacesView',
