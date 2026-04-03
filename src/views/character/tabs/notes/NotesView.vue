@@ -528,6 +528,7 @@ const onNotesViewOutsideClick = (e: MouseEvent) => {
 
 <style scoped>
 .notes-body {
+  min-height: 90vh;
   padding-bottom: max(60px, calc(52px + env(safe-area-inset-bottom, 0)));
 }
 
