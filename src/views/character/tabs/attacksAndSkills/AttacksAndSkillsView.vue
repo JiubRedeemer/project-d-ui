@@ -6,7 +6,7 @@ import {useInventoryStore} from "@/stores/InventoryStore";
 import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {useCharacterStore} from "@/stores/CharacterStore";
 import {InventoryItem, InventoryItemSkill, ItemSkill} from "@/components/models/response/InventoryResponse";
-import {addOutline, contractOutline, handRightOutline, manOutline, skullOutline} from "ionicons/icons";
+import {addOutline, chevronDownOutline, chevronUpOutline, contractOutline, handRightOutline, manOutline, skullOutline} from "ionicons/icons";
 import {IonButton, IonIcon, IonProgressBar, toastController, useIonRouter} from "@ionic/vue";
 import axios from "axios";
 import {useRoute} from "vue-router";
@@ -51,6 +51,9 @@ const skills = computed(() =>
 const hasItemSkills = computed(() => (skills.value?.length ?? 0) > 0);
 const hasCharacterSkills = computed(() => (characterSkills.value?.length ?? 0) > 0);
 
+const isEquippedSectionExpanded = ref(true);
+const isItemSkillsSectionExpanded = ref(true);
+const isCharacterSkillsSectionExpanded = ref(true);
 
 const getItemImageUrl = (imgUrl: string | undefined) => {
   return imgUrl != null
@@ -492,7 +495,25 @@ async function deleteCharacterSkill(id: string) {
 
 <template>
   <div class="inventory-body">
-    <h1 class="sectionHeader">{{ HEADERS.equipped.rus }}</h1>
+    <div class="collapsible-section">
+      <div
+        class="section-header-row"
+        :class="{ 'section-header-row--collapsed': !isEquippedSectionExpanded }"
+        @click="!isEquippedSectionExpanded && (isEquippedSectionExpanded = true)"
+      >
+        <h1 class="sectionHeader">{{ HEADERS.equipped.rus }}</h1>
+        <ion-button
+          size="small"
+          fill="outline"
+          shape="round"
+          color="transparent"
+          class="section-toggle-button"
+          @click.stop="isEquippedSectionExpanded = !isEquippedSectionExpanded"
+        >
+          <ion-icon slot="icon-only" :icon="isEquippedSectionExpanded ? chevronUpOutline : chevronDownOutline" color="primary"></ion-icon>
+        </ion-button>
+      </div>
+      <div v-show="isEquippedSectionExpanded">
     <div v-if="!hasEquippedWeapons" class="hint-card">
       <div class="hint-title">Атаки оружием</div>
       <div class="hint-text">
@@ -565,7 +586,27 @@ async function deleteCharacterSkill(id: string) {
         </div>
       </div>
     </div>
-    <h1 class="sectionHeader">{{ HEADERS.item_skills.rus }}</h1>
+      </div>
+    </div>
+    <div class="collapsible-section">
+      <div
+        class="section-header-row"
+        :class="{ 'section-header-row--collapsed': !isItemSkillsSectionExpanded }"
+        @click="!isItemSkillsSectionExpanded && (isItemSkillsSectionExpanded = true)"
+      >
+        <h1 class="sectionHeader">{{ HEADERS.item_skills.rus }}</h1>
+        <ion-button
+          size="small"
+          fill="outline"
+          shape="round"
+          color="transparent"
+          class="section-toggle-button"
+          @click.stop="isItemSkillsSectionExpanded = !isItemSkillsSectionExpanded"
+        >
+          <ion-icon slot="icon-only" :icon="isItemSkillsSectionExpanded ? chevronUpOutline : chevronDownOutline" color="primary"></ion-icon>
+        </ion-button>
+      </div>
+      <div v-show="isItemSkillsSectionExpanded">
     <div v-if="!hasItemSkills" class="hint-card">
       <div class="hint-title">Навыки от снаряжения</div>
       <div class="hint-text">
@@ -628,7 +669,27 @@ async function deleteCharacterSkill(id: string) {
         </div>
       </div>
     </div>
-    <h1 class="sectionHeader">{{ HEADERS.character_skills.rus }}</h1>
+      </div>
+    </div>
+    <div class="collapsible-section">
+      <div
+        class="section-header-row"
+        :class="{ 'section-header-row--collapsed': !isCharacterSkillsSectionExpanded }"
+        @click="!isCharacterSkillsSectionExpanded && (isCharacterSkillsSectionExpanded = true)"
+      >
+        <h1 class="sectionHeader">{{ HEADERS.character_skills.rus }}</h1>
+        <ion-button
+          size="small"
+          fill="outline"
+          shape="round"
+          color="transparent"
+          class="section-toggle-button"
+          @click.stop="isCharacterSkillsSectionExpanded = !isCharacterSkillsSectionExpanded"
+        >
+          <ion-icon slot="icon-only" :icon="isCharacterSkillsSectionExpanded ? chevronUpOutline : chevronDownOutline" color="primary"></ion-icon>
+        </ion-button>
+      </div>
+      <div v-show="isCharacterSkillsSectionExpanded">
     <div v-if="!hasCharacterSkills" class="hint-card hint-card--cta">
       <div class="hint-title">Навыки персонажа</div>
       <div class="hint-text">
@@ -675,6 +736,8 @@ async function deleteCharacterSkill(id: string) {
             </div>
           </div>
         </div>
+      </div>
+    </div>
       </div>
     </div>
   <div class="security-block" style="height: 50px;"></div>
@@ -858,6 +921,42 @@ async function deleteCharacterSkill(id: string) {
 :deep(ion-progress-bar) {
   height: 12px;
   border-radius: 6px;
+}
+
+.collapsible-section {
+  margin-bottom: 4px;
+}
+
+.section-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.section-header-row .sectionHeader {
+  flex: 1;
+  margin-top: 0;
+  margin-bottom: 0;
+  min-width: 0;
+}
+
+.section-header-row--collapsed {
+  margin-bottom: 2px;
+}
+
+.section-toggle-button {
+  --padding-start: 6px;
+  --padding-end: 6px;
+  --border-width: 1px;
+  min-height: 30px;
+  flex-shrink: 0;
+}
+
+.section-toggle-button ion-icon {
+  width: 16px;
+  height: 16px;
 }
 
 .sectionHeader {

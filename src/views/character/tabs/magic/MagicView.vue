@@ -23,11 +23,6 @@ const spellBookId = computed(() => spellBook.value?.id ?? null);
 const roomId = computed(() => String(route.params.roomId));
 const characterId = computed(() => String(route.params.characterId));
 
-const preparedSpells = computed(() => {
-    const items = spellBook.value?.spells ?? [];
-    return items.filter((item) => item.inUse === true);
-});
-
 const spellCellLevels = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 const classSpellCellLevel = -1;
 
@@ -70,6 +65,17 @@ function getSpellName(spell: SpellDto | undefined): string {
     if (!spell?.name) return "—";
     return (spell.name as Record<string, string>).rus ?? (spell.name as Record<string, string>).en ?? "—";
 }
+
+const preparedSpells = computed(() => {
+    const items = spellBook.value?.spells ?? [];
+    const prepared = items.filter((item) => item.inUse === true);
+    return [...prepared].sort((a, b) => {
+        const levelA = parseInt(String(a.spell?.level ?? "0"), 10);
+        const levelB = parseInt(String(b.spell?.level ?? "0"), 10);
+        if (levelA !== levelB) return levelA - levelB;
+        return getSpellName(a.spell).localeCompare(getSpellName(b.spell), "ru", { sensitivity: "base" });
+    });
+});
 
 function getDetailsLine1(spell: SpellDto | undefined): string {
     if (!spell) return "";
@@ -471,43 +477,43 @@ onIonViewDidEnter(loadMagicData);
               </ion-button>
             </div>
           </div>
-          <div class="spell-cell-row" :key="classSpellCellLevel">
-            <div class="spell-cell-level">{{ getCellLabel(classSpellCellLevel) }}</div>
-            <div class="spell-cell-dots">
-              <span
-                v-for="n in getCellMaxCount(classSpellCellLevel)"
-                :key="n"
-                class="spell-cell-dot"
-                :class="{
-                  filled: n <= getCellCurrentCount(classSpellCellLevel),
-                  exploding: isCrystalExploding(classSpellCellLevel, n),
-                }"
-                @click="refillOneSpellCell(classSpellCellLevel)"
-              />
-              <span v-if="getCellMaxCount(classSpellCellLevel) === 0" class="spell-cell-empty">—</span>
-            </div>
-            <div class="spell-cell-actions">
-              <ion-button
-                size="small"
-                fill="solid"
-                shape="round"
-                color="medium"
-                :disabled="getCellMaxCount(classSpellCellLevel) === 0"
-                @click="decrementSpellCell(classSpellCellLevel)"
-              >
-                <ion-icon slot="icon-only" :icon="removeOutline"/>
-              </ion-button>
-              <ion-button
-                size="small"
-                fill="solid"
-                shape="round"
-                color="secondary"
-                @click="incrementSpellCell(classSpellCellLevel)"
-              >
-                <ion-icon slot="icon-only" :icon="addOutline"/>
-              </ion-button>
-            </div>
-          </div>
+<!--          <div class="spell-cell-row" :key="classSpellCellLevel">-->
+<!--            <div class="spell-cell-level">{{ getCellLabel(classSpellCellLevel) }}</div>-->
+<!--            <div class="spell-cell-dots">-->
+<!--              <span-->
+<!--                v-for="n in getCellMaxCount(classSpellCellLevel)"-->
+<!--                :key="n"-->
+<!--                class="spell-cell-dot"-->
+<!--                :class="{-->
+<!--                  filled: n <= getCellCurrentCount(classSpellCellLevel),-->
+<!--                  exploding: isCrystalExploding(classSpellCellLevel, n),-->
+<!--                }"-->
+<!--                @click="refillOneSpellCell(classSpellCellLevel)"-->
+<!--              />-->
+<!--              <span v-if="getCellMaxCount(classSpellCellLevel) === 0" class="spell-cell-empty">—</span>-->
+<!--            </div>-->
+<!--            <div class="spell-cell-actions">-->
+<!--              <ion-button-->
+<!--                size="small"-->
+<!--                fill="solid"-->
+<!--                shape="round"-->
+<!--                color="medium"-->
+<!--                :disabled="getCellMaxCount(classSpellCellLevel) === 0"-->
+<!--                @click="decrementSpellCell(classSpellCellLevel)"-->
+<!--              >-->
+<!--                <ion-icon slot="icon-only" :icon="removeOutline"/>-->
+<!--              </ion-button>-->
+<!--              <ion-button-->
+<!--                size="small"-->
+<!--                fill="solid"-->
+<!--                shape="round"-->
+<!--                color="secondary"-->
+<!--                @click="incrementSpellCell(classSpellCellLevel)"-->
+<!--              >-->
+<!--                <ion-icon slot="icon-only" :icon="addOutline"/>-->
+<!--              </ion-button>-->
+<!--            </div>-->
+<!--          </div>-->
         </div>
       </div>
       <div
