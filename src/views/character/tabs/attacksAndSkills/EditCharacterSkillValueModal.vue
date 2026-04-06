@@ -2,6 +2,7 @@
 import {
   IonButton,
   IonButtons,
+  IonContent,
   IonIcon,
   IonInput,
   IonItem,
@@ -42,7 +43,7 @@ const emit = defineEmits<{
 
 const isEditing = ref(props.isEditing);
 const createEmptySkill = (): CharacterSkill => ({
-  id: uuidv4(),
+  id: "",
   characterId: "",
   name: "",
   castTime: undefined,
@@ -144,137 +145,146 @@ const uploadToMinio = async (file: File): Promise<string> => {
   <ion-modal
       :is-open="props.isOpen"
       @didDismiss="closeModal"
+      :can-dismiss="true"
+      :expand-to-scroll="false"
+      :handle="false"
       :initial-breakpoint="1"
-      :breakpoints="[0, 0.5, 1]"
+      :breakpoints="[0, 1]"
   >
-    <div class="block">
-      <div class="header">
-        <div class="name">
-          {{ editableSkill.name }}
-        </div>
-        <div class="image" @click="triggerFileInput">
-          <img v-if="previewImage" :src="previewImage" class="character-skill-image" alt="Character's Skill Image"/>
-          <img v-else-if="editableSkill.imgUrl" :src="FILE_STORAGE_INTEGRATION_ROUTES.baseURL +
-                 FILE_STORAGE_INTEGRATION_ROUTES.api +
-                 FILE_STORAGE_INTEGRATION_ROUTES.skills_images_bucket +
-                 FILE_STORAGE_INTEGRATION_ROUTES.download + '/' + editableSkill.imgUrl"
-               class="character-skill-image" alt="avatar"/>
-          <div v-else-if="isEditing" class="avatar-img">
-            <ion-icon :icon="add" class="placeholder-icon"></ion-icon>
+    <div class="block skill-modal-layout">
+      <div class="sheet-top-zone">
+        <div class="sheet-top-zone-handle" aria-hidden="true" />
+        <div class="header">
+          <div class="name">
+            {{ editableSkill.name }}
           </div>
-          <input type="file" ref="fileInput" @change="handleFileUpload" accept="image/*" style="display: none;"/>
+          <div class="image" @click="triggerFileInput">
+            <img v-if="previewImage" :src="previewImage" class="character-skill-image" alt="Character's Skill Image"/>
+            <img v-else-if="editableSkill.imgUrl" :src="FILE_STORAGE_INTEGRATION_ROUTES.baseURL +
+                   FILE_STORAGE_INTEGRATION_ROUTES.api +
+                   FILE_STORAGE_INTEGRATION_ROUTES.skills_images_bucket +
+                   FILE_STORAGE_INTEGRATION_ROUTES.download + '/' + editableSkill.imgUrl"
+                 class="character-skill-image" alt="avatar"/>
+            <div v-else-if="isEditing" class="avatar-img">
+              <ion-icon :icon="add" class="placeholder-icon"></ion-icon>
+            </div>
+            <input type="file" ref="fileInput" @change="handleFileUpload" accept="image/*" style="display: none;"/>
+          </div>
         </div>
       </div>
 
-      <div class="body-block">
-        <div class="stats">
-          <div class="block-name">Умение</div>
-          <div class="stats-grid">
-            <div v-if="isEditing" class="stat">
-              <div class="stat-name">Название</div>
-              <ion-input
-                  v-if="isEditing"
-                  v-model="editableSkill.name"
-                  placeholder="Введите название"
-                  :maxlength="64"
-              />
-              <div v-else class="stat-value">{{ editableSkill.name }}</div>
-            </div>
-
-            <div class="stat">
-              <div class="stat-name">Время применения</div>
-
-              <ion-item v-if="isEditing" lines="none">
-                <ion-select
-                    interface="popover"
-                    placeholder="Выберите время"
-                    v-model="editableSkill.castTime"
-                >
-                  <ion-select-option value="1 действие">1 действие</ion-select-option>
-                  <ion-select-option value="1 бонусное действие">1 бонусное действие</ion-select-option>
-                  <ion-select-option value="1 реакция">1 реакция</ion-select-option>
-                  <ion-select-option value="1 минута">1 минута</ion-select-option>
-                  <ion-select-option value="10 минут">10 минут</ion-select-option>
-                  <ion-select-option value="1 час">1 час</ion-select-option>
-                  <ion-select-option value="8 часов">8 часов</ion-select-option>
-                  <ion-select-option value="1 день">1 день</ion-select-option>
-                  <ion-select-option value="Особое">Особое</ion-select-option>
-                </ion-select>
-              </ion-item>
-
-              <div v-else class="stat-value">{{ editableSkill.castTime }}</div>
-            </div>
-
-            <div class="stat">
-              <div class="stat-name">Дистанция</div>
-              <ion-input
-                  v-if="isEditing"
-                  v-model="editableSkill.distance"
-                  placeholder="Напр. 150 футов"
-                  :maxlength="64"
-              />
-              <div v-else class="stat-value">{{ editableSkill.distance }}</div>
-            </div>
-
-            <div class="stat">
-              <div class="stat-name">Краткое описание</div>
-              <ion-input
-                  v-if="isEditing"
-                  v-model="editableSkill.shortDescription"
-                  placeholder="Введите краткое описание"
-                  :maxlength="64"
-              />
-              <ion-text v-else class="stat-value">
-                {{ editableSkill.shortDescription }}
-              </ion-text>
-            </div>
-
-            <div class="stat">
-              <div class="stat-name">Зарядов</div>
-              <ion-input
-                  v-if="isEditing"
-                  type="number"
-                  v-model.number="editableSkill.charges"
-                  placeholder="Напр. 3"
-                  :maxlength="64"
-              />
-              <div v-else class="stat-value">{{ editableSkill.charges }}</div>
-
-              <div v-if="isEditing" class="charges-radio">
-                <ion-radio-group v-model="editableSkill.chargesRefill">
-                  <ion-item lines="none">
-                    <ion-label>Короткий отдых</ion-label>
-                    <ion-radio value="SHORT_REST"></ion-radio>
-                  </ion-item>
-                  <ion-item lines="none">
-                    <ion-label>Долгий отдых</ion-label>
-                    <ion-radio value="LONG_REST"></ion-radio>
-                  </ion-item>
-                </ion-radio-group>
+      <ion-content class="skill-ion-content" :scroll-y="true">
+        <div class="body-block">
+          <div class="stats">
+            <div class="block-name">Умение</div>
+            <div class="stats-grid">
+              <div v-if="isEditing" class="stat">
+                <div class="stat-name">Название</div>
+                <ion-input
+                    v-if="isEditing"
+                    v-model="editableSkill.name"
+                    placeholder="Введите название"
+                    :maxlength="64"
+                />
+                <div v-else class="stat-value">{{ editableSkill.name }}</div>
               </div>
 
-              <div v-else class="stat-subvalue">
-                (восстанавливается после
-                {{
-                  editableSkill.chargesRefill === "SHORT_REST"
-                      ? "короткого отдыха"
-                      : "долгого отдыха"
-                }})
+              <div class="stat">
+                <div class="stat-name">Время применения</div>
+
+                <ion-item v-if="isEditing" lines="none">
+                  <ion-select
+                      interface="popover"
+                      placeholder="Выберите время"
+                      v-model="editableSkill.castTime"
+                  >
+                    <ion-select-option value="1 действие">1 действие</ion-select-option>
+                    <ion-select-option value="1 бонусное действие">1 бонусное действие</ion-select-option>
+                    <ion-select-option value="1 реакция">1 реакция</ion-select-option>
+                    <ion-select-option value="1 минута">1 минута</ion-select-option>
+                    <ion-select-option value="10 минут">10 минут</ion-select-option>
+                    <ion-select-option value="1 час">1 час</ion-select-option>
+                    <ion-select-option value="8 часов">8 часов</ion-select-option>
+                    <ion-select-option value="1 день">1 день</ion-select-option>
+                    <ion-select-option value="Особое">Особое</ion-select-option>
+                  </ion-select>
+                </ion-item>
+
+                <div v-else class="stat-value">{{ editableSkill.castTime }}</div>
+              </div>
+
+              <div class="stat">
+                <div class="stat-name">Дистанция</div>
+                <ion-input
+                    v-if="isEditing"
+                    v-model="editableSkill.distance"
+                    placeholder="Напр. 150 футов"
+                    :maxlength="64"
+                />
+                <div v-else class="stat-value">{{ editableSkill.distance }}</div>
+              </div>
+
+              <div class="stat">
+                <div class="stat-name">Краткое описание</div>
+                <ion-input
+                    v-if="isEditing"
+                    v-model="editableSkill.shortDescription"
+                    placeholder="Введите краткое описание"
+                    :maxlength="64"
+                />
+                <ion-text v-else class="stat-value">
+                  {{ editableSkill.shortDescription }}
+                </ion-text>
+              </div>
+
+              <div class="stat">
+                <div class="stat-name">Зарядов</div>
+                <ion-input
+                    v-if="isEditing"
+                    type="number"
+                    v-model.number="editableSkill.charges"
+                    placeholder="Напр. 3"
+                    :maxlength="64"
+                />
+                <div v-else class="stat-value">{{ editableSkill.charges }}</div>
+
+                <div v-if="isEditing" class="charges-radio">
+                  <ion-radio-group v-model="editableSkill.chargesRefill">
+                    <ion-item lines="none">
+                      <ion-label>Короткий отдых</ion-label>
+                      <ion-radio value="SHORT_REST"></ion-radio>
+                    </ion-item>
+                    <ion-item lines="none">
+                      <ion-label>Долгий отдых</ion-label>
+                      <ion-radio value="LONG_REST"></ion-radio>
+                    </ion-item>
+                  </ion-radio-group>
+                </div>
+
+                <div v-else class="stat-subvalue">
+                  (восстанавливается после
+                  {{
+                    editableSkill.chargesRefill === "SHORT_REST"
+                        ? "короткого отдыха"
+                        : "долгого отдыха"
+                  }})
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <div class="description">
-          <div class="block-name">Описание</div>
-          <ion-textarea
-              :readonly="!isEditing"
-              rows="6"
-              v-model="editableSkill.description"
-              class="block-value"
-          ></ion-textarea>
+          <div class="description">
+            <div class="block-name">Описание</div>
+            <ion-textarea
+                :readonly="!isEditing"
+                :rows="6"
+                :auto-grow="true"
+                v-model="editableSkill.description"
+                class="block-value"
+            ></ion-textarea>
+          </div>
         </div>
-      </div>
+      </ion-content>
 
       <div class="footer">
         <ion-buttons>
@@ -336,6 +346,38 @@ const uploadToMinio = async (file: File): Promise<string> => {
   width: 100%;
   display: flex;
   flex-direction: column;
+  height: min(90vh, 850px);
+  max-height: min(90vh, 850px);
+  overflow: hidden;
+}
+
+.skill-modal-layout {
+  min-height: 0;
+}
+
+.sheet-top-zone {
+  flex-shrink: 0;
+}
+
+.sheet-top-zone-handle {
+  width: 40px;
+  height: 5px;
+  border-radius: 999px;
+  margin: 10px auto 6px;
+  background: rgba(var(--ion-color-light-rgb), 0.28);
+}
+
+.skill-ion-content {
+  flex: 1;
+  min-height: 0;
+  --background: transparent;
+}
+
+.body-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
 }
 
 .name {
@@ -384,9 +426,8 @@ const uploadToMinio = async (file: File): Promise<string> => {
 .stat-value {
   font-weight: 500;
   color: white;
-  overflow: scroll;
-  max-height: 100px;
-  scrollbar-width: none;
+  overflow: visible;
+  word-break: break-word;
 }
 
 .stat-subvalue {
@@ -412,7 +453,14 @@ const uploadToMinio = async (file: File): Promise<string> => {
 .footer {
   display: flex;
   justify-content: center;
-  margin: 10px 0;
+  align-items: center;
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+  margin: 0;
+  background: rgba(var(--ion-color-dark-rgb), 0.85);
+  border-top: 1px solid rgba(var(--ion-color-primary-rgb), 0.12);
 }
 
 .small-buttons {
@@ -421,7 +469,7 @@ const uploadToMinio = async (file: File): Promise<string> => {
 
 ion-modal {
   --border-radius: 10px;
-  --height: auto;
+  --height: min(90vh, 850px);
   --background: var(--ion-color-medium-shade);
 }
 

@@ -2,6 +2,7 @@
 import {
   IonButton,
   IonButtons,
+  IonContent,
   IonIcon,
   IonInput,
   IonModal,
@@ -99,42 +100,60 @@ async function saveTrait() {
 </script>
 
 <template>
-  <ion-modal :is-open="isOpen" @didDismiss="closeModal" :initial-breakpoint="1" :breakpoints="[0, 1]">
-    <ion-toolbar color="dark">
-      <div class="toolbar-title">Новое владение</div>
-      <ion-buttons slot="end">
-        <ion-button @click="closeModal">
-          <ion-icon :icon="close" />
-        </ion-button>
-      </ion-buttons>
-    </ion-toolbar>
-    <div class="modal-content">
-      <div class="input-block">
-        <ion-input
-          v-model="traitName"
-          type="text"
-          fill="outline"
-          color="primary"
-          label="Название"
-          label-placement="floating"
-          placeholder="Введите название владения"
-          class="input-block"
-          shape="round"
-        />
+  <ion-modal
+    :is-open="isOpen"
+    @didDismiss="closeModal"
+    :can-dismiss="true"
+    :expand-to-scroll="false"
+    :handle="false"
+    :initial-breakpoint="1"
+    :breakpoints="[0, 1]"
+  >
+    <div class="block trait-modal-layout">
+      <div class="sheet-top-zone">
+        <div class="sheet-top-zone-handle" aria-hidden="true" />
+        <ion-toolbar color="dark">
+          <div class="toolbar-title">Новое владение</div>
+          <ion-buttons slot="end">
+            <ion-button @click="closeModal">
+              <ion-icon :icon="close" />
+            </ion-button>
+          </ion-buttons>
+        </ion-toolbar>
       </div>
-      <div class="input-block">
-        <ion-textarea
-          v-model="traitDescription"
-          fill="outline"
-          color="primary"
-          label="Описание"
-          label-placement="floating"
-          placeholder="Введите описание владения"
-          :rows="4"
-          class="input-block"
-          shape="round"
-        />
-      </div>
+
+      <ion-content class="trait-ion-content" :scroll-y="true">
+        <div class="modal-content">
+          <div class="input-block">
+            <ion-input
+              v-model="traitName"
+              type="text"
+              fill="outline"
+              color="primary"
+              label="Название"
+              label-placement="floating"
+              placeholder="Введите название владения"
+              class="input-block"
+              shape="round"
+            />
+          </div>
+          <div class="input-block">
+            <ion-textarea
+              v-model="traitDescription"
+              fill="outline"
+              color="primary"
+              label="Описание"
+              label-placement="floating"
+              placeholder="Введите описание владения"
+              :rows="4"
+              :auto-grow="true"
+              class="input-block"
+              shape="round"
+            />
+          </div>
+        </div>
+      </ion-content>
+
       <div class="footer">
         <ion-button fill="outline" shape="round" @click="closeModal">Отмена</ion-button>
         <ion-button color="primary" shape="round" @click="saveTrait">
@@ -147,9 +166,40 @@ async function saveTrait() {
 </template>
 
 <style scoped>
+.block {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  height: min(90vh, 850px);
+  max-height: min(90vh, 850px);
+  overflow: hidden;
+}
+
+.trait-modal-layout {
+  min-height: 0;
+}
+
+.sheet-top-zone {
+  flex-shrink: 0;
+}
+
+.sheet-top-zone-handle {
+  width: 40px;
+  height: 5px;
+  border-radius: 999px;
+  margin: 10px auto 6px;
+  background: rgba(var(--ion-color-light-rgb), 0.28);
+}
+
 .toolbar-title {
   font-size: 1.25rem;
   padding: 12px 16px;
+}
+
+.trait-ion-content {
+  flex: 1;
+  min-height: 0;
+  --background: transparent;
 }
 
 .modal-content {
@@ -157,6 +207,7 @@ async function saveTrait() {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
 }
 
 .input-block {
@@ -167,12 +218,17 @@ async function saveTrait() {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  margin-top: 8px;
+  flex-shrink: 0;
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(var(--ion-color-dark-rgb), 0.92);
+  border-top: 1px solid rgba(var(--ion-color-primary-rgb), 0.12);
 }
 
 ion-modal {
   --border-radius: 10px;
-  --height: auto;
+  --height: min(90vh, 850px);
   --width: 90%;
   --background: var(--ion-color-dark);
 }

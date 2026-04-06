@@ -48,7 +48,7 @@ const spellAddBackHref = computed(() =>
 );
 
 const spell = ref<Partial<SpellDto>>({
-  name: { rus: "", en: "" },
+  name: { rus: "", eng: "" },
   level: "0",
   spellClass: undefined,
   school: "",

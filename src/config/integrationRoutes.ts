@@ -80,6 +80,7 @@ export const GATEWAY_INTEGRATION_ROUTES = {
 
     // Magic API (under /api, not room-scoped)
     spells: "/spells",
+    spellsDnd2024: "/spells/dnd2024",
     spellsImport: "/spells/import",
     spellBooks: "/spell-books",
     spellBooksByRoomCharacter: "/spell-books/by-room-character",

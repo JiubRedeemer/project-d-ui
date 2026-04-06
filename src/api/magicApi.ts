@@ -41,6 +41,17 @@ export async function listSpells(
     return data;
 }
 
+export async function listSpellsDnd2024(
+    spellClass?: string
+): Promise<SpellDto[]> {
+    const params = spellClass != null ? { spellClass } : undefined;
+    const { data } = await axios.get<SpellDto[]>(
+        `${baseUrl()}${GATEWAY_INTEGRATION_ROUTES.spellsDnd2024}`,
+        { headers: authHeaders(), params }
+    );
+    return data;
+}
+
 export async function createSpell(body: SpellDto): Promise<SpellDto> {
     const { data } = await axios.post<SpellDto>(
         `${baseUrl()}${GATEWAY_INTEGRATION_ROUTES.spells}`,

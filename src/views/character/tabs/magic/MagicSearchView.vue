@@ -8,7 +8,10 @@ import {
     IonFabButton,
     IonHeader,
     IonIcon,
+    IonLabel,
     IonPage,
+    IonSegment,
+    IonSegmentButton,
     IonSearchbar,
     IonSelect,
     IonSelectOption,
@@ -25,6 +28,7 @@ import {
     addSpellToBook,
     getSpellBookByRoomAndCharacter,
     listSpells,
+    listSpellsDnd2024,
 } from "@/api/magicApi";
 import type { SpellDto } from "@/components/models/response/MagicApi";
 import type { SpellClass } from "@/components/models/response/MagicApi";
@@ -35,6 +39,7 @@ import {
 } from "@/config/integrationRoutes";
 import { useCharacterStore } from "@/stores/CharacterStore";
 import { useMagicStore } from "@/stores/MagicStore";
+import { useRoomStore } from "@/stores/RoomStore";
 import SpellInfoModal from "@/views/character/tabs/magic/SpellInfoModal.vue";
 
 const route = useRoute();
@@ -42,6 +47,7 @@ const ionRouter = useIonRouter();
 const router = useRouter();
 const characterStore = useCharacterStore();
 const magicStore = useMagicStore();
+const roomStore = useRoomStore();
 
 const roomId = computed(() => String(route.params.roomId));
 const characterId = computed(() => String(route.params.characterId));
@@ -55,6 +61,8 @@ const loading = ref(true);
 const addingSpellId = ref<string | null>(null);
 const selectedSpellId = ref<string | null>(null);
 const showSpellModal = ref(false);
+type SpellCatalog = "DND5E" | "DND2024";
+const selectedCatalog = ref<SpellCatalog>("DND5E");
 
 const spellBookId = computed(() => magicStore.spellBook?.id ?? null);
 const spellsInBook = computed(
@@ -70,6 +78,20 @@ const characterSpellClass = computed((): SpellClass | undefined => {
     ];
     return valid.includes(code as SpellClass) ? (code as SpellClass) : undefined;
 });
+
+const roomBaseRuleType = computed<SpellCatalog>(() => {
+    return roomStore.room?.baseRuleType === "DND2024" ? "DND2024" : "DND5E";
+});
+
+const orderedCatalogs = computed<SpellCatalog[]>(() => {
+    return roomBaseRuleType.value === "DND2024"
+        ? ["DND2024", "DND5E"]
+        : ["DND5E", "DND2024"];
+});
+
+function getCatalogLabel(catalog: SpellCatalog): string {
+    return catalog === "DND2024" ? "2024" : "2014";
+}
 
 const filteredSpells = computed(() => {
     let list = allSpells.value;
@@ -146,7 +168,7 @@ const selectedSpellItem = computed<SpellBookItemDto | null>(() => {
 function getSpellName(spell: SpellDto): string {
     if (!spell?.name) return "—";
     const n = spell.name as Record<string, string>;
-    return n.rus ?? n.en ?? "—";
+    return n.rus ?? n.eng ?? "—";
 }
 
 function getDetailsLine1(spell: SpellDto): string {
@@ -213,7 +235,10 @@ async function loadSpells() {
     loading.value = true;
     try {
         const spellClass = forMyClass.value ? characterSpellClass.value : undefined;
-        allSpells.value = await listSpells(spellClass);
+        allSpells.value =
+            selectedCatalog.value === "DND2024"
+                ? await listSpellsDnd2024(spellClass)
+                : await listSpells(spellClass);
     } catch (e) {
         console.error("Failed to load spells:", e);
         allSpells.value = [];
@@ -247,11 +272,19 @@ function closeSpellModal() {
 }
 
 onIonViewDidEnter(async () => {
+    if (!roomStore.room?.id || roomStore.room.id !== roomId.value) {
+        try {
+            await roomStore.getRoomInfo(roomId.value);
+        } catch (e) {
+            console.error("Failed to load room info:", e);
+        }
+    }
+    selectedCatalog.value = orderedCatalogs.value[0];
     await loadSpellBook();
     await loadSpells();
 });
 
-watch(forMyClass, () => {
+watch([forMyClass, selectedCatalog], () => {
     selectedSchool.value = "";
     selectedLevel.value = "";
     loadSpells();
@@ -279,6 +312,17 @@ function openAddSpellView() {
           class="search-line"
         />
       </ion-toolbar>
+      <div class="filter-row">
+        <ion-segment v-model="selectedCatalog" class="rule-segment">
+          <ion-segment-button
+            v-for="catalog in orderedCatalogs"
+            :key="catalog"
+            :value="catalog"
+          >
+            <ion-label>{{ getCatalogLabel(catalog) }}</ion-label>
+          </ion-segment-button>
+        </ion-segment>
+      </div>
       <div class="filter-row">
         <ion-toggle
           v-model="forMyClass"
@@ -395,6 +439,10 @@ ion-content {
   gap: 12px;
   color: var(--ion-color-light);
   font-size: 14px;
+}
+
+.rule-segment {
+  width: 100%;
 }
 
 .filter-row ion-toggle {

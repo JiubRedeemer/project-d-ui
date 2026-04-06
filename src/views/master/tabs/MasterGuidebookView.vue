@@ -10,6 +10,8 @@ import {
   IonList,
   IonPopover,
   IonSearchbar,
+  IonSegment,
+  IonSegmentButton,
   IonSelect,
   IonSelectOption,
   onIonViewDidEnter,
@@ -44,7 +46,7 @@ import {
 import type {BackgroundDto, ClazzDto, RaceDto} from "@/api/rulebookApi.types";
 import {Item} from "@/components/models/response/InventoryResponse";
 import type {SpellDto} from "@/components/models/response/MagicApi";
-import {listSpells} from "@/api/magicApi";
+import {listSpells, listSpellsDnd2024} from "@/api/magicApi";
 import {getNpcsByRoomIdForRoom, saveCharacterNpcRelationForRoom} from "@/api/npcApi";
 import type {NpcDto, NpcTypeEnum, RelationTypeEnum} from "@/api/npcApi.types";
 import {
@@ -154,6 +156,9 @@ const showItemModal = ref(false);
 const selectedSpell = ref<SpellDto | null>(null);
 const showSpellModal = ref(false);
 
+type SpellCatalog = "DND5E" | "DND2024";
+const selectedSpellCatalog = ref<SpellCatalog>("DND5E");
+
 const npcs = ref<NpcDto[]>([]);
 const npcsLoading = ref(false);
 const npcFilterType = ref<NpcTypeEnum | "">("");
@@ -181,6 +186,20 @@ const baseRuleType = computed(() => {
   return fromStore || undefined;
 });
 const effectiveBaseRuleType = computed(() => baseRuleType.value ?? guidebookStore.baseRuleType ?? "");
+
+const roomSpellCatalogDefault = computed<SpellCatalog>(() =>
+    baseRuleType.value === "DND2024" ? "DND2024" : "DND5E"
+);
+
+const orderedSpellCatalogs = computed<SpellCatalog[]>(() =>
+    roomSpellCatalogDefault.value === "DND2024"
+        ? ["DND2024", "DND5E"]
+        : ["DND5E", "DND2024"]
+);
+
+function getSpellCatalogLabel(catalog: SpellCatalog): string {
+  return catalog === "DND2024" ? "2024" : "2014";
+}
 
 // Кэш для рас, классов и предысторий (ключ: roomId:baseRuleType)
 const guidebookCache = new Map<string, { races: RaceDto[]; classes: ClazzDto[]; backgrounds: BackgroundDto[] }>();
@@ -658,7 +677,11 @@ async function loadSpells() {
         spellClass != null
             ? (spellClasses.value.find((c) => c.value === spellClass)?.groupCode ?? undefined)
             : undefined;
-    spells.value = await listSpells(spellClass, rootSpellClass ?? undefined);
+    if (selectedSpellCatalog.value === "DND2024") {
+      spells.value = await listSpellsDnd2024(spellClass);
+    } else {
+      spells.value = await listSpells(spellClass, rootSpellClass ?? undefined);
+    }
   } finally {
     loading.value = false;
   }
@@ -682,7 +705,7 @@ async function loadSpellClassesForRoom() {
   }
 }
 
-watch(selectedSpellClass, () => {
+watch([selectedSpellClass, selectedSpellCatalog], () => {
   selectedSpellSchool.value = "";
   selectedSpellLevel.value = "";
   loadSpells();
@@ -991,7 +1014,12 @@ async function ensureSectionDataLoaded(section: Section) {
     await loadBackgrounds();
   } else if (section === "spells") {
     if (spellClasses.value.length === 0) await loadSpellClassesForRoom();
-    if (spells.value.length === 0) await loadSpells();
+    const nextCatalog = orderedSpellCatalogs.value[0];
+    if (selectedSpellCatalog.value !== nextCatalog) {
+      selectedSpellCatalog.value = nextCatalog;
+    } else {
+      await loadSpells();
+    }
   } else if (section === "npcs" && npcs.value.length === 0) {
     await loadNpcs();
   }
@@ -1443,12 +1471,22 @@ async function onCatalogApplied(
       </div>
 
       <!-- Заклинания -->
-      <div v-show="currentSection === 'spells'" class="segment-content">
+      <div v-show="currentSection === 'spells'" class="segment-content spells-section">
         <div class="spells-filters">
+          <ion-segment v-model="selectedSpellCatalog" class="spell-rule-segment">
+            <ion-segment-button
+                v-for="catalog in orderedSpellCatalogs"
+                :key="catalog"
+                :value="catalog"
+            >
+              <ion-label>{{ getSpellCatalogLabel(catalog) }}</ion-label>
+            </ion-segment-button>
+          </ion-segment>
           <ion-searchbar
               v-model="spellSearchQuery"
               placeholder="Найти заклинание"
               debounce="200"
+              class="spells-searchbar"
           />
           <div class="spell-class-select-wrapper">
             <label class="spell-class-label" for="spell-class-select">Класс</label>
@@ -1771,7 +1809,18 @@ ion-searchbar {
 .spells-filters {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+}
+
+.spells-section .spell-rule-segment {
+  width: 100%;
+  --background: var(--ion-color-medium);
+  border-radius: 8px;
+}
+
+.spells-section .spells-searchbar {
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 .spells-filter-row {
