@@ -25,6 +25,7 @@ import { Directory, Filesystem } from "@capacitor/filesystem";
 import Viewer from "viewerjs";
 import "viewerjs/dist/viewer.css";
 import type { UserFile } from "@/api/fileStorageApi.types";
+import { displayStoredUserFilename } from "@/utils/userFileDisplayName";
 import { downloadUserFileById, readVisibleUserFilesByRoomId } from "@/api/fileStorageApi";
 import { GATEWAY_INTEGRATION_ROUTES } from "@/config/integrationRoutes";
 
@@ -136,7 +137,9 @@ const isTooLargeForPreview = (file: UserFile): boolean => {
   return size !== null && size > MAX_PREVIEW_FILE_SIZE_BYTES;
 };
 
-const displayedPreviewName = computed(() => selectedForPreview.value?.filename ?? "");
+const displayedPreviewName = computed(() =>
+  selectedForPreview.value ? displayStoredUserFilename(selectedForPreview.value.filename) : ""
+);
 
 async function openPreview(file: UserFile) {
   if (isTooLargeForPreview(file)) {
@@ -225,7 +228,7 @@ async function downloadFile(file: UserFile) {
   try {
     const currentUserId = await ensureUserId();
     const blob = await downloadUserFileById(file.id, currentUserId);
-    const downloadName = file.filename;
+    const downloadName = displayStoredUserFilename(file.filename);
 
     if (Capacitor.isNativePlatform()) {
       const fileReader = new FileReader();
@@ -352,7 +355,7 @@ onUnmounted(() => {
             slot="start"
           />
           <ion-label>
-            <div class="character-files__filename">{{ f.filename }}</div>
+            <div class="character-files__filename">{{ displayStoredUserFilename(f.filename) }}</div>
             <div class="character-files__meta">{{ f.uploadedAt }}</div>
             <div v-if="isTooLargeForPreview(f)" class="character-files__warning">
               Файл слишком велик для просмотра (больше 10 МБ)

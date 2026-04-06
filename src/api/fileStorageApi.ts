@@ -160,3 +160,39 @@ export async function changeUserFileVisible(
     );
 }
 
+/** Grant read access to a non-visible file (owner only). */
+export async function grantUserFileShare(
+    fileId: Uuid,
+    ownerUserId: Uuid,
+    grantToUserId: Uuid
+): Promise<void> {
+    await axios.post(
+        `${userFilesBaseUrl()}/${encodeURIComponent(fileId)}/share?userId=${encodeURIComponent(
+            ownerUserId
+        )}&grantToUserId=${encodeURIComponent(grantToUserId)}`,
+        undefined,
+        { headers: authHeaders() }
+    );
+}
+
+export async function revokeUserFileShare(
+    fileId: Uuid,
+    ownerUserId: Uuid,
+    grantToUserId: Uuid
+): Promise<void> {
+    await axios.delete(
+        `${userFilesBaseUrl()}/${encodeURIComponent(fileId)}/share?userId=${encodeURIComponent(
+            ownerUserId
+        )}&grantToUserId=${encodeURIComponent(grantToUserId)}`,
+        { headers: authHeaders() }
+    );
+}
+
+export async function listUserFileShares(fileId: Uuid, ownerUserId: Uuid): Promise<Uuid[]> {
+    const { data } = await axios.get<Uuid[]>(
+        `${userFilesBaseUrl()}/${encodeURIComponent(fileId)}/shares?userId=${encodeURIComponent(ownerUserId)}`,
+        { headers: authHeaders() }
+    );
+    return data;
+}
+

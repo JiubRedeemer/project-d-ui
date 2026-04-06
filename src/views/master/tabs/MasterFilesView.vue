@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import {
   IonButton,
+  IonButtons,
   IonContent,
+  IonHeader,
   IonIcon,
   IonItem,
   IonLabel,
@@ -9,10 +11,23 @@ import {
   IonModal,
   IonReorder,
   IonReorderGroup,
+  IonTitle,
+  IonToggle,
+  IonToolbar,
   onIonViewWillEnter,
   toastController,
 } from "@ionic/vue";
-import { add, closeCircleOutline, documentTextOutline, downloadOutline, eyeOutline, imageOutline } from "ionicons/icons";
+import {
+  add,
+  chevronBackOutline,
+  closeCircleOutline,
+  documentTextOutline,
+  downloadOutline,
+  eyeOutline,
+  imageOutline,
+  peopleOutline,
+  trashOutline,
+} from "ionicons/icons";
 import { computed, nextTick, onMounted, onUnmounted, ref } from "vue";
 import { useRoute } from "vue-router";
 import axios from "axios";
@@ -24,15 +39,21 @@ import {
   changeUserFileVisible,
   downloadUserFileById,
   deleteUserFileById,
+  grantUserFileShare,
+  listUserFileShares,
   readAllUserFilesByUserId,
+  revokeUserFileShare,
   uploadUserFile,
 } from "@/api/fileStorageApi";
+import { useRoomStore } from "@/stores/RoomStore";
+import { displayStoredUserFilename as displayedFileName } from "@/utils/userFileDisplayName";
 import Viewer from "viewerjs";
 import "viewerjs/dist/viewer.css";
 import {v4 as uuidv4} from "uuid";
 
 const userId = ref<string>("");
 const route = useRoute();
+const roomStore = useRoomStore();
 const roomId = computed(() => String(route.params.roomId ?? ""));
 const userFiles = ref<UserFile[]>([]);
 const didLoadOnce = ref(false);
@@ -47,15 +68,16 @@ const isUploading = ref(false);
 const errorMessage = ref<string | null>(null);
 const MAX_PREVIEW_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 
-const displayedFileName = (storedFilename: string): string => {
-  const underscoreIndex = storedFilename.indexOf('_');
+const uploadedAtFormatter = new Intl.DateTimeFormat("ru-RU", {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
 
-  if (underscoreIndex === -1) {
-    return storedFilename; // если "_" нет — возвращаем как есть
-  }
-
-  return storedFilename.slice(underscoreIndex + 1);
-};
+function formatFileUploadedAt(iso: string): string {
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return iso;
+  return uploadedAtFormatter.format(t);
+}
 
 const getFileSizeBytes = (file: UserFile): number | null => {
   const sizeCandidate = (file as any).size ?? (file as any).fileSize ?? (file as any).contentLength;
@@ -112,7 +134,107 @@ const sortedUserFiles = computed(() => {
 const visibleForAllFiles = computed(() => sortedUserFiles.value.filter((f) => f.visible));
 const visibleOnlyForMeFiles = computed(() => sortedUserFiles.value.filter((f) => !f.visible));
 
+/** Other room users (by character owner ids), excluding the current user — for individual file shares. */
+const roomUsersForShare = computed(() => {
+  const map = new Map<string, string>();
+  for (const c of roomStore.characters) {
+    if (!map.has(c.userId)) {
+      map.set(c.userId, c.ownerUsername || c.name);
+    }
+  }
+  const myId = userId.value;
+  return [...map.entries()]
+    .filter(([id]) => id !== myId)
+    .map(([uid, label]) => ({ userId: uid, label }))
+    .sort((a, b) => a.label.localeCompare(b.label, "ru", { sensitivity: "base" }));
+});
+
+const isShareModalOpen = ref(false);
+const shareTargetFile = ref<UserFile | null>(null);
+const shareGranteeIds = ref<string[]>([]);
+const isShareListLoading = ref(false);
+const shareMutatingUserId = ref<string | null>(null);
+
+async function loadRoomCharacters() {
+  const id = roomId.value;
+  if (!id) return;
+  try {
+    await roomStore.getCharacters(id);
+  } catch (e) {
+    console.error("Failed to load room characters:", e);
+  }
+}
+
+async function openShareModal(file: UserFile) {
+  if (file.visible) return;
+  await loadRoomCharacters();
+  shareTargetFile.value = file;
+  isShareModalOpen.value = true;
+  isShareListLoading.value = true;
+  shareGranteeIds.value = [];
+  try {
+    const ownerId = await ensureUserId();
+    shareGranteeIds.value = await listUserFileShares(file.id, ownerId);
+  } catch (e) {
+    console.error("Failed to load file shares:", e);
+    const toast = await toastController.create({
+      message: "Не удалось загрузить список доступа",
+      duration: 2000,
+      position: "top",
+      color: "danger",
+    });
+    await toast.present();
+  } finally {
+    isShareListLoading.value = false;
+  }
+}
+
+function closeShareModal() {
+  isShareModalOpen.value = false;
+  shareTargetFile.value = null;
+  shareGranteeIds.value = [];
+}
+
+async function onShareToggle(grantToUserId: string, enabled: boolean) {
+  if (!shareTargetFile.value) return;
+  const prev = [...shareGranteeIds.value];
+  if (enabled) {
+    if (!shareGranteeIds.value.includes(grantToUserId)) {
+      shareGranteeIds.value = [...shareGranteeIds.value, grantToUserId];
+    }
+  } else {
+    shareGranteeIds.value = shareGranteeIds.value.filter((id) => id !== grantToUserId);
+  }
+  shareMutatingUserId.value = grantToUserId;
+  try {
+    const ownerId = await ensureUserId();
+    if (enabled) {
+      await grantUserFileShare(shareTargetFile.value.id, ownerId, grantToUserId);
+    } else {
+      await revokeUserFileShare(shareTargetFile.value.id, ownerId, grantToUserId);
+    }
+  } catch (e) {
+    console.error("Share toggle failed:", e);
+    shareGranteeIds.value = prev;
+    const toast = await toastController.create({
+      message: "Не удалось изменить доступ к файлу",
+      duration: 2000,
+      position: "top",
+      color: "danger",
+    });
+    await toast.present();
+  } finally {
+    shareMutatingUserId.value = null;
+  }
+}
+
+function onShareToggleIon(ev: Event, grantToUserId: string) {
+  const detail = (ev as CustomEvent<{ checked: boolean }>).detail;
+  void onShareToggle(grantToUserId, Boolean(detail?.checked));
+}
+
 onIonViewWillEnter(async () => {
+  await loadRoomCharacters();
   if (userId.value) {
     await refreshFiles();
     return;
@@ -132,6 +254,7 @@ onMounted(async () => {
   if (didLoadOnce.value) return;
   didLoadOnce.value = true;
   try {
+    await loadRoomCharacters();
     userId.value = await ensureUserId();
     await refreshFiles();
   } catch (e) {
@@ -533,8 +656,10 @@ async function onFileSelected(event: Event) {
     </div>
 
     <ion-list v-else class="master-files__list">
-      <ion-item lines="none" class="master-files__group-header" color="dark">
-        <ion-label class="master-files__group-title">Видимые для всех</ion-label>
+      <ion-item lines="none" class="master-files__section master-files__section--first" color="dark">
+        <ion-label class="master-files__section-inner">
+          <span class="master-files__section-badge">Видимые для всех</span>
+        </ion-label>
       </ion-item>
 
       <ion-reorder-group
@@ -545,73 +670,128 @@ async function onFileSelected(event: Event) {
         <ion-item
           v-for="f in visibleForAllFiles"
           :key="`public-${f.id}`"
+          class="master-files__card"
+          lines="none"
           color="dark"
         >
-          <ion-reorder slot="start" />
-          <ion-icon
-            :icon="isLikelyImageFile(f.filename) ? imageOutline : documentTextOutline"
-            slot="start"
-          />
-          <ion-label>
-            <div class="master-files__filename">{{ displayedFileName(f.filename) }}</div>
-            <div class="master-files__meta">{{ f.uploadedAt }}</div>
-            <div v-if="isTooLargeForPreview(f)" class="master-files__warning">
+          <ion-reorder slot="start" class="master-files__reorder" />
+          <div class="master-files__thumb" slot="start">
+            <ion-icon
+              :icon="isLikelyImageFile(f.filename) ? imageOutline : documentTextOutline"
+              aria-hidden="true"
+            />
+          </div>
+          <ion-label class="master-files__label">
+            <h2 class="master-files__title" :title="displayedFileName(f.filename)">
+              {{ displayedFileName(f.filename) }}
+            </h2>
+            <p class="master-files__meta">{{ formatFileUploadedAt(f.uploadedAt) }}</p>
+            <p v-if="isTooLargeForPreview(f)" class="master-files__warning">
               Файл слишком велик для просмотра (больше 10 МБ)
-            </div>
+            </p>
           </ion-label>
-          <ion-button fill="clear" slot="end" @click="downloadFile(f)">
-            <ion-icon :icon="downloadOutline" />
-          </ion-button>
-          <ion-button
-            fill="clear"
-            slot="end"
-            :disabled="(isPreviewOpen && isPreviewLoading) || isTooLargeForPreview(f)"
-            :title="isTooLargeForPreview(f) ? 'Файл слишком велик для просмотра (больше 10 МБ)' : ''"
-            @click="openPreview(f)"
-          >
-            <ion-icon :icon="eyeOutline" />
-          </ion-button>
-          <ion-button fill="clear" slot="end" color="danger" @click="onDelete(f)">
-            <ion-icon :icon="closeCircleOutline" />
-          </ion-button>
+          <div class="master-files__actions" slot="end">
+            <ion-button
+              class="master-files__action-btn"
+              fill="clear"
+              size="small"
+              title="Скачать"
+              @click="downloadFile(f)"
+            >
+              <ion-icon slot="icon-only" :icon="downloadOutline" />
+            </ion-button>
+            <ion-button
+              class="master-files__action-btn"
+              fill="clear"
+              size="small"
+              title="Просмотр"
+              :disabled="(isPreviewOpen && isPreviewLoading) || isTooLargeForPreview(f)"
+              @click="openPreview(f)"
+            >
+              <ion-icon slot="icon-only" :icon="eyeOutline" />
+            </ion-button>
+            <ion-button
+              class="master-files__action-btn master-files__action-btn--delete"
+              fill="clear"
+              size="small"
+              title="Удалить"
+              @click="onDelete(f)"
+            >
+              <ion-icon slot="icon-only" :icon="trashOutline" />
+            </ion-button>
+          </div>
         </ion-item>
 
-        <ion-item lines="full" class="master-files__group-divider" color="dark">
-          <ion-label class="master-files__group-title">Видимые только для меня</ion-label>
+        <ion-item lines="none" class="master-files__section master-files__section--divider" color="dark">
+          <ion-label class="master-files__section-inner">
+            <span class="master-files__section-badge master-files__section-badge--private">
+              Видимые только для меня
+            </span>
+          </ion-label>
         </ion-item>
 
         <ion-item
           v-for="f in visibleOnlyForMeFiles"
           :key="`private-${f.id}`"
+          class="master-files__card master-files__card--private"
+          lines="none"
           color="dark"
         >
-          <ion-reorder slot="start" />
-          <ion-icon
-            :icon="isLikelyImageFile(f.filename) ? imageOutline : documentTextOutline"
-            slot="start"
-          />
-          <ion-label>
-            <div class="master-files__filename">{{ displayedFileName(f.filename) }}</div>
-            <div class="master-files__meta">{{ f.uploadedAt }}</div>
-            <div v-if="isTooLargeForPreview(f)" class="master-files__warning">
+          <ion-reorder slot="start" class="master-files__reorder" />
+          <div class="master-files__thumb master-files__thumb--private" slot="start">
+            <ion-icon
+              :icon="isLikelyImageFile(f.filename) ? imageOutline : documentTextOutline"
+              aria-hidden="true"
+            />
+          </div>
+          <ion-label class="master-files__label">
+            <h2 class="master-files__title" :title="displayedFileName(f.filename)">
+              {{ displayedFileName(f.filename) }}
+            </h2>
+            <p class="master-files__meta">{{ formatFileUploadedAt(f.uploadedAt) }}</p>
+            <p v-if="isTooLargeForPreview(f)" class="master-files__warning">
               Файл слишком велик для просмотра (больше 10 МБ)
-            </div>
+            </p>
           </ion-label>
-          <ion-button fill="clear" slot="end" @click="downloadFile(f)">
-            <ion-icon :icon="downloadOutline" />
-          </ion-button>
-          <ion-button
-            fill="clear"
-            slot="end"
-            :disabled="(isPreviewOpen && isPreviewLoading) || isTooLargeForPreview(f)"
-            :title="isTooLargeForPreview(f) ? 'Файл слишком велик для просмотра (больше 10 МБ)' : ''"
-            @click="openPreview(f)"
-          >
-            <ion-icon :icon="eyeOutline" />
-          </ion-button>
-          <ion-button fill="clear" slot="end" color="danger" @click="onDelete(f)">
-            <ion-icon :icon="closeCircleOutline" />
-          </ion-button>
+          <div class="master-files__actions" slot="end">
+            <ion-button
+              class="master-files__action-btn"
+              fill="clear"
+              size="small"
+              title="Скачать"
+              @click="downloadFile(f)"
+            >
+              <ion-icon slot="icon-only" :icon="downloadOutline" />
+            </ion-button>
+            <ion-button
+              class="master-files__action-btn"
+              fill="clear"
+              size="small"
+              title="Просмотр"
+              :disabled="(isPreviewOpen && isPreviewLoading) || isTooLargeForPreview(f)"
+              @click="openPreview(f)"
+            >
+              <ion-icon slot="icon-only" :icon="eyeOutline" />
+            </ion-button>
+            <ion-button
+              class="master-files__action-btn"
+              fill="clear"
+              size="small"
+              title="Доступ для игроков"
+              @click="openShareModal(f)"
+            >
+              <ion-icon slot="icon-only" :icon="peopleOutline" />
+            </ion-button>
+            <ion-button
+              class="master-files__action-btn master-files__action-btn--delete"
+              fill="clear"
+              size="small"
+              title="Удалить"
+              @click="onDelete(f)"
+            >
+              <ion-icon slot="icon-only" :icon="trashOutline" />
+            </ion-button>
+          </div>
         </ion-item>
       </ion-reorder-group>
 
@@ -634,6 +814,49 @@ async function onFileSelected(event: Event) {
         </ion-label>
       </ion-item>
     </ion-list>
+
+    <ion-modal :is-open="isShareModalOpen" @didDismiss="closeShareModal">
+      <ion-header>
+        <ion-toolbar color="dark">
+          <ion-buttons slot="start">
+            <ion-button color="light" aria-label="Назад" @click="closeShareModal">
+              <ion-icon slot="start" :icon="chevronBackOutline" />
+              Назад
+            </ion-button>
+          </ion-buttons>
+          <ion-title>Доступ к файлу</ion-title>
+          <ion-buttons slot="end">
+            <ion-button color="dark" aria-label="Закрыть" @click="closeShareModal">
+              <ion-icon :icon="closeCircleOutline" />
+            </ion-button>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content class="ion-padding" color="dark">
+        <p v-if="shareTargetFile" class="master-files__share-filename">
+          {{ displayedFileName(shareTargetFile.filename) }}
+        </p>
+        <div v-if="isShareListLoading" class="master-files__loading-list">Загрузка...</div>
+        <template v-else-if="roomUsersForShare.length === 0">
+          <p class="master-files__share-empty">
+            Нет других участников комнаты (по списку персонажей). Пригласите игроков или создайте им персонажей.
+          </p>
+        </template>
+        <ion-list v-else lines="full" class="master-files__share-list">
+          <ion-item v-for="u in roomUsersForShare" :key="u.userId" color="dark">
+            <ion-label>
+              <div class="master-files__filename">{{ u.label }}</div>
+            </ion-label>
+            <ion-toggle
+              slot="end"
+              :checked="shareGranteeIds.includes(u.userId)"
+              :disabled="shareMutatingUserId !== null"
+              @ionChange="onShareToggleIon($event, u.userId)"
+            />
+          </ion-item>
+        </ion-list>
+      </ion-content>
+    </ion-modal>
 
     <ion-modal
       :is-open="isPreviewOpen"
@@ -735,32 +958,163 @@ async function onFileSelected(event: Event) {
 <style scoped>
 .master-files {
   width: 100%;
-  padding-bottom: 84px;
+  padding: 0 12px 84px;
+  box-sizing: border-box;
 }
 
 .master-files__list {
   background: transparent;
+  padding: 0;
 }
 
 .master-files__groups {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.master-files__group {
-  border: 1px dashed rgba(255, 255, 255, 0.16);
-  border-radius: 10px;
-  padding: 8px;
+.master-files__section {
+  --background: transparent;
+  --min-height: 0;
+  --padding-top: 16px;
+  --padding-bottom: 8px;
+  --inner-padding-end: 0;
+  --inner-padding-start: 0;
+  margin: 0;
 }
 
-.master-files__group-title {
-  font-size: 13px;
+.master-files__section--first {
+  --padding-top: 8px;
+}
+
+.master-files__section-inner {
+  margin: 0;
+  width: 100%;
+}
+
+.master-files__section-badge {
+  display: inline-block;
+  font-size: 11px;
   font-weight: 700;
-  margin: 4px 8px 8px;
-  color: var(--ion-color-medium);
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  color: rgba(var(--ion-color-secondary-rgb), 0.95);
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(var(--ion-color-secondary-rgb), 0.14);
+  border: 1px solid rgba(var(--ion-color-secondary-rgb), 0.28);
+}
+
+.master-files__section-badge--private {
+  color: rgba(var(--ion-color-tertiary-rgb), 0.98);
+  background: rgba(var(--ion-color-tertiary-rgb), 0.12);
+  border-color: rgba(var(--ion-color-tertiary-rgb), 0.22);
+}
+
+.master-files__section--divider {
+  --padding-top: 20px;
+}
+
+.master-files__card {
+  --background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  --border-radius: 14px;
+  --padding-start: 10px;
+  --padding-end: 6px;
+  --inner-padding-end: 4px;
+  --inner-padding-top: 10px;
+  --inner-padding-bottom: 10px;
+  --min-height: 72px;
+  margin: 0;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+.master-files__card--private {
+  border-color: rgba(var(--ion-color-tertiary-rgb), 0.12);
+  box-shadow: 0 4px 22px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(var(--ion-color-tertiary-rgb), 0.06);
+}
+
+.master-files__reorder {
+  margin-inline-end: 2px;
+  opacity: 0.45;
+}
+
+.master-files__thumb {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-inline-end: 10px;
+  background: rgba(var(--ion-color-secondary-rgb), 0.18);
+  border: 1px solid rgba(var(--ion-color-secondary-rgb), 0.22);
+  flex-shrink: 0;
+}
+
+.master-files__thumb--private {
+  background: rgba(var(--ion-color-tertiary-rgb), 0.14);
+  border-color: rgba(var(--ion-color-tertiary-rgb), 0.2);
+}
+
+.master-files__thumb ion-icon {
+  font-size: 22px;
+  color: var(--ion-color-light);
+  opacity: 0.92;
+}
+
+.master-files__label {
+  margin: 0;
+  overflow: hidden;
+}
+
+.master-files__title {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0.01em;
+  color: rgba(var(--ion-color-light-rgb), 0.98);
+  margin: 0 0 4px 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.master-files__actions {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: 0;
+  margin-top: 2px;
+}
+
+.master-files__action-btn {
+  --padding-start: 6px;
+  --padding-end: 6px;
+  margin: 0;
+  opacity: 0.92;
+}
+
+.master-files__action-btn::part(native) {
+  border-radius: 10px;
+}
+
+.master-files__action-btn ion-icon {
+  font-size: 22px;
+}
+
+.master-files__action-btn--delete {
+  opacity: 0.75;
+  --color: rgba(var(--ion-color-danger-rgb), 0.85);
 }
 
 .master-files__file-input--hidden {
@@ -770,7 +1124,7 @@ async function onFileSelected(event: Event) {
 .master-files__error {
   color: var(--ion-color-danger);
   margin: 8px 0;
-  padding: 0 8px;
+  padding: 0 4px;
 }
 
 .master-files__filename {
@@ -779,13 +1133,15 @@ async function onFileSelected(event: Event) {
 
 .master-files__meta {
   font-size: 12px;
-  color: var(--ion-color-medium);
-  margin-top: 2px;
+  color: rgba(var(--ion-color-light-rgb), 0.55);
+  margin: 0;
+  line-height: 1.35;
 }
 
 .master-files__warning {
-  margin-top: 4px;
-  font-size: 12px;
+  margin: 6px 0 0 0;
+  font-size: 11px;
+  line-height: 1.35;
   color: var(--ion-color-warning);
 }
 
@@ -798,13 +1154,58 @@ async function onFileSelected(event: Event) {
 }
 
 .master-files__loading-list {
-  color: var(--ion-color-medium);
-  padding: 8px;
+  color: rgba(var(--ion-color-light-rgb), 0.45);
+  padding: 28px 16px;
+  text-align: center;
+  font-size: 14px;
+  letter-spacing: 0.02em;
 }
 
 .master-files__empty-group {
+  color: rgba(var(--ion-color-light-rgb), 0.42);
+  font-size: 13px;
+  line-height: 1.45;
+  padding: 4px 0;
+}
+
+@media (max-width: 380px) {
+  .master-files__action-btn ion-icon {
+    font-size: 20px;
+  }
+
+  .master-files__thumb {
+    width: 36px;
+    height: 36px;
+  }
+
+  .master-files__title {
+    font-size: 14px;
+  }
+}
+
+.master-files__share-filename {
+  font-weight: 600;
+  margin: 0 0 12px 0;
+  font-size: 15px;
+  line-height: 1.35;
+  color: rgba(var(--ion-color-light-rgb), 0.95);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow-wrap: anywhere;
+}
+
+.master-files__share-empty {
   color: var(--ion-color-medium);
-  font-size: 12px;
+  font-size: 14px;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.master-files__share-list {
+  background: transparent;
 }
 
 .master-files__preview-content--image {
@@ -885,49 +1286,56 @@ async function onFileSelected(event: Event) {
   left: 0;
   right: 0;
   width: 100%;
-  background: transparent;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.55) 0%, transparent 100%);
   display: flex;
   justify-content: center;
   align-items: center;
   padding: 8px 0 max(8px, env(safe-area-inset-bottom, 0));
+  pointer-events: none;
+}
+
+.add-new-button ion-button {
+  pointer-events: auto;
+  --box-shadow: 0 8px 28px rgba(var(--ion-color-secondary-rgb), 0.35);
 }
 
 @media (min-width: 1024px) {
   .master-files {
-    padding-bottom: 96px;
+    padding: 0 16px 96px;
+    max-width: 920px;
+    margin-inline: auto;
   }
 
   .master-files__list {
-    border: 1px solid rgba(var(--ion-color-light-rgb), 0.1);
-    border-radius: 14px;
+    border: 1px solid rgba(var(--ion-color-light-rgb), 0.09);
+    border-radius: 16px;
     overflow: hidden;
-    background: rgba(var(--ion-color-medium-rgb), 0.15);
+    padding: 12px 14px 16px;
+    background: rgba(var(--ion-color-dark-rgb), 0.35);
+    backdrop-filter: blur(8px);
   }
 
-  .master-files__group-header,
-  .master-files__group-divider {
-    --min-height: 40px;
+  .master-files__groups {
+    gap: 12px;
   }
 
-  .master-files__group-title {
-    font-size: 12px;
-    margin: 0;
-    color: var(--ion-color-light-shade);
+  .master-files__section {
+    --padding-start: 0;
+    --padding-end: 0;
   }
 
-  .master-files__list ion-item {
-    --min-height: 58px;
-    --inner-padding-top: 6px;
-    --inner-padding-bottom: 6px;
-    --border-color: rgba(var(--ion-color-light-rgb), 0.08);
+  .master-files__card {
+    --min-height: 64px;
+    --border-radius: 12px;
   }
 
-  .master-files__filename {
+  .master-files__title {
     font-size: 14px;
   }
 
   .master-files__meta {
     font-size: 11px;
+    color: rgba(var(--ion-color-light-rgb), 0.5);
   }
 
   .master-files__loading-list {
@@ -941,13 +1349,12 @@ async function onFileSelected(event: Event) {
     width: auto;
     padding: 0;
     justify-content: flex-end;
-    pointer-events: none;
+    background: transparent;
   }
 
   .add-new-button ion-button {
-    pointer-events: auto;
     margin: 0;
-    --box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+    --box-shadow: 0 12px 32px rgba(var(--ion-color-secondary-rgb), 0.28);
   }
 
   ion-modal.master-files__preview-modal--desktop {
