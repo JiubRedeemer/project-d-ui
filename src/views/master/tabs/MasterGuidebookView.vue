@@ -87,11 +87,11 @@ const currentSection = ref<Section>("list");
 const isLockedSection = computed(() => props.lockedSection !== null);
 
 watch(
-  () => props.lockedSection,
-  (section) => {
-    currentSection.value = section ?? "list";
-  },
-  {immediate: true}
+    () => props.lockedSection,
+    (section) => {
+      currentSection.value = section ?? "list";
+    },
+    {immediate: true}
 );
 
 const SECTIONS: { id: Section; label: string; icon: string }[] = [
@@ -297,14 +297,14 @@ const filteredRaceGroups = computed<RaceGroup[]>(() => {
   const q = normalizedExternalSearchQuery.value;
   if (!q || currentSection.value !== "races") return raceGroups.value;
   return raceGroups.value
-    .map((group) => {
-      const rootMatches = group.root?.name?.toLowerCase().includes(q) ?? false;
-      const subs = group.subs.filter((sub) => sub.name?.toLowerCase().includes(q));
-      if (rootMatches) return group;
-      if (!rootMatches && !subs.length) return null;
-      return { ...group, root: null, subs };
-    })
-    .filter((g): g is RaceGroup => Boolean(g));
+      .map((group) => {
+        const rootMatches = group.root?.name?.toLowerCase().includes(q) ?? false;
+        const subs = group.subs.filter((sub) => sub.name?.toLowerCase().includes(q));
+        if (rootMatches) return group;
+        if (!rootMatches && !subs.length) return null;
+        return {...group, root: null, subs};
+      })
+      .filter((g): g is RaceGroup => Boolean(g));
 });
 
 const classGroups = computed<ClassGroup[]>(() => {
@@ -354,14 +354,14 @@ const filteredClassGroups = computed<ClassGroup[]>(() => {
   const q = normalizedExternalSearchQuery.value;
   if (!q || currentSection.value !== "classes") return classGroups.value;
   return classGroups.value
-    .map((group) => {
-      const rootMatches = group.root?.name?.toLowerCase().includes(q) ?? false;
-      const subs = group.subs.filter((sub) => sub.name?.toLowerCase().includes(q));
-      if (rootMatches) return group;
-      if (!rootMatches && !subs.length) return null;
-      return { ...group, root: null, subs };
-    })
-    .filter((g): g is ClassGroup => Boolean(g));
+      .map((group) => {
+        const rootMatches = group.root?.name?.toLowerCase().includes(q) ?? false;
+        const subs = group.subs.filter((sub) => sub.name?.toLowerCase().includes(q));
+        if (rootMatches) return group;
+        if (!rootMatches && !subs.length) return null;
+        return {...group, root: null, subs};
+      })
+      .filter((g): g is ClassGroup => Boolean(g));
 });
 
 const filteredBackgrounds = computed(() => {
@@ -502,7 +502,7 @@ async function loadClasses() {
   }
 }
 
-async function loadBackgrounds(options?: {force?: boolean}) {
+async function loadBackgrounds(options?: { force?: boolean }) {
   if (!roomId.value) return;
   const key = getCacheKey();
   if (!options?.force) {
@@ -528,9 +528,9 @@ function storeMatchesCurrentRoom() {
   const effective = effectiveBaseRuleType.value;
   const stored = (guidebookStore.baseRuleType ?? "");
   return (
-    guidebookStore.roomId === roomId.value &&
-    // Allow store updates even if baseRuleType wasn't set yet.
-    (stored === "" || stored === effective)
+      guidebookStore.roomId === roomId.value &&
+      // Allow store updates even if baseRuleType wasn't set yet.
+      (stored === "" || stored === effective)
   );
 }
 
@@ -543,57 +543,57 @@ function hydrateFromStoreIfPossible() {
 }
 
 watch(
-  () => guidebookStore.races,
-  (val) => {
-    if (!storeMatchesCurrentRoom()) return;
-    races.value = val;
-    const key = getCacheKey();
-    const entry = guidebookCache.get(key) ?? {races: [], classes: [], backgrounds: []};
-    entry.races = val;
-    guidebookCache.set(key, entry);
-  }
+    () => guidebookStore.races,
+    (val) => {
+      if (!storeMatchesCurrentRoom()) return;
+      races.value = val;
+      const key = getCacheKey();
+      const entry = guidebookCache.get(key) ?? {races: [], classes: [], backgrounds: []};
+      entry.races = val;
+      guidebookCache.set(key, entry);
+    }
 );
 
 watch(
-  () => guidebookStore.classes,
-  (val) => {
-    if (!storeMatchesCurrentRoom()) return;
-    classes.value = val;
-    const key = getCacheKey();
-    const entry = guidebookCache.get(key) ?? {races: [], classes: [], backgrounds: []};
-    entry.classes = val;
-    guidebookCache.set(key, entry);
-  }
+    () => guidebookStore.classes,
+    (val) => {
+      if (!storeMatchesCurrentRoom()) return;
+      classes.value = val;
+      const key = getCacheKey();
+      const entry = guidebookCache.get(key) ?? {races: [], classes: [], backgrounds: []};
+      entry.classes = val;
+      guidebookCache.set(key, entry);
+    }
 );
 
 watch(
-  () => guidebookStore.backgrounds,
-  (val) => {
-    if (!storeMatchesCurrentRoom()) return;
-    backgrounds.value = val;
-    const key = getCacheKey();
-    const entry = guidebookCache.get(key) ?? {races: [], classes: [], backgrounds: []};
-    entry.backgrounds = val;
-    guidebookCache.set(key, entry);
-  }
+    () => guidebookStore.backgrounds,
+    (val) => {
+      if (!storeMatchesCurrentRoom()) return;
+      backgrounds.value = val;
+      const key = getCacheKey();
+      const entry = guidebookCache.get(key) ?? {races: [], classes: [], backgrounds: []};
+      entry.backgrounds = val;
+      guidebookCache.set(key, entry);
+    }
 );
 
 watch(
-  () => guidebookStore.lastUpdatedAt,
-  () => {
-    if (!storeMatchesCurrentRoom()) return;
-    const key = getCacheKey();
-    const entry = guidebookCache.get(key) ?? {races: [], classes: [], backgrounds: []};
-    entry.races = guidebookStore.races;
-    entry.classes = guidebookStore.classes;
-    entry.backgrounds = guidebookStore.backgrounds;
-    guidebookCache.set(key, entry);
+    () => guidebookStore.lastUpdatedAt,
+    () => {
+      if (!storeMatchesCurrentRoom()) return;
+      const key = getCacheKey();
+      const entry = guidebookCache.get(key) ?? {races: [], classes: [], backgrounds: []};
+      entry.races = guidebookStore.races;
+      entry.classes = guidebookStore.classes;
+      entry.backgrounds = guidebookStore.backgrounds;
+      guidebookCache.set(key, entry);
 
-    if (currentSection.value === "races") races.value = guidebookStore.races;
-    if (currentSection.value === "classes") classes.value = guidebookStore.classes;
-    if (currentSection.value === "backgrounds") backgrounds.value = guidebookStore.backgrounds;
-  },
-  {flush: "post"}
+      if (currentSection.value === "races") races.value = guidebookStore.races;
+      if (currentSection.value === "classes") classes.value = guidebookStore.classes;
+      if (currentSection.value === "backgrounds") backgrounds.value = guidebookStore.backgrounds;
+    },
+    {flush: "post"}
 );
 
 async function searchItems(replaceResults = true) {
@@ -712,17 +712,17 @@ watch([selectedSpellClass, selectedSpellCatalog], () => {
 });
 
 watch(
-  () => props.externalSearchQuery,
-  (q) => {
-    const normalized = q.trim();
-    if (currentSection.value === "items" && itemSearchQuery.value !== normalized) {
-      itemSearchQuery.value = normalized;
-    }
-    if (currentSection.value === "spells" && spellSearchQuery.value !== normalized) {
-      spellSearchQuery.value = normalized;
-    }
-  },
-  {immediate: true}
+    () => props.externalSearchQuery,
+    (q) => {
+      const normalized = q.trim();
+      if (currentSection.value === "items" && itemSearchQuery.value !== normalized) {
+        itemSearchQuery.value = normalized;
+      }
+      if (currentSection.value === "spells" && spellSearchQuery.value !== normalized) {
+        spellSearchQuery.value = normalized;
+      }
+    },
+    {immediate: true}
 );
 
 function getSpellLevelLabel(level: string): string {
@@ -1116,8 +1116,8 @@ async function refreshAfterCatalogAdd(kind: "races" | "classes" | "backgrounds")
 }
 
 function mergeCatalogSavedIntoGuidebook(
-  kind: "races" | "classes" | "backgrounds",
-  saved: RaceDto[] | ClazzDto[] | BackgroundDto[]
+    kind: "races" | "classes" | "backgrounds",
+    saved: RaceDto[] | ClazzDto[] | BackgroundDto[]
 ) {
   if (!saved.length) return;
   const key = getCacheKey();
@@ -1157,10 +1157,10 @@ function mergeCatalogSavedIntoGuidebook(
 }
 
 async function onCatalogApplied(
-  payload:
-    | {kind: "races"; saved: RaceDto[]}
-    | {kind: "classes"; saved: ClazzDto[]}
-    | {kind: "backgrounds"; saved: BackgroundDto[]}
+    payload:
+        | { kind: "races"; saved: RaceDto[] }
+        | { kind: "classes"; saved: ClazzDto[] }
+        | { kind: "backgrounds"; saved: BackgroundDto[] }
 ) {
   await refreshAfterCatalogAdd(payload.kind);
   mergeCatalogSavedIntoGuidebook(payload.kind, payload.saved);
@@ -1212,7 +1212,8 @@ async function onCatalogApplied(
               </ion-avatar>
               <div slot="end" class="row-end-actions">
                 <button type="button" class="row-action-btn" @click.stop="toggleRaceHidden(group.root)">
-                  <ion-icon :icon="isHidden(group.root) ? eyeOffOutline : eyeOutline" :color="isHidden(group.root) ? 'danger' : 'secondary'"/>
+                  <ion-icon :icon="isHidden(group.root) ? eyeOffOutline : eyeOutline"
+                            :color="isHidden(group.root) ? 'danger' : 'secondary'"/>
                 </button>
                 <ion-icon :icon="chevronForwardOutline"/>
               </div>
@@ -1230,7 +1231,8 @@ async function onCatalogApplied(
               </ion-avatar>
               <div slot="end" class="row-end-actions">
                 <button type="button" class="row-action-btn" @click.stop="toggleRaceHidden(group.subs[0])">
-                  <ion-icon :icon="isHidden(group.subs[0]) ? eyeOffOutline : eyeOutline" :color="isHidden(group.subs[0]) ? 'danger' : 'secondary'"/>
+                  <ion-icon :icon="isHidden(group.subs[0]) ? eyeOffOutline : eyeOutline"
+                            :color="isHidden(group.subs[0]) ? 'danger' : 'secondary'"/>
                 </button>
                 <ion-icon :icon="chevronForwardOutline"/>
               </div>
@@ -1250,7 +1252,8 @@ async function onCatalogApplied(
               </ion-avatar>
               <div slot="end" class="row-end-actions">
                 <button type="button" class="row-action-btn" @click.stop="toggleRaceHidden(sub)">
-                  <ion-icon :icon="isHidden(sub) ? eyeOffOutline : eyeOutline" :color="isHidden(sub) ? 'danger' : 'secondary'"/>
+                  <ion-icon :icon="isHidden(sub) ? eyeOffOutline : eyeOutline"
+                            :color="isHidden(sub) ? 'danger' : 'secondary'"/>
                 </button>
                 <ion-icon :icon="chevronForwardOutline"/>
               </div>
@@ -1262,20 +1265,20 @@ async function onCatalogApplied(
         <div v-else class="empty-placeholder">Нет рас в этой комнате</div>
         <div class="add-new-button">
           <ion-button
-            size="large"
-            shape="round"
-            color="medium"
-            title="Из справочника"
-            @click="openAddFromCatalog('races')"
+              size="large"
+              shape="round"
+              color="medium"
+              title="Из справочника"
+              @click="openAddFromCatalog('races')"
           >
             <ion-icon slot="icon-only" :icon="listOutline"/>
           </ion-button>
           <ion-button
-            size="large"
-            shape="round"
-            color="primary"
-            title="Создать свою"
-            @click="createRace()"
+              size="large"
+              shape="round"
+              color="primary"
+              title="Создать свою"
+              @click="createRace()"
           >
             <ion-icon slot="icon-only" :icon="addOutline"/>
           </ion-button>
@@ -1297,7 +1300,8 @@ async function onCatalogApplied(
               </ion-avatar>
               <div slot="end" class="row-end-actions">
                 <button type="button" class="row-action-btn" @click.stop="toggleClassHidden(group.root)">
-                  <ion-icon :icon="isHidden(group.root) ? eyeOffOutline : eyeOutline" :color="isHidden(group.root) ? 'danger' : 'secondary'"/>
+                  <ion-icon :icon="isHidden(group.root) ? eyeOffOutline : eyeOutline"
+                            :color="isHidden(group.root) ? 'danger' : 'secondary'"/>
                 </button>
                 <ion-icon :icon="chevronForwardOutline"/>
               </div>
@@ -1315,7 +1319,8 @@ async function onCatalogApplied(
               </ion-avatar>
               <div slot="end" class="row-end-actions">
                 <button type="button" class="row-action-btn" @click.stop="toggleClassHidden(group.subs[0])">
-                  <ion-icon :icon="isHidden(group.subs[0]) ? eyeOffOutline : eyeOutline" :color="isHidden(group.subs[0]) ? 'danger' : 'secondary'"/>
+                  <ion-icon :icon="isHidden(group.subs[0]) ? eyeOffOutline : eyeOutline"
+                            :color="isHidden(group.subs[0]) ? 'danger' : 'secondary'"/>
                 </button>
                 <ion-icon :icon="chevronForwardOutline"/>
               </div>
@@ -1335,7 +1340,8 @@ async function onCatalogApplied(
               </ion-avatar>
               <div slot="end" class="row-end-actions">
                 <button type="button" class="row-action-btn" @click.stop="toggleClassHidden(sub)">
-                  <ion-icon :icon="isHidden(sub) ? eyeOffOutline : eyeOutline" :color="isHidden(sub) ? 'danger' : 'secondary'"/>
+                  <ion-icon :icon="isHidden(sub) ? eyeOffOutline : eyeOutline"
+                            :color="isHidden(sub) ? 'danger' : 'secondary'"/>
                 </button>
                 <ion-icon :icon="chevronForwardOutline"/>
               </div>
@@ -1382,7 +1388,8 @@ async function onCatalogApplied(
             </ion-avatar>
             <div slot="end" class="row-end-actions">
               <button type="button" class="row-action-btn" @click.stop="toggleBackgroundHidden(bg)">
-                <ion-icon :icon="isHidden(bg) ? eyeOffOutline : eyeOutline" :color="isHidden(bg) ? 'danger' : 'secondary'"/>
+                <ion-icon :icon="isHidden(bg) ? eyeOffOutline : eyeOutline"
+                          :color="isHidden(bg) ? 'danger' : 'secondary'"/>
               </button>
               <ion-icon :icon="chevronForwardOutline"/>
             </div>
@@ -1393,20 +1400,20 @@ async function onCatalogApplied(
         <div v-else class="empty-placeholder">Нет предысторий в этой комнате</div>
         <div class="add-new-button">
           <ion-button
-            size="large"
-            shape="round"
-            color="medium"
-            title="Из справочника"
-            @click="openAddFromCatalog('backgrounds')"
+              size="large"
+              shape="round"
+              color="medium"
+              title="Из справочника"
+              @click="openAddFromCatalog('backgrounds')"
           >
             <ion-icon slot="icon-only" :icon="listOutline"/>
           </ion-button>
           <ion-button
-            size="large"
-            shape="round"
-            color="primary"
-            title="Создать свою"
-            @click="createBackground()"
+              size="large"
+              shape="round"
+              color="primary"
+              title="Создать свою"
+              @click="createBackground()"
           >
             <ion-icon slot="icon-only" :icon="addOutline"/>
           </ion-button>
@@ -1473,7 +1480,7 @@ async function onCatalogApplied(
       <!-- Заклинания -->
       <div v-show="currentSection === 'spells'" class="segment-content spells-section">
         <div class="spells-filters">
-          <ion-segment v-model="selectedSpellCatalog" class="spell-rule-segment">
+          <ion-segment v-model="selectedSpellCatalog" class="spell-rule-segment" mode="ios">
             <ion-segment-button
                 v-for="catalog in orderedSpellCatalogs"
                 :key="catalog"
@@ -1816,6 +1823,8 @@ ion-searchbar {
   width: 100%;
   --background: var(--ion-color-medium);
   border-radius: 8px;
+  margin: 10px 4px 0;
+  padding: 3px;
 }
 
 .spells-section .spells-searchbar {

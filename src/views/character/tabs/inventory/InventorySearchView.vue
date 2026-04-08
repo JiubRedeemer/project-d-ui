@@ -327,6 +327,8 @@ function openAddView() {
             :value="activeSearchScope"
             @ionChange="handleSearchScopeChange"
             class="search-scope-tabs"
+            mode="ios"
+            scrolalble="true"
         >
           <ion-segment-button value="2024">
             <ion-label>2024</ion-label>
@@ -335,7 +337,7 @@ function openAddView() {
             <ion-label>2014</ion-label>
           </ion-segment-button>
           <ion-segment-button value="owned">
-            <ion-label>Мои предметы</ion-label>
+            <ion-label>Созданные</ion-label>
           </ion-segment-button>
         </ion-segment>
       </ion-toolbar>
@@ -521,7 +523,7 @@ ion-searchbar {
 
 .search-scope-tabs {
   margin: 10px 4px 0;
-  --background: #221f2a;
+  --background: var(--ion-color-medium);
   border-radius: 14px;
   padding: 3px;
 }

@@ -18,7 +18,7 @@
       <div v-if="hasBackgroundModifiers" class="background-modifiers-block">
         <p class="background-modifiers-title">Предыстория (D&D 2024)</p>
         <p class="background-modifiers-hint">+2 к одной и +1 к другой <strong>или</strong> +1 к трём разным</p>
-        <ion-segment :value="backgroundBonusMode">
+        <ion-segment :value="backgroundBonusMode" mode="ios" class="search-scope-tabs">
           <ion-segment-button value="2+1" @click="applyBackgroundMode('2+1')">
             <ion-label>+2 и +1</ion-label>
           </ion-segment-button>
@@ -501,5 +501,11 @@ ion-item {
   justify-content: end;
   align-items: center;
   padding: 8px 0 max(8px, env(safe-area-inset-bottom, 0));
+}
+.search-scope-tabs {
+  margin: 10px 4px 0;
+  --background: var(--ion-color-medium);
+  border-radius: 14px;
+  padding: 3px;
 }
 </style>

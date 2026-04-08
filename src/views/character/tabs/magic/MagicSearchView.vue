@@ -1,45 +1,45 @@
 <script setup lang="ts">
 import {
-    IonBackButton,
-    IonButton,
-    IonButtons,
-    IonContent,
-    IonFab,
-    IonFabButton,
-    IonHeader,
-    IonIcon,
-    IonLabel,
-    IonPage,
-    IonSegment,
-    IonSegmentButton,
-    IonSearchbar,
-    IonSelect,
-    IonSelectOption,
-    IonToggle,
-    IonToolbar,
-    onIonViewDidEnter,
-    toastController,
-    useIonRouter,
+  IonBackButton,
+  IonButton,
+  IonButtons,
+  IonContent,
+  IonFab,
+  IonFabButton,
+  IonHeader,
+  IonIcon,
+  IonLabel,
+  IonPage,
+  IonSegment,
+  IonSegmentButton,
+  IonSearchbar,
+  IonSelect,
+  IonSelectOption,
+  IonToggle,
+  IonToolbar,
+  onIonViewDidEnter,
+  toastController,
+  useIonRouter,
 } from "@ionic/vue";
-import { add, addOutline, arrowBack } from "ionicons/icons";
-import { computed, ref, watch } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import {add, addOutline, arrowBack} from "ionicons/icons";
+import {computed, ref, watch} from "vue";
+import {useRoute, useRouter} from "vue-router";
 import {
-    addSpellToBook,
-    getSpellBookByRoomAndCharacter,
-    listSpells,
-    listSpellsDnd2024,
+  addSpellToBook,
+  getSpellBookByRoomAndCharacter,
+  listSpells,
+  listSpellsDnd2024,
 } from "@/api/magicApi";
-import type { SpellDto } from "@/components/models/response/MagicApi";
-import type { SpellClass } from "@/components/models/response/MagicApi";
-import type { SpellBookItemDto } from "@/components/models/response/MagicApi";
+import type {SpellDto} from "@/components/models/response/MagicApi";
+import type {SpellClass} from "@/components/models/response/MagicApi";
+import type {SpellBookItemDto} from "@/components/models/response/MagicApi";
 import {
-    FILE_STORAGE_INTEGRATION_ROUTES,
-    SPELL_IMAGE_PLACEHOLDER,
+  FILE_STORAGE_INTEGRATION_ROUTES,
+  SPELL_IMAGE_PLACEHOLDER,
 } from "@/config/integrationRoutes";
-import { useCharacterStore } from "@/stores/CharacterStore";
-import { useMagicStore } from "@/stores/MagicStore";
-import { useRoomStore } from "@/stores/RoomStore";
+import {useCharacterStore} from "@/stores/CharacterStore";
+import {useMagicStore} from "@/stores/MagicStore";
+import {useRoomStore} from "@/stores/RoomStore";
 import SpellInfoModal from "@/views/character/tabs/magic/SpellInfoModal.vue";
 
 const route = useRoute();
@@ -70,232 +70,232 @@ const spellsInBook = computed(
 );
 
 const characterSpellClass = computed((): SpellClass | undefined => {
-    const code = characterStore.character?.clazzCode;
-    if (!code) return undefined;
-    const valid: SpellClass[] = [
-        "BARD", "BARBARIAN", "FIGHTER", "WIZARD", "DRUID", "CLERIC",
-        "ARTIFICER", "WARLOCK", "MONK", "PALADIN", "ROGUE", "RANGER", "SORCERER",
-    ];
-    return valid.includes(code as SpellClass) ? (code as SpellClass) : undefined;
+  const code = characterStore.character?.clazzCode;
+  if (!code) return undefined;
+  const valid: SpellClass[] = [
+    "BARD", "BARBARIAN", "FIGHTER", "WIZARD", "DRUID", "CLERIC",
+    "ARTIFICER", "WARLOCK", "MONK", "PALADIN", "ROGUE", "RANGER", "SORCERER",
+  ];
+  return valid.includes(code as SpellClass) ? (code as SpellClass) : undefined;
 });
 
 const roomBaseRuleType = computed<SpellCatalog>(() => {
-    return roomStore.room?.baseRuleType === "DND2024" ? "DND2024" : "DND5E";
+  return roomStore.room?.baseRuleType === "DND2024" ? "DND2024" : "DND5E";
 });
 
 const orderedCatalogs = computed<SpellCatalog[]>(() => {
-    return roomBaseRuleType.value === "DND2024"
-        ? ["DND2024", "DND5E"]
-        : ["DND5E", "DND2024"];
+  return roomBaseRuleType.value === "DND2024"
+      ? ["DND2024", "DND5E"]
+      : ["DND5E", "DND2024"];
 });
 
 function getCatalogLabel(catalog: SpellCatalog): string {
-    return catalog === "DND2024" ? "2024" : "2014";
+  return catalog === "DND2024" ? "2024" : "2014";
 }
 
 const filteredSpells = computed(() => {
-    let list = allSpells.value;
-    const q = searchQuery.value.trim().toLowerCase();
-    if (q) {
-        list = list.filter((s) => {
-            const name =
-                (s.name as Record<string, string>)?.rus ??
-                (s.name as Record<string, string>)?.en ??
-                "";
-            const aliasName =
-                (s.aliasName as Record<string, string>)?.rus ??
-                (s.aliasName as Record<string, string>)?.en ??
-                "";
-            return name.toLowerCase().includes(q) || aliasName.toLowerCase().includes(q);
-        });
-    }
+  let list = allSpells.value;
+  const q = searchQuery.value.trim().toLowerCase();
+  if (q) {
+    list = list.filter((s) => {
+      const name =
+          (s.name as Record<string, string>)?.rus ??
+          (s.name as Record<string, string>)?.en ??
+          "";
+      const aliasName =
+          (s.aliasName as Record<string, string>)?.rus ??
+          (s.aliasName as Record<string, string>)?.en ??
+          "";
+      return name.toLowerCase().includes(q) || aliasName.toLowerCase().includes(q);
+    });
+  }
 
-    if (selectedSchool.value) {
-        list = list.filter((s) => (s.school ?? "") === selectedSchool.value);
-    }
-    if (selectedLevel.value) {
-        list = list.filter((s) => String(s.level ?? "0") === selectedLevel.value);
-    }
+  if (selectedSchool.value) {
+    list = list.filter((s) => (s.school ?? "") === selectedSchool.value);
+  }
+  if (selectedLevel.value) {
+    list = list.filter((s) => String(s.level ?? "0") === selectedLevel.value);
+  }
 
-    return list;
+  return list;
 });
 
 const availableSchools = computed(() => {
-    const set = new Set<string>();
-    for (const spell of allSpells.value) {
-        if (spell.school) set.add(spell.school);
-    }
-    return Array.from(set).sort((a, b) => a.localeCompare(b, "ru"));
+  const set = new Set<string>();
+  for (const spell of allSpells.value) {
+    if (spell.school) set.add(spell.school);
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b, "ru"));
 });
 
 const availableLevels = computed(() => {
-    const set = new Set<string>();
-    for (const spell of allSpells.value) {
-        set.add(String(spell.level ?? "0"));
-    }
-    return Array.from(set).sort((a, b) => {
-        const na = parseInt(a, 10);
-        const nb = parseInt(b, 10);
-        if (!Number.isFinite(na) || !Number.isFinite(nb)) return a.localeCompare(b, "ru");
-        return na - nb;
-    });
+  const set = new Set<string>();
+  for (const spell of allSpells.value) {
+    set.add(String(spell.level ?? "0"));
+  }
+  return Array.from(set).sort((a, b) => {
+    const na = parseInt(a, 10);
+    const nb = parseInt(b, 10);
+    if (!Number.isFinite(na) || !Number.isFinite(nb)) return a.localeCompare(b, "ru");
+    return na - nb;
+  });
 });
 
 const spellsByLevel = computed(() => {
-    const byLevel = new Map<string, SpellDto[]>();
-    for (const spell of filteredSpells.value) {
-        const level = spell.level ?? "0";
-        if (!byLevel.has(level)) byLevel.set(level, []);
-        byLevel.get(level)!.push(spell);
-    }
-    return Array.from(byLevel.entries()).sort(
-        ([a], [b]) => parseInt(a, 10) - parseInt(b, 10)
-    );
+  const byLevel = new Map<string, SpellDto[]>();
+  for (const spell of filteredSpells.value) {
+    const level = spell.level ?? "0";
+    if (!byLevel.has(level)) byLevel.set(level, []);
+    byLevel.get(level)!.push(spell);
+  }
+  return Array.from(byLevel.entries()).sort(
+      ([a], [b]) => parseInt(a, 10) - parseInt(b, 10)
+  );
 });
 
 const selectedSpellItem = computed<SpellBookItemDto | null>(() => {
-    const sid = selectedSpellId.value;
-    if (!sid) return null;
-    const spell = allSpells.value.find((s) => s.id === sid);
-    if (!spell) return null;
-    return {
-        spellId: sid,
-        spell,
-        inUse: false,
-    };
+  const sid = selectedSpellId.value;
+  if (!sid) return null;
+  const spell = allSpells.value.find((s) => s.id === sid);
+  if (!spell) return null;
+  return {
+    spellId: sid,
+    spell,
+    inUse: false,
+  };
 });
 
 function getSpellName(spell: SpellDto): string {
-    if (!spell?.name) return "—";
-    const n = spell.name as Record<string, string>;
-    return n.rus ?? n.eng ?? "—";
+  if (!spell?.name) return "—";
+  const n = spell.name as Record<string, string>;
+  return n.rus ?? n.eng ?? "—";
 }
 
 function getDetailsLine1(spell: SpellDto): string {
-    if (!spell) return "";
-    const parts: string[] = [];
-    if (spell.level === "0") parts.push("Фокус");
-    else if (spell.level != null) parts.push(`Уровень ${spell.level}`);
-    if (spell.school) parts.push(`школа ${spell.school}`);
-    if (spell.damageType) parts.push(spell.damageType);
-    if (spell.healType) parts.push(spell.healType);
-    if (spell.ritual) parts.push("ритуал");
-    if (spell.customization) parts.push("доп.тип");
-    return parts.join(", ") || "";
+  if (!spell) return "";
+  const parts: string[] = [];
+  if (spell.level === "0") parts.push("Фокус");
+  else if (spell.level != null) parts.push(`Уровень ${spell.level}`);
+  if (spell.school) parts.push(`школа ${spell.school}`);
+  if (spell.damageType) parts.push(spell.damageType);
+  if (spell.healType) parts.push(spell.healType);
+  if (spell.ritual) parts.push("ритуал");
+  if (spell.customization) parts.push("доп.тип");
+  return parts.join(", ") || "";
 }
 
 function getDetailsLine2(spell: SpellDto): string {
-    if (!spell) return "";
-    const parts: string[] = [];
-    if (spell.useTime) parts.push(spell.useTime);
-    if (spell.distance) parts.push(spell.distance);
-    return parts.join(", ") || "";
+  if (!spell) return "";
+  const parts: string[] = [];
+  if (spell.useTime) parts.push(spell.useTime);
+  if (spell.distance) parts.push(spell.distance);
+  return parts.join(", ") || "";
 }
 
 function getSpellImageUrl(imgUrl: string | undefined): string {
-    if (!imgUrl) return SPELL_IMAGE_PLACEHOLDER;
-    if (imgUrl.startsWith("http")) return imgUrl;
-    return `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.spell_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.download}/${imgUrl}`;
+  if (!imgUrl) return SPELL_IMAGE_PLACEHOLDER;
+  if (imgUrl.startsWith("http")) return imgUrl;
+  return `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.spell_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.download}/${imgUrl}`;
 }
 
 function getLevelLabel(level: string): string {
-    return level === "0" ? "Фокусы" : `${level} уровень`;
+  return level === "0" ? "Фокусы" : `${level} уровень`;
 }
 
 function canAdd(spell: SpellDto): boolean {
-    return spell.id != null && !spellsInBook.value.has(spell.id);
+  return spell.id != null && !spellsInBook.value.has(spell.id);
 }
 
 async function addSpell(spell: SpellDto) {
-    const bookId = spellBookId.value;
-    const sid = spell.id;
-    if (!bookId || !sid || !canAdd(spell)) return;
-    addingSpellId.value = sid;
-    try {
-        const updated = await addSpellToBook(bookId, sid);
-        magicStore.setSpellBook(updated);
-        await presentToast();
-    } catch (e) {
-        console.error("Failed to add spell:", e);
-    } finally {
-        addingSpellId.value = null;
-    }
+  const bookId = spellBookId.value;
+  const sid = spell.id;
+  if (!bookId || !sid || !canAdd(spell)) return;
+  addingSpellId.value = sid;
+  try {
+    const updated = await addSpellToBook(bookId, sid);
+    magicStore.setSpellBook(updated);
+    await presentToast();
+  } catch (e) {
+    console.error("Failed to add spell:", e);
+  } finally {
+    addingSpellId.value = null;
+  }
 }
 
 async function presentToast() {
-    const toast = await toastController.create({
-        message: "Заклинание добавлено в книгу",
-        duration: 1000,
-        position: "top",
-    });
-    await toast.present();
+  const toast = await toastController.create({
+    message: "Заклинание добавлено в книгу",
+    duration: 1000,
+    position: "top",
+  });
+  await toast.present();
 }
 
 async function loadSpells() {
-    loading.value = true;
-    try {
-        const spellClass = forMyClass.value ? characterSpellClass.value : undefined;
-        allSpells.value =
-            selectedCatalog.value === "DND2024"
-                ? await listSpellsDnd2024(spellClass)
-                : await listSpells(spellClass);
-    } catch (e) {
-        console.error("Failed to load spells:", e);
-        allSpells.value = [];
-    } finally {
-        loading.value = false;
-    }
+  loading.value = true;
+  try {
+    const spellClass = forMyClass.value ? characterSpellClass.value : undefined;
+    allSpells.value =
+        selectedCatalog.value === "DND2024"
+            ? await listSpellsDnd2024(spellClass)
+            : await listSpells(spellClass);
+  } catch (e) {
+    console.error("Failed to load spells:", e);
+    allSpells.value = [];
+  } finally {
+    loading.value = false;
+  }
 }
 
 async function loadSpellBook() {
-    try {
-        const book = await getSpellBookByRoomAndCharacter(
-            roomId.value,
-            characterId.value
-        );
-        magicStore.setSpellBook(book);
-    } catch (e) {
-        console.error("Failed to load spell book:", e);
-        magicStore.setSpellBook(null);
-    }
+  try {
+    const book = await getSpellBookByRoomAndCharacter(
+        roomId.value,
+        characterId.value
+    );
+    magicStore.setSpellBook(book);
+  } catch (e) {
+    console.error("Failed to load spell book:", e);
+    magicStore.setSpellBook(null);
+  }
 }
 
 function openSpellModal(spell: SpellDto) {
-    if (!spell.id) return;
-    selectedSpellId.value = spell.id;
-    showSpellModal.value = true;
+  if (!spell.id) return;
+  selectedSpellId.value = spell.id;
+  showSpellModal.value = true;
 }
 
 function closeSpellModal() {
-    showSpellModal.value = false;
-    selectedSpellId.value = null;
+  showSpellModal.value = false;
+  selectedSpellId.value = null;
 }
 
 onIonViewDidEnter(async () => {
-    if (!roomStore.room?.id || roomStore.room.id !== roomId.value) {
-        try {
-            await roomStore.getRoomInfo(roomId.value);
-        } catch (e) {
-            console.error("Failed to load room info:", e);
-        }
+  if (!roomStore.room?.id || roomStore.room.id !== roomId.value) {
+    try {
+      await roomStore.getRoomInfo(roomId.value);
+    } catch (e) {
+      console.error("Failed to load room info:", e);
     }
-    selectedCatalog.value = orderedCatalogs.value[0];
-    await loadSpellBook();
-    await loadSpells();
+  }
+  selectedCatalog.value = orderedCatalogs.value[0];
+  await loadSpellBook();
+  await loadSpells();
 });
 
 watch([forMyClass, selectedCatalog], () => {
-    selectedSchool.value = "";
-    selectedLevel.value = "";
-    loadSpells();
+  selectedSchool.value = "";
+  selectedLevel.value = "";
+  loadSpells();
 });
 
 function openAddSpellView() {
-    ionRouter.navigate(
-        `/rooms/${roomId.value}/characters/${characterId.value}/magic/add`,
-        "forward",
-        "push"
-    );
+  ionRouter.navigate(
+      `/rooms/${roomId.value}/characters/${characterId.value}/magic/add`,
+      "forward",
+      "push"
+  );
 }
 </script>
 
@@ -307,17 +307,17 @@ function openAddSpellView() {
           <ion-back-button :default-href="`/rooms/${roomId}/characters/${characterId}`"/>
         </ion-buttons>
         <ion-searchbar
-          v-model="searchQuery"
-          placeholder="Найти заклинание"
-          class="search-line"
+            v-model="searchQuery"
+            placeholder="Найти заклинание"
+            class="search-line"
         />
       </ion-toolbar>
       <div class="filter-row">
-        <ion-segment v-model="selectedCatalog" class="rule-segment">
+        <ion-segment v-model="selectedCatalog" class="rule-segment" mode="ios">
           <ion-segment-button
-            v-for="catalog in orderedCatalogs"
-            :key="catalog"
-            :value="catalog"
+              v-for="catalog in orderedCatalogs"
+              :key="catalog"
+              :value="catalog"
           >
             <ion-label>{{ getCatalogLabel(catalog) }}</ion-label>
           </ion-segment-button>
@@ -325,38 +325,38 @@ function openAddSpellView() {
       </div>
       <div class="filter-row">
         <ion-toggle
-          v-model="forMyClass"
-          color="primary"
+            v-model="forMyClass"
+            color="primary"
         >
           Для моего класса
         </ion-toggle>
         <ion-select
-          v-model="selectedSchool"
-          interface="popover"
-          placeholder="Школа"
-          aria-label="Фильтр по школе заклинания"
+            v-model="selectedSchool"
+            interface="popover"
+            placeholder="Школа"
+            aria-label="Фильтр по школе заклинания"
         >
           <ion-select-option value="">Все школы</ion-select-option>
           <ion-select-option
-            v-for="s in availableSchools"
-            :key="s"
-            :value="s"
+              v-for="s in availableSchools"
+              :key="s"
+              :value="s"
           >
             {{ s }}
           </ion-select-option>
         </ion-select>
 
         <ion-select
-          v-model="selectedLevel"
-          interface="popover"
-          placeholder="Уровень"
-          aria-label="Фильтр по уровню заклинания"
+            v-model="selectedLevel"
+            interface="popover"
+            placeholder="Уровень"
+            aria-label="Фильтр по уровню заклинания"
         >
           <ion-select-option value="">Все уровни</ion-select-option>
           <ion-select-option
-            v-for="lvl in availableLevels"
-            :key="lvl"
-            :value="lvl"
+              v-for="lvl in availableLevels"
+              :key="lvl"
+              :value="lvl"
           >
             {{ getLevelLabel(lvl) }}
           </ion-select-option>
@@ -372,11 +372,11 @@ function openAddSpellView() {
             <div class="section-start-block" @click="openSpellModal(spell)">
               <div class="image-block">
                 <img
-                  width="55"
-                  height="55"
-                  class="spell-image"
-                  :src="getSpellImageUrl(spell.imgUrl)"
-                  :alt="getSpellName(spell)"
+                    width="55"
+                    height="55"
+                    class="spell-image"
+                    :src="getSpellImageUrl(spell.imgUrl)"
+                    :alt="getSpellName(spell)"
                 />
               </div>
               <div class="stats-block">
@@ -387,12 +387,12 @@ function openAddSpellView() {
             </div>
             <div class="add-button-block">
               <ion-button
-                v-if="canAdd(spell)"
-                @click="addSpell(spell)"
-                size="small"
-                shape="round"
-                class="add-button"
-                :disabled="addingSpellId === spell.id"
+                  v-if="canAdd(spell)"
+                  @click="addSpell(spell)"
+                  size="small"
+                  shape="round"
+                  class="add-button"
+                  :disabled="addingSpellId === spell.id"
               >
                 <ion-icon slot="icon-only" :icon="addOutline"/>
               </ion-button>
@@ -417,11 +417,11 @@ function openAddSpellView() {
     </ion-fab>
 
     <SpellInfoModal
-      :isOpen="showSpellModal"
-      :item="selectedSpellItem"
-      :spell-book-id="spellBookId"
-      :readonly="true"
-      @closeSpellInfoModal="closeSpellModal"
+        :isOpen="showSpellModal"
+        :item="selectedSpellItem"
+        :spell-book-id="spellBookId"
+        :readonly="true"
+        @closeSpellInfoModal="closeSpellModal"
     />
   </ion-page>
 </template>
@@ -439,10 +439,27 @@ ion-content {
   gap: 12px;
   color: var(--ion-color-light);
   font-size: 14px;
+  background-color: var(--ion-color-dark);
+}
+
+ion-segment-button {
+  --color: rgba(255, 255, 255, 0.78);
+  --color-checked: var(--ion-color-light);
+  --indicator-color: rgba(var(--ion-color-primary-rgb), 0.28);
+  --indicator-box-shadow: none;
+  min-height: 34px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .rule-segment {
   width: 100%;
+  margin: 10px 4px 0;
+  --background: var(--ion-color-medium);
+  border-radius: 14px;
+  padding: 3px;
 }
 
 .filter-row ion-toggle {
