@@ -40,8 +40,8 @@ const contentScrollHost = ref<HTMLElement | null>(null);
 const hasMoreItems = ref(true);
 const selectedItem = ref<Item | null>(null);
 const showFullViewModal = ref(false);
-type SearchScope = "all" | "owned";
-const activeSearchScope = ref<SearchScope>("all");
+type SearchScope = "2024" | "2014" | "owned";
+const activeSearchScope = ref<SearchScope>("2024");
 const SEARCH_LIMIT = 100;
 
 function openFullView(item: Item) {
@@ -75,7 +75,7 @@ async function handleInput(event: any) {
 }
 
 async function handleSearchScopeChange(event: CustomEvent) {
-  activeSearchScope.value = (event.detail.value ?? "all") as SearchScope;
+  activeSearchScope.value = (event.detail.value ?? "2024") as SearchScope;
   findItems.value = [];
   hasMoreItems.value = false;
   isLoadingItems.value = false;
@@ -116,10 +116,15 @@ async function loadItems(
       limit: number;
       lastSeenCreatedAt?: string;
       lastSeenId?: string;
+      ruleType?: string;
     } = {
       searchQuery: query ?? "",
       limit: SEARCH_LIMIT,
     };
+
+    if (activeSearchScope.value !== "owned") {
+      requestBody.ruleType = activeSearchScope.value;
+    }
 
     if (lastSeenCreatedAt && lastSeenId) {
       requestBody.lastSeenCreatedAt = lastSeenCreatedAt;
@@ -323,8 +328,11 @@ function openAddView() {
             @ionChange="handleSearchScopeChange"
             class="search-scope-tabs"
         >
-          <ion-segment-button value="all">
-            <ion-label>Всё</ion-label>
+          <ion-segment-button value="2024">
+            <ion-label>2024</ion-label>
+          </ion-segment-button>
+          <ion-segment-button value="2014">
+            <ion-label>2014</ion-label>
           </ion-segment-button>
           <ion-segment-button value="owned">
             <ion-label>Мои предметы</ion-label>

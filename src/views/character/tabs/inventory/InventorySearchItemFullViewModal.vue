@@ -126,8 +126,14 @@ function getAbbreviation(str: string | undefined): string {
   return "Bad name";
 }
 
-const renderMarkdown = (text: string | undefined): string | Promise<string> =>
-  text ? marked(text) : "";
+const renderMarkdown = (text: string | undefined): string => {
+  if (!text) return "";
+  // Preserve single line breaks from backend descriptions.
+  return marked.parse(text.replace(/\r\n/g, "\n"), {
+    gfm: true,
+    breaks: true,
+  }) as string;
+};
 
 function getCoinType(coinType: string | undefined) {
   switch (coinType) {

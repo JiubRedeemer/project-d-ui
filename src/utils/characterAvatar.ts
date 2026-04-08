@@ -11,12 +11,18 @@ export const CHARACTER_AVATAR_PLACEHOLDER =
  * 3. Заглушка по умолчанию
  */
 export function getCharacterAvatarUrl(character: Character): string {
-  const avatarPath = character.characterBio?.avatar?.trim?.();
+  const rawAvatar = character.characterBio?.avatar;
+  const avatarPath =
+    typeof rawAvatar === "string"
+      ? rawAvatar.trim()
+      : rawAvatar != null
+        ? String(rawAvatar).trim()
+        : "";
   if (avatarPath) {
     return `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.avatar_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.download}/${avatarPath}`;
   }
 
-  const raceImgUrl = (character.raceInfo as { imgUrl?: string })?.imgUrl;
+  const raceImgUrl = ((character.raceInfo as { imgUrl?: string | null })?.imgUrl ?? "").trim();
   if (raceImgUrl) {
     return `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.races_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.download}/${raceImgUrl}`;
   }
