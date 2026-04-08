@@ -49,6 +49,7 @@ import type {SpellDto} from "@/components/models/response/MagicApi";
 import {listSpells, listSpellsDnd2024} from "@/api/magicApi";
 import {getNpcsByRoomIdForRoom, saveCharacterNpcRelationForRoom} from "@/api/npcApi";
 import type {NpcDto, NpcTypeEnum, RelationTypeEnum} from "@/api/npcApi.types";
+import {sortNpcsByName} from "@/utils/sortNpcsByName";
 import {
   FILE_STORAGE_INTEGRATION_ROUTES,
   GATEWAY_INTEGRATION_ROUTES,
@@ -405,7 +406,7 @@ const filteredNpcs = computed(() => {
   if (q && currentSection.value === "npcs") {
     result = result.filter((n) => (n.name ?? "").toLowerCase().includes(q));
   }
-  return result.sort((a, b) => a.name.localeCompare(b.name, "ru", {sensitivity: "base"}));
+  return sortNpcsByName(result);
 });
 
 const availableSpellSchools = computed(() => {

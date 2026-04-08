@@ -24,6 +24,7 @@ import {getNpcsByRoomIdForRoom, saveCharacterNpcRelationForRoom} from "@/api/npc
 import type {NpcDto, NpcTypeEnum, RelationTypeEnum} from "@/api/npcApi.types";
 import {FILE_STORAGE_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {useNpcRelationsStore} from "@/stores/NpcRelationsStore";
+import {sortNpcsByName} from "@/utils/sortNpcsByName";
 
 const route = useRoute();
 const router = useRouter();
@@ -63,7 +64,7 @@ const filteredNpcs = computed(() => {
       return name.toLowerCase().includes(q);
     });
   }
-  return list;
+  return sortNpcsByName(list);
 });
 
 function getNpcImageUrl(imgUrl: string | undefined | null) {

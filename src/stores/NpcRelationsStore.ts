@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { getNpcsByCharacterIdAndRelationTypeForRoom } from "@/api/npcApi";
 import type { NpcWithRelationIdDto, RelationTypeEnum } from "@/api/npcApi.types";
+import { sortNpcsByName } from "@/utils/sortNpcsByName";
 
 type NpcRelationsState = {
   byType: Record<RelationTypeEnum, NpcWithRelationIdDto[]>;
@@ -32,7 +33,7 @@ export const useNpcRelationsStore = defineStore("npcRelationsStore", {
           )
         );
         for (const [k, v] of entries) {
-          this.byType[k] = v;
+          this.byType[k] = sortNpcsByName(v);
         }
       } catch (e) {
         console.error("Failed to load NPC relations:", e);

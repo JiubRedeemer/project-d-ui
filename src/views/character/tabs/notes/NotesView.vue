@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {onMounted, ref} from "vue";
+import {computed, onMounted, ref} from "vue";
 import {useRoute} from "vue-router";
 import axios from "axios";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
@@ -21,12 +21,17 @@ marked.setOptions({
   breaks: true,
 });
 
+interface NoteTag {
+  name: string;
+  color: string;
+}
+
 interface NoteSection {
   id: string;
   notebookId?: string;
   name: string;
   noteText: string;
-  tags?: { name: string; color: string }[];
+  tags?: NoteTag[];
 }
 
 const route = useRoute();
@@ -38,11 +43,11 @@ const isEditing = ref<string | null>(null);
 
 const newNoteName = ref("");
 const newNoteText = ref("");
-const newTags = ref<{ name: string; color: string }[]>([]);
+const newTags = ref<NoteTag[]>([]);
 
 const editNoteName = ref("");
 const editNoteText = ref("");
-const editTags = ref<{ name: string; color: string }[]>([]);
+const editTags = ref<NoteTag[]>([]);
 
 const isBlockExpanded = ref<number | null>(null);
 const inputSectionText = ref<string | null>(null);
@@ -86,6 +91,40 @@ const loadNotebook = async () => {
     console.error("Ошибка при загрузке блокнота:", e);
   }
 };
+
+/** Уникальные пары имя+цвет из всех заметок — для быстрого выбора. */
+const existingTagsCatalog = computed(() => {
+  const byKey = new Map<string, NoteTag>();
+  for (const note of notes.value) {
+    for (const raw of note.tags ?? []) {
+      const name = String(raw?.name ?? "").trim();
+      if (!name) continue;
+      const color = String(raw?.color ?? "").trim() || "#8888ff";
+      const key = `${name.toLowerCase()}|${color.toLowerCase()}`;
+      if (!byKey.has(key)) byKey.set(key, {name, color});
+    }
+  }
+  return Array.from(byKey.values()).sort((a, b) =>
+      a.name.localeCompare(b.name, "ru", {sensitivity: "base"})
+  );
+});
+
+function tagsEqual(a: NoteTag, b: NoteTag): boolean {
+  return (
+      a.name.trim().toLowerCase() === b.name.trim().toLowerCase() &&
+      (a.color || "#8888ff").toLowerCase() === (b.color || "#8888ff").toLowerCase()
+  );
+}
+
+function isTagInList(list: NoteTag[], tag: NoteTag): boolean {
+  return list.some((t) => tagsEqual(t, tag));
+}
+
+function addExistingTag(target: "new" | "edit", tag: NoteTag) {
+  const list = target === "new" ? newTags.value : editTags.value;
+  if (isTagInList(list, tag)) return;
+  list.push({name: tag.name, color: tag.color || "#8888ff"});
+}
 
 const addNewTagField = (target: "new" | "edit") => {
   const tag = {name: "", color: "#8888ff"};
@@ -421,6 +460,26 @@ const onNotesViewOutsideClick = (e: MouseEvent) => {
                 @click="autoGrow($event)"
             />
 
+            <div
+                v-if="existingTagsCatalog.length"
+                class="existing-tags-block"
+                @click.stop
+            >
+              <div class="existing-tags-label">Выбрать из существующих</div>
+              <div class="existing-tags-row">
+                <ion-chip
+                    v-for="(ex, exIdx) in existingTagsCatalog"
+                    :key="'ex-edit-' + exIdx"
+                    class="existing-tag-chip"
+                    :class="{ 'existing-tag-chip--added': isTagInList(editTags, ex) }"
+                    :style="{ backgroundColor: ex.color || '#8888ff', color: '#fff' }"
+                    @click.stop="addExistingTag('edit', ex)"
+                >
+                  <ion-label>{{ ex.name }}</ion-label>
+                </ion-chip>
+              </div>
+            </div>
+
             <div class="notes-card__tags-edit tags-block">
               <div
                   v-for="(tag, tagIdx) in editTags"
@@ -483,6 +542,26 @@ const onNotesViewOutsideClick = (e: MouseEvent) => {
               :auto-grow="true"
               class="new-note-text"
           />
+
+          <div
+              v-if="existingTagsCatalog.length"
+              class="existing-tags-block"
+              @click.stop
+          >
+            <div class="existing-tags-label">Выбрать из существующих</div>
+            <div class="existing-tags-row">
+              <ion-chip
+                  v-for="(ex, exIdx) in existingTagsCatalog"
+                  :key="'ex-new-' + exIdx"
+                  class="existing-tag-chip"
+                  :class="{ 'existing-tag-chip--added': isTagInList(newTags, ex) }"
+                  :style="{ backgroundColor: ex.color || '#8888ff', color: '#fff' }"
+                  @click.stop="addExistingTag('new', ex)"
+              >
+                <ion-label>{{ ex.name }}</ion-label>
+              </ion-chip>
+            </div>
+          </div>
 
           <div class="tags-block notes-card__tags-edit">
             <div v-for="(tag, tagIdx) in newTags" :key="tagIdx" class="tag-field">
@@ -896,6 +975,48 @@ const onNotesViewOutsideClick = (e: MouseEvent) => {
 
 .notes-card__tags-edit {
   margin-bottom: 12px;
+}
+
+.existing-tags-block {
+  margin-bottom: 12px;
+  padding: 10px 10px 8px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.existing-tags-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ion-color-light-shade);
+  margin-bottom: 8px;
+}
+
+.existing-tags-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.existing-tag-chip {
+  cursor: pointer;
+  font-size: 12px;
+  height: 28px;
+  margin: 0;
+  --background: transparent;
+  opacity: 1;
+  transition: opacity 0.15s ease, transform 0.12s ease;
+}
+
+.existing-tag-chip:active {
+  transform: scale(0.97);
+}
+
+.existing-tag-chip--added {
+  opacity: 0.42;
+  cursor: default;
+  pointer-events: none;
 }
 
 .tags-block {
