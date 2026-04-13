@@ -1,6 +1,7 @@
 <script setup lang="ts">
 
 import {
+  alertController,
   IonAvatar,
   IonButton,
   IonContent,
@@ -9,6 +10,9 @@ import {
   IonIcon,
   IonInput,
   IonItem,
+  IonItemOption,
+  IonItemOptions,
+  IonItemSliding,
   IonLabel,
   IonList,
   IonModal,
@@ -19,7 +23,7 @@ import {
   toastController,
   useIonRouter
 } from "@ionic/vue";
-import {add, chevronForwardOutline, keyOutline, personAddOutline, sendOutline} from "ionicons/icons";
+import {add, chevronForwardOutline, keyOutline, personAddOutline, sendOutline, trashOutline} from "ionicons/icons";
 import {HEADERS, TEXTS} from "@/config/localisations";
 import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
 import {computed, ref} from "vue";
@@ -111,6 +115,36 @@ const goToCharacter = (characterId: string) => {
   ionRouter.navigate('/rooms/' + route.params.roomId + '/characters/' + characterId, 'forward', 'push')
 }
 
+const confirmDeleteCharacter = async (characterId: string) => {
+  const roomId = String(route.params.roomId);
+  await axios.delete(
+    `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${characterId}/logical`,
+    {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("accessToken")}`
+      }
+    }
+  );
+  characters.value = characters.value.filter((character) => character.id !== characterId);
+};
+
+const requestDeleteCharacter = async (character: Character) => {
+  const alert = await alertController.create({
+    header: "Удалить персонажа?",
+    message: `Персонаж "${character.name}" будет удален.`,
+    buttons: [
+      { text: "Отмена", role: "cancel" },
+      {
+        text: "Удалить",
+        role: "destructive",
+        handler: () => void confirmDeleteCharacter(character.id)
+      }
+    ]
+  });
+  await alert.present();
+};
+
 function goToMasterLk() {
   ionRouter.navigate('/rooms/' + route.params.roomId + '/master', 'forward', 'push')
 }
@@ -199,25 +233,31 @@ const sendInvite = async () => {
       </ion-item>
 
       <ion-list v-show="sortedCharacters.length != 0" class="character-list">
-        <ion-item v-for="character in sortedCharacters" :key="character.id" :button="true" color="dark"
-                  @click="goToCharacter(character.id)">
-          <ion-avatar aria-hidden="false" slot="start">
-            <CachedFileImage
-              width="64"
-              height="64"
-              :src="getCharacterAvatarUrl(character)"
-              alt=""
-              @error="($event.target as HTMLImageElement).src = CHARACTER_AVATAR_PLACEHOLDER"
-            />
-          </ion-avatar>
-          <ion-icon aria-hidden="false" :icon="chevronForwardOutline" slot="end"></ion-icon>
-          <ion-label>
-            <h1 class="character-name" :class="isCharacterOwned(character) ? 'character-owned' : 'character-not-owned'">
-              {{ character.name }}</h1>
-            <h2 class="username">{{ character.ownerUsername }}</h2>
-            <p class="character-description">{{ character.raceInfo.name }} - {{ character.clazzInfo.name }}</p>
-          </ion-label>
-        </ion-item>
+        <ion-item-sliding v-for="character in sortedCharacters" :key="character.id">
+          <ion-item :button="true" color="dark" @click="goToCharacter(character.id)">
+            <ion-avatar aria-hidden="false" slot="start">
+              <CachedFileImage
+                width="64"
+                height="64"
+                :src="getCharacterAvatarUrl(character)"
+                alt=""
+                @error="($event.target as HTMLImageElement).src = CHARACTER_AVATAR_PLACEHOLDER"
+              />
+            </ion-avatar>
+            <ion-icon aria-hidden="false" :icon="chevronForwardOutline" slot="end"></ion-icon>
+            <ion-label>
+              <h1 class="character-name" :class="isCharacterOwned(character) ? 'character-owned' : 'character-not-owned'">
+                {{ character.name }}</h1>
+              <h2 class="username">{{ character.ownerUsername }}</h2>
+              <p class="character-description">{{ character.raceInfo.name }} - {{ character.clazzInfo.name }}</p>
+            </ion-label>
+          </ion-item>
+          <ion-item-options side="end">
+            <ion-item-option color="danger" @click="requestDeleteCharacter(character)">
+              <ion-icon slot="icon-only" :icon="trashOutline"></ion-icon>
+            </ion-item-option>
+          </ion-item-options>
+        </ion-item-sliding>
       </ion-list>
 
       <div class="character-list-placeholder-wrapper" v-show="sortedCharacters.length == 0">
@@ -344,4 +384,5 @@ ion-modal {
   --width: 90%;
   --background: var(--ion-color-dark);
 }
+
 </style>

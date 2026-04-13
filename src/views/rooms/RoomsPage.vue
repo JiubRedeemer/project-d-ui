@@ -2,24 +2,27 @@
 
 import {
   IonAvatar,
+  alertController,
   IonContent,
   IonFooter,
   IonFab,
   IonFabButton,
   IonIcon,
   IonItem,
+  IonItemOption,
+  IonItemOptions,
+  IonItemSliding,
   IonLabel,
   IonList,
   IonPage,
-  IonPopover,
   IonButton,
   onIonViewDidEnter,
-  useIonRouter
+  useIonRouter,
 } from "@ionic/vue";
-import {add, chevronForwardOutline, informationCircleOutline} from "ionicons/icons";
+import {add, chevronForwardOutline, informationCircleOutline, trashOutline} from "ionicons/icons";
 import {HEADERS, TEXTS} from "@/config/localisations";
 import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
-import {onBeforeUnmount, onMounted, ref} from "vue";
+import {onMounted, ref} from "vue";
 import axios from "axios";
 import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 
@@ -27,15 +30,7 @@ type Room = { id: string; name: string; description: string; filePath: string; l
 
 const ionRouter = useIonRouter();
 const rooms = ref<Room[]>([]);
-const deletePopoverOpen = ref(false);
-const deletePopoverEvent = ref<Event | null>(null);
-const roomToDelete = ref<Room | null>(null);
-const didOpenDeletePopover = ref(false);
 const showLegalInformation = ref(false);
-let longPressTimer: ReturnType<typeof setTimeout> | null = null;
-let pressStartX = 0;
-let pressStartY = 0;
-const MOVE_THRESHOLD_PX = 10;
 const currentYear = new Date().getFullYear();
 
 const http = () => axios.create({
@@ -61,11 +56,6 @@ onMounted(() => {
   setupRooms();
 });
 
-onBeforeUnmount(() => {
-  unbindMoveListener();
-  if (longPressTimer) clearTimeout(longPressTimer);
-});
-
 const goToRoom = (roomId: string) => {
   ionRouter.navigate('/rooms/' + roomId + '/characters', 'forward', 'push');
 };
@@ -74,81 +64,30 @@ const goToCreateRoom = () => {
   ionRouter.navigate('/rooms/create/ruleType', 'forward', 'push');
 };
 
-const onRoomPressMove = (e: MouseEvent | TouchEvent) => {
-  if (!longPressTimer) return;
-  const source = e instanceof TouchEvent ? (e as TouchEvent).touches[0] : (e as MouseEvent);
-  const x = source?.clientX ?? 0;
-  const y = source?.clientY ?? 0;
-  const dist = Math.hypot(x - pressStartX, y - pressStartY);
-  if (dist > MOVE_THRESHOLD_PX) {
-    onRoomPressEnd();
-  }
+const confirmDeleteRoom = async (roomId: string) => {
+  await http().delete(GATEWAY_INTEGRATION_ROUTES.api + GATEWAY_INTEGRATION_ROUTES.rooms + '/' + roomId);
+  rooms.value = rooms.value.filter((room) => room.id !== roomId);
 };
 
-const bindMoveListener = () => {
-  document.addEventListener('touchmove', onRoomPressMove, { passive: true });
-  document.addEventListener('mousemove', onRoomPressMove);
-};
-const unbindMoveListener = () => {
-  document.removeEventListener('touchmove', onRoomPressMove);
-  document.removeEventListener('mousemove', onRoomPressMove);
-};
-
-const onRoomPressStart = (room: Room, e: MouseEvent | TouchEvent) => {
-  roomToDelete.value = room;
-  const source = e instanceof TouchEvent ? (e as TouchEvent).touches[0] : (e as MouseEvent);
-  pressStartX = source?.clientX ?? 0;
-  pressStartY = source?.clientY ?? 0;
-  bindMoveListener();
-  longPressTimer = setTimeout(() => {
-    longPressTimer = null;
-    unbindMoveListener();
-    didOpenDeletePopover.value = true;
-    const ev = new MouseEvent('click', { clientX: pressStartX, clientY: pressStartY, bubbles: true });
-    deletePopoverEvent.value = ev;
-    deletePopoverOpen.value = true;
-  }, 500);
-};
-
-const onRoomPressEnd = () => {
-  unbindMoveListener();
-  if (longPressTimer) {
-    clearTimeout(longPressTimer);
-    longPressTimer = null;
-  }
-};
-
-const confirmDeleteRoom = async () => {
-  if (!roomToDelete.value) return;
-  const roomId = roomToDelete.value.id;
-  try {
-    await http().delete(GATEWAY_INTEGRATION_ROUTES.api + GATEWAY_INTEGRATION_ROUTES.rooms + '/' + roomId);
-    rooms.value = rooms.value.filter((r) => r.id !== roomId);
-  } finally {
-    deletePopoverOpen.value = false;
-    deletePopoverEvent.value = null;
-    roomToDelete.value = null;
-  }
-};
-
-const dismissDeletePopover = () => {
-  deletePopoverOpen.value = false;
-  deletePopoverEvent.value = null;
-  roomToDelete.value = null;
-};
-
-const goToRoomIfNotLongPress = (roomId: string) => {
-  if (didOpenDeletePopover.value) {
-    didOpenDeletePopover.value = false;
-    return;
-  }
-  goToRoom(roomId);
+const requestDeleteRoom = async (room: Room) => {
+  const alert = await alertController.create({
+    header: "Удалить комнату?",
+    message: `Комната "${room.name}" будет удалена.`,
+    buttons: [
+      { text: "Отмена", role: "cancel" },
+      {
+        text: "Удалить",
+        role: "destructive",
+        handler: () => void confirmDeleteRoom(room.id)
+      }
+    ]
+  });
+  await alert.present();
 };
 
 const toggleLegalInformation = () => {
   showLegalInformation.value = !showLegalInformation.value;
 };
-
 
 </script>
 
@@ -158,34 +97,33 @@ const toggleLegalInformation = () => {
     <ion-content :fullscreen="true" color="dark">
 
       <ion-list v-show="rooms.length != 0" class="room-list">
-        <ion-item
-          v-for="(room, index) in rooms"
-          :key="index"
-          :button="true"
-          color="dark"
-          @click="goToRoomIfNotLongPress(room.id)"
-          @touchstart.passive="onRoomPressStart(room, $event)"
-          @touchend="onRoomPressEnd"
-          @touchcancel="onRoomPressEnd"
-          @mousedown="onRoomPressStart(room, $event)"
-          @mouseup="onRoomPressEnd"
-          @mouseleave="onRoomPressEnd"
-        >
-          <ion-avatar aria-hidden="false" slot="start">
-            <img width="64" height="64"
-                 :src="room.filePath ? FILE_STORAGE_INTEGRATION_ROUTES.baseURL +
-                 FILE_STORAGE_INTEGRATION_ROUTES.api +
-                 FILE_STORAGE_INTEGRATION_ROUTES.room_images_bucket +
-                 FILE_STORAGE_INTEGRATION_ROUTES.download + '/' + room.filePath :
-                 'https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"
-                 alt="external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2"/>
-          </ion-avatar>
-          <ion-icon aria-hidden="false" :icon="chevronForwardOutline" slot="end"></ion-icon>
-          <ion-label>
-            <h1 class="room-name">{{ room.name }}</h1>
-            <p class="room-description">{{ room.description }}</p>
-          </ion-label>
-        </ion-item>
+        <ion-item-sliding v-for="room in rooms" :key="room.id">
+          <ion-item
+            :button="true"
+            color="dark"
+            @click="goToRoom(room.id)"
+          >
+            <ion-avatar aria-hidden="false" slot="start">
+              <img width="64" height="64"
+                   :src="room.filePath ? FILE_STORAGE_INTEGRATION_ROUTES.baseURL +
+                   FILE_STORAGE_INTEGRATION_ROUTES.api +
+                   FILE_STORAGE_INTEGRATION_ROUTES.room_images_bucket +
+                   FILE_STORAGE_INTEGRATION_ROUTES.download + '/' + room.filePath :
+                   'https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"
+                   alt="external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2"/>
+            </ion-avatar>
+            <ion-icon aria-hidden="false" :icon="chevronForwardOutline" slot="end"></ion-icon>
+            <ion-label>
+              <h1 class="room-name">{{ room.name }}</h1>
+              <p class="room-description">{{ room.description }}</p>
+            </ion-label>
+          </ion-item>
+          <ion-item-options side="end">
+            <ion-item-option color="danger" @click="requestDeleteRoom(room)">
+              <ion-icon slot="icon-only" :icon="trashOutline"></ion-icon>
+            </ion-item-option>
+          </ion-item-options>
+        </ion-item-sliding>
       </ion-list>
 
       <div class="room-list-placeholder-wrapper" v-show="rooms.length == 0">
@@ -197,20 +135,6 @@ const toggleLegalInformation = () => {
           <ion-icon :icon="add" color="light"></ion-icon>
         </ion-fab-button>
       </ion-fab>
-
-      <ion-popover
-        :is-open="deletePopoverOpen"
-        :event="deletePopoverEvent"
-        @didDismiss="dismissDeletePopover"
-      >
-        <div class="delete-room-popover">
-          <p>Удалить комнату?</p>
-          <div class="delete-room-actions">
-            <ion-button fill="clear" size="small" @click="dismissDeletePopover">Нет</ion-button>
-            <ion-button fill="solid" color="danger" size="small" @click="confirmDeleteRoom">да</ion-button>
-          </div>
-        </div>
-      </ion-popover>
 
     </ion-content>
     <ion-footer class="rooms-footer" color="dark">
@@ -257,21 +181,6 @@ const toggleLegalInformation = () => {
   align-content: center;
   justify-content: center;
   overflow: auto;
-}
-
-.delete-room-popover {
-  padding: 12px 16px;
-  min-width: 180px;
-  background-color: var(--ion-color-dark);
-}
-.delete-room-popover p {
-  margin: 0 0 12px 0;
-  font-size: 14px;
-}
-.delete-room-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
 }
 
 .rooms-footer {
