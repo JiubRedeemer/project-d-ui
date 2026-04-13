@@ -131,8 +131,8 @@ const toggleLegalInformation = () => {
       </div>
 
       <ion-fab slot="fixed" vertical="bottom" horizontal="end">
-        <ion-fab-button color="medium" @click="goToCreateRoom()">
-          <ion-icon :icon="add" color="light"></ion-icon>
+        <ion-fab-button color="primary" @click="goToCreateRoom()">
+          <ion-icon :icon="add" color="dark"></ion-icon>
         </ion-fab-button>
       </ion-fab>
 

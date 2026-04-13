@@ -44,6 +44,8 @@ import RestViewModal from "@/views/character/tabs/rest/RestViewModal.vue";
 import EditSkillValueModal from "./tabs/common/bonus/EditSkillValueModal.vue";
 import LevelUpViewModal from "@/views/character/tabs/level/LevelUpViewModal.vue";
 import TraitsView from "@/views/character/tabs/traits/TraitsView.vue";
+import PetsView from "@/views/character/tabs/pets/PetsView.vue";
+import { paw } from "ionicons/icons";
 
 const route = useRoute();
 const characterStore = useCharacterStore()
@@ -65,7 +67,7 @@ const subheaderStore = useSubheaderOpenedStore();
 const characterSkillsStore = useCharacterSkillsStore();
 
 const earlyVersionClickCount = ref(0);
-type PlayerTabKey = "abilities" | "attacks" | "bio" | "traits" | "inventory" | "notes" | "magic";
+type PlayerTabKey = "abilities" | "attacks" | "bio" | "traits" | "inventory" | "notes" | "magic" | "pets";
 const selectedTab = ref<PlayerTabKey>("abilities");
 const isDesktop = ref<boolean>(window.innerWidth >= 1024);
 const DESKTOP_BREAKPOINT_PX = 1024;
@@ -86,7 +88,8 @@ const tabs = [
   {key: "traits", icon: traitsTabIcon, label: "Черты"},
   {key: "inventory", icon: inventoryTabIcon, label: "Инвентарь"},
   {key: "notes", icon: notesTabIcon, label: "Заметки"},
-  {key: "magic", icon: magicTabIcon, label: "Магия"}
+  {key: "magic", icon: magicTabIcon, label: "Магия"},
+  {key: "pets", icon: paw, label: "Питомцы"}
 ] as const;
 
 const selectedTabTitle = computed(() => {
@@ -153,7 +156,7 @@ const selectDesktopTab = (tab: PlayerTabKey) => {
 
 const onTabsChange = (event: CustomEvent<{ tab: string }>) => {
   const tab = event?.detail?.tab;
-  if (tab === "abilities" || tab === "attacks" || tab === "bio" || tab === "traits" || tab === "inventory" || tab === "notes" || tab === "magic") {
+  if (tab === "abilities" || tab === "attacks" || tab === "bio" || tab === "traits" || tab === "inventory" || tab === "notes" || tab === "magic" || tab === "pets") {
     selectedTab.value = tab;
   }
 };
@@ -352,6 +355,9 @@ const openSubheader = () => {
             <Suspense>
               <MagicView v-if="asyncDone && selectedTab === 'magic'"/>
             </Suspense>
+            <Suspense>
+              <PetsView v-if="asyncDone && selectedTab === 'pets'"/>
+            </Suspense>
           </div>
         </ion-content>
       </section>
@@ -445,6 +451,19 @@ const openSubheader = () => {
           </div>
         </ion-content>
       </ion-tab>
+      <ion-tab tab="pets">
+        <ion-content class="ion-padding"
+                     :fullscreen="true"
+                     color="dark"
+                     direction="y"
+                     :scroll-x="false">
+          <div class="tab-content pets" :class="{ openSubheader: subheaderStore.subheaderOpened }">
+            <Suspense>
+              <PetsView v-if="asyncDone"/>
+            </Suspense>
+          </div>
+        </ion-content>
+      </ion-tab>
       <ion-tab-bar slot="bottom" color="dark" class="tab-bar" :translucent="true">
         <ion-tab-button tab="abilities">
           <div class="tab-icon-wrapper">
@@ -481,6 +500,11 @@ const openSubheader = () => {
             <ion-icon :icon="magicTabIcon"/>
           </div>
         </ion-tab-button>
+<!--        <ion-tab-button tab="pets">-->
+<!--          <div class="tab-icon-wrapper">-->
+<!--            <ion-icon :icon="paw"/>-->
+<!--          </div>-->
+<!--        </ion-tab-button>-->
       </ion-tab-bar>
 
       <!-- Заглушка для ранней версии функционала -->
@@ -755,6 +779,10 @@ ion-page {
   margin-top: 120px;
 }
 
+.pets.openSubheader {
+  margin-top: 120px;
+}
+
 .abilities {
   margin-top: 64px;
   transition: margin-top 0.3s ease;
@@ -786,6 +814,11 @@ ion-page {
 }
 
 .magic {
+  margin-top: 64px;
+  transition: margin-top 0.3s ease;
+}
+
+.pets {
   margin-top: 64px;
   transition: margin-top 0.3s ease;
 }
@@ -857,6 +890,10 @@ ion-page {
       margin-top: 120px;
     }
 
+    .pets {
+      margin-top: 120px;
+    }
+
     .abilities.openSubheader {
       margin-top: 180px;
     }
@@ -882,6 +919,10 @@ ion-page {
     }
 
     .magic.openSubheader {
+      margin-top: 180px;
+    }
+
+    .pets.openSubheader {
       margin-top: 180px;
     }
 
