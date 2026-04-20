@@ -11,7 +11,16 @@ export default defineConfig({
   base: process.env.VITE_BASE ?? '/',
   plugins: [
     vue(),
-    legacy(),
+    legacy({
+      targets: ['defaults', 'not IE 11', 'safari >= 12'], // keep old target if you really need it
+      additionalLegacyPolyfills: ['regenerator-runtime/runtime'],
+      // Force the flag
+      esbuildOptions: {
+        supported: {
+          'destructuring': true
+        }
+      }
+    }),
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: null,
