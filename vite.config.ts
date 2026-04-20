@@ -9,15 +9,13 @@ import {VitePWA} from 'vite-plugin-pwa';
 // https://vitejs.dev/config/
 export default defineConfig({
     base: process.env.VITE_BASE ?? '/',
-    build: {
-        // Keep modern output untouched; legacy plugin handles older browsers separately.
-        target: 'esnext',
-    },
     plugins: [
         vue(),
         legacy({
             // Avoid "defaults" because it still includes old Safari targets.
             targets: ['chrome >= 70', 'edge >= 79', 'firefox >= 67', 'safari >= 14', 'ios >= 14'],
+            // Vite/esbuild modern transpile path must also avoid Safari 12.
+            modernTargets: ['chrome >= 70', 'edge >= 79', 'firefox >= 67', 'safari >= 14', 'ios >= 14'],
         }),
         VitePWA({
             registerType: 'autoUpdate',
