@@ -1,23 +1,20 @@
 <script setup lang="ts">
 import {IonButton, IonIcon, useIonRouter} from "@ionic/vue";
 
-import {logOutOutline} from "ionicons/icons";
-import {clearAuthTokens} from "@/utils/authTokens";
+import {personCircleOutline} from "ionicons/icons";
 
 const ionRouter = useIonRouter();
 
 
-function logout() {
-  clearAuthTokens();
-
-  ionRouter.replace('/welcome');
+function openProfile() {
+  ionRouter.navigate('/profile', 'forward', 'push');
 }
 
 </script>
 
 <template>
-  <ion-button size="small" @click="logout()">
-    <ion-icon slot="icon-only" :ios="logOutOutline" :md="logOutOutline"></ion-icon>
+  <ion-button size="small" @click="openProfile()">
+    <ion-icon slot="icon-only" :ios="personCircleOutline" :md="personCircleOutline"></ion-icon>
   </ion-button>
 </template>
 

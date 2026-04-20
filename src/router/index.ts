@@ -2,8 +2,6 @@ import {createRouter, createWebHistory} from '@ionic/vue-router';
 import {RouteRecordRaw} from 'vue-router';
 import RoomsPage from "@/views/rooms/RoomsPage.vue";
 import InvitesPage from "@/views/invites/InvitesPage.vue";
-import RegisterPage from '@/views/welcome/register/RegisterPage.vue';
-import LoginPage from "@/views/welcome/login/LoginPage.vue";
 import WelcomePage from '@/views/welcome/WelcomePage.vue';
 import CreateCharacter from "@/views/createCharacter/CreateCharacter.vue";
 import PlayerView from "@/views/character/PlayerView.vue";
@@ -38,6 +36,7 @@ import MasterGuidebookBackgroundsView from "@/views/master/tabs/guidebook/Master
 import MasterGuidebookItemsView from "@/views/master/tabs/guidebook/MasterGuidebookItemsView.vue";
 import MasterGuidebookSpellsView from "@/views/master/tabs/guidebook/MasterGuidebookSpellsView.vue";
 import MasterGuidebookNpcsView from "@/views/master/tabs/guidebook/MasterGuidebookNpcsView.vue";
+import ProfilePage from "@/views/profile/ProfilePage.vue";
 
 const routes: Array<RouteRecordRaw> = [
     {
@@ -50,21 +49,9 @@ const routes: Array<RouteRecordRaw> = [
         name: 'welcomePage'
     },
     {
-        path: '/welcome/login/',
-        component: LoginPage,
-        name: 'loginPage'
-    },
-    {
-        path: '/register',
-        redirect: (to) => ({
-            path: '/welcome/register/',
-            query: to.query,
-        }),
-    },
-    {
-        path: '/welcome/register/',
-        component: RegisterPage,
-        name: 'registerPage'
+        path: '/profile',
+        component: ProfilePage,
+        name: 'profilePage'
     },
     {
         path: '/rooms',
