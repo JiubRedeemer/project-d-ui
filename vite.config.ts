@@ -11,16 +11,7 @@ export default defineConfig({
   base: process.env.VITE_BASE ?? '/',
   plugins: [
     vue(),
-    legacy({
-      targets: [
-        'Chrome >= 79',
-        'ChromeAndroid >= 79',
-        'Firefox >= 70',
-        'Edge >= 79',
-        'Safari >= 14',
-        'iOS >= 14'
-      ]
-    }),
+    legacy(),
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: null,
