@@ -456,7 +456,7 @@ async function register() {
                     v-if="isLoginEmailStage"
                     fill="clear"
                     color="primary"
-                    @click="ionRouter.navigate('welcome/forgot-password', 'forward', 'push')"
+                    @click="ionRouter.navigate('/welcome/forgot-password', 'forward', 'push')"
                   >
                     {{ TEXTS.forgotPassword.rus }}
                   </ion-button>

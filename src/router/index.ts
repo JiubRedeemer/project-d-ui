@@ -3,6 +3,7 @@ import {RouteRecordRaw} from 'vue-router';
 import RoomsPage from "@/views/rooms/RoomsPage.vue";
 import InvitesPage from "@/views/invites/InvitesPage.vue";
 import WelcomePage from '@/views/welcome/WelcomePage.vue';
+import ForgotPasswordPage from "@/views/welcome/ForgotPasswordPage.vue";
 import CreateCharacter from "@/views/createCharacter/CreateCharacter.vue";
 import PlayerView from "@/views/character/PlayerView.vue";
 import CharacterList from "@/views/rooms/CharacterList.vue";
@@ -47,6 +48,11 @@ const routes: Array<RouteRecordRaw> = [
         path: '/welcome',
         component: WelcomePage,
         name: 'welcomePage'
+    },
+    {
+        path: '/welcome/forgot-password',
+        component: ForgotPasswordPage,
+        name: 'forgotPasswordPage'
     },
     {
         path: '/profile',
