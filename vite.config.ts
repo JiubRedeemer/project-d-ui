@@ -9,7 +9,14 @@ import { VitePWA } from 'vite-plugin-pwa';
 export default defineConfig({
   base: process.env.VITE_BASE ?? '/',
   plugins: [
-    vue(),
+    vue({
+      template: {
+        compilerOptions: {
+          // Render ion-icon as a native web component so slot="icon-only" projects into ion-button correctly.
+          isCustomElement: (tag) => tag === 'ion-icon',
+        },
+      },
+    }),
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: null,

@@ -9,6 +9,17 @@ import axios from "axios";
 import {getAccessToken, syncAuthTokensFromCookies} from "@/utils/authTokens";
 
 import {IonicVue} from '@ionic/vue';
+import {defineCustomElement as defineIonIcon} from 'ionicons/components/ion-icon.js';
+import {addIcons} from 'ionicons';
+import {notificationsOutline, personCircleOutline, searchOutline} from 'ionicons/icons';
+
+defineIonIcon();
+
+addIcons({
+  notificationsOutline,
+  personCircleOutline,
+  searchOutline,
+});
 
 /* Core CSS required for Ionic components to work properly */
 import '@ionic/vue/css/core.css';

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {IonButton, IonIcon, useIonRouter} from "@ionic/vue";
+import {IonButton, useIonRouter} from "@ionic/vue";
 
 import {personCircleOutline} from "ionicons/icons";
 
@@ -13,8 +13,8 @@ function openProfile() {
 </script>
 
 <template>
-  <ion-button size="small" @click="openProfile()">
-    <ion-icon slot="icon-only" :ios="personCircleOutline" :md="personCircleOutline"></ion-icon>
+  <ion-button fill="clear" color="light" size="small" class="header-action-btn" @click="openProfile()">
+    <ion-icon slot="icon-only" :icon.prop="personCircleOutline" color="light"/>
   </ion-button>
 </template>
 

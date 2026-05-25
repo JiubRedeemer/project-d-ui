@@ -5,7 +5,6 @@ import {
   IonButton,
   IonButtons,
   IonHeader,
-  IonIcon,
   IonSearchbar,
   IonTitle,
   IonToolbar,
@@ -77,25 +76,28 @@ function toggleSearch() {
 
 <template>
   <ion-header class="ion-no-border liquid-header">
-    <ion-buttons>
-      <ion-toolbar color="medium">
-        <ion-title>{{ props.headerName }}</ion-title>
-        <ion-buttons slot="start">
-          <ion-back-button v-if="forceBackButton" default-href="/rooms" />
-          <ion-button v-if="searchable" size="small" @click="toggleSearch">
-            <ion-icon slot="icon-only" :ios="searchOutline" :md="searchOutline"></ion-icon>
-          </ion-button>
-        </ion-buttons>
-        <ion-buttons slot="end">
-          <ion-button size="small" @click="ionRouter.navigate('/invites', 'forward', 'push')">
-            <ion-icon slot="icon-only" :ios="notificationsOutline" :md="notificationsOutline">
-            </ion-icon>
-            <ion-badge color="primary" v-show="notifications.count > 0">{{ notifications.count }}</ion-badge>
-          </ion-button>
-          <LogOutButton/>
-        </ion-buttons>
-      </ion-toolbar>
-    </ion-buttons>
+    <ion-toolbar color="medium">
+      <ion-buttons slot="start">
+        <ion-back-button v-if="forceBackButton" default-href="/rooms" />
+        <ion-button v-if="searchable" fill="clear" color="light" size="small" class="header-action-btn" @click="toggleSearch">
+          <ion-icon slot="icon-only" :icon.prop="searchOutline" color="light"></ion-icon>
+        </ion-button>
+      </ion-buttons>
+      <ion-title>{{ props.headerName }}</ion-title>
+      <ion-buttons slot="end">
+        <ion-button
+          fill="clear"
+          color="light"
+          size="small"
+          class="header-action-btn header-notify-btn"
+          @click="ionRouter.navigate('/invites', 'forward', 'push')"
+        >
+          <ion-icon slot="icon-only" :icon.prop="notificationsOutline" color="light"></ion-icon>
+          <ion-badge color="primary" v-show="notifications.count > 0">{{ notifications.count }}</ion-badge>
+        </ion-button>
+        <LogOutButton/>
+      </ion-buttons>
+    </ion-toolbar>
     <ion-toolbar v-if="searchable && (searchOpen || hasSearchQuery)" color="dark" class="search-toolbar">
       <ion-searchbar
         :model-value="searchQuery"
@@ -107,16 +109,25 @@ function toggleSearch() {
 </template>
 
 <style scoped>
-ion-button {
-  ion-badge {
-    position: absolute;
-    top: -0.4rem;
-    right: -0.4rem;
+.header-notify-btn {
+  position: relative;
+}
 
-    & ~ ion-icon {
-      margin-right: 1.2rem;
-    }
-  }
+.header-notify-btn ion-badge {
+  position: absolute;
+  top: -0.35rem;
+  right: -0.35rem;
+  z-index: 1;
+}
+
+.liquid-header :deep(.header-action-btn) {
+  --color: var(--ion-color-light);
+}
+
+.liquid-header :deep(ion-icon) {
+  font-size: 1.5rem;
+  color: var(--ion-color-light);
+  opacity: 1;
 }
 
 .liquid-header {
@@ -141,7 +152,7 @@ ion-button {
   --ion-toolbar-background: transparent !important;
   --border-color: transparent !important;
   --color: var(--ion-color-light) !important;
-  --opacity: 0 !important;
+  --opacity: 1 !important;
   background: transparent !important;
   position: relative;
   z-index: 1;

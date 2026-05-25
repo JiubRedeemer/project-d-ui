@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {IonBackButton, IonBadge, IonButton, IonButtons, IonHeader, IonIcon, IonTitle, IonToolbar} from "@ionic/vue";
+import {IonBackButton, IonBadge, IonButton, IonButtons, IonHeader, IonTitle, IonToolbar} from "@ionic/vue";
 import {notificationsOutline} from "ionicons/icons";
 import {HEADERS} from "@/config/localisations";
 import {onBeforeMount, ref} from "vue";
@@ -33,35 +33,36 @@ onBeforeMount(() => {
 
 <template>
   <ion-header>
-    <ion-buttons>
-      <ion-toolbar style="--background: transparent">
-        <ion-title>{{ HEADERS.invites.rus }}</ion-title>
-        <ion-buttons slot="start">
-          <ion-back-button default-href="/rooms"></ion-back-button>
-        </ion-buttons>
-        <ion-buttons slot="end">
-          <ion-button size="small">
-            <ion-icon slot="icon-only" :ios="notificationsOutline" :md="notificationsOutline">
-            </ion-icon>
-            <ion-badge color="primary" v-show="notifications.count > 0">{{ notifications.count }}</ion-badge>
-          </ion-button>
-          <LogOutButton/>
-        </ion-buttons>
-      </ion-toolbar>
-    </ion-buttons>
+    <ion-toolbar style="--background: transparent">
+      <ion-buttons slot="start">
+        <ion-back-button default-href="/rooms"></ion-back-button>
+      </ion-buttons>
+      <ion-title>{{ HEADERS.invites.rus }}</ion-title>
+      <ion-buttons slot="end">
+        <ion-button fill="clear" color="light" size="small" class="header-notify-btn">
+          <ion-icon slot="icon-only" :icon.prop="notificationsOutline" color="light"></ion-icon>
+          <ion-badge color="primary" v-show="notifications.count > 0">{{ notifications.count }}</ion-badge>
+        </ion-button>
+        <LogOutButton/>
+      </ion-buttons>
+    </ion-toolbar>
   </ion-header>
 </template>
 
 <style scoped>
-ion-button {
-  ion-badge {
-    position: absolute;
-    top: -0.4rem;
-    right: -0.4rem;
+.header-notify-btn {
+  position: relative;
+}
 
-    & ~ ion-icon {
-      margin-right: 1.2rem;
-    }
-  }
+.header-notify-btn ion-badge {
+  position: absolute;
+  top: -0.35rem;
+  right: -0.35rem;
+  z-index: 1;
+}
+
+.header-notify-btn :deep(ion-icon) {
+  font-size: 1.5rem;
+  color: var(--ion-color-light);
 }
 </style>
