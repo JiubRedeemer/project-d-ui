@@ -155,45 +155,63 @@ const toggleLegalInformation = () => {
 <template>
   <ion-page>
     <RoomsHeader :header-name="HEADERS.rooms.rus"></RoomsHeader>
-    <ion-content :fullscreen="true" color="dark">
+    <ion-content :fullscreen="true" class="rooms-content">
+      <div class="rooms-wrapper">
+        <div class="glow glow-top"></div>
+        <div class="glow glow-mid"></div>
+        <div class="glow glow-bottom"></div>
 
-      <ion-list v-show="rooms.length != 0" class="room-list">
-        <ion-item
-          v-for="(room, index) in rooms"
-          :key="index"
-          :button="true"
-          color="dark"
-          @click="goToRoomIfNotLongPress(room.id)"
-          @touchstart.passive="onRoomPressStart(room, $event)"
-          @touchend="onRoomPressEnd"
-          @touchcancel="onRoomPressEnd"
-          @mousedown="onRoomPressStart(room, $event)"
-          @mouseup="onRoomPressEnd"
-          @mouseleave="onRoomPressEnd"
-        >
-          <ion-avatar aria-hidden="false" slot="start">
-            <img width="64" height="64"
-                 :src="room.filePath ? FILE_STORAGE_INTEGRATION_ROUTES.baseURL +
-                 FILE_STORAGE_INTEGRATION_ROUTES.api +
-                 FILE_STORAGE_INTEGRATION_ROUTES.room_images_bucket +
-                 FILE_STORAGE_INTEGRATION_ROUTES.download + '/' + room.filePath :
-                 'https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"
-                 alt="external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2"/>
-          </ion-avatar>
-          <ion-icon aria-hidden="false" :icon="chevronForwardOutline" slot="end"></ion-icon>
-          <ion-label>
-            <h1 class="room-name">{{ room.name }}</h1>
-            <p class="room-description">{{ room.description }}</p>
-          </ion-label>
-        </ion-item>
-      </ion-list>
+        <div class="rooms-shell">
+          <section class="rooms-hero">
+            <p class="rooms-eyebrow">Project-D</p>
+            <h1 class="rooms-title">{{ HEADERS.rooms.rus }}</h1>
+            <p class="rooms-subtitle">Выберите комнату для продолжения приключения или создайте новую.</p>
+          </section>
 
-      <div class="room-list-placeholder-wrapper" v-show="rooms.length == 0">
-        <div class="room-list-placeholder">{{ TEXTS.emptyRoomList.rus }}</div>
+          <ion-list v-show="rooms.length !== 0" lines="none" class="room-list">
+            <ion-item
+              v-for="(room, index) in rooms"
+              :key="index"
+              :button="true"
+              class="room-item"
+              @click="goToRoomIfNotLongPress(room.id)"
+              @touchstart.passive="onRoomPressStart(room, $event)"
+              @touchend="onRoomPressEnd"
+              @touchcancel="onRoomPressEnd"
+              @mousedown="onRoomPressStart(room, $event)"
+              @mouseup="onRoomPressEnd"
+              @mouseleave="onRoomPressEnd"
+            >
+              <ion-avatar aria-hidden="false" slot="start">
+                <img width="64" height="64"
+                     :src="room.filePath ? FILE_STORAGE_INTEGRATION_ROUTES.baseURL +
+                     FILE_STORAGE_INTEGRATION_ROUTES.api +
+                     FILE_STORAGE_INTEGRATION_ROUTES.room_images_bucket +
+                     FILE_STORAGE_INTEGRATION_ROUTES.download + '/' + room.filePath :
+                     'https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"
+                     alt="external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2"/>
+              </ion-avatar>
+              <ion-icon aria-hidden="false" :icon="chevronForwardOutline" slot="end"></ion-icon>
+              <ion-label>
+                <h2 class="room-name">{{ room.name }}</h2>
+                <p class="room-description">{{ room.description }}</p>
+              </ion-label>
+            </ion-item>
+          </ion-list>
+
+          <div class="room-list-placeholder-wrapper" v-show="rooms.length === 0">
+            <div class="room-list-placeholder">
+              <p class="placeholder-title">{{ TEXTS.emptyRoomList.rus }}</p>
+              <ion-button shape="round" class="placeholder-cta" color="primary" @click="goToCreateRoom()">
+                Создать комнату
+              </ion-button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <ion-fab slot="fixed" vertical="bottom" horizontal="end">
-        <ion-fab-button color="medium" @click="goToCreateRoom()">
+        <ion-fab-button class="rooms-fab" @click="goToCreateRoom()">
           <ion-icon :icon="add" color="light"></ion-icon>
         </ion-fab-button>
       </ion-fab>
@@ -241,22 +259,168 @@ const toggleLegalInformation = () => {
 </template>
 
 <style scoped>
+.rooms-content {
+  --background: radial-gradient(circle at 14% 16%, rgba(var(--ion-color-primary-rgb), 0.2), transparent 46%),
+    radial-gradient(circle at 88% 10%, rgba(var(--ion-color-tertiary-rgb), 0.16), transparent 44%),
+    linear-gradient(165deg, var(--ion-color-dark) 0%, var(--ion-color-medium-shade) 60%, var(--ion-color-medium) 100%);
+  --padding-top: calc(10px + var(--sat, 0px));
+  --padding-start: 12px;
+  --padding-end: 12px;
+  --padding-bottom: calc(20px + var(--sab, 0px));
+}
+
+.rooms-wrapper {
+  width: 100%;
+  min-height: 100%;
+  position: relative;
+  padding: 4px 0 14px;
+  box-sizing: border-box;
+}
+
+.rooms-shell {
+  width: min(680px, 100%);
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+.glow {
+  position: absolute;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  filter: blur(56px);
+  opacity: 0.34;
+  pointer-events: none;
+}
+
+.glow-top {
+  top: -86px;
+  right: -54px;
+  background: rgba(var(--ion-color-primary-rgb), 0.72);
+}
+
+.glow-mid {
+  top: 34%;
+  left: -90px;
+  width: 220px;
+  height: 220px;
+  background: rgba(var(--ion-color-secondary-rgb), 0.34);
+}
+
+.glow-bottom {
+  bottom: -110px;
+  left: 18%;
+  background: rgba(var(--ion-color-tertiary-rgb), 0.5);
+}
+
+.rooms-hero {
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.14);
+  background: linear-gradient(150deg, rgba(var(--ion-color-light-rgb), 0.1), rgba(var(--ion-color-light-rgb), 0.03));
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(6px);
+}
+
+.rooms-eyebrow {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(var(--ion-color-light-rgb), 0.68);
+}
+
+.rooms-title {
+  margin: 8px 0 6px;
+  font-size: clamp(24px, 4.8vw, 34px);
+  line-height: 1.18;
+  font-weight: 700;
+}
+
+.rooms-subtitle {
+  margin: 0;
+  color: rgba(var(--ion-color-light-rgb), 0.84);
+  line-height: 1.45;
+  font-size: 14px;
+}
 
 .room-list {
+  margin-top: 12px;
   background: transparent;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.room-item {
+  --background: linear-gradient(145deg, rgba(var(--ion-color-light-rgb), 0.1), rgba(var(--ion-color-light-rgb), 0.03));
+  --border-radius: 14px;
+  --padding-start: 12px;
+  --inner-padding-end: 10px;
+  --min-height: 72px;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(4px);
+}
+
+.room-item ion-avatar {
+  width: 52px;
+  height: 52px;
+}
+
+.room-item ion-avatar img {
+  border-radius: 14px;
+}
+
+.room-item ion-icon[slot="end"] {
+  color: rgba(var(--ion-color-primary-rgb), 0.85);
+  font-size: 18px;
+}
+
+.room-name {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--ion-color-light);
+}
+
+.room-description {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: rgba(var(--ion-color-light-rgb), 0.76);
 }
 
 .room-list-placeholder-wrapper {
   width: 100%;
-  height: 100%;
-  position: fixed;
-  top: 0;
-  left: 0;
+  min-height: 240px;
   display: flex;
   align-items: center;
-  align-content: center;
   justify-content: center;
-  overflow: auto;
+  margin-top: 12px;
+}
+
+.room-list-placeholder {
+  width: 100%;
+  padding: 20px 16px;
+  text-align: center;
+  border-radius: 14px;
+  border: 1px dashed rgba(var(--ion-color-light-rgb), 0.18);
+  color: rgba(var(--ion-color-light-rgb), 0.84);
+  background: rgba(var(--ion-color-dark-rgb), 0.2);
+}
+
+.placeholder-title {
+  margin: 0;
+  font-size: 15px;
+  color: rgba(var(--ion-color-light-rgb), 0.86);
+}
+
+.placeholder-cta {
+  margin-top: 12px;
+  min-height: 44px;
 }
 
 .delete-room-popover {
@@ -275,11 +439,12 @@ const toggleLegalInformation = () => {
 }
 
 .rooms-footer {
-  --background: var(--ion-color-dark-shade);
-  background-color: var(--ion-color-dark-shade);
+  --background: rgba(var(--ion-color-dark-rgb), 0.82);
+  background: linear-gradient(180deg, rgba(var(--ion-color-medium-rgb), 0.7), rgba(var(--ion-color-medium-rgb), 0.9));
+  backdrop-filter: blur(10px);
   opacity: 1;
-  border-top: 1px solid var(--ion-color-dark-tint);
-  padding: 6px 10px 10px;
+  border-top: 1px solid rgba(var(--ion-color-light-rgb), 0.12);
+  padding: 8px 12px 10px;
 }
 
 .rooms-footer-main {
@@ -287,23 +452,74 @@ const toggleLegalInformation = () => {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  color: var(--ion-color-light);
-  font-size: 0.85rem;
+  color: rgba(var(--ion-color-light-rgb), 0.9);
+  font-size: 0.82rem;
+  font-weight: 500;
 }
 
 .rooms-footer-legal {
-  margin-top: 4px;
-  font-size: 0.8rem;
-  line-height: 1.35;
-  color: var(--ion-color-light);
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(var(--ion-color-light-rgb), 0.12);
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: rgba(var(--ion-color-light-rgb), 0.8);
 }
 
 .rooms-footer-legal a {
-  color: var(--ion-color-primary);
+  color: rgba(var(--ion-color-primary-rgb), 0.95);
   text-decoration: underline;
 }
 
 .rooms-footer-main ion-button {
-  font-size: 0.72rem;
+  --color: rgba(var(--ion-color-light-rgb), 0.85);
+  --border-radius: 10px;
+  margin: 0;
+}
+
+.rooms-fab {
+  --background: transparent !important;
+  --background-activated: transparent !important;
+  --background-hover: transparent !important;
+  --color: var(--ion-color-light);
+  --border-radius: 50%;
+  --box-shadow: 0 10px 24px rgba(0, 0, 0, 0.24);
+}
+
+.rooms-fab::part(native) {
+  background: linear-gradient(
+    145deg,
+    rgba(var(--ion-color-light-rgb), 0.2),
+    rgba(var(--ion-color-light-rgb), 0.07)
+  ) !important;
+  backdrop-filter: blur(10px) saturate(130%);
+  -webkit-backdrop-filter: blur(10px) saturate(130%);
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.22);
+  border-radius: 50%;
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(var(--ion-color-light-rgb), 0.3);
+}
+
+@media (min-width: 768px) {
+  .rooms-content {
+    --padding-top: calc(14px + var(--sat, 0px));
+    --padding-start: 16px;
+    --padding-end: 16px;
+    --padding-bottom: calc(24px + var(--sab, 0px));
+  }
+
+  .rooms-shell {
+    width: min(720px, 100%);
+  }
+
+  .rooms-hero {
+    padding: 20px 22px;
+  }
+
+  .room-list {
+    margin-top: 14px;
+    gap: 10px;
+  }
 }
 </style>

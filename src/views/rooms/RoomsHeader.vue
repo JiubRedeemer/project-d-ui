@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {
-  IonBadge,
   IonBackButton,
+  IonBadge,
   IonButton,
   IonButtons,
   IonHeader,
@@ -11,7 +11,7 @@ import {
   IonToolbar,
   useIonRouter
 } from "@ionic/vue";
-import {arrowBack, notificationsOutline, searchOutline} from "ionicons/icons";
+import {notificationsOutline, searchOutline} from "ionicons/icons";
 import {computed, onBeforeMount, ref} from "vue";
 import axios from "axios";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
@@ -22,6 +22,10 @@ const ionRouter = useIonRouter();
 
 const props = defineProps({
   headerName: String,
+  forceBackButton: {
+    type: Boolean,
+    default: false
+  },
   searchable: {
     type: Boolean,
     default: false
@@ -72,15 +76,12 @@ function toggleSearch() {
 </script>
 
 <template>
-  <ion-header class="ion-no-border">
+  <ion-header class="ion-no-border liquid-header">
     <ion-buttons>
-      <ion-toolbar color="dark" no-border>
+      <ion-toolbar color="medium">
         <ion-title>{{ props.headerName }}</ion-title>
         <ion-buttons slot="start">
-          <ion-button v-if="headerName === 'Персонажи'" size="small" @click="ionRouter.replace('/rooms')">
-            <ion-icon slot="icon-only" :icon="arrowBack"></ion-icon>
-          </ion-button>
-          <ion-back-button v-else/>
+          <ion-back-button v-if="forceBackButton" default-href="/rooms" />
           <ion-button v-if="searchable" size="small" @click="toggleSearch">
             <ion-icon slot="icon-only" :ios="searchOutline" :md="searchOutline"></ion-icon>
           </ion-button>
@@ -116,5 +117,42 @@ ion-button {
       margin-right: 1.2rem;
     }
   }
+}
+
+.liquid-header {
+  --background: transparent !important;
+  position: relative;
+  background: transparent !important;
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+}
+
+.liquid-header::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.liquid-header ion-toolbar {
+  --background: transparent !important;
+  --ion-toolbar-background: transparent !important;
+  --border-color: transparent !important;
+  --color: var(--ion-color-light) !important;
+  --opacity: 0 !important;
+  background: transparent !important;
+  position: relative;
+  z-index: 1;
+}
+
+.liquid-header ion-back-button {
+  --color: var(--ion-color-light) !important;
+}
+
+.liquid-header .search-toolbar {
+  --background: transparent !important;
+  --ion-toolbar-background: transparent !important;
 }
 </style>

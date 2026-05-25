@@ -175,7 +175,7 @@ function convertCharacterData() {
 <template>
   <ion-page>
     <ion-content class="ion-padding" color="dark">
-      <div class="header-block create-character-header">
+      <div class="create-character-header-block create-character-header">
         <CreateCharacterHeader :header-text="stepNames[step.current]" :step="step" :total-steps="stepNames.length"/>
       </div>
       <div class="create-character-flow" v-show="step.current === 0">
@@ -228,7 +228,7 @@ function convertCharacterData() {
 </template>
 
 <style>
-.header-block {
+.create-character-header-block {
   padding-bottom: 3%;
 }
 
