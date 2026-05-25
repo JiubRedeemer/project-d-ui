@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {IonButton, IonContent, IonInput, IonPage, IonSpinner, toastController, useIonRouter} from "@ionic/vue";
 import {TEXTS} from "@/config/localisations";
+import WelcomeLanding from "@/views/welcome/WelcomeLanding.vue";
 import {computed, onBeforeMount, ref} from "vue";
 import axios, {isAxiosError} from "axios";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
@@ -376,54 +377,45 @@ async function register() {
 
 <template>
   <ion-page>
-    <ion-content :fullscreen="true" class="welcome-content" :scroll-y="false">
-      <div class="wrapper">
+    <ion-content
+      :fullscreen="true"
+      class="welcome-content"
+      :class="{ 'welcome-content--landing': isWelcomeStage }"
+      :scroll-y="isWelcomeStage"
+    >
+      <div class="welcome-page-shell">
         <div class="glow glow-top"></div>
         <div class="glow glow-mid"></div>
         <div class="glow glow-bottom"></div>
-        <div
-          class="card-shell"
-          :style="{ transform: `rotateY(${flipTurns * 180}deg)` }"
-        >
-          <div class="welcome-card">
-            <div class="card-content" :style="{ transform: `rotateY(${-flipTurns * 180}deg)` }">
-              <template v-if="isFlipping">
-                <div class="skeleton-line skeleton-eyebrow"></div>
-                <div class="skeleton-line skeleton-title"></div>
-                <div class="skeleton-line skeleton-subtitle"></div>
-                <div class="button-block">
-                  <div class="skeleton-line skeleton-input"></div>
-                  <div class="skeleton-line skeleton-button"></div>
-                  <div class="skeleton-line skeleton-link"></div>
-                </div>
-              </template>
-              <template v-else>
-                <p class="eyebrow">Mythrill</p>
-                <h1 class="title">{{ stageLabel }}</h1>
-                <p v-if="isWelcomeStage" class="subtitle">
-                  Современное приложение для управления персонажами и комнатами в настольных ролевых играх.
-                </p>
 
-                <div class="button-block" v-if="isWelcomeStage">
-                  <ion-button
-                    shape="round"
-                    class="button-list-element"
-                    color="primary"
-                    @click="startLoginFlow"
-                  >
-                    {{ TEXTS.login.rus }}
-                  </ion-button>
-                  <ion-button
-                    shape="round"
-                    class="button-list-element"
-                    color="primary"
-                    @click="startRegisterFlow"
-                  >
-                    {{ TEXTS.register.rus }}
-                  </ion-button>
-                </div>
+        <WelcomeLanding
+          v-if="isWelcomeStage && !isFlipping"
+          @login="startLoginFlow"
+          @register="startRegisterFlow"
+        />
 
-                <div class="button-block" v-else>
+        <div v-else class="wrapper wrapper--auth">
+          <div
+            class="card-shell"
+            :style="{ transform: `rotateY(${flipTurns * 180}deg)` }"
+          >
+            <div class="welcome-card">
+              <div class="card-content" :style="{ transform: `rotateY(${-flipTurns * 180}deg)` }">
+                <template v-if="isFlipping">
+                  <div class="skeleton-line skeleton-eyebrow"></div>
+                  <div class="skeleton-line skeleton-title"></div>
+                  <div class="skeleton-line skeleton-subtitle"></div>
+                  <div class="button-block">
+                    <div class="skeleton-line skeleton-input"></div>
+                    <div class="skeleton-line skeleton-button"></div>
+                    <div class="skeleton-line skeleton-link"></div>
+                  </div>
+                </template>
+                <template v-else>
+                  <p class="eyebrow">Mythrill</p>
+                  <h1 class="title">{{ stageLabel }}</h1>
+
+                  <div class="button-block">
                   <ion-input
                     v-model="stageInput"
                     class="auth-input"
@@ -462,10 +454,11 @@ async function register() {
                   </ion-button>
                 </div>
 
-                <p v-if="isRegisterCodeStage" class="subtitle subtitle-tight">
-                  {{ TEXTS.verificationCodeSentHint.rus }}
-                </p>
-              </template>
+                  <p v-if="isRegisterCodeStage" class="subtitle subtitle-tight">
+                    {{ TEXTS.verificationCodeSentHint.rus }}
+                  </p>
+                </template>
+              </div>
             </div>
           </div>
         </div>
@@ -481,6 +474,16 @@ async function register() {
     linear-gradient(165deg, var(--ion-color-dark) 0%, var(--ion-color-medium-shade) 58%, var(--ion-color-medium) 100%);
 }
 
+.welcome-page-shell {
+  width: 100%;
+  min-height: 100%;
+  position: relative;
+}
+
+.welcome-content--landing {
+  --padding-bottom: calc(16px + var(--sab, 0px));
+}
+
 .wrapper {
   width: 100%;
   min-height: 100%;
@@ -491,6 +494,10 @@ async function register() {
   overflow: hidden;
   padding: 32px 20px;
   box-sizing: border-box;
+}
+
+.wrapper--auth {
+  min-height: 100%;
 }
 
 .glow {

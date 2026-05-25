@@ -79,6 +79,46 @@ export const TEXTS = {
         dontShowAgain: { rus: 'Больше не показывать', eng: "Don't show again" },
         footerLink: { rus: 'Как установить', eng: 'How to install' },
     },
+    welcomeLanding: {
+        heroEyebrow: { rus: 'Mythrill', eng: 'Mythrill' },
+        heroTitle: {
+            rus: 'Цифровой стол для настольных ролевых игр',
+            eng: 'A digital table for tabletop role-playing games',
+        },
+        heroSubtitle: {
+            rus: 'Комнаты, листы персонажей и инструменты мастера в одном приложении — вместо разрозненных таблиц и бумажных листов.',
+            eng: 'Rooms, character sheets, and GM tools in one app — instead of scattered spreadsheets and paper sheets.',
+        },
+        heroTagline: {
+            rus: 'Создайте комнату, пригласите игроков и ведите кампанию с телефона, планшета или браузера.',
+            eng: 'Create a room, invite players, and run your campaign from phone, tablet, or browser.',
+        },
+        featuresHeading: { rus: 'Что умеет Mythrill', eng: 'What Mythrill offers' },
+        roomsTitle: { rus: 'Игровые комнаты', eng: 'Game rooms' },
+        roomsText: {
+            rus: 'Создавайте сессии, приглашайте игроков по email и собирайте партию в одном пространстве.',
+            eng: 'Create sessions, invite players by email, and gather your party in one place.',
+        },
+        charactersTitle: { rus: 'Листы персонажей', eng: 'Character sheets' },
+        charactersText: {
+            rus: 'Инвентарь, заклинания, навыки, биография и заметки — всё под рукой во время игры.',
+            eng: 'Inventory, spells, skills, bio, and notes — everything at hand during play.',
+        },
+        masterTitle: { rus: 'Инструменты мастера', eng: 'Game master tools' },
+        masterText: {
+            rus: 'Справочник правил, NPC, файлы комнаты и управление кампанией без лишней возни.',
+            eng: 'Rule reference, NPCs, room files, and campaign management without the hassle.',
+        },
+        pwaTitle: { rus: 'Удобно за столом', eng: 'Great at the table' },
+        pwaText: {
+            rus: 'Установите как PWA на телефон или планшет — быстрый запуск и доступ к данным даже при нестабильной сети.',
+            eng: 'Install as a PWA on your phone or tablet — fast launch and data access even on shaky networks.',
+        },
+        footerNote: {
+            rus: 'Поддержка материалов SRD 5.x для домашних кампаний.',
+            eng: 'SRD 5.x material support for home campaigns.',
+        },
+    },
     roomInviteRegisterHint: {
         rus: 'Вы перешли по приглашению в комнату. Зарегистрируйтесь с тем же email, на который было отправлено письмо.',
         eng: 'You opened a room invitation link. Sign up using the same email the invitation was sent to.',
