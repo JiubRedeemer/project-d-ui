@@ -226,7 +226,7 @@ const sendInvite = async () => {
 
         <div class="rooms-shell">
           <section class="rooms-hero">
-            <p class="rooms-eyebrow">Project-D</p>
+            <p class="rooms-eyebrow">Mythrill</p>
             <h1 class="rooms-title">{{ HEADERS.characters.rus }}</h1>
             <p class="rooms-subtitle">Откройте персонажа, создайте нового или пригласите игрока в комнату.</p>
           </section>

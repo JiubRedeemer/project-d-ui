@@ -261,7 +261,7 @@ export const TEXTS = {
 };
 
 export const HEADERS = {
-    menu: {rus: 'Project-D', eng: 'Project-D'},
+    menu: {rus: 'Mythrill', eng: 'Mythrill'},
     rooms: {rus: 'Комнаты', eng: 'Rooms'},
     chooseRuleType: {rus: 'Набор правил', eng: 'Rule type'},
     chooseRaces: {rus: 'Набор видов', eng: 'Races'},

@@ -163,7 +163,7 @@ const toggleLegalInformation = () => {
 
         <div class="rooms-shell">
           <section class="rooms-hero">
-            <p class="rooms-eyebrow">Project-D</p>
+            <p class="rooms-eyebrow">Mythrill</p>
             <h1 class="rooms-title">{{ HEADERS.rooms.rus }}</h1>
             <p class="rooms-subtitle">Выберите комнату для продолжения приключения или создайте новую.</p>
           </section>

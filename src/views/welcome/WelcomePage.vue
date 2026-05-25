@@ -398,7 +398,7 @@ async function register() {
                 </div>
               </template>
               <template v-else>
-                <p class="eyebrow">Project-D</p>
+                <p class="eyebrow">Mythrill</p>
                 <h1 class="title">{{ stageLabel }}</h1>
                 <p v-if="isWelcomeStage" class="subtitle">
                   Современное приложение для управления персонажами и комнатами в настольных ролевых играх.
