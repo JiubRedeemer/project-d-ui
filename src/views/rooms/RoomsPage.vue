@@ -19,9 +19,15 @@ import {
 import {add, chevronForwardOutline, informationCircleOutline} from "ionicons/icons";
 import {HEADERS, TEXTS} from "@/config/localisations";
 import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
+import PwaInstallHintModal from "@/components/PwaInstallHintModal.vue";
 import {onBeforeUnmount, onMounted, ref} from "vue";
 import axios from "axios";
 import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {
+  bindBeforeInstallPromptListener,
+  dismissPwaHint,
+  shouldShowPwaHintOnEnter,
+} from "@/utils/pwaInstall";
 
 type Room = { id: string; name: string; description: string; filePath: string; lastActivityDate: string };
 
@@ -32,6 +38,8 @@ const deletePopoverEvent = ref<Event | null>(null);
 const roomToDelete = ref<Room | null>(null);
 const didOpenDeletePopover = ref(false);
 const showLegalInformation = ref(false);
+const showPwaHintModal = ref(false);
+let unbindBeforeInstallPrompt: (() => void) | null = null;
 let longPressTimer: ReturnType<typeof setTimeout> | null = null;
 let pressStartX = 0;
 let pressStartY = 0;
@@ -55,15 +63,21 @@ const setupRooms = async () => {
 
 onIonViewDidEnter(() => {
   setupRooms();
+  if (shouldShowPwaHintOnEnter()) {
+    showPwaHintModal.value = true;
+  }
 });
 
 onMounted(() => {
   setupRooms();
+  unbindBeforeInstallPrompt = bindBeforeInstallPromptListener();
 });
 
 onBeforeUnmount(() => {
   unbindMoveListener();
   if (longPressTimer) clearTimeout(longPressTimer);
+  unbindBeforeInstallPrompt?.();
+  unbindBeforeInstallPrompt = null;
 });
 
 const goToRoom = (roomId: string) => {
@@ -149,6 +163,19 @@ const toggleLegalInformation = () => {
   showLegalInformation.value = !showLegalInformation.value;
 };
 
+const openPwaHint = () => {
+  showPwaHintModal.value = true;
+};
+
+const closePwaHint = () => {
+  showPwaHintModal.value = false;
+};
+
+const dismissPwaHintAndClose = () => {
+  dismissPwaHint();
+  showPwaHintModal.value = false;
+};
+
 
 </script>
 
@@ -230,13 +257,24 @@ const toggleLegalInformation = () => {
         </div>
       </ion-popover>
 
+      <PwaInstallHintModal
+        :is-open="showPwaHintModal"
+        @close="closePwaHint"
+        @dismiss="dismissPwaHintAndClose"
+      />
+
     </ion-content>
     <ion-footer class="rooms-footer" color="dark">
       <div class="rooms-footer-main">
         <span>© jiubredeemer {{ currentYear }}</span>
-        <ion-button fill="clear" size="small" @click="toggleLegalInformation">
-          <ion-icon :icon="informationCircleOutline" />
-        </ion-button>
+        <div class="rooms-footer-actions">
+          <ion-button fill="clear" size="small" class="rooms-footer-link" @click="openPwaHint">
+            {{ TEXTS.pwaInstallHint.footerLink.rus }}
+          </ion-button>
+          <ion-button fill="clear" size="small" @click="toggleLegalInformation">
+            <ion-icon :icon="informationCircleOutline" />
+          </ion-button>
+        </div>
       </div>
       <div v-if="showLegalInformation" class="rooms-footer-legal">
         Данная работа включает материалы из System Reference Document 5.2.1 («SRD 5.2.1») и System
@@ -471,10 +509,23 @@ const toggleLegalInformation = () => {
   text-decoration: underline;
 }
 
+.rooms-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
 .rooms-footer-main ion-button {
   --color: rgba(var(--ion-color-light-rgb), 0.85);
   --border-radius: 10px;
   margin: 0;
+}
+
+.rooms-footer-link {
+  font-size: 0.78rem;
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 .rooms-fab {

@@ -45,6 +45,40 @@ export const TEXTS = {
         eng: 'You don\'t have any characters in this room yet'
     },
     emptyInviteList: {rus: 'У вас пока нет приглашений', eng: 'Empty room list'},
+    pwaInstallHint: {
+        title: {
+            rus: 'Установите Mythrill на устройство',
+            eng: 'Install Mythrill on your device',
+        },
+        benefits: {
+            rus: 'В формате PWA приложение запускается быстрее, работает в полноэкранном режиме и сохраняет последние данные для работы без сети.',
+            eng: 'As a PWA, the app launches faster, runs fullscreen, and keeps recent data for offline use.',
+        },
+        iosSteps: {
+            rus: 'В Safari нажмите «Поделиться» (квадрат со стрелкой вверх), затем «На экран Домой» и подтвердите установку.',
+            eng: 'In Safari, tap Share, then Add to Home Screen, and confirm.',
+        },
+        androidSteps: {
+            rus: 'В Chrome откройте меню (⋮) и выберите «Установить приложение» или «Добавить на главный экран».',
+            eng: 'In Chrome, open the menu and choose Install app or Add to Home screen.',
+        },
+        androidStepsWithInstallButton: {
+            rus: 'Нажмите «Установить» ниже или откройте меню Chrome (⋮) → «Установить приложение».',
+            eng: 'Tap Install below, or open Chrome menu → Install app.',
+        },
+        desktopSteps: {
+            rus: 'В Chrome или Edge нажмите иконку установки в адресной строке (справа) и подтвердите добавление приложения.',
+            eng: 'In Chrome or Edge, click the install icon in the address bar and confirm.',
+        },
+        unknownSteps: {
+            rus: 'Добавьте сайт на главный экран через меню браузера — пункт может называться «Установить» или «На экран Домой».',
+            eng: 'Add the site to your home screen from the browser menu.',
+        },
+        installButton: { rus: 'Установить', eng: 'Install' },
+        gotIt: { rus: 'Понятно', eng: 'Got it' },
+        dontShowAgain: { rus: 'Больше не показывать', eng: "Don't show again" },
+        footerLink: { rus: 'Как установить', eng: 'How to install' },
+    },
     roomInviteRegisterHint: {
         rus: 'Вы перешли по приглашению в комнату. Зарегистрируйтесь с тем же email, на который было отправлено письмо.',
         eng: 'You opened a room invitation link. Sign up using the same email the invitation was sent to.',
