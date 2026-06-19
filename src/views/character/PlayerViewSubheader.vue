@@ -182,7 +182,7 @@ const isOpen = computed(() => subheaderStore.subheaderOpened);
       >
         <ion-icon class="stat-card__icon stat-card__icon--hp" :icon="heartOutline"/>
         <span class="stat-card__value stat-card__value--hp">{{ currentHp }}/{{ maxHp }}</span>
-        <span class="stat-card__label">Хиты</span>
+        <span class="stat-card__label">Здоровье</span>
       </button>
 
       <button
@@ -212,12 +212,12 @@ const isOpen = computed(() => subheaderStore.subheaderOpened);
   --subheader-ease: cubic-bezier(0.33, 1, 0.68, 1);
   --subheader-duration: 0.48s;
   position: relative;
-  padding: 5px 15px 4px;
+  padding: 5px 16px 5px;
   transition: padding-bottom var(--subheader-duration) var(--subheader-ease);
 }
 
 .subheader-root.is-open {
-  padding-bottom: 28px;
+  padding-bottom: 35px;
 }
 
 .subheader-shell {
@@ -263,7 +263,7 @@ const isOpen = computed(() => subheaderStore.subheaderOpened);
   align-items: center;
   gap: 5px;
   min-height: 32px;
-  padding: 4px 8px;
+  padding: 5px 8px;
   flex-direction: row;
 }
 
@@ -337,8 +337,8 @@ const isOpen = computed(() => subheaderStore.subheaderOpened);
 }
 
 .stat-card__icon {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   color: rgba(var(--ion-color-primary-rgb), 0.9);
   flex-shrink: 0;
   transition: width var(--subheader-duration) var(--subheader-ease), height var(--subheader-duration) var(--subheader-ease);
@@ -350,7 +350,7 @@ const isOpen = computed(() => subheaderStore.subheaderOpened);
 }
 
 .stat-card__value {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   line-height: 1;
   color: var(--ion-color-light);
@@ -431,7 +431,7 @@ const isOpen = computed(() => subheaderStore.subheaderOpened);
 }
 
 .subheader-root.is-open .subheader-toggle {
-  top: calc(100% - 12px);
+  top: calc(100% - 16px);
 }
 
 .subheader-toggle:active {

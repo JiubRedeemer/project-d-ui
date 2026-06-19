@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {computed, onBeforeUnmount, onMounted, ref} from "vue";
+import {computed, onBeforeUnmount, onMounted, ref, watch} from "vue";
 import {useRoute} from "vue-router";
 import axios from "axios";
 import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
@@ -22,6 +22,7 @@ import {deleteCharacterNpcRelationByIdForRoom} from "@/api/npcApi";
 import type { NpcWithRelationIdDto, RelationTypeEnum } from "@/api/npcApi.types";
 import type {CharacterBio} from "@/components/models/response/Character";
 import CachedFileImage from "@/components/CachedFileImage.vue";
+import {extractDominantColorFromUrl} from "@/utils/imageAmbient";
 
 type BioStatFieldKey = "age" | "height" | "weight";
 type BioSectionKey =
@@ -313,6 +314,29 @@ const uploadToMinio = async (file: File): Promise<string> => {
 onMounted(loadAllRelatedNpcs);
 onIonViewDidEnter(loadAllRelatedNpcs);
 
+const avatarRemoteSrc = computed(() => {
+  const avatar = characterStore.character?.characterBio?.avatar;
+  if (!avatar) return null;
+
+  return `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.avatar_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.download}/${avatar}`;
+});
+
+const avatarDisplaySrc = computed(() => previewImage.value ?? avatarRemoteSrc.value);
+const ambientColor = ref<string | null>(null);
+
+watch(avatarDisplaySrc, (src) => {
+  if (!src) {
+    ambientColor.value = null;
+    return;
+  }
+
+  void extractDominantColorFromUrl(src).then((color) => {
+    if (src === avatarDisplaySrc.value) {
+      ambientColor.value = color;
+    }
+  });
+}, {immediate: true});
+
 onBeforeUnmount(() => {
   unbindMoveListener();
   if (longPressTimer) clearTimeout(longPressTimer);
@@ -322,18 +346,22 @@ onBeforeUnmount(() => {
 <template>
   <div class="container">
     <div class="header" v-show="isBlockExpanded == null">
-      <div class="avatar" @click="triggerFileInput">
-        <img v-if="previewImage" :src="previewImage" class="avatar-img" alt="Room Image"/>
+      <div
+          class="avatar"
+          :style="ambientColor ? { '--ambient-color': ambientColor } : undefined"
+          @click="triggerFileInput"
+      >
+        <div v-if="avatarDisplaySrc" class="avatar-ambient" aria-hidden="true">
+          <img :src="avatarDisplaySrc" alt="" class="avatar-ambient__img"/>
+        </div>
+        <img v-if="previewImage" :src="previewImage" class="avatar-img" alt="avatar"/>
         <CachedFileImage
           v-else-if="characterStore.character.characterBio.avatar"
           class="avatar-img"
           alt="avatar"
-          :src="FILE_STORAGE_INTEGRATION_ROUTES.baseURL +
-                 FILE_STORAGE_INTEGRATION_ROUTES.api +
-                 FILE_STORAGE_INTEGRATION_ROUTES.avatar_images_bucket +
-                 FILE_STORAGE_INTEGRATION_ROUTES.download + '/' + characterStore.character.characterBio.avatar"
+          :src="avatarRemoteSrc!"
         />
-        <div v-else class="avatar-img">
+        <div v-else class="avatar-img avatar-img--placeholder">
           <ion-icon :icon="add" class="placeholder-icon"></ion-icon>
         </div>
         <input type="file" ref="fileInput" @change="handleFileUpload" accept="image/*" style="display: none;"/>
@@ -655,23 +683,24 @@ onBeforeUnmount(() => {
 }
 
 .bio-section-html :deep(h1) {
-  font-size: 1.15em;
+  font-size: 16px;
 }
 
 .bio-section-html :deep(h2) {
-  font-size: 1.05em;
+  font-size: 14px;
 }
 
 .bio-section-html :deep(h3) {
-  font-size: 1em;
+  font-size: 12px;
 }
 
 .sectionHeader {
   color: var(--ion-color-light);
-  font-size: 22px;
-  font-weight: normal;
-  margin-top: 10px;
+  font-size: 16px;
+  font-weight: bold;
+  margin-top: 15px;
   margin-bottom: 8px;
+  margin-left: 10px;
 }
 
 .header {
@@ -680,16 +709,62 @@ onBeforeUnmount(() => {
   width: 100%;
   align-items: center;
   justify-content: start;
-  gap: 20px;
+  gap: 38px;
 }
 
-.avatar-img {
-  width: 180px;
-  height: 180px;
+.avatar {
+  position: relative;
+  flex-shrink: 0;
+  width: 170px;
+  height: 170px;
   border-radius: 25px;
-  align-content: center;
-  justify-content: center;
+  overflow: hidden;
   display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--ambient-color, var(--ion-color-dark));
+  cursor: pointer;
+  border-color: var(--ion-color-medium);
+  border-style: solid;
+  transition: background-color 0.45s ease;
+}
+
+.avatar-ambient {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.avatar-ambient__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.14);
+  filter: blur(20px) saturate(1.5);
+}
+
+img.avatar-img {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.avatar-img--placeholder,
+div.avatar-img {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .stats {
@@ -699,8 +774,8 @@ onBeforeUnmount(() => {
   justify-content: center;
   gap: 10px;
   background-color: var(--ion-color-medium);
-  width: 180px;
-  height: 180px;
+  width: 170px;
+  height: 170px;
 }
 
 .stat {
@@ -716,6 +791,7 @@ onBeforeUnmount(() => {
   margin-left: 5%;
   margin-right: 5%;
   font-weight: bold;
+  font-size: 16px;
 }
 
 .stat-value {
@@ -727,7 +803,7 @@ onBeforeUnmount(() => {
   width: 30px;
   align-items: center;
   justify-content: center;
-  font-size: 10pt;
+  font-size: 14px;
 }
 
 .placeholder-icon {
@@ -798,7 +874,7 @@ onBeforeUnmount(() => {
   justify-content: center;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
   color: #5c3d00;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .npc-unique-badge ion-icon {
@@ -829,7 +905,7 @@ onBeforeUnmount(() => {
 .npc-name {
   width: 75px;
   text-align: center;
-  font-size: 9pt;
+  font-size: 12px;
   line-height: 1;
   word-break: break-word;
 }

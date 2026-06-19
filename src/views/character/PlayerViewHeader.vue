@@ -27,10 +27,10 @@ const nameTextScale = computed(() => {
 
   const total = len - NAME_TOOLBAR_HEADROOM;
 
-  if (total <= 5) return 0.8;
-  if (total <= 7) return 0.7;
-  if (total <= 9) return 0.5;
-  if (total <= 11) return 0.82;
+  if (total <= 5) return 1;
+  if (total <= 7) return 1;
+  if (total <= 9) return 1;
+  if (total <= 11) return 0.8;
   if (total <= 24) return 0.75;
   if (total <= 32) return 0.6;
   if (total <= 42) return 0.5;
