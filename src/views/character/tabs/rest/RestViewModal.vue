@@ -1,68 +1,45 @@
 <script setup lang="ts">
-import {IonButton, IonToggle} from "@ionic/vue";
-import TopModal from "@/views/common/TopModal.vue";
-import {ref} from "vue";
-import {useCharacterStore} from "@/stores/CharacterStore";
-import {useCharacterSkillsStore} from "@/stores/CharacterSkillsStore";
-import {useInventoryStore} from "@/stores/InventoryStore";
-import {useMagicStore} from "@/stores/MagicStore";
-import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
-import axios from "axios";
-import {useRoute} from "vue-router";
-import {refillRestByCharacter} from "@/api/magicApi";
-
-const route = useRoute();
-
+import {IonButton, IonModal, IonToggle} from "@ionic/vue";
+import {computed, onMounted, onUnmounted, ref, watch} from "vue";
+import {useCharacterRest} from "@/composables/useCharacterRest";
 
 const props = defineProps({
   isOpen: Boolean,
+  initialLongRest: {
+    type: Boolean,
+    default: true,
+  },
 });
 
 const emit = defineEmits(["closeRestModal"]);
-const characterStore = useCharacterStore()
-const magicStore = useMagicStore()
-const characterSkillsStore = useCharacterSkillsStore()
-const inventoryStore = useInventoryStore()
-
+const {performRest, isResting} = useCharacterRest();
 
 const longRest = ref(true);
+const isDesktop = ref<boolean>(window.innerWidth >= 1024);
+
+const modalBreakpoints = computed(() => (isDesktop.value ? undefined : [0, 0.5, 1]));
+const modalInitialBreakpoint = computed(() => (isDesktop.value ? undefined : 1));
+
+watch(() => props.isOpen, (isOpen) => {
+  if (isOpen) {
+    longRest.value = props.initialLongRest;
+  }
+});
+
+const onResize = () => {
+  isDesktop.value = window.innerWidth >= 1024;
+};
+
+onMounted(() => {
+  window.addEventListener("resize", onResize);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("resize", onResize);
+});
 
 async function onSubmit() {
-  try {
-    await axios.post(
-        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${characterStore.character.id}${GATEWAY_INTEGRATION_ROUTES.rest}/${longRest.value ? 'LONG_REST' : 'SHORT_REST'}`,
-        {},
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-          },
-        }
-    );
-  } catch (error) {
-    console.error("Ошибка при получении данных:", error);
-  }
-
-  try {
-    const updatedSpellBook = await refillRestByCharacter(
-        String(route.params.roomId),
-        String(route.params.characterId),
-        longRest.value ? "LONG_REST" : "SHORT_REST"
-    );
-    magicStore.setSpellBook(updatedSpellBook);
-  } catch (error) {
-    console.error("Failed to refill spell cells:", error);
-    await magicStore.updateSpellBookInStore(
-        String(route.params.roomId),
-        String(route.params.characterId)
-    );
-  }
-
-  await Promise.all([
-    characterStore.updateCharacterInStoreById(route.params.roomId, route.params.characterId),
-    characterSkillsStore.updateCharacterSkills(route.params.roomId, route.params.characterId),
-    inventoryStore.updateInventoryInStoreById(route.params.roomId, route.params.characterId)
-  ])
+  await performRest(longRest.value);
   emit('closeRestModal');
 }
 
@@ -70,7 +47,13 @@ async function onSubmit() {
 
 
 <template>
-  <TopModal :isOpen="isOpen" @close="emit('closeRestModal')">
+  <ion-modal
+      :is-open="isOpen"
+      @didDismiss="emit('closeRestModal')"
+      :initial-breakpoint="modalInitialBreakpoint"
+      :breakpoints="modalBreakpoints"
+      :class="{ 'desktop-modal': isDesktop }"
+  >
     <div class="rest">
       <div
           class="rest-bg rest-bg--long"
@@ -83,36 +66,21 @@ async function onSubmit() {
           aria-hidden="true"
       />
       <div class="rest-content">
-
-        <!-- Блок с кубами здоровья
-        <div v-if="!longRest" class="rest-section">
-          <div class="rest-section__title">
-            Использовать кубов здоровья
-          </div>
-
-          <div class="dice-row">
-            <IonRange aria-label="Rest counter" :ticks="true" :snaps="true" :min="0" :max="characterStore.character.currentHpDiceCount" />
-            <div class="dice-label">3d4</div>
-          </div>
-        </div>-->
-
-        <!-- Переключатель отдыха -->
         <div class="rest-toggle">
-        <span :style="longRest ? 'color:#fffba8;' : 'color:#214031;'"
-        >{{ longRest ? 'Долгий отдых' : 'Короткий отдых' }}</span>
+          <span :style="longRest ? 'color:#fffba8;' : 'color:#214031;'">
+            {{ longRest ? 'Долгий отдых' : 'Короткий отдых' }}
+          </span>
           <IonToggle mode="ios" aria-label="Toggle rest" v-model="longRest"/>
         </div>
 
-        <!-- Кнопка -->
         <div class="rest-button">
-          <IonButton shape="round" color="secondary" fill="solid" @click="onSubmit">
+          <IonButton shape="round" color="secondary" fill="solid" :disabled="isResting" @click="onSubmit">
             Отдохнуть
           </IonButton>
         </div>
-
       </div>
     </div>
-  </TopModal>
+  </ion-modal>
 </template>
 
 <style scoped>
@@ -121,8 +89,8 @@ async function onSubmit() {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  min-height: 220px;
   padding: 16px;
-  border-radius: 0 0 16px 16px;
   overflow: hidden;
 }
 
@@ -154,44 +122,10 @@ async function onSubmit() {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  min-height: 180px;
+  justify-content: center;
 }
 
-/* Общая секция */
-.rest-section {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.rest-section__title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #ffffff;
-}
-
-/* Кубы здоровья */
-.dice-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.dice-row ion-range {
-  flex: 1;
-}
-
-
-.dice-label {
-  padding: 6px 12px;
-  border-radius: 12px;
-  background: #7b6cf6;
-  color: #fff;
-  font-weight: 600;
-  font-size: 14px;
-  white-space: nowrap;
-}
-
-/* Toggle */
 .rest-toggle {
   display: flex;
   align-items: center;
@@ -203,7 +137,6 @@ async function onSubmit() {
   color: #ffffff;
 }
 
-/* Кнопка */
 .rest-button {
   display: flex;
   justify-content: center;
@@ -215,5 +148,26 @@ async function onSubmit() {
   max-width: 102px;
   height: 48px;
   font-size: 12px;
+}
+
+ion-modal {
+  --border-radius: 10px;
+  --height: auto;
+  --width: 90%;
+  --background: var(--ion-color-dark);
+}
+
+@media (min-width: 1024px) {
+  .rest {
+    min-height: 260px;
+    padding: 20px;
+  }
+
+  ion-modal.desktop-modal {
+    --width: min(520px, 88vw);
+    --height: auto;
+    --max-height: 86vh;
+    --border-radius: 14px;
+  }
 }
 </style>

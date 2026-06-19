@@ -297,8 +297,9 @@ const openSubheader = () => {
 
 <template>
   <ion-page>
-    <ion-header :translucent="false">
+    <ion-header :translucent="false" class="character-header">
       <PlayerViewHeader v-if="asyncDone" @open-levelup-modal="openLevelUpModal"/>
+      <div v-if="subheaderStore.subheaderOpened" class="character-header__divider" aria-hidden="true"/>
       <div class="subheader-block" :class="{ openSubheader: subheaderStore.subheaderOpened }">
         <PlayerViewSubheader v-if="asyncDone" @speed-selected="openEditSpeedModal"
                              @armory-class-selected="openEditArmoryClassModal"
@@ -549,6 +550,16 @@ const openSubheader = () => {
 
 <style scoped>
 
+ion-header.character-header {
+  overflow: visible;
+}
+
+.character-header__divider {
+  height: 1px;
+  margin: 0 12px;
+  background: rgba(var(--ion-color-dark-rgb), 1);
+}
+
 .desktop-layout {
   display: grid;
   grid-template-columns: 280px 1fr;
@@ -727,66 +738,24 @@ ion-page {
   color: white;
 }
 
-.abilities.openSubheader {
-  margin-top: 120px;
-}
-
-.attacks.openSubheader {
-  margin-top: 120px;
-}
-
-.bio.openSubheader {
-  margin-top: 120px;
-}
-
-.traits.openSubheader {
-  margin-top: 120px;
-}
-
-.inventory.openSubheader {
-  margin-top: 120px;
-}
-
-.notes.openSubheader {
-  margin-top: 120px;
-}
-
+.abilities.openSubheader,
+.attacks.openSubheader,
+.bio.openSubheader,
+.traits.openSubheader,
+.inventory.openSubheader,
+.notes.openSubheader,
 .magic.openSubheader {
-  margin-top: 120px;
+  margin-top: 200px;
 }
 
-.abilities {
-  margin-top: 64px;
-  transition: margin-top 0.3s ease;
-}
-
-.attacks {
-  margin-top: 64px;
-  transition: margin-top 0.3s ease;
-}
-
-.bio {
-  margin-top: 64px;
-  transition: margin-top 0.3s ease;
-}
-
-.traits {
-  margin-top: 64px;
-  transition: margin-top 0.3s ease;
-}
-
-.inventory {
-  margin-top: 64px;
-  transition: margin-top 0.3s ease;
-}
-
-.notes {
-  margin-top: 64px;
-  transition: margin-top 0.3s ease;
-}
-
+.abilities,
+.attacks,
+.bio,
+.traits,
+.inventory,
+.notes,
 .magic {
-  margin-top: 64px;
+  margin-top: 95px;
   transition: margin-top 0.3s ease;
 }
 
@@ -796,13 +765,14 @@ ion-page {
   left: 0;
   width: 100%;
   background-color: var(--ion-color-dark);
-  max-height: 1vh;
-  overflow: clip;
-  transition: max-height 0.3s ease;
+  overflow: visible;
+  z-index: 5;
+  max-height: 48px;
+  transition: max-height 0.48s cubic-bezier(0.33, 1, 0.68, 1);
 }
 
 .subheader-block.openSubheader {
-  max-height: 140%; /* Высота в развернутом состоянии */
+  max-height: 260px;
 }
 
 @media (min-width: 1024px) {
@@ -815,74 +785,36 @@ ion-page {
     top: auto;
     left: auto;
     width: 100%;
-    max-height: 0;
-    overflow: hidden;
-    border-top: 1px solid rgba(var(--ion-color-light-rgb), 0.1);
-    transition: max-height 0.25s ease;
+    overflow: visible;
+    max-height: 48px;
   }
 
   .subheader-block.openSubheader {
-    max-height: 220px;
+    max-height: 260px;
   }
 }
 
 
 @supports (font: -apple-system-body) {
 
-    .abilities {
-      margin-top: 120px;
-    }
-
-    .attacks {
-      margin-top: 120px;
-    }
-
-    .bio {
-      margin-top: 120px;
-    }
-
-    .traits {
-      margin-top: 120px;
-    }
-
-    .inventory {
-      margin-top: 120px;
-    }
-
-    .notes {
-      margin-top: 120px;
-    }
-
+    .abilities,
+    .attacks,
+    .bio,
+    .traits,
+    .inventory,
+    .notes,
     .magic {
       margin-top: 120px;
     }
 
-    .abilities.openSubheader {
-      margin-top: 180px;
-    }
-
-    .attacks.openSubheader {
-      margin-top: 180px;
-    }
-
-    .bio.openSubheader {
-      margin-top: 180px;
-    }
-
-    .traits.openSubheader {
-      margin-top: 180px;
-    }
-
-    .inventory.openSubheader {
-      margin-top: 180px;
-    }
-
-    .notes.openSubheader {
-      margin-top: 180px;
-    }
-
+    .abilities.openSubheader,
+    .attacks.openSubheader,
+    .bio.openSubheader,
+    .traits.openSubheader,
+    .inventory.openSubheader,
+    .notes.openSubheader,
     .magic.openSubheader {
-      margin-top: 180px;
+      margin-top: 200px;
     }
 
 }

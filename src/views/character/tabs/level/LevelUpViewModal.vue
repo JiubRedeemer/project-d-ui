@@ -1,8 +1,7 @@
 ﻿<script setup lang="ts">
-import {IonButton, IonIcon, IonInput, IonProgressBar} from "@ionic/vue";
+import {IonButton, IonIcon, IonInput, IonModal, IonProgressBar} from "@ionic/vue";
 import {add, close, remove} from "ionicons/icons";
-import {computed, ref, watch} from "vue";
-import TopModal from "@/views/common/TopModal.vue";
+import {computed, onMounted, onUnmounted, ref, watch} from "vue";
 import {useCharacterStore} from "@/stores/CharacterStore";
 import axios from "axios";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
@@ -17,6 +16,10 @@ const characterStore = useCharacterStore();
 const route = useRoute();
 const inputValue = ref<number | null>(null);
 const isSubmitting = ref(false);
+const isDesktop = ref<boolean>(window.innerWidth >= 1024);
+
+const modalBreakpoints = computed(() => (isDesktop.value ? undefined : [0, 1]));
+const modalInitialBreakpoint = computed(() => (isDesktop.value ? undefined : 1));
 
 const currentXp = computed(() => Number(characterStore.character?.level?.xp ?? 0));
 const nextLevelXp = computed(() => Number(characterStore.character?.level?.nextLevelXp ?? 1));
@@ -30,6 +33,18 @@ watch(
     }
   }
 );
+
+const onResize = () => {
+  isDesktop.value = window.innerWidth >= 1024;
+};
+
+onMounted(() => {
+  window.addEventListener("resize", onResize);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("resize", onResize);
+});
 
 const addedXp = computed(() => {
   const raw = Number(inputValue.value ?? 0);
@@ -137,7 +152,13 @@ const closeModal = () => emit("closeLevelUpModal");
 </script>
 
 <template>
-  <TopModal :isOpen="isOpen" @close="closeModal">
+  <ion-modal
+      :is-open="isOpen"
+      @didDismiss="closeModal"
+      :initial-breakpoint="modalInitialBreakpoint"
+      :breakpoints="modalBreakpoints"
+      :class="{ 'desktop-modal': isDesktop }"
+  >
     <div class="levelup">
       <div class="levelup-content">
         <div class="levelup-header">
@@ -220,7 +241,7 @@ const closeModal = () => emit("closeLevelUpModal");
         </div>
       </div>
     </div>
-  </TopModal>
+  </ion-modal>
 </template>
 
 <style scoped>
@@ -229,9 +250,9 @@ const closeModal = () => emit("closeLevelUpModal");
   position: relative;
   display: flex;
   flex-direction: column;
-  border-radius: 0 0 16px 16px;
   overflow: hidden;
   padding: 16px;
+  min-height: 75vh;
 }
 
 .levelup-content {
@@ -373,6 +394,28 @@ const closeModal = () => emit("closeLevelUpModal");
   text-transform: none;
   font-weight: 700;
   flex: 1;
+}
+
+ion-modal {
+  --border-radius: 10px;
+  --height: auto;
+  --width: 90%;
+  --background: var(--ion-color-medium);
+}
+
+@media (min-width: 1024px) {
+  .levelup {
+    min-height: 420px;
+    max-height: min(80vh, 760px);
+    padding: 20px;
+  }
+
+  ion-modal.desktop-modal {
+    --width: min(860px, 88vw);
+    --height: auto;
+    --max-height: 86vh;
+    --border-radius: 14px;
+  }
 }
 
 @media (max-width: 420px) {

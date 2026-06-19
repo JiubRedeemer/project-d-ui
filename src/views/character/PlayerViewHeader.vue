@@ -1,10 +1,9 @@
 <script setup lang="ts">
 
-import {IonBackButton, IonButtons, IonTitle, IonToolbar} from "@ionic/vue";
+import {IonBackButton, IonToolbar} from "@ionic/vue";
 import LogOutButton from "@/views/common/LogOutButton.vue";
-import {useCharacterStore} from "@/stores/CharacterStore"
+import {useCharacterStore} from "@/stores/CharacterStore";
 import {computed} from "vue";
-
 
 const characterStore = useCharacterStore()
 const emit = defineEmits<{
@@ -16,9 +15,7 @@ const openLevelupModal = () => {
 };
 
 /**
- * Сжатие имени через `transform: scale()` — те же коэффициенты и порядок, что `hpTextScale`
- * в HpBar.vue. «Эффективная длина» = длина имени минус запас под ширину тулбара (как в HP
- * total = длины чисел + «/»). Для очень длинных имён — дополнительные ступени ниже 0.75.
+ * Сжатие имени через `transform: scale()` — те же коэффициенты, что в HpBar.vue.
  */
 const NAME_TOOLBAR_HEADROOM = 8;
 const NAME_SCALE_MIN = 0.34;
@@ -39,117 +36,168 @@ const nameTextScale = computed(() => {
   if (total <= 42) return 0.5;
   return NAME_SCALE_MIN;
 });
-
-
 </script>
 
 <template>
-  <ion-toolbar class="player-view-toolbar" color="dark">
-    <ion-buttons slot="start">
-      <ion-back-button/>
-    </ion-buttons>
+  <ion-toolbar class="player-header" color="dark">
+    <div class="player-header__row">
+      <ion-back-button class="player-header__back" default-href="/rooms"/>
 
-    <ion-title >
-      <div class="header-content" v-if="characterStore.character">
-        <div
-          class="name-block"
-          :style="{ transform: `scale(${nameTextScale})` }"
-        >{{ characterStore.character?.name }}</div>
-        <div class="race-class-block">{{ characterStore.character?.raceInfo?.name }} -
-          {{ characterStore.character?.clazzInfo?.name }}
+      <div class="player-identity" v-if="characterStore.character">
+        <div class="player-identity__name" :style="{ transform: `scale(${nameTextScale})` }">{{ characterStore.character.name }}</div>
+        <div class="player-identity__meta">
+          <span>{{ characterStore.character.raceInfo?.name }}</span>
+          <span class="player-identity__sep" aria-hidden="true"/>
+          <span>{{ characterStore.character.clazzInfo?.name }}</span>
         </div>
       </div>
-    </ion-title>
 
-    <ion-buttons slot="end">
-      <div class="level-container"
-           role="button"
-           tabindex="0"
-           @click="openLevelupModal"
-           @keydown.enter.prevent="openLevelupModal"
-           @keydown.space.prevent="openLevelupModal">
-        <div class="level-circle">
-          <div class="level">{{ characterStore.character?.level?.level }}</div>
-          <div class="experience">{{
-              characterStore.character?.level?.xp
-            }}/{{ characterStore.character?.level?.nextLevelXp }}
-          </div>
-        </div>
+      <div class="player-header__actions">
+        <button type="button" class="level-badge" @click="openLevelupModal">
+          <span class="level-badge__circle">
+            <span class="level-badge__level">{{ characterStore.character?.level?.level }}</span>
+          </span>
+        </button>
+        <LogOutButton class="header-action-btn"/>
       </div>
-      <LogOutButton/>
-    </ion-buttons>
+    </div>
   </ion-toolbar>
 </template>
 
 <style scoped>
-.player-view-toolbar :deep(ion-title) {
-  overflow: hidden;
+.player-header {
+  --min-height: 56px;
+  --padding-top: 4px;
+  --padding-bottom: 8px;
+  --padding-start: 4px;
+  --padding-end: 4px;
+  --border-width: 0;
+}
+
+.player-header__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
   min-width: 0;
 }
 
-.header-content {
+.player-header__back {
+  flex-shrink: 0;
+  --color: rgba(var(--ion-color-light-rgb), 0.78);
+  --icon-margin-start: 0;
+  --icon-margin-end: 0;
+  --icon-font-size: 20px;
+  width: 36px;
+}
+
+.player-identity {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  align-items: start;
-  min-width: 0;
-  width: 100%;
+  align-items: flex-start;
+  gap: 3px;
+  overflow: hidden;
 }
 
-.name-block {
-  font-size: 16px;
-  font-weight: bold;
+.player-identity__name {
   display: inline-block;
-  transform-origin: left center;
-  line-height: 1;
-  margin-right: 0;
   max-width: 100%;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--ion-color-light);
+  white-space: nowrap;
+  transform-origin: left center;
 }
 
-.race-class-block {
-  font-size: 10px;
-  max-height: 50px;
-  color: var(--ion-color-primary);
-
-  white-space: wrap;        /* разрешает перенос строк */
-}
-
-.level-container {
+.player-identity__meta {
   display: flex;
   align-items: center;
-  justify-content: center;
-  margin-right: 10px;
-  cursor: pointer;
+  gap: 5px;
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  color: rgba(var(--ion-color-primary-rgb), 0.82);
 }
 
-.level-circle {
-  position: relative;
-  width: 40px; /* Размер круга */
-  height: 40px;
+.player-identity__meta span:not(.player-identity__sep) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-identity__sep {
+  width: 3px;
+  height: 3px;
   border-radius: 50%;
-  background-color: var(--ion-color-primary);
+  background: rgba(var(--ion-color-primary-rgb), 0.5);
+  flex-shrink: 0;
+}
+
+.player-header__actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.level-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-right: 2px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.level-badge:active .level-badge__circle {
+  transform: scale(0.95);
+}
+
+.level-badge__circle {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #ffffff;
-  font-weight: bold;
-  text-align: center;
-  box-sizing: border-box;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid var(--ion-color-primary);
+  background: var(--ion-color-medium);
+  transition: transform 0.15s ease;
 }
 
-.level {
-  font-size: 16px; /* Размер уровня в центре */
-  color: var(--ion-color-primary-contrast);
+.level-badge__level {
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--ion-color-primary);
+  font-variant-numeric: tabular-nums;
 }
 
-.experience {
-  position: absolute;
-  bottom: -5px; /* Смещение текста опыта ближе к обводке */
-  font-size: 12px; /* Мелкий текст для опыта */
-  color: #ffffff;
-  background-color: var(--ion-color-secondary); /* Цвет фона для синхронности с кругом */
-  padding: 0 4px;
-  border-radius: 4px;
+.level-badge__xp {
+  font-size: 8px;
+  font-weight: 600;
+  line-height: 1;
+  color: rgba(var(--ion-color-light-rgb), 0.42);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
+.player-header :deep(.header-action-btn) {
+  --color: rgba(var(--ion-color-light-rgb), 0.78);
+  --padding-start: 2px;
+  --padding-end: 2px;
+  margin: 0;
+}
 
+.player-header :deep(.header-action-btn ion-icon) {
+  font-size: 32px;
+}
 </style>

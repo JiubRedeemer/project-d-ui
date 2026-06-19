@@ -1,10 +1,11 @@
 <script setup lang="ts">
 
+import {computed} from "vue";
 import {IonIcon} from "@ionic/vue";
-import HpBar from "@/views/common/HpBar.vue";
-import restIcon from "../../static/icons/rest.svg"
+import {chevronDownOutline, heartOutline, locateOutline} from "ionicons/icons";
 import armorIcon from "../../static/icons/Armor.svg"
 import speedIcon from "../../static/icons/Speed.svg"
+import restIcon from "../../static/icons/rest.svg"
 import {Character, EquippedItemsStatsResponse} from "@/components/models/response/Character";
 import {HEADERS} from "@/config/localisations";
 import {useCharacterStore} from "@/stores/CharacterStore";
@@ -35,7 +36,15 @@ function getSpeedBonusSum(itemStats: EquippedItemsStatsResponse | null): number 
   }, 0);
 }
 
-const emits = defineEmits(["open-subheader", "close-subheader", "speed-selected", "armory-class-selected", "initiative-selected", "health-selected", "open-rest-modal"]);
+const emits = defineEmits([
+  "open-subheader",
+  "close-subheader",
+  "speed-selected",
+  "armory-class-selected",
+  "initiative-selected",
+  "health-selected",
+  "open-rest-modal",
+]);
 
 const selectSpeed = (character: Character) => {
   emits("speed-selected", character);
@@ -55,9 +64,9 @@ const selectHealth = (character: Character) => {
 
 const openRestModal = (character: Character) => {
   emits("open-rest-modal", character);
-}
+};
 
-const closeSubheader = () => {
+const toggleSubheader = () => {
   subheaderStore.subheaderOpened = !subheaderStore.subheaderOpened
   if (subheaderStore.subheaderOpened) {
     emits("open-subheader");
@@ -102,205 +111,348 @@ const getDexArmoryClass = () : number => {
   else if (equippedArmor && equippedArmor.item.subtype == 'LIGHT_ARMOR') return dexAbilityCheck
   else return dexAbilityCheck + classBonusFromAbility;
 }
+
+const armoryClassValue = computed(() => {
+  if (getBaseArmoryClass() == null) return 0;
+  return getBaseArmoryClass()
+      + getDexArmoryClass()
+      + (characterStore.character?.bonusArmoryClass ?? 0)
+      + getArmoryClassBonusSum(characterStore.character?.itemStats ?? null);
+});
+
+const speedValue = computed(() => {
+  if (characterStore.character == null) return 0;
+  return characterStore.character.speed
+      + characterStore.character.bonusSpeed
+      + getSpeedBonusSum(characterStore.character.itemStats);
+});
+
+const initiativeValue = computed(() => {
+  if (characterStore.character == null) return '0';
+  const value = characterStore.character.initiative + characterStore.character.bonusInitiative;
+  return value >= 0 ? `${value}` : `${value}`;
+});
+
+const currentHp = computed(() => characterStore.character?.health?.currentHp ?? 0);
+const maxHp = computed(() =>
+    (characterStore.character?.health?.maxHp ?? 0)
+    + (characterStore.character?.health?.bonusValue ?? 0)
+);
+
+const isOpen = computed(() => subheaderStore.subheaderOpened);
 </script>
 
 <template>
+  <div class="subheader-root" :class="{ 'is-open': isOpen }">
+    <div class="subheader-shell">
+      <button
+          type="button"
+          class="stat-card stat-card--ac"
+          @click="selectArmoryClass(characterStore.character!!)"
+      >
+        <ion-icon class="stat-card__icon" :src="armorIcon"/>
+        <span class="stat-card__value">{{ armoryClassValue }}</span>
+        <span class="stat-card__label">{{ HEADERS.armoryClass.rus }}</span>
+      </button>
 
-  <div class="subheader">
-    <div class="start-icons" v-show="subheaderStore.subheaderOpened">
-      <div class="armory-class" @click="selectArmoryClass(characterStore.character!!)">
-        <ion-icon class="armory-class-icon" slot="icon-only" :src="armorIcon"></ion-icon>
-        <div
-            class="armory-class-value">{{
-            getBaseArmoryClass() != null ? (getBaseArmoryClass() + getDexArmoryClass() + characterStore.character?.bonusArmoryClass + getArmoryClassBonusSum(characterStore.character?.itemStats)) : 0
-          }}
-        </div>
-      </div>
-      <div class="speed" @click="selectSpeed(characterStore.character!!)">
-        <ion-icon class="speed-icon" slot="icon-only" :src="speedIcon" color="light"></ion-icon>
-        <div class="speed-value">{{
-            characterStore.character != null ? (characterStore.character?.speed + characterStore.character?.bonusSpeed + getSpeedBonusSum(characterStore.character?.itemStats)) : 0
-          }}
-        </div>
-      </div>
+      <button
+          type="button"
+          class="stat-card stat-card--speed stat-card--collapsible"
+          @click="selectSpeed(characterStore.character!!)"
+      >
+        <ion-icon class="stat-card__icon" :src="speedIcon"/>
+        <span class="stat-card__value">{{ speedValue }}</span>
+        <span class="stat-card__label">{{ HEADERS.speed.rus }}</span>
+      </button>
+
+      <button
+          type="button"
+          class="stat-card stat-card--init stat-card--collapsible"
+          @click="selectInitiative(characterStore.character!!)"
+      >
+        <ion-icon class="stat-card__icon" :icon="locateOutline"/>
+        <span class="stat-card__value">{{ initiativeValue }}</span>
+        <span class="stat-card__label">{{ HEADERS.initiative.rus }}</span>
+      </button>
+
+      <button
+          type="button"
+          class="stat-card stat-card--hp"
+          @click="selectHealth(characterStore.character!!)"
+      >
+        <ion-icon class="stat-card__icon stat-card__icon--hp" :icon="heartOutline"/>
+        <span class="stat-card__value stat-card__value--hp">{{ currentHp }}/{{ maxHp }}</span>
+        <span class="stat-card__label">Хиты</span>
+      </button>
+
+      <button
+          type="button"
+          class="subheader-toggle"
+          :aria-expanded="isOpen"
+          :aria-label="isOpen ? 'Свернуть панель персонажа' : 'Развернуть панель персонажа'"
+          @click="toggleSubheader"
+      >
+        <ion-icon class="subheader-toggle__icon" :icon="chevronDownOutline"/>
+      </button>
+
+      <button
+          type="button"
+          class="rest-action stat-card--collapsible"
+          @click="openRestModal(characterStore.character!!)"
+      >
+        <ion-icon class="rest-action__icon" :src="restIcon"/>
+        <span class="rest-action__label">Отдых</span>
+      </button>
     </div>
-    <div class="center-icons" v-show="subheaderStore.subheaderOpened">
-<!--      <div class="inspiration">-->
-<!--        <div class="subheader-chip">-->
-<!--        </div>-->
-<!--        <div class="subheader-chip-name">-->
-<!--          {{ HEADERS.inspiration.rus }}-->
-<!--        </div>-->
-<!--      </div>-->
-      <div class="initiative" @click="selectInitiative(characterStore.character!!)">
-        <div class="subheader-chip">
-          {{
-            characterStore.character != null ? (characterStore.character?.initiative + characterStore.character?.bonusInitiative) : 0
-          }}
-        </div>
-        <div class="subheader-chip-name">
-          {{ HEADERS.initiative.rus }}
-        </div>
-      </div>
-    </div>
-    <div class="end-icons" v-show="subheaderStore.subheaderOpened">
-      <div class="rest" @click="openRestModal(characterStore.character!!)">
-        <ion-icon class="rest-icon" slot="icon-only" :src="restIcon" color="light">
-        </ion-icon>
-      </div>
-      <div class="hp" @click="selectHealth(characterStore.character!!)">
-        <hp-bar class="hp-icon"/>
-      </div>
-    </div>
-  </div>
-  <div class="subheader-show-arrow">
-    <div class="arrow" @click="closeSubheader">{{ subheaderStore.subheaderOpened ? "ꜛ" : "ꜜ" }}</div>
   </div>
 </template>
 
 <style scoped>
-.subheader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-  border-bottom-right-radius: 100px;
-  border-bottom-left-radius: 100px;
-  padding: 6px 16px 8px;
+.subheader-root {
+  --subheader-ease: cubic-bezier(0.33, 1, 0.68, 1);
+  --subheader-duration: 0.48s;
+  position: relative;
+  padding: 5px 15px 4px;
+  transition: padding-bottom var(--subheader-duration) var(--subheader-ease);
+}
+
+.subheader-root.is-open {
+  padding-bottom: 28px;
+}
+
+.subheader-shell {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: auto 0fr;
+  grid-template-areas:
+    "ac hp"
+    "collapsible collapsible";
+  transition: gap var(--subheader-duration) var(--subheader-ease);
+}
+
+.subheader-root.is-open .subheader-shell {
   gap: 8px;
-  margin-bottom: 6px;
-  box-sizing: border-box;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: auto auto;
+  grid-template-areas:
+    "ac speed init hp"
+    "rest rest rest rest";
 }
 
-.end-icons {
-  margin-left: auto;
+.stat-card,
+.rest-action,
+.subheader-toggle {
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.16);
+  border-radius: 10px;
+  background: var(--ion-color-medium);
+  cursor: pointer;
+  min-width: 0;
+  transition:
+    min-height var(--subheader-duration) var(--subheader-ease),
+    padding var(--subheader-duration) var(--subheader-ease),
+    border-radius var(--subheader-duration) var(--subheader-ease),
+    margin var(--subheader-duration) var(--subheader-ease),
+    opacity calc(var(--subheader-duration) * 0.85) var(--subheader-ease),
+    border-color 0.3s ease,
+    transform 0.2s ease;
 }
 
-.armory-class {
-  position: relative;
-  display: inline-block;
-  width: 40px;
-  height: 40px;
-}
-
-.armory-class-icon {
-  width: 100%;
-  height: 100%;
-  fill: var(--ion-color-light);
-}
-
-.armory-class-value {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: white;
-  font-size: 12px;
-  font-weight: bold;
-  pointer-events: none;
-}
-
-.speed {
-  position: relative;
-  display: inline-block;
-  width: 40px;
-  height: 40px;
-  margin-left: 8px;
-}
-
-.speed-icon {
-  width: 100%;
-  height: 100%;
-}
-
-.speed-value {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, 30%);
-  color: var(--ion-color-light-contrast);
-  font-size: 12px;
-  font-weight: bold;
-  pointer-events: none;
-}
-
-.hp {
-  position: relative;
-  display: inline-block;
-  width: 40px;
-  height: 40px;
-}
-
-.hp-icon {
-  width: 100%;
-  height: 100%;
-}
-
-.rest {
-  position: relative;
-  display: inline-block;
-  width: 40px;
-  height: 40px;
-  margin-right: 8px;
-}
-
-.rest-icon {
-  width: 100%;
-  height: 100%;
-}
-
-.center-icons {
+.stat-card {
   display: flex;
-  justify-content: center;
   align-items: center;
-  flex-grow: 1;
   gap: 5px;
+  min-height: 32px;
+  padding: 4px 8px;
   flex-direction: row;
 }
 
-.subheader-chip {
-  background-color: var(--ion-color-medium-tint);
-  border-radius: 10px;
-  width: 70px;
-  height: 20px;
-  display: flex;
-  padding: 0 6px;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-}
-
-.subheader-chip-name {
-  font-size: 10px;
-  line-height: 12px;
-  margin-top: 2px;
-  color: var(--ion-color-light);
-}
-
-.initiative,
-.inspiration {
-  display: flex;
+.subheader-root.is-open .stat-card {
   flex-direction: column;
-  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 68px;
+  padding: 8px 6px;
+  border-radius: 12px;
 }
 
-.subheader-show-arrow {
-  position: absolute;
-  bottom: -10px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--ion-color-medium);
-  border-radius: 50%;
-  width: 20px;
-  height: 20px;
+.subheader-root.is-open .stat-card--ac,
+.subheader-root.is-open .stat-card--hp {
+  margin-inline: 0;
+}
+
+.stat-card--ac { grid-area: ac; margin-right: 18px; }
+.stat-card--speed { grid-area: speed; }
+.stat-card--init { grid-area: init; }
+.stat-card--hp { grid-area: hp; margin-left: 18px; }
+
+.stat-card--collapsible,
+.rest-action {
+  grid-area: collapsible;
+  overflow: hidden;
+}
+
+.subheader-root.is-open .stat-card--collapsible {
+  overflow: visible;
+}
+
+.subheader-root.is-open .stat-card--speed { grid-area: speed; }
+.subheader-root.is-open .stat-card--init { grid-area: init; }
+.subheader-root.is-open .rest-action { grid-area: rest; }
+
+.stat-card--collapsible,
+.rest-action {
+  max-height: 0;
+  min-height: 0;
+  opacity: 0;
+  padding-block: 0;
+  padding-inline: 8px;
+  border-width: 0;
+  pointer-events: none;
+  margin: 0;
+}
+
+.subheader-root.is-open .stat-card--collapsible {
+  max-height: 120px;
+  min-height: 68px;
+  opacity: 1;
+  padding-block: 8px;
+  padding-inline: 6px;
+  border-width: 1px;
+  pointer-events: auto;
+}
+
+.subheader-root.is-open .rest-action {
+  max-height: 56px;
+  min-height: 38px;
+  opacity: 1;
+  padding: 0 16px;
+  border-width: 1px;
+  pointer-events: auto;
+}
+
+.stat-card:active,
+.rest-action:active {
+  transform: scale(0.97);
+}
+
+.stat-card__icon {
+  width: 14px;
+  height: 14px;
+  color: rgba(var(--ion-color-primary-rgb), 0.9);
+  flex-shrink: 0;
+  transition: width var(--subheader-duration) var(--subheader-ease), height var(--subheader-duration) var(--subheader-ease);
+}
+
+.subheader-root.is-open .stat-card__icon {
+  width: 16px;
+  height: 16px;
+}
+
+.stat-card__value {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--ion-color-light);
+  font-variant-numeric: tabular-nums;
+  transition: font-size var(--subheader-duration) var(--subheader-ease);
+}
+
+.subheader-root.is-open .stat-card__value {
+  font-size: 17px;
+}
+
+.stat-card__label {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: rgba(var(--ion-color-light-rgb), 0.45);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: font-size var(--subheader-duration) var(--subheader-ease), margin var(--subheader-duration) var(--subheader-ease), text-align var(--subheader-duration) var(--subheader-ease);
+}
+
+.subheader-root.is-open .stat-card__label {
+  margin-left: 0;
+  font-size: 9px;
+  text-align: center;
+  max-width: none;
+}
+
+.stat-card--hp {
+  border-color: rgba(var(--ion-color-danger-rgb), 0.28);
+}
+
+.stat-card__icon--hp {
+  color: var(--ion-color-danger);
+}
+
+.stat-card__value--hp {
+  color: var(--ion-color-danger-tint);
+}
+
+.rest-action {
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
+  gap: 8px;
+  border-radius: 999px;
+  color: rgba(var(--ion-color-light-rgb), 0.9);
+  font-size: 14px;
+  font-weight: 500;
 }
 
-.arrow {
-  font-size: 16px;
-  color: white;
+.rest-action__icon {
+  width: 18px;
+  height: 18px;
+  color: var(--ion-color-primary);
+  flex-shrink: 0;
+}
+
+.subheader-toggle {
+  position: absolute;
+  left: 50%;
+  top: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 999px;
+  background: var(--ion-color-medium-shade);
+  z-index: 3;
+  transform: translate(-50%, -50%);
+  transition: top var(--subheader-duration) var(--subheader-ease);
+}
+
+.subheader-root.is-open .subheader-toggle {
+  top: calc(100% - 12px);
+}
+
+.subheader-toggle:active {
+  transform: translate(-50%, -40%) scale(0.94);
+}
+
+.subheader-toggle__icon {
+  width: 14px;
+  height: 14px;
+  color: rgba(var(--ion-color-light-rgb), 0.7);
+  transition: transform var(--subheader-duration) var(--subheader-ease), color 0.35s ease;
+}
+
+.subheader-root.is-open .subheader-toggle__icon {
+  transform: rotate(180deg);
+  color: var(--ion-color-primary);
+}
+
+@media (min-width: 1024px) {
+  .subheader-root.is-open .stat-card__label {
+    font-size: 10px;
+  }
 }
 </style>
