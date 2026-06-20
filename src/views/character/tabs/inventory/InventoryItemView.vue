@@ -475,8 +475,8 @@ function getRefillLabel(refill: ItemSkill["chargesRefill"]): string {
   display: block;
   width: auto;
   height: auto;
-  max-width: 100%;
-  max-height: 100%;
+  max-width: 180px;
+  max-height: 180px;
   object-fit: contain;
 }
 
