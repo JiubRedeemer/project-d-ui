@@ -1,14 +1,13 @@
 <script setup lang="ts">
-import {computed, onBeforeUnmount, onMounted, ref, watch} from "vue";
+import {computed, nextTick, onBeforeUnmount, onMounted, ref, watch} from "vue";
 import {useRoute} from "vue-router";
 import axios from "axios";
 import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {TEXTS} from "@/config/localisations";
 import {marked} from "marked";
-import {add, saveOutline, sparkles} from "ionicons/icons";
+import {add, chevronBackOutline, createOutline, saveOutline, sparkles} from "ionicons/icons";
 import {
   IonButton,
-  IonButtons,
   IonIcon,
   IonPopover,
   IonSpinner,
@@ -18,6 +17,7 @@ import {
 import {useCharacterStore} from "@/stores/CharacterStore";
 import {useInventoryStore} from "@/stores/InventoryStore";
 import {useNpcRelationsStore} from "@/stores/NpcRelationsStore";
+import {useSubheaderOpenedStore} from "@/stores/SubheaderStore";
 import {deleteCharacterNpcRelationByIdForRoom} from "@/api/npcApi";
 import type { NpcWithRelationIdDto, RelationTypeEnum } from "@/api/npcApi.types";
 import type {CharacterBio} from "@/components/models/response/Character";
@@ -50,7 +50,93 @@ const route = useRoute();
 const ionRouter = useIonRouter();
 const editedValues = ref<Record<string, string>>({});
 const isBlockExpanded = ref<BioSectionKey | null>(null);
+const isSectionEditing = ref(false);
 const inputSectionText = ref<string | null>(null);
+const sectionTextareaRef = ref<HTMLTextAreaElement | null>(null);
+const expandedPanelRef = ref<HTMLElement | null>(null);
+
+const bindExpandedPanelRef = (el: Element | null) => {
+  expandedPanelRef.value = el instanceof HTMLElement ? el : null;
+};
+
+const findIonContent = (element: HTMLElement): HTMLIonContentElement | null => {
+  let current: HTMLElement | null = element;
+
+  while (current) {
+    if (current.tagName === "ION-CONTENT") {
+      return current as HTMLIonContentElement;
+    }
+    current = current.parentElement;
+  }
+
+  return null;
+};
+
+const getScrollSafeTopPadding = (scrollElement: HTMLElement): number => {
+  const basePadding = 0;
+  const scrollRect = scrollElement.getBoundingClientRect();
+  let anchorTop = scrollRect.top + basePadding;
+
+  const subheaderEl = document.querySelector<HTMLElement>(".subheader-block");
+  if (subheaderEl) {
+    const subheaderBottom = subheaderEl.getBoundingClientRect().bottom;
+    if (subheaderBottom > scrollRect.top) {
+      anchorTop = Math.max(anchorTop, subheaderBottom + basePadding);
+    }
+  }
+
+  const headerEl = document.querySelector<HTMLElement>(".character-header");
+  if (headerEl) {
+    const headerBottom = headerEl.getBoundingClientRect().bottom;
+    if (headerBottom > scrollRect.top) {
+      anchorTop = Math.max(anchorTop, headerBottom + basePadding);
+    }
+  }
+
+  return Math.max(basePadding, anchorTop - scrollRect.top);
+};
+
+const ensureExpandedSectionVisible = async () => {
+  if (!isBlockExpanded.value) return;
+
+  await nextTick();
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
+  const panel =
+      expandedPanelRef.value
+      ?? document.querySelector<HTMLElement>(".bio-section--expanded");
+  if (!panel) return;
+
+  const contentElement = findIonContent(panel);
+
+  if (!contentElement) {
+    panel.scrollIntoView({behavior: "smooth", block: "start"});
+    return;
+  }
+
+  const scrollElement = await contentElement.getScrollElement();
+  const panelRect = panel.getBoundingClientRect();
+  const scrollRect = scrollElement.getBoundingClientRect();
+  const safeTopPadding = getScrollSafeTopPadding(scrollElement);
+  const targetScrollTop = scrollElement.scrollTop + panelRect.top - scrollRect.top - safeTopPadding;
+  const clampedTop = Math.max(0, targetScrollTop);
+
+  try {
+    await contentElement.scrollToPoint(0, clampedTop, 350);
+  } catch {
+    scrollElement.scrollTo({top: clampedTop, behavior: "smooth"});
+  }
+};
+
+const scheduleExpandedSectionScroll = () => {
+  void ensureExpandedSectionVisible();
+  window.setTimeout(() => {
+    void ensureExpandedSectionVisible();
+  }, 120);
+  window.setTimeout(() => {
+    void ensureExpandedSectionVisible();
+  }, 380);
+};
 const avatarImage = ref<File | null>(null);
 const previewImage = ref<string | null>(null);
 const allowedFormats = ["image/jpeg", "image/png", "image/gif", "image/bmp", "image/webp", "image/tiff", "image/svg+xml"];
@@ -58,6 +144,7 @@ const filePath = ref<string>("");
 const characterStore = useCharacterStore()
 const inventoryStore = useInventoryStore()
 const npcRelationsStore = useNpcRelationsStore()
+const subheaderStore = useSubheaderOpenedStore()
 
 const relationsByType = computed(() => npcRelationsStore.byType)
 
@@ -205,18 +292,39 @@ const renderMarkdown = (text: string | undefined): string => {
 const expandBlock = (name: BioSectionKey) => {
   if (isBlockExpanded.value === name) return;
   isBlockExpanded.value = name;
+  isSectionEditing.value = false;
   inputSectionText.value = getBioValue(characterStore.character.characterBio, name);
 };
 
+const closeSection = () => {
+  isBlockExpanded.value = null;
+  isSectionEditing.value = false;
+  inputSectionText.value = null;
+};
+
+const startSectionEdit = async () => {
+  if (!isBlockExpanded.value) return;
+  inputSectionText.value = getBioValue(characterStore.character.characterBio, isBlockExpanded.value);
+  isSectionEditing.value = true;
+  await nextTick();
+  sectionTextareaRef.value?.focus();
+};
+
+const cancelSectionEdit = () => {
+  if (!isBlockExpanded.value) return;
+  inputSectionText.value = getBioValue(characterStore.character.characterBio, isBlockExpanded.value);
+  isSectionEditing.value = false;
+};
+
+const isSectionEmpty = (section: BioSectionKey) =>
+    !getBioValue(characterStore.character.characterBio, section).trim();
+
 const saveSectionText = async (name: BioSectionKey) => {
   const originalValue = getBioValue(characterStore.character.characterBio, name);
-
   const newValue = inputSectionText.value ?? "";
 
-  // 🔒 If nothing changed — do nothing
   if (newValue.trim() === originalValue.trim()) {
-    isBlockExpanded.value = null;
-    inputSectionText.value = null;
+    isSectionEditing.value = false;
     return;
   }
 
@@ -224,8 +332,6 @@ const saveSectionText = async (name: BioSectionKey) => {
     const roomId = route.params.roomId as string;
     const characterId = route.params.characterId as string;
 
-    isBlockExpanded.value = null;
-    inputSectionText.value = null;
     await axios.patch(
         `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${characterId}${GATEWAY_INTEGRATION_ROUTES.bio}/${name}`,
         {value: newValue},
@@ -239,11 +345,9 @@ const saveSectionText = async (name: BioSectionKey) => {
 
     await characterStore.updateCharacterInStoreById(roomId, characterId);
     await inventoryStore.updateInventoryInStoreById(roomId, characterId);
+    isSectionEditing.value = false;
   } catch (error) {
     console.error("Ошибка при сохранении данных:", error);
-  } finally {
-    isBlockExpanded.value = null;
-    inputSectionText.value = null;
   }
 };
 
@@ -324,6 +428,20 @@ const avatarRemoteSrc = computed(() => {
 const avatarDisplaySrc = computed(() => previewImage.value ?? avatarRemoteSrc.value);
 const ambientColor = ref<string | null>(null);
 
+watch(isBlockExpanded, (section) => {
+  if (section) {
+    scheduleExpandedSectionScroll();
+  }
+});
+
+watch(() => subheaderStore.subheaderOpened, () => {
+  if (!isBlockExpanded.value) return;
+  scheduleExpandedSectionScroll();
+  window.setTimeout(() => {
+    void ensureExpandedSectionVisible();
+  }, 500);
+});
+
 watch(avatarDisplaySrc, (src) => {
   if (!src) {
     ambientColor.value = null;
@@ -381,35 +499,108 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <div
-        v-for="section in bioSections"
-        :key="section"
-        class="bio-section"
-        :class="{ 'bio-section--expanded': isBlockExpanded === section }"
-        v-show="isBlockExpanded === null || isBlockExpanded === section"
-        @click="expandBlock(section)"
-    >
-      <h1 class="sectionHeader">{{ TEXTS[section].rus }}:</h1>
-      <div :class="{ expand: isBlockExpanded === section }" class="section">
-        <textarea
-            v-if="isBlockExpanded === section"
-            class="bio-section-textarea"
-            :value="inputSectionText ?? ''"
-            @input="inputSectionText = ($event.target as HTMLTextAreaElement).value"
-            @click.stop
-        />
-        <div
-            v-else
-            class="bio-section-html"
-            v-html="renderMarkdown(getBioValue(characterStore.character.characterBio, section))"
-        />
-        <ion-buttons class="sectionButtons" v-show="isBlockExpanded === section">
-          <ion-button @click.stop="saveSectionText(section)">
-            <ion-icon slot="icon-only" :icon="saveOutline"></ion-icon>
-          </ion-button>
-        </ion-buttons>
+    <template v-for="section in bioSections" :key="section">
+      <div
+          v-if="isBlockExpanded !== section"
+          class="bio-section"
+          @click="expandBlock(section)"
+      >
+        <h1 class="sectionHeader">{{ TEXTS[section].rus }}</h1>
+        <div class="section section--preview">
+          <div
+              v-if="!isSectionEmpty(section)"
+              class="bio-section-html bio-section-html--preview"
+              v-html="renderMarkdown(getBioValue(characterStore.character.characterBio, section))"
+          />
+          <p v-else class="bio-section-preview-empty">Нажмите, чтобы открыть</p>
+        </div>
       </div>
-    </div>
+
+      <div
+          v-else
+          :ref="bindExpandedPanelRef"
+          class="bio-section bio-section--expanded"
+      >
+        <div class="bio-expanded-panel">
+          <div class="bio-expanded-toolbar">
+            <ion-button
+                class="bio-toolbar-btn"
+                fill="clear"
+                size="small"
+                aria-label="Назад"
+                @click="closeSection"
+            >
+              <ion-icon slot="icon-only" :icon="chevronBackOutline"/>
+            </ion-button>
+
+            <h2 class="bio-expanded-title">{{ TEXTS[section].rus }}</h2>
+
+            <ion-button
+                v-if="!isSectionEditing"
+                class="bio-toolbar-btn bio-toolbar-btn--accent"
+                fill="clear"
+                size="small"
+                :aria-label="isSectionEmpty(section) ? 'Добавить текст' : 'Редактировать'"
+                @click="startSectionEdit"
+            >
+              <ion-icon slot="icon-only" :icon="createOutline"/>
+            </ion-button>
+            <span v-else class="bio-toolbar-spacer" aria-hidden="true"/>
+          </div>
+
+          <div class="section section--expanded" :class="{ 'section--editing': isSectionEditing }">
+            <div v-if="!isSectionEditing" class="bio-expanded-body">
+              <div
+                  v-if="!isSectionEmpty(section)"
+                  class="bio-section-html bio-section-html--reading"
+                  v-html="renderMarkdown(getBioValue(characterStore.character.characterBio, section))"
+              />
+              <div v-else class="bio-section-empty">
+                <p class="bio-section-empty__text">Запись пока пуста</p>
+                <p class="bio-section-empty__hint">Добавьте историю, идеалы или заметки в формате Markdown</p>
+                <ion-button
+                    class="bio-section-empty__btn"
+                    fill="outline"
+                    size="small"
+                    @click="startSectionEdit"
+                >
+                  Написать
+                </ion-button>
+              </div>
+            </div>
+
+            <template v-else>
+              <textarea
+                  ref="sectionTextareaRef"
+                  class="bio-section-textarea"
+                  :value="inputSectionText ?? ''"
+                  placeholder="Поддерживается Markdown: **жирный**, *курсив*, списки..."
+                  @input="inputSectionText = ($event.target as HTMLTextAreaElement).value"
+              />
+              <div class="bio-edit-actions">
+                <ion-button
+                    fill="clear"
+                    size="small"
+                    class="bio-edit-actions__cancel"
+                    @click="cancelSectionEdit"
+                >
+                  Отмена
+                </ion-button>
+                <ion-button
+                    fill="solid"
+                    size="small"
+                    class="bio-edit-actions__save"
+                    @click="saveSectionText(section)"
+                >
+                  <ion-icon slot="start" :icon="saveOutline"/>
+                  Сохранить
+                </ion-button>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </template>
 
     <!-- NPC Relations: separate blocks -->
     <template v-if="isBlockExpanded == null">
@@ -616,82 +807,267 @@ onBeforeUnmount(() => {
   border-radius: 15px;
   padding: 10px;
   overflow: hidden;
-  height: fit-content;
-  max-height: 200px;
-  transition: max-height 0.45s ease;
 }
 
-.section.expand {
+.section--preview {
+  position: relative;
+  max-height: 200px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.section--preview:active {
+  background-color: var(--ion-color-medium-tint);
+}
+
+.section--preview::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 48px;
+  border-radius: 0 0 15px 15px;
+  background: linear-gradient(to bottom, transparent, var(--ion-color-medium));
+  pointer-events: none;
+}
+
+.bio-section-preview-empty {
+  margin: 0;
+  padding: 8px 4px 12px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: rgba(var(--ion-color-light-rgb), 0.45);
+}
+
+.bio-expanded-panel {
   display: flex;
   flex-direction: column;
-  max-height: none;
-  /* До низа экрана: заголовок блока, отступы, кнопка сохранения, safe area */
-  height: 67vh;
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
-  transition: min-height 0.35s ease, height 0.35s ease;
+  gap: 8px;
+  animation: bio-expand-in 0.28s ease;
 }
 
-@media (min-width: 1024px) {
-  .section.expand {
-    height: 63vh;
+@keyframes bio-expand-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
+.bio-expanded-toolbar {
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
+  align-items: center;
+  gap: 4px;
+  min-height: 40px;
+}
 
-.bio-section-html :deep(p) {
-  margin: 0 0 0.5em;
+.bio-expanded-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  color: var(--ion-color-light);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bio-toolbar-btn {
+  --padding-start: 0;
+  --padding-end: 0;
+  margin: 0;
+  width: 40px;
+  height: 40px;
+}
+
+.bio-toolbar-btn--accent {
+  --color: var(--ion-color-primary);
+}
+
+.bio-toolbar-spacer {
+  width: 40px;
+  height: 40px;
+}
+
+.section--expanded {
+  display: flex;
+  flex-direction: column;
+  height: 67vh;
+  padding: 0;
+  overflow: hidden;
+}
+
+.section--editing {
+  padding: 12px 12px 10px;
+}
+
+.bio-expanded-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 14px 14px 18px;
+}
+
+.bio-section-html--reading :deep(h1) {
+  margin: 0.2em 0 0.55em;
+  font-size: 1.25em;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.bio-section-html--reading :deep(h2) {
+  margin: 0.85em 0 0.45em;
+  font-size: 1.1em;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.bio-section-html--reading :deep(h3) {
+  margin: 0.75em 0 0.35em;
+  font-size: 1em;
+  font-weight: 600;
+  line-height: 1.35;
+  color: rgba(var(--ion-color-light-rgb), 0.9);
+}
+
+.bio-section-html--preview :deep(p) {
+  margin: 0 0 0.45em;
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.45;
   color: var(--ion-color-light);
   word-break: break-word;
 }
 
-.bio-section-html :deep(p:last-child) {
+.bio-section-html--reading :deep(p) {
+  margin: 0 0 0.85em;
+  font-size: 15px;
+  line-height: 1.65;
+  color: rgba(var(--ion-color-light-rgb), 0.92);
+}
+
+.bio-section-html--reading :deep(p:last-child) {
   margin-bottom: 0;
+}
+
+.bio-section-html--reading :deep(ul),
+.bio-section-html--reading :deep(ol) {
+  margin: 0.65em 0 0.85em;
+  padding-left: 1.35em;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.bio-section-html--reading :deep(li + li) {
+  margin-top: 0.35em;
+}
+
+.bio-section-html--reading :deep(strong) {
+  color: var(--ion-color-light);
+  font-weight: 700;
+}
+
+.bio-section-html--reading :deep(em) {
+  color: rgba(var(--ion-color-primary-rgb), 0.95);
+}
+
+.bio-section-html--reading :deep(blockquote) {
+  margin: 0.75em 0;
+  padding: 10px 12px;
+  border-left: 3px solid rgba(var(--ion-color-primary-rgb), 0.55);
+  border-radius: 0 10px 10px 0;
+  background: rgba(var(--ion-color-primary-rgb), 0.08);
+  color: rgba(var(--ion-color-light-rgb), 0.85);
+}
+
+.bio-section-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 220px;
+  padding: 24px 16px;
+  text-align: center;
+}
+
+.bio-section-empty__text {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ion-color-light);
+}
+
+.bio-section-empty__hint {
+  margin: 0 0 18px;
+  max-width: 260px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(var(--ion-color-light-rgb), 0.5);
+}
+
+.bio-section-empty__btn {
+  --border-color: rgba(var(--ion-color-primary-rgb), 0.45);
+  --color: var(--ion-color-primary);
 }
 
 .bio-section-textarea {
   display: block;
+  flex: 1 1 auto;
   width: 100%;
-  min-height: 10em;
+  min-height: 0;
   margin: 0;
-  padding: 0;
+  padding: 12px;
   box-sizing: border-box;
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: 15px;
+  line-height: 1.55;
   color: var(--ion-color-light);
   word-break: break-word;
   white-space: pre-wrap;
-  background: transparent;
-  border: none;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.2);
+  border-radius: 12px;
   outline: none;
-  resize: vertical;
+  resize: none;
   font-family: inherit;
 }
 
-.bio-section--expanded .bio-section-textarea {
-  flex: 1 1 auto;
-  min-height: 0;
-  width: 100%;
+.bio-section-textarea::placeholder {
+  color: rgba(var(--ion-color-light-rgb), 0.35);
 }
 
-.bio-section-html :deep(ul),
-.bio-section-html :deep(ol) {
-  margin: 0.5em 0;
-  padding-left: 1.25em;
+.bio-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-top: 10px;
+  padding-top: 2px;
 }
 
-.bio-section-html :deep(h1) {
-  font-size: 16px;
+.bio-edit-actions__cancel {
+  --color: rgba(var(--ion-color-light-rgb), 0.65);
 }
 
-.bio-section-html :deep(h2) {
-  font-size: 14px;
+.bio-edit-actions__save {
+  --background: var(--ion-color-primary);
+  --color: var(--ion-color-primary-contrast);
+  --border-radius: 999px;
+  --padding-start: 14px;
+  --padding-end: 16px;
+  font-weight: 600;
 }
 
-.bio-section-html :deep(h3) {
-  font-size: 12px;
+@media (min-width: 1024px) {
+  .section--expanded {
+    height: 63vh;
+  }
 }
 
 .sectionHeader {
@@ -701,6 +1077,14 @@ onBeforeUnmount(() => {
   margin-top: 15px;
   margin-bottom: 8px;
   margin-left: 10px;
+}
+
+.bio-section {
+  cursor: pointer;
+}
+
+.bio-section--expanded {
+  cursor: default;
 }
 
 .header {
@@ -811,17 +1195,6 @@ div.avatar-img {
   justify-self: center;
   font-size: 48px;
   color: white;
-}
-
-.sectionButtons {
-  width: 100%;
-  display: flex;
-  justify-content: end;
-}
-
-.section.expand .sectionButtons {
-  flex-shrink: 0;
-  margin-top: 4px;
 }
 
 .npc-section {

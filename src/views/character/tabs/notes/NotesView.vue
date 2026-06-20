@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {computed, onMounted, ref} from "vue";
+import {computed, onMounted, ref, watch} from "vue";
 import {useRoute} from "vue-router";
 import axios from "axios";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
@@ -13,7 +13,7 @@ import {
   onIonViewDidEnter,
   useIonRouter
 } from "@ionic/vue";
-import {addOutline, attachOutline, chevronDownOutline, chevronUpOutline, createOutline, saveOutline, trashOutline} from "ionicons/icons";
+import {addOutline, attachOutline, chevronDownOutline, createOutline, saveOutline, trashOutline} from "ionicons/icons";
 
 import {marked} from "marked";
 
@@ -44,10 +44,18 @@ const isEditing = ref<string | null>(null);
 const newNoteName = ref("");
 const newNoteText = ref("");
 const newTags = ref<NoteTag[]>([]);
+const newTagDraftName = ref("");
+const newTagDraftColor = ref("#8888ff");
+const isNewTagComposerFocused = ref(false);
 
 const editNoteName = ref("");
 const editNoteText = ref("");
 const editTags = ref<NoteTag[]>([]);
+const editTagDraftName = ref("");
+const editTagDraftColor = ref("#8888ff");
+const isEditTagComposerFocused = ref(false);
+const isEditTagsExpanded = ref(false);
+const isNewTagsExpanded = ref(false);
 
 const isBlockExpanded = ref<number | null>(null);
 const inputSectionText = ref<string | null>(null);
@@ -126,6 +134,81 @@ function addExistingTag(target: "new" | "edit", tag: NoteTag) {
   list.push({name: tag.name, color: tag.color || "#8888ff"});
 }
 
+function addTagFromComposer(target: "new" | "edit") {
+  const nameRef = target === "new" ? newTagDraftName : editTagDraftName;
+  const colorRef = target === "new" ? newTagDraftColor : editTagDraftColor;
+  const list = target === "new" ? newTags.value : editTags.value;
+
+  const name = nameRef.value.trim();
+  if (!name) return;
+
+  const existingByName = existingTagsCatalog.value.find(
+      (t) => t.name.trim().toLowerCase() === name.toLowerCase()
+  );
+
+  const nextTag: NoteTag = {
+    name,
+    color: existingByName?.color || colorRef.value || "#8888ff",
+  };
+
+  if (isTagInList(list, nextTag)) {
+    nameRef.value = "";
+    return;
+  }
+
+  list.push(nextTag);
+  nameRef.value = "";
+}
+
+function onTagComposerFocus(target: "new" | "edit") {
+  if (target === "new") isNewTagComposerFocused.value = true;
+  else isEditTagComposerFocused.value = true;
+}
+
+function onTagComposerBlur(target: "new" | "edit") {
+  window.setTimeout(() => {
+    if (target === "new") isNewTagComposerFocused.value = false;
+    else isEditTagComposerFocused.value = false;
+  }, 150);
+}
+
+function selectTagSuggestion(target: "new" | "edit", tag: NoteTag) {
+  addExistingTag(target, tag);
+  if (target === "new") {
+    newTagDraftName.value = "";
+    newTagDraftColor.value = tag.color || "#8888ff";
+    isNewTagComposerFocused.value = false;
+  } else {
+    editTagDraftName.value = "";
+    editTagDraftColor.value = tag.color || "#8888ff";
+    isEditTagComposerFocused.value = false;
+  }
+}
+
+function getTagSuggestionStyle(color: string | undefined) {
+  const base = color || "#8888ff";
+  return {
+    "--tag-accent": base,
+    borderColor: `${base}55`,
+    background: `linear-gradient(135deg, ${base}33 0%, ${base}14 100%)`,
+  };
+}
+
+const getTagSuggestions = (target: "new" | "edit"): NoteTag[] => {
+  const draftName = (target === "new" ? newTagDraftName.value : editTagDraftName.value)
+      .trim()
+      .toLowerCase();
+  const selected = target === "new" ? newTags.value : editTags.value;
+
+  return existingTagsCatalog.value
+      .filter((tag) => {
+        if (isTagInList(selected, tag)) return false;
+        if (!draftName) return true;
+        return tag.name.toLowerCase().includes(draftName);
+      })
+      .slice(0, 6);
+};
+
 const addNewTagField = (target: "new" | "edit") => {
   const tag = {name: "", color: "#8888ff"};
   if (target === "new") newTags.value.push(tag);
@@ -179,6 +262,8 @@ const addNote = async () => {
     notes.value.push(res.data);
     newNoteName.value = "";
     newNoteText.value = "";
+    newTagDraftName.value = "";
+    newTagDraftColor.value = "#8888ff";
     newTags.value.splice(0); // очищает reactive массив
   } catch (e) {
     console.error("Ошибка при создании заметки:", e);
@@ -266,7 +351,16 @@ const expandBlock = (noteNumber: number, section: NoteSection) => {
   editNoteName.value = section.name;
   editNoteText.value = section.noteText;
   editTags.value = section.tags ? JSON.parse(JSON.stringify(section.tags)) : [];
+  isEditTagsExpanded.value = false;
+  isEditTagComposerFocused.value = false;
 };
+
+watch(isBlockExpanded, (value) => {
+  if (value === "new") {
+    isNewTagsExpanded.value = false;
+    isNewTagComposerFocused.value = false;
+  }
+});
 
 const updateHeaderSectionText = (event: Event, section: NoteSection) => {
   const target = event.target as HTMLElement;
@@ -341,14 +435,18 @@ const onNotesViewOutsideClick = (e: MouseEvent) => {
         <div class="notes-hint-title">Подсказка по кнопкам</div>
         <ion-button
           size="small"
-          fill="outline"
+          fill="clear"
           shape="round"
-          color="light"
           class="notes-hint-toggle-button"
           @click.stop
           @click="isNotesHintExpanded = !isNotesHintExpanded"
         >
-          <ion-icon slot="icon-only" :icon="isNotesHintExpanded ? chevronUpOutline : chevronDownOutline"></ion-icon>
+          <ion-icon
+            slot="icon-only"
+            class="notes-hint-toggle-button__icon"
+            :class="{ 'notes-hint-toggle-button__icon--expanded': isNotesHintExpanded }"
+            :icon="chevronDownOutline"
+          ></ion-icon>
         </ion-button>
       </div>
       <div v-if="isNotesHintExpanded" class="notes-hint-items">
@@ -435,13 +533,17 @@ const onNotesViewOutsideClick = (e: MouseEvent) => {
 
         <div v-if="isBlockExpanded === index" class="notes-card__body" @click.stop>
           <div class="notes-card__toolbar">
+            <span class="notes-card__toolbar-label">
+              {{ editingNoteId === section.id ? "Режим редактирования" : "Режим чтения" }}
+            </span>
             <ion-button
                 fill="clear"
                 size="small"
                 class="notes-card__edit-btn"
                 @click.stop="toggleEditMode(section)"
             >
-              <ion-icon :icon="createOutline"></ion-icon>
+              <ion-icon slot="start" :icon="createOutline"></ion-icon>
+              {{ editingNoteId === section.id ? "Готово" : "Редактировать" }}
             </ion-button>
           </div>
 
@@ -452,66 +554,144 @@ const onNotesViewOutsideClick = (e: MouseEvent) => {
           />
 
           <template v-else>
-            <textarea
-                v-model="editNoteText"
-                class="notes-card__textarea"
-                placeholder="Введите текст заметки (Markdown)..."
-                @input="autoGrow($event)"
-                @click="autoGrow($event)"
-            />
+            <div class="note-edit-surface">
+              <textarea
+                  v-model="editNoteText"
+                  class="notes-card__textarea"
+                  placeholder="Введите текст заметки (Markdown)..."
+                  @input="autoGrow($event)"
+                  @click="autoGrow($event)"
+              />
 
-            <div
-                v-if="existingTagsCatalog.length"
-                class="existing-tags-block"
-                @click.stop
-            >
-              <div class="existing-tags-label">Выбрать из существующих</div>
-              <div class="existing-tags-row">
-                <ion-chip
-                    v-for="(ex, exIdx) in existingTagsCatalog"
-                    :key="'ex-edit-' + exIdx"
-                    class="existing-tag-chip"
-                    :class="{ 'existing-tag-chip--added': isTagInList(editTags, ex) }"
-                    :style="{ backgroundColor: ex.color || '#8888ff', color: '#fff' }"
-                    @click.stop="addExistingTag('edit', ex)"
-                >
-                  <ion-label>{{ ex.name }}</ion-label>
-                </ion-chip>
-              </div>
-            </div>
-
-            <div class="notes-card__tags-edit tags-block">
               <div
-                  v-for="(tag, tagIdx) in editTags"
-                  :key="tagIdx"
-                  class="tag-field"
+                  class="tags-spoiler"
+                  :class="{ 'tags-spoiler--collapsed': !isEditTagsExpanded }"
+                  @click.stop="!isEditTagsExpanded && (isEditTagsExpanded = true)"
               >
-                <ion-input
-                    placeholder="Имя тега"
-                    v-model="tag.name"
-                    fill="outline"
-                    class="tag-input"
-                />
-                <input type="color" v-model="tag.color" class="tag-color-picker" aria-label="Цвет тега"/>
-                <ion-chip :style="{ backgroundColor: tag.color }" @click="removeTagField('edit', tagIdx)">
-                  <ion-label>{{ tag.name || 'Без имени' }}</ion-label>
-                </ion-chip>
+                <div class="tags-spoiler__header">
+                  <div class="tags-spoiler__summary">
+                    <div class="tags-spoiler__title-row">
+                      <span class="tags-spoiler__title">Теги</span>
+                      <span v-if="editTags.length" class="tags-spoiler__count">{{ editTags.length }}</span>
+                    </div>
+                    <div v-if="!isEditTagsExpanded && editTags.length" class="tags-spoiler__preview">
+                      <span
+                          v-for="(tag, previewIdx) in editTags.slice(0, 4)"
+                          :key="'edit-tag-preview-' + previewIdx"
+                          class="tags-spoiler__preview-chip"
+                          :style="getTagSuggestionStyle(tag.color)"
+                      >
+                        {{ tag.name }}
+                      </span>
+                      <span v-if="editTags.length > 4" class="tags-spoiler__more">
+                        +{{ editTags.length - 4 }}
+                      </span>
+                    </div>
+                    <span v-else-if="!isEditTagsExpanded" class="tags-spoiler__hint">
+                      Нажмите, чтобы добавить
+                    </span>
+                  </div>
+                  <ion-button
+                      size="small"
+                      fill="clear"
+                      shape="round"
+                      class="tags-spoiler__toggle"
+                      @click.stop
+                      @click="isEditTagsExpanded = !isEditTagsExpanded"
+                  >
+                    <ion-icon
+                        slot="icon-only"
+                        class="tags-spoiler__toggle-icon"
+                        :class="{ 'tags-spoiler__toggle-icon--expanded': isEditTagsExpanded }"
+                        :icon="chevronDownOutline"
+                    />
+                  </ion-button>
+                </div>
+
+                <div v-if="isEditTagsExpanded" class="tags-spoiler__body notes-card__tags-edit tags-block">
+                  <div class="tag-composer-block">
+                    <div class="tag-composer">
+                      <input
+                          v-model="editTagDraftName"
+                          class="tag-composer__name"
+                          placeholder="Введите тег"
+                          @focus="onTagComposerFocus('edit')"
+                          @blur="onTagComposerBlur('edit')"
+                          @keydown.enter.prevent="addTagFromComposer('edit')"
+                      />
+                      <input
+                          type="color"
+                          v-model="editTagDraftColor"
+                          class="tag-color-picker"
+                          aria-label="Цвет нового тега"
+                      />
+                      <ion-button size="small" shape="round" color="primary" @click="addTagFromComposer('edit')">
+                        <ion-icon slot="start" :icon="addOutline"/>
+                        Добавить
+                      </ion-button>
+                    </div>
+
+                    <div
+                        v-if="isEditTagComposerFocused && getTagSuggestions('edit').length"
+                        class="tag-suggestions-panel"
+                    >
+                      <span class="tag-suggestions-panel__label">Подсказки</span>
+                      <div class="tag-suggestions">
+                        <button
+                            v-for="(suggestion, idx) in getTagSuggestions('edit')"
+                            :key="'edit-suggestion-' + idx"
+                            type="button"
+                            class="tag-suggestion-chip"
+                            :style="getTagSuggestionStyle(suggestion.color)"
+                            @mousedown.prevent
+                            @click="selectTagSuggestion('edit', suggestion)"
+                        >
+                          <span class="tag-suggestion-chip__dot" :style="{ backgroundColor: suggestion.color || '#8888ff' }"/>
+                          <span class="tag-suggestion-chip__label">{{ suggestion.name }}</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                      v-for="(tag, tagIdx) in editTags"
+                      :key="tagIdx"
+                      class="tag-field"
+                  >
+                    <ion-input
+                        placeholder="Имя тега"
+                        v-model="tag.name"
+                        fill="outline"
+                        class="tag-input"
+                    />
+                    <input type="color" v-model="tag.color" class="tag-color-picker" aria-label="Цвет тега"/>
+                    <div class="tag-preview" :style="{ backgroundColor: tag.color }">
+                      {{ tag.name || "Без имени" }}
+                    </div>
+                    <ion-button
+                        fill="clear"
+                        size="small"
+                        color="danger"
+                        class="tag-remove-btn"
+                        @click="removeTagField('edit', tagIdx)"
+                    >
+                      <ion-icon slot="icon-only" :icon="trashOutline"/>
+                    </ion-button>
+                  </div>
+                </div>
               </div>
-              <ion-button size="small" shape="round" color="primary" @click="addNewTagField('edit')">
-                <ion-icon slot="icon-only" :icon="addOutline"/>
-              </ion-button>
             </div>
           </template>
 
           <div class="notes-card__actions">
+            <ion-button shape="round" size="small" fill="outline" color="danger" @click.stop="deleteNote(section.id)"
+                        aria-label="Удалить">
+              <ion-icon slot="icon-only" :icon="trashOutline"/>
+            </ion-button>
             <ion-button shape="round" size="small" color="primary"
                         @click.stop="updateNote(section.notebookId, section.id)">
               <ion-icon slot="start" :icon="saveOutline"/>
               Сохранить
-            </ion-button>
-            <ion-button shape="round" size="small" fill="outline" color="danger" @click.stop="deleteNote(section.id)"
-                        aria-label="Удалить">
-              <ion-icon slot="icon-only" :icon="trashOutline"/>
             </ion-button>
           </div>
         </div>
@@ -525,56 +705,133 @@ const onNotesViewOutsideClick = (e: MouseEvent) => {
       <article ref="newNoteCardRef" v-if="isBlockExpanded === 'new'" class="notes-card notes-card--new">
         <h2 class="notes-card__title">Новая заметка</h2>
         <div class="notes-card__body">
-          <ion-input
-              v-model="newNoteName"
-              label="Название"
-              label-placement="floating"
-              fill="outline"
-              placeholder="Название заметки"
-              class="new-note-input"
-          />
-          <ion-textarea
-              v-model="newNoteText"
-              label="Текст (Markdown)"
-              label-placement="floating"
-              fill="outline"
-              placeholder="Текст заметки..."
-              :auto-grow="true"
-              class="new-note-text"
-          />
+          <div class="note-edit-surface">
+            <ion-input
+                v-model="newNoteName"
+                label="Название"
+                label-placement="floating"
+                fill="outline"
+                placeholder="Название заметки"
+                class="new-note-input"
+            />
+            <ion-textarea
+                v-model="newNoteText"
+                label="Текст (Markdown)"
+                label-placement="floating"
+                fill="outline"
+                placeholder="Текст заметки..."
+                :auto-grow="true"
+                class="new-note-text"
+            />
 
-          <div
-              v-if="existingTagsCatalog.length"
-              class="existing-tags-block"
-              @click.stop
-          >
-            <div class="existing-tags-label">Выбрать из существующих</div>
-            <div class="existing-tags-row">
-              <ion-chip
-                  v-for="(ex, exIdx) in existingTagsCatalog"
-                  :key="'ex-new-' + exIdx"
-                  class="existing-tag-chip"
-                  :class="{ 'existing-tag-chip--added': isTagInList(newTags, ex) }"
-                  :style="{ backgroundColor: ex.color || '#8888ff', color: '#fff' }"
-                  @click.stop="addExistingTag('new', ex)"
-              >
-                <ion-label>{{ ex.name }}</ion-label>
-              </ion-chip>
-            </div>
-          </div>
+            <div
+                class="tags-spoiler"
+                :class="{ 'tags-spoiler--collapsed': !isNewTagsExpanded }"
+                @click.stop="!isNewTagsExpanded && (isNewTagsExpanded = true)"
+            >
+              <div class="tags-spoiler__header">
+                <div class="tags-spoiler__summary">
+                  <div class="tags-spoiler__title-row">
+                    <span class="tags-spoiler__title">Теги</span>
+                    <span v-if="newTags.length" class="tags-spoiler__count">{{ newTags.length }}</span>
+                  </div>
+                  <div v-if="!isNewTagsExpanded && newTags.length" class="tags-spoiler__preview">
+                    <span
+                        v-for="(tag, previewIdx) in newTags.slice(0, 4)"
+                        :key="'new-tag-preview-' + previewIdx"
+                        class="tags-spoiler__preview-chip"
+                        :style="getTagSuggestionStyle(tag.color)"
+                    >
+                      {{ tag.name }}
+                    </span>
+                    <span v-if="newTags.length > 4" class="tags-spoiler__more">
+                      +{{ newTags.length - 4 }}
+                    </span>
+                  </div>
+                  <span v-else-if="!isNewTagsExpanded" class="tags-spoiler__hint">
+                    Нажмите, чтобы добавить
+                  </span>
+                </div>
+                <ion-button
+                    size="small"
+                    fill="clear"
+                    shape="round"
+                    class="tags-spoiler__toggle"
+                    @click.stop
+                    @click="isNewTagsExpanded = !isNewTagsExpanded"
+                >
+                  <ion-icon
+                      slot="icon-only"
+                      class="tags-spoiler__toggle-icon"
+                      :class="{ 'tags-spoiler__toggle-icon--expanded': isNewTagsExpanded }"
+                      :icon="chevronDownOutline"
+                  />
+                </ion-button>
+              </div>
 
-          <div class="tags-block notes-card__tags-edit">
-            <div v-for="(tag, tagIdx) in newTags" :key="tagIdx" class="tag-field">
-              <ion-input v-model="tag.name" placeholder="Имя тега" fill="outline" class="tag-input"/>
-              <input type="color" v-model="tag.color" class="tag-color-picker" aria-label="Цвет тега"/>
-              <ion-chip :style="{ backgroundColor: tag.color }" @click="removeTagField('new', tagIdx)">
-                <ion-label>{{ tag.name || 'Без имени' }}</ion-label>
-                <ion-icon slot="end" :icon="trashOutline"/>
-              </ion-chip>
+              <div v-if="isNewTagsExpanded" class="tags-spoiler__body tags-block notes-card__tags-edit">
+                <div class="tag-composer-block">
+                  <div class="tag-composer">
+                    <input
+                        v-model="newTagDraftName"
+                        class="tag-composer__name"
+                        placeholder="Введите тег"
+                        @focus="onTagComposerFocus('new')"
+                        @blur="onTagComposerBlur('new')"
+                        @keydown.enter.prevent="addTagFromComposer('new')"
+                    />
+                    <input
+                        type="color"
+                        v-model="newTagDraftColor"
+                        class="tag-color-picker"
+                        aria-label="Цвет нового тега"
+                    />
+                    <ion-button size="small" shape="round" color="primary" @click="addTagFromComposer('new')">
+                      <ion-icon slot="start" :icon="addOutline"/>
+                      Добавить
+                    </ion-button>
+                  </div>
+
+                  <div
+                      v-if="isNewTagComposerFocused && getTagSuggestions('new').length"
+                      class="tag-suggestions-panel"
+                  >
+                    <span class="tag-suggestions-panel__label">Подсказки</span>
+                    <div class="tag-suggestions">
+                      <button
+                          v-for="(suggestion, idx) in getTagSuggestions('new')"
+                          :key="'new-suggestion-' + idx"
+                          type="button"
+                          class="tag-suggestion-chip"
+                          :style="getTagSuggestionStyle(suggestion.color)"
+                          @mousedown.prevent
+                          @click="selectTagSuggestion('new', suggestion)"
+                      >
+                        <span class="tag-suggestion-chip__dot" :style="{ backgroundColor: suggestion.color || '#8888ff' }"/>
+                        <span class="tag-suggestion-chip__label">{{ suggestion.name }}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div v-for="(tag, tagIdx) in newTags" :key="tagIdx" class="tag-field">
+                  <ion-input v-model="tag.name" placeholder="Имя тега" fill="outline" class="tag-input"/>
+                  <input type="color" v-model="tag.color" class="tag-color-picker" aria-label="Цвет тега"/>
+                  <div class="tag-preview" :style="{ backgroundColor: tag.color }">
+                    {{ tag.name || "Без имени" }}
+                  </div>
+                  <ion-button
+                      fill="clear"
+                      size="small"
+                      color="danger"
+                      class="tag-remove-btn"
+                      @click="removeTagField('new', tagIdx)"
+                  >
+                    <ion-icon slot="icon-only" :icon="trashOutline"/>
+                  </ion-button>
+                </div>
+              </div>
             </div>
-            <ion-button size="small" shape="round" color="primary" @click="addNewTagField('new')">
-              <ion-icon slot="icon-only" :icon="addOutline"/>
-            </ion-button>
           </div>
 
           <div class="notes-card__actions">
@@ -650,16 +907,30 @@ const onNotesViewOutsideClick = (e: MouseEvent) => {
 }
 
 .notes-hint-toggle-button {
-  --padding-start: 6px;
-  --padding-end: 6px;
-  --border-width: 1px;
-  min-height: 26px;
+  --background: var(--ion-color-medium-shade);
+  --background-hover: var(--ion-color-medium-shade);
+  --background-activated: var(--ion-color-medium-shade);
+  --background-focused: var(--ion-color-medium-shade);
+  --padding-start: 0;
+  --padding-end: 0;
+  --border-radius: 999px;
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  min-height: 28px;
   margin: 0;
 }
 
-.notes-hint-toggle-button ion-icon {
-  width: 16px;
-  height: 16px;
+.notes-hint-toggle-button__icon {
+  width: 14px;
+  height: 14px;
+  color: rgba(var(--ion-color-light-rgb), 0.7);
+  transition: transform 0.3s ease, color 0.3s ease;
+}
+
+.notes-hint-toggle-button__icon--expanded {
+  transform: rotate(180deg);
+  color: var(--ion-color-primary);
 }
 
 .notes-hint-items {
@@ -895,14 +1166,40 @@ const onNotesViewOutsideClick = (e: MouseEvent) => {
 
 .notes-card__toolbar {
   display: flex;
-  justify-content: flex-end;
-  margin-bottom: 6px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  margin-bottom: 8px;
+}
+
+.notes-card__toolbar-label {
+  font-size: 12px;
+  color: rgba(var(--ion-color-light-rgb), 0.68);
+  line-height: 1.2;
+}
+
+.note-edit-surface {
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  margin-bottom: 10px;
 }
 
 .notes-card__edit-btn {
-  --padding-start: 6px;
-  --padding-end: 6px;
+  --padding-start: 10px;
+  --padding-end: 10px;
   margin: 0;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.notes-card__edit-btn ion-icon {
+  margin-right: 4px;
 }
 
 .note-markdown {
@@ -911,7 +1208,7 @@ const onNotesViewOutsideClick = (e: MouseEvent) => {
   color: var(--ion-color-light);
   word-break: break-word;
   min-width: 0;
-  margin-bottom: 10px;
+  margin-bottom: 0;
 }
 
 .note-markdown :deep(p) {
@@ -954,15 +1251,15 @@ const onNotesViewOutsideClick = (e: MouseEvent) => {
 
 .notes-card__textarea {
   width: 100%;
-  min-height: 100px;
-  padding: 10px 12px;
-  margin-bottom: 10px;
+  min-height: 120px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
   border-radius: 12px;
-  border: 1px solid var(--ion-color-medium-shade);
-  background: var(--ion-color-medium-shade);
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.1);
+  background: rgba(0, 0, 0, 0.22);
   color: var(--ion-color-light);
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.6;
   resize: none;
   overflow: hidden;
   transition: height 0.2s ease;
@@ -970,19 +1267,66 @@ const onNotesViewOutsideClick = (e: MouseEvent) => {
 }
 
 .notes-card__textarea::placeholder {
-  color: var(--ion-color-light-shade);
+  color: rgba(var(--ion-color-light-rgb), 0.45);
 }
 
 .notes-card__tags-edit {
-  margin-bottom: 12px;
+  margin-bottom: 4px;
 }
 
 .existing-tags-block {
   margin-bottom: 12px;
   padding: 10px 10px 8px;
   border-radius: 12px;
-  background: rgba(0, 0, 0, 0.12);
+  background: rgba(0, 0, 0, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.tag-field {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) 38px auto 32px;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.tag-input {
+  min-width: 0;
+}
+
+.tag-preview {
+  min-width: 74px;
+  max-width: 180px;
+  height: 32px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tag-color-picker {
+  width: 38px;
+  height: 32px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 0;
+}
+
+.tag-remove-btn {
+  margin: 0;
+  --padding-start: 0;
+  --padding-end: 0;
 }
 
 .existing-tags-label {
@@ -1019,46 +1363,262 @@ const onNotesViewOutsideClick = (e: MouseEvent) => {
   pointer-events: none;
 }
 
-.tags-block {
+.tags-spoiler {
+  margin-top: 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.14);
+  background: rgba(0, 0, 0, 0.14);
+  overflow: hidden;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.tags-spoiler--collapsed {
+  cursor: pointer;
+}
+
+.tags-spoiler--collapsed:hover {
+  border-color: rgba(var(--ion-color-primary-rgb), 0.28);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.tags-spoiler__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+}
+
+.tags-spoiler--collapsed .tags-spoiler__header {
+  padding: 8px 10px;
+}
+
+.tags-spoiler__summary {
+  flex: 1;
+  min-width: 0;
+}
+
+.tags-spoiler__title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tags-spoiler__title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ion-color-light);
+}
+
+.tags-spoiler__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(var(--ion-color-primary-rgb), 0.22);
+  color: var(--ion-color-primary);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.tags-spoiler__hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: rgba(var(--ion-color-light-rgb), 0.45);
+}
+
+.tags-spoiler__preview {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
+  gap: 4px;
+  margin-top: 6px;
 }
 
-.tag-field {
+.tags-spoiler__preview-chip {
+  display: inline-block;
+  max-width: 120px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--ion-color-light);
+}
+
+.tags-spoiler__more {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(var(--ion-color-light-rgb), 0.08);
+  color: rgba(var(--ion-color-light-rgb), 0.65);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.tags-spoiler__toggle {
+  --background: var(--ion-color-medium-shade);
+  --background-hover: var(--ion-color-medium-shade);
+  --background-activated: var(--ion-color-medium-shade);
+  --background-focused: var(--ion-color-medium-shade);
+  --padding-start: 0;
+  --padding-end: 0;
+  --border-radius: 999px;
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  min-height: 28px;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.tags-spoiler__toggle-icon {
+  width: 14px;
+  height: 14px;
+  color: rgba(var(--ion-color-light-rgb), 0.7);
+  transition: transform 0.3s ease, color 0.3s ease;
+}
+
+.tags-spoiler__toggle-icon--expanded {
+  transform: rotate(180deg);
+  color: var(--ion-color-primary);
+}
+
+.tags-spoiler__body {
+  padding: 10px 10px 10px;
+  border-top: 1px solid rgba(var(--ion-color-light-rgb), 0.06);
+}
+
+.tags-block {
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.tag-composer-block {
+  margin-bottom: 8px;
+}
+
+.tag-composer {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) 38px auto;
   align-items: center;
   gap: 8px;
 }
 
-.tag-input {
-  flex: 1;
-  min-width: 80px;
-  max-width: 140px;
+.tag-composer__name {
+  width: 100%;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.14);
+  background: rgba(0, 0, 0, 0.22);
+  color: var(--ion-color-light);
+  padding: 0 10px;
+  font-size: 13px;
+  line-height: 1.2;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.tag-color-picker {
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: none;
+.tag-composer__name:focus {
+  border-color: rgba(var(--ion-color-primary-rgb), 0.55);
+  box-shadow: 0 0 0 2px rgba(var(--ion-color-primary-rgb), 0.18);
+}
+
+.tag-composer__name::placeholder {
+  color: rgba(var(--ion-color-light-rgb), 0.45);
+}
+
+.tag-suggestions-panel {
+  margin-top: 8px;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.16);
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.14);
+}
+
+.tag-suggestions-panel__label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(var(--ion-color-light-rgb), 0.45);
+}
+
+.tag-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tag-suggestion-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  color: var(--ion-color-light);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
   cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+
+.tag-suggestion-chip:active {
+  transform: scale(0.97);
+}
+
+.tag-suggestion-chip:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--tag-accent) 35%, transparent);
+}
+
+.tag-suggestion-chip__dot {
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  padding: 0;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.18);
+}
+
+.tag-suggestion-chip__label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
 }
 
 .notes-card__actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 8px;
-  justify-content: flex-end;
+  justify-content: space-between;
+  padding-top: 6px;
+  border-top: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
 }
 
 .notes-card__actions ion-button {
-  --padding-start: 10px;
-  --padding-end: 10px;
+  text-transform: none;
+  letter-spacing: 0;
+  --padding-start: 12px;
+  --padding-end: 12px;
+  --border-radius: 12px;
   margin: 0;
 }
 

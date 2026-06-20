@@ -165,8 +165,8 @@ const nameTextScale = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   border: 2px solid var(--ion-color-primary);
   background: var(--ion-color-medium);

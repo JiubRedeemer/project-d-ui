@@ -1,33 +1,34 @@
 <script setup lang="ts">
 
+import {computed, ref, watch} from "vue";
 import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {HEADERS, TEXTS} from "@/config/localisations";
 import {
   IonBackButton,
   IonButton,
   IonButtons,
-  IonChip,
   IonContent,
   IonHeader,
   IonIcon,
-  IonLabel,
   IonPage,
   IonToggle,
   IonToolbar,
   onIonViewDidEnter,
-  useIonRouter
+  useIonRouter,
 } from "@ionic/vue";
 import {useInventoryItemStore} from "@/stores/InventoryItemStore";
-import armorIcon from "@/static/icons/Armor.svg";
 import {marked} from "marked";
 import axios from "axios";
 import {useRoute, useRouter} from "vue-router";
 import {useInventoryStore} from "@/stores/InventoryStore";
-import {ref} from "vue";
 import {useCreateInventoryItemStore} from "@/stores/CreateInventoryItemStore";
-import {searchOutline} from "ionicons/icons";
+import {chevronForwardOutline, createOutline, trashOutline} from "ionicons/icons";
 import type {ItemSkill} from "@/components/models/response/InventoryResponse";
 import EditItemSkillValueModal from "@/views/character/tabs/inventory/EditItemSkillValueModal.vue";
+import {extractDominantColorFromUrl} from "@/utils/imageAmbient";
+import goldenCoinIcon from "@/static/icons/GoldenCoin.svg";
+import silverCoinIcon from "@/static/icons/SilverCoin.svg";
+import copperCoinIcon from "@/static/icons/CopperCoin.svg";
 
 const route = useRoute();
 const ionRouter = useIonRouter();
@@ -39,10 +40,67 @@ const createInventoryItemStore = useCreateInventoryItemStore();
 const showEditItemSkillModal = ref(false);
 const isEditingItemSkill = ref(false);
 const editingItemSkill = ref<ItemSkill>();
+const ambientColor = ref<string | null>(null);
 
+const SKILL_IMAGE_PLACEHOLDER =
+    "https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png";
+
+const hasSkillImage = (imgUrl: string | undefined | null) => Boolean(imgUrl?.trim());
+
+const getItemImageUrl = (imgUrl: string | undefined) =>
+    imgUrl != null && imgUrl.trim()
+        ? `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.items_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.download}/${imgUrl}`
+        : SKILL_IMAGE_PLACEHOLDER;
+
+const getSkillImageUrl = (imgUrl: string | undefined) =>
+    hasSkillImage(imgUrl)
+        ? `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.skills_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.download}/${imgUrl}`
+        : SKILL_IMAGE_PLACEHOLDER;
+
+const inventoryItem = computed(() => inventoryItemStore.inventoryItem);
+const item = computed(() => inventoryItem.value?.item);
+const itemImageUrl = computed(() => getItemImageUrl(item.value?.imgUrl));
+
+const isArmor = computed(() => item.value?.type === "ARMOR");
+const isWeapon = computed(() => item.value?.type === "WEAPON");
+
+const hasArmorStatRequirement = computed(() => {
+  const requirement = item.value?.stats?.requirement?.trim();
+  if (!requirement || requirement === "-1") return false;
+
+  const numericRequirement = Number(requirement);
+  return !Number.isNaN(numericRequirement) && numericRequirement > 0;
+});
+
+const showRequirementsWarning = computed(() =>
+    isArmor.value
+    && hasArmorStatRequirement.value
+    && !inventoryItem.value.requirementsOk
+);
+
+const inventorySkillsByItemSkillId = computed(() => {
+  const map = new Map<string, number>();
+  for (const entry of inventoryItem.value?.skills ?? []) {
+    map.set(entry.itemSkillId, entry.currentCharges);
+  }
+  return map;
+});
+
+watch(itemImageUrl, (src) => {
+  if (!src) {
+    ambientColor.value = null;
+    return;
+  }
+
+  void extractDominantColorFromUrl(src).then((color) => {
+    if (src === itemImageUrl.value) {
+      ambientColor.value = color;
+    }
+  });
+}, {immediate: true});
 
 const closeEditItemSkillModal = () => {
-  showEditItemSkillModal.value = false; // Закрываем модалку
+  showEditItemSkillModal.value = false;
 };
 
 function openViewItemSkillModal(isEditing: boolean, itemSkill: ItemSkill | undefined) {
@@ -59,46 +117,78 @@ onIonViewDidEnter(async () => {
   }
 });
 
-function isLetter(str: string) {
-  const regExp = /[0-9]/
-  if (!regExp.test(str) && str.length >= 3) {
-    return str
-  }
+function getTypeAbbreviation(typeName: string | undefined): string {
+  if (!typeName?.trim()) return "—";
+  const name = typeName.trim();
+  if (name === HEADERS.other.rus || name === "Другое" || name === "Прочее") return "П";
+  if (name === HEADERS.armor.rus || name === "Доспех") return "Д";
+  if (name === HEADERS.weapon.rus || name === "Оружие") return "О";
+  if (name === HEADERS.magic_items.rus || name === "Магический предмет") return "М";
+  return name.charAt(0).toUpperCase();
 }
 
-
-function getAbbreviation(str: string | undefined): string {
-  if (!str) {
-    return "";
-  }
-  if (isLetter(str)) {
-    return str.split(/\s+/).map(word => word[0].toUpperCase()).join('')
-  } else {
-    return 'Bad name'
-  }
+function getSubtypeAbbreviation(subtypeName: string | undefined): string {
+  if (!subtypeName?.trim()) return "—";
+  return subtypeName
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((word) => word.charAt(0).toUpperCase())
+      .join("");
 }
-
-const renderMarkdown = (text: string | undefined): string | Promise<string> => {
-  return text ? marked(text) : "";
-};
 
 function getCoinType(coinType: string | undefined) {
   switch (coinType) {
-    case 'GOLDEN':
-      return {rus: 'зм.', eng: 'gc.', emoji: '🪙'};
-    case 'SILVER':
-      return {rus: 'см.', eng: 'sc.', emoji: '⚪'};
-    case 'COPPER':
-      return {rus: 'мм.', eng: 'cc.', emoji: '🟠'};
+    case "GOLDEN":
+      return {rus: "зм.", eng: "gc.", icon: goldenCoinIcon};
+    case "SILVER":
+      return {rus: "см.", eng: "sc.", icon: silverCoinIcon};
+    case "COPPER":
+      return {rus: "мм.", eng: "cc.", icon: copperCoinIcon};
     default:
-      return {rus: '', eng: '', emoji: ''};
+      return {rus: "", eng: "", icon: ""};
   }
 }
 
-const getItemImageUrl = (imgUrl: string | undefined) => {
-  return imgUrl != null
-      ? `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.items_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.download}/${imgUrl}`
-      : 'https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png';
+const headerStats = computed(() => {
+  const stats: Array<{key: string; label: string; value: string; wide?: boolean; coinIcon?: string}> = [];
+  const currentItem = item.value;
+  if (!currentItem) return stats;
+
+  if (currentItem.typeName) {
+    stats.push({
+      key: "type",
+      label: "Тип",
+      value: getTypeAbbreviation(currentItem.typeName),
+    });
+  }
+
+  if (currentItem.subtypeName && ["ARMOR", "WEAPON"].includes(currentItem.type ?? "")) {
+    stats.push({
+      key: "subtype",
+      label: "Подтип",
+      value: getSubtypeAbbreviation(currentItem.subtypeName),
+      wide: true,
+    });
+  }
+
+  if (currentItem.stats?.defaultPrice?.length) {
+    const price = currentItem.stats.defaultPrice[0];
+    stats.push({
+      key: "price",
+      label: "Цена",
+      value: String(price.value),
+      coinIcon: getCoinType(price.coinType).icon,
+      wide: true,
+    });
+  }
+
+  return stats;
+});
+
+const renderMarkdown = (text: string | undefined): string => {
+  if (!text) return "";
+  return marked.parse(text.replace(/\r\n/g, "\n"), {gfm: true, breaks: true}) as string;
 };
 
 async function deleteItemFromInventory() {
@@ -123,528 +213,677 @@ async function editItem() {
   createInventoryItemStore.item = inventoryItemStore.inventoryItem.item;
   createInventoryItemStore.inventoryItemId = inventoryItemStore.inventoryItem.id;
   createInventoryItemStore.item.roomId = route.params.roomId;
-  ionRouter.navigate('/rooms/' + route.params.roomId + '/characters/' + route.params.characterId + '/inventory/add', 'forward', 'push')
-  console.log("Edit Item")
-  console.log(createInventoryItemStore.item)
+  ionRouter.navigate(`/rooms/${route.params.roomId}/characters/${route.params.characterId}/inventory/add`, "forward", "push");
 }
 
-const getSkillImageUrl = (imgUrl: string | undefined) => {
-  return imgUrl != null
-      ? `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.skills_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.download}/${imgUrl}`
-      : 'https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png';
-};
+function getSkillCharges(skill: ItemSkill): number {
+  return inventorySkillsByItemSkillId.value.get(skill.id) ?? skill.charges;
+}
+
+function getRefillLabel(refill: ItemSkill["chargesRefill"]): string {
+  return refill === "SHORT_REST" ? "короткий отдых" : "долгий отдых";
+}
 
 </script>
 
 <template>
-  <ion-page>
+  <ion-page class="item-page-root">
     <ion-header>
-      <ion-toolbar color="dark">
+      <ion-toolbar color="dark" class="item-toolbar">
         <ion-buttons slot="start">
-          <ion-back-button/>
+          <ion-back-button default-href="/" text=""/>
         </ion-buttons>
       </ion-toolbar>
     </ion-header>
-    <ion-content class="ion-padding" color="dark">
-      <div class="container">
-        <div class="header">
-          <div class="avatar">
-            <img :src="getItemImageUrl(inventoryItemStore.inventoryItem.item?.imgUrl)"
-                 class="avatar-img"
-                 alt="avatar"/>
+
+    <ion-content class="item-ion-content" color="dark">
+      <div v-if="item" class="item-page">
+        <div class="item-header">
+          <div
+              class="avatar"
+              :style="ambientColor ? { '--ambient-color': ambientColor } : undefined"
+          >
+            <div class="avatar-ambient" aria-hidden="true">
+              <img :src="itemImageUrl" alt="" class="avatar-ambient__img"/>
+            </div>
+            <img :src="itemImageUrl" :alt="item.name?.rus" class="avatar-img"/>
+            <div class="avatar-badges">
+              <span v-if="inventoryItem.inUse" class="avatar-badge avatar-badge--equipped">Снаряжено</span>
+              <span v-if="inventoryItem.count > 1" class="avatar-badge">×{{ inventoryItem.count }}</span>
+            </div>
           </div>
+
           <div class="stats">
-            <div class="stat">
-              {{ TEXTS.itemType.rus }} :
-              <span
-                  class="stat-value"
-              >{{ getAbbreviation(inventoryItemStore.inventoryItem?.item?.typeName) }}</span>
+            <div v-for="stat in headerStats" :key="stat.key" class="stat">
+              <span class="stat__label">{{ stat.label }}</span>
+              <span class="stat-value" :class="{ 'stat-value--wide': stat.wide }">
+                {{ stat.value }}<ion-icon
+                    v-if="stat.coinIcon"
+                    class="stat-value__coin"
+                    :src="stat.coinIcon"
+                    aria-hidden="true"
+                />
+              </span>
             </div>
-            <div class="stat"
-                 v-if="inventoryItemStore.inventoryItem?.item?.type && ['WEAPON', 'ARMOR'].includes(inventoryItemStore.inventoryItem?.item?.type)">
-              {{ inventoryItemStore.inventoryItem.item.type == 'ARMOR' ? TEXTS.armorType.rus : TEXTS.weaponType.rus }} :
-              <span
-                  class="stat-value"
-              >{{ getAbbreviation(inventoryItemStore.inventoryItem?.item.subtypeName) }}</span>
-            </div>
-            <div class="stat" v-if="inventoryItemStore?.inventoryItem.item?.stats?.weight">
-              {{ TEXTS.weight.rus }} :
-              <span
-                  class="stat-value"
-              >{{ inventoryItemStore.inventoryItem?.item?.stats.weight }}</span>
-            </div>
-          </div>
-        </div>
-        <div class="item-body">
-          <div class="item-name">{{ inventoryItemStore.inventoryItem?.item?.name.rus }}</div>
-          <div class="item-main-stat">
-            <div class="armory-class" v-if="inventoryItemStore.inventoryItem?.item?.type == 'ARMOR'">
-              <div class="armory-class">
-                <ion-icon class="armory-class-icon" slot="icon-only" :src="armorIcon"></ion-icon>
-                <div class="armory-class-value">
-                  {{ inventoryItemStore.inventoryItem.item.stats.armorClass }}
-                </div>
-              </div>
-            </div>
-            <div class="damage" v-if="inventoryItemStore.inventoryItem.item?.type == 'WEAPON'">
-              {{ inventoryItemStore.inventoryItem.item.stats.damage?.value }}
-              ({{ inventoryItemStore.inventoryItem.item.stats.damage?.damageTypeName }})
-            </div>
-          </div>
-          <div class="simple-stat"
-               v-if="inventoryItemStore.inventoryItem.item?.type == 'ARMOR' && inventoryItemStore.inventoryItem.item.stats.armorClassMaxDexterityBonus > 0">
-            <div class="simple-stat-text">{{ HEADERS.max_dex_bonus.rus }}:</div>
-            <div class="simple-stat-value">
-              {{ inventoryItemStore.inventoryItem.item.stats.armorClassMaxDexterityBonus }}
-            </div>
-          </div>
-          <div class="simple-stat" v-if="inventoryItemStore.inventoryItem.item?.type == 'ARMOR'">
-            <div class="simple-stat-text">{{ HEADERS.force_requirements.rus }}:</div>
-            <div class="simple-stat-value">
-              {{ inventoryItemStore.inventoryItem.item.stats.requirement }}
-            </div>
-          </div>
-          <div class="simple-stat">
-            <div class="simple-stat-text">{{ HEADERS.need_customization.rus }}:</div>
-            <div class="simple-stat-value">
-              <ion-toggle :checked="inventoryItemStore.inventoryItem.item?.customization" :disabled="true"></ion-toggle>
-            </div>
-          </div>
-          <div class="simple-stat">
-            <div class="simple-stat-text">{{ HEADERS.default_price.rus }}:</div>
-            <div class="simple-stat-value">
-              {{ inventoryItemStore.inventoryItem.item?.stats.defaultPrice[0].value }}
-              {{ getCoinType(inventoryItemStore.inventoryItem.item?.stats.defaultPrice[0].coinType).emoji }}
-            </div>
-          </div>
-          <div class="tags">
-            <div class="tag" :key="idx" v-for="(tag, idx) in inventoryItemStore.inventoryItem.item?.stats.tags">
-              <ion-chip>
-                <ion-label>{{ tag }}</ion-label>
-              </ion-chip>
-            </div>
-          </div>
-          <div class="section-description" v-if="inventoryItemStore?.inventoryItem?.item?.description">
-            <p v-html="renderMarkdown(inventoryItemStore.inventoryItem.item?.description)">
-            </p>
-          </div>
-        </div>
-        <div class="item-skills">
-          <div class="section" v-for="item in inventoryItemStore?.inventoryItem?.item?.skills" :key="item.id">
-            <div class="section-start-block" @click="">
-              <div class="image-block">
-                <img v-if="item.imgUrl" width="55px" height="55px" class="skill-image"
-                     :src="getSkillImageUrl(item.imgUrl)"
-                     :alt="item.name.rus"/>
-                <img v-else width="55px" height="55px" class="skill-image"
-                     :src="'https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"
-                     :alt="item.name.rus"/>
-              </div>
-              <div class="stats-block">
-                <div class="skill-stats-block">
-                  <div class="skill-name">
-                    {{ item.name.rus }}
-                  </div>
-                  <div class="skill-short-description">
-                    {{ item.shortDescription }}
-                  </div>
-                  <div class="skill-limitations">
-                    Зарядов: {{ item.charges }} ({{
-                      item.chargesRefill === "SHORT_REST"
-                          ? "короткий отдых"
-                          : "долгий отдых"
-                    }})
-                  </div>
-                </div>
-              </div>
-            </div>
-            <ion-buttons class="skill-buttons-block">
-              <ion-buttons>
-                <ion-button size="small" shape="round" @click="openViewItemSkillModal(false, item)">
-                  <ion-icon slot="icon-only" :icon="searchOutline"></ion-icon>
-                </ion-button>
-              </ion-buttons>
-            </ion-buttons>
           </div>
         </div>
 
-        <div class="buttons">
-          <ion-button expand="block" shape="round" color="secondary" fill="outline" @click="editItem">
-            {{ HEADERS.edit.rus }}
-          </ion-button>
-          <ion-button expand="block" shape="round" color="danger" fill="outline" @click="deleteItemFromInventory">
-            {{ HEADERS.delete_from_inventory.rus }}
-          </ion-button>
+        <div class="item-identity">
+          <h1 class="item-identity__name">{{ item.name.rus }}</h1>
         </div>
+
+        <div class="item-details">
+          <section v-if="showRequirementsWarning" class="notice notice--warning">
+            Требования к характеристикам не выполнены
+          </section>
+
+          <section class="panel">
+          <h2 class="panel__title">Характеристики</h2>
+          <div class="details-grid">
+            <div v-if="item.stats?.weight != null" class="detail-row">
+              <span class="detail-row__label">{{ TEXTS.weight.rus }}</span>
+              <span class="detail-row__value detail-row__value--pill">{{ item.stats.weight }}</span>
+            </div>
+            <div v-if="isWeapon && item.stats?.damage" class="detail-row">
+              <span class="detail-row__label">Урон</span>
+              <span class="detail-row__value detail-row__value--pill">
+                {{ item.stats.damage.value }}
+                <template v-if="item.stats.damage.damageTypeName">
+                  ({{ item.stats.damage.damageTypeName }})
+                </template>
+              </span>
+            </div>
+            <div v-if="isArmor && item.stats?.armorClass" class="detail-row">
+              <span class="detail-row__label">{{ HEADERS.armoryClass.rus }}</span>
+              <span class="detail-row__value detail-row__value--pill">{{ item.stats.armorClass }}</span>
+            </div>
+            <div
+                v-if="isArmor && Number(item.stats?.armorClassMaxDexterityBonus) > 0"
+                class="detail-row"
+            >
+              <span class="detail-row__label">{{ HEADERS.max_dex_bonus.rus }}</span>
+              <span class="detail-row__value detail-row__value--pill">{{ item.stats.armorClassMaxDexterityBonus }}</span>
+            </div>
+            <div v-if="isArmor && hasArmorStatRequirement" class="detail-row">
+              <span class="detail-row__label">{{ HEADERS.force_requirements.rus }}</span>
+              <span class="detail-row__value detail-row__value--pill">{{ item.stats?.requirement }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-row__label">Настройка</span>
+              <span class="detail-row__value detail-row__value--toggle">
+                <ion-toggle :checked="item.customization" :disabled="true"/>
+              </span>
+            </div>
+            <div v-if="inventoryItem.attackBonusValue" class="detail-row">
+              <span class="detail-row__label">Бонус атаки</span>
+              <span class="detail-row__value">+{{ inventoryItem.attackBonusValue }}</span>
+            </div>
+            <div v-if="inventoryItem.damageBonusValue" class="detail-row">
+              <span class="detail-row__label">Бонус урона</span>
+              <span class="detail-row__value">+{{ inventoryItem.damageBonusValue }}</span>
+            </div>
+          </div>
+
+          <div v-if="item.stats?.tags?.length" class="tags">
+            <span v-for="(tag, idx) in item.stats.tags" :key="idx" class="tag">{{ tag }}</span>
+          </div>
+        </section>
+
+        <section v-if="item.description" class="panel">
+          <h2 class="panel__title">Описание</h2>
+          <div class="description-html" v-html="renderMarkdown(item.description)"/>
+        </section>
+        </div>
+
+        <section v-if="item.skills?.length" class="panel panel--skills">
+          <h2 class="panel__title">Навыки предмета</h2>
+          <div class="skills-list">
+            <button
+                v-for="skill in item.skills"
+                :key="skill.id"
+                type="button"
+                class="skill-card"
+                @click="openViewItemSkillModal(false, skill)"
+            >
+              <div class="skill-card__media">
+                <img
+                    class="skill-card__img"
+                    :src="getSkillImageUrl(skill.imgUrl)"
+                    :alt="skill.name.rus"
+                    @error="($event.target as HTMLImageElement).src = SKILL_IMAGE_PLACEHOLDER"
+                />
+              </div>
+              <div class="skill-card__body">
+                <div class="skill-card__name">{{ skill.name.rus }}</div>
+                <div v-if="skill.shortDescription" class="skill-card__desc">{{ skill.shortDescription }}</div>
+                <div class="skill-card__meta">
+                  Зарядов: {{ getSkillCharges(skill) }} · {{ getRefillLabel(skill.chargesRefill) }}
+                </div>
+              </div>
+              <ion-icon class="skill-card__chevron" :icon="chevronForwardOutline"/>
+            </button>
+          </div>
+        </section>
       </div>
     </ion-content>
-    <EditItemSkillValueModal :isOpen="showEditItemSkillModal"
-                             :character-id="String(route.params.characterId)"
-                             :is-editing="isEditingItemSkill"
-                             :item-skill="editingItemSkill"
-                             @closeEditItemSkillModal="closeEditItemSkillModal"
-                             :is-read-only="true"
-                             :isCharacterSkill="false"/>
+
+    <div v-if="item" class="item-footer">
+      <ion-button
+          class="item-footer__btn item-footer__btn--primary"
+          expand="block"
+          fill="solid"
+          shape="round"
+          color="primary"
+          @click="editItem"
+      >
+        <ion-icon slot="start" :icon="createOutline"/>
+        Изменить
+      </ion-button>
+      <ion-button
+          class="item-footer__btn item-footer__btn--danger"
+          expand="block"
+          fill="clear"
+          color="danger"
+          @click="deleteItemFromInventory"
+      >
+        <ion-icon slot="start" :icon="trashOutline"/>
+        Удалить из инвентаря
+      </ion-button>
+    </div>
+
+    <EditItemSkillValueModal
+        :isOpen="showEditItemSkillModal"
+        :character-id="String(route.params.characterId)"
+        :is-editing="isEditingItemSkill"
+        :item-skill="editingItemSkill"
+        @closeEditItemSkillModal="closeEditItemSkillModal"
+        :is-read-only="true"
+        :isCharacterSkill="false"
+    />
   </ion-page>
 </template>
 
 <style scoped>
-.container {
-  background-color: var(--ion-color-dark, #222428) !important;;
+.item-page-root {
+  --item-footer-height: 112px;
 }
 
-.header {
-  margin-top: 10px;
+.item-toolbar {
+  --min-height: 44px;
+}
+
+.item-ion-content {
+  --background: var(--ion-color-dark);
+  --padding-top: 4px;
+  --padding-bottom: calc(var(--item-footer-height) + env(safe-area-inset-bottom, 0px) + 16px);
+}
+
+.item-page {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 8px 14px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.item-header {
   display: flex;
   flex-direction: row;
   width: 100%;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 20px;
 }
 
-.item-body {
-  margin-top: 10px;
+.avatar {
+  position: relative;
+  flex-shrink: 0;
+  min-width: 180px;
+  min-height: 180px;
+  border-radius: 25px;
+  overflow: hidden;
   display: flex;
-  flex-direction: column;
-  gap: 10px;
   align-items: center;
   justify-content: center;
+  background-color: var(--ambient-color, var(--ion-color-dark));
+  border: 1px solid var(--ion-color-medium);
+  transition: background-color 0.45s ease;
 }
 
-.skill-name {
-  scrollbar-width: none;
-  font-size: 24px;
+.avatar-ambient {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.avatar-ambient__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.14);
+  filter: blur(20px) saturate(1.5);
 }
 
 .avatar-img {
-  width: 180px;
-  height: 180px;
-  border-radius: 25px;
-  align-content: center;
-  justify-content: center;
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.avatar-badges {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
   display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.avatar-badge {
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--ion-color-light);
+  background: rgba(var(--ion-color-dark-rgb), 0.72);
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.16);
+}
+
+.avatar-badge--equipped {
+  color: var(--ion-color-primary-contrast);
+  background: rgba(var(--ion-color-primary-rgb), 0.92);
+  border-color: transparent;
 }
 
 .stats {
+  flex: 1;
+  width: 180px;
+  height: 180px;
   border-radius: 25px;
   display: flex;
   flex-direction: column;
   justify-content: center;
   gap: 10px;
   background-color: var(--ion-color-medium);
-  width: 180px;
-  height: 180px;
 }
 
 .stat {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 6px;
   background-color: var(--ion-color-secondary-opacity-40);
-  margin-bottom: 3%;
+  margin: 0 5%;
   height: 23%;
+  min-height: 36px;
   border-radius: 15px;
-  padding-left: 5%;
-  padding-right: 5%;
-  margin-right: 5%;
-  margin-left: 5%;
+  padding: 0 8px;
   font-weight: bold;
-  font-size: 10pt;
+  font-size: 11px;
+  line-height: 1.2;
+  color: var(--ion-color-light);
+}
+
+.stat__label {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .stat-value {
   display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
   background-color: var(--ion-color-primary);
   color: var(--ion-color-primary-contrast);
   border-radius: 50%;
   height: 30px;
   width: 30px;
-  align-items: center;
-  justify-content: center;
-  font-size: 10pt;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
-.armory-class {
-  position: relative;
-  display: inline-block;
-  width: 40px;
-  height: 40px;
+.stat-value--wide {
+  width: auto;
+  min-width: 30px;
+  max-width: 58px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  gap: 2px;
 }
 
-.armory-class-icon {
-  width: 100%;
-  height: 100%;
-  fill: var(--ion-color-light);
+.stat-value__coin {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.28));
 }
 
-.armory-class-value {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: white;
+.item-identity {
+  padding: 0 4px;
+}
+
+.item-identity__name {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--ion-color-light);
+}
+
+.item-identity__type {
+  margin: 5px 0 0;
+  font-size: 13px;
+  line-height: 1.35;
+  color: rgba(var(--ion-color-light-rgb), 0.55);
+}
+
+.notice {
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.notice--warning {
+  color: var(--ion-color-warning);
+  background: rgba(var(--ion-color-warning-rgb), 0.12);
+  border: 1px solid rgba(var(--ion-color-warning-rgb), 0.28);
+}
+
+.panel {
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--ion-color-medium);
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.1);
+}
+
+.panel__title {
+  margin: 0 0 10px;
   font-size: 12px;
-  font-weight: bold;
-  pointer-events: none;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(var(--ion-color-light-rgb), 0.45);
 }
 
-.simple-stat {
-  font-size: 18px;
-  padding-left: 10px;
-  padding-right: 10px;
-  width: 100%;
+.details-grid {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
+}
+
+.detail-row {
+  display: flex;
+  align-items: center;
   justify-content: space-between;
+  gap: 12px;
+  min-height: 46px;
+  padding: 9px 0;
+  border-bottom: 1px solid rgba(var(--ion-color-light-rgb), 0.06);
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.detail-row__label {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.35;
+  color: rgba(var(--ion-color-light-rgb), 0.62);
+}
+
+.detail-row__value {
+  flex-shrink: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ion-color-light);
+  text-align: right;
+}
+
+.detail-row__value--pill {
+  min-width: 28px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(var(--ion-color-primary-rgb), 0.14);
+  color: var(--ion-color-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.detail-row__value--toggle {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .tags {
-  padding: 10px;
-  width: 100%;
   display: flex;
-  flex-direction: row;
-  justify-content: start;
-}
-
-.section-description {
-  background-color: var(--ion-color-medium);
-  border-radius: 15px;
-  padding: 10px;
-  overflow: hidden;
-  transition: max-height 4s ease;
-  width: 100%;
-}
-
-.buttons {
+  flex-wrap: wrap;
+  gap: 6px;
   margin-top: 10px;
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  flex-direction: column;
+  padding-top: 10px;
+  border-top: 1px solid rgba(var(--ion-color-light-rgb), 0.06);
 }
 
-.section {
-  margin-top: 10px;
-  background-color: var(--ion-color-medium);
-  border-radius: 25px;
-  padding: 10px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  min-height: 75px;
-}
-
-.section-start-block {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 10px;
-  flex: 1;
-  min-width: 0;
-}
-
-.image-block {
-  flex-shrink: 0;
-}
-
-.skill-image {
-  border-radius: 15px;
-  border: 2px solid transparent;
-  width: 55px;
-  height: 55px;
-  object-fit: cover;
-}
-
-.stats-block {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  overflow: hidden;
-  min-width: 0;
-  flex: 1;
-}
-
-.skill-stats-block {
-  min-width: 0;
-}
-
-.skill-name {
-  scrollbar-width: none;
-  font-size: 16px;
-  font-weight: bold;
-  white-space: nowrap;
-  overflow: scroll;
-}
-
-.skill-short-description,
-.skill-limitations {
-  scrollbar-width: none;
+.tag {
+  padding: 5px 10px;
+  border-radius: 999px;
   font-size: 12px;
-  white-space: nowrap;
-  overflow: scroll;
+  font-weight: 600;
+  color: rgba(var(--ion-color-primary-rgb), 0.95);
+  background: rgba(var(--ion-color-primary-rgb), 0.12);
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.22);
 }
 
-.skill-buttons-block {
+.description-html :deep(p) {
+  margin: 0 0 0.75em;
+  font-size: 15px;
+  line-height: 1.6;
+  color: rgba(var(--ion-color-light-rgb), 0.9);
+  word-break: break-word;
+}
+
+.description-html :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+.description-html :deep(ul),
+.description-html :deep(ol) {
+  margin: 0.5em 0 0.75em;
+  padding-left: 1.25em;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.skills-list {
   display: flex;
-  justify-content: end;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.skill-card {
+  display: flex;
   align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.16);
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.12);
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+}
+
+.skill-card:active {
+  transform: scale(0.99);
+  background: rgba(var(--ion-color-primary-rgb), 0.08);
+}
+
+.skill-card__media {
   flex-shrink: 0;
-  gap: 5px;
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ion-color-dark);
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.14);
+}
+
+.skill-card__img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  background: var(--ion-color-dark);
+}
+
+.skill-card__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.skill-card__name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ion-color-light);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.skill-card__desc,
+.skill-card__meta {
+  font-size: 12px;
+  line-height: 1.35;
+  color: rgba(var(--ion-color-light-rgb), 0.55);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.skill-card__meta {
+  margin-top: 3px;
+  color: rgba(var(--ion-color-primary-rgb), 0.85);
+}
+
+.skill-card__chevron {
+  flex-shrink: 0;
+  font-size: 18px;
+  color: rgba(var(--ion-color-light-rgb), 0.35);
+}
+
+.item-footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: rgba(var(--ion-color-dark-rgb), 0.94);
+  border-top: 1px solid rgba(var(--ion-color-primary-rgb), 0.12);
+  backdrop-filter: blur(12px);
+}
+
+.item-footer__btn {
+  margin: 0;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 15px;
+  font-weight: 600;
+  --border-radius: 14px;
+}
+
+.item-footer__btn--primary {
+  min-height: 46px;
+}
+
+.item-footer__btn--danger {
+  min-height: 40px;
+  --padding-top: 0;
+  --padding-bottom: 0;
+}
+
+.item-details {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 @media (min-width: 1024px) {
-  .container {
-    max-width: 1240px;
-    margin: 0 auto;
-    padding: 8px 8px 18px;
+  .item-page {
+    max-width: 960px;
     display: grid;
-    grid-template-columns: minmax(320px, 380px) minmax(560px, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-areas:
-      "header item-body"
-      "header item-skills"
-      "header buttons";
-    column-gap: 20px;
-    row-gap: 14px;
+      "header header"
+      "identity identity"
+      "details skills";
+    column-gap: 16px;
+    row-gap: 12px;
     align-items: start;
+    padding-top: 8px;
   }
 
-  .header {
+  .item-header {
     grid-area: header;
-    margin-top: 0;
-    position: sticky;
-    top: 10px;
-    flex-direction: column;
-    gap: 12px;
-    align-items: stretch;
+    gap: 38px;
   }
 
-  .avatar {
-    display: flex;
-    justify-content: center;
-    border-radius: 16px;
-    border: 1px solid rgba(var(--ion-color-light-rgb), 0.12);
-    overflow: hidden;
-    background: var(--ion-color-medium);
+  .item-identity {
+    grid-area: identity;
   }
 
-  .avatar-img {
-    width: 100%;
-    height: min(42vh, 340px);
-    border-radius: 0;
-    object-fit: cover;
+  .item-details {
+    grid-area: details;
   }
 
-  .stats {
-    width: 100%;
-    height: auto;
-    min-height: 180px;
-    border-radius: 16px;
-    border: 1px solid rgba(var(--ion-color-light-rgb), 0.1);
-    padding: 10px;
-    gap: 8px;
+  .panel--skills {
+    grid-area: skills;
   }
 
-  .stat {
-    margin: 0;
-    min-height: 44px;
-    height: auto;
-    font-size: 13px;
-    border-radius: 12px;
+  .item-footer {
+    max-width: 960px;
+    left: 50%;
+    transform: translateX(-50%);
+    flex-direction: row;
+    gap: 10px;
+    border-radius: 16px 16px 0 0;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
   }
 
-  .stat-value {
-    scrollbar-width: none;
-    width: 34px;
-    height: 34px;
-    font-size: 11px;
+  .item-footer__btn--primary {
+    flex: 1.2;
   }
 
-  .item-body {
-    grid-area: item-body;
-    margin-top: 0;
-    align-items: stretch;
-    gap: 12px;
-  }
-
-  .item-name {
-    font-size: 28px;
-    font-weight: 700;
-    line-height: 1.15;
-  }
-
-  .item-main-stat {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .damage {
-    font-size: 20px;
-    font-weight: 600;
-  }
-
-  .simple-stat {
-    border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
-    border-radius: 12px;
-    padding: 10px 12px;
-    font-size: 16px;
-  }
-
-  .tags {
-    padding: 0;
-    gap: 6px;
-    flex-wrap: wrap;
-  }
-
-  .section-description {
-    border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
-    border-radius: 12px;
-    line-height: 1.45;
-  }
-
-  .item-skills {
-    scrollbar-width: none;
-    grid-area: item-skills;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-    gap: 10px 12px;
-  }
-
-  .section {
-    margin-top: 0;
-    border-radius: 16px;
-    min-height: 92px;
-    border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
-    padding: 10px 12px;
-  }
-
-  .skill-image {
-    width: 60px;
-    height: 60px;
-    border-radius: 12px;
-  }
-
-  .skill-name {
-    scrollbar-width: none;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .skill-short-description,
-  .skill-limitations {
-    scrollbar-width: none;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .buttons {
-    grid-area: buttons;
-    margin-top: 0;
-    padding-top: 2px;
+  .item-footer__btn--danger {
+    flex: 1;
+    --background: transparent;
+    border: 1px solid rgba(var(--ion-color-danger-rgb), 0.35);
+    border-radius: 14px;
   }
 }
 </style>

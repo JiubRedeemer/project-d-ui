@@ -4,7 +4,6 @@ import {
   IonButton,
   IonButtons,
   IonCheckbox,
-  IonChip,
   IonContent,
   IonHeader,
   IonIcon,
@@ -19,8 +18,9 @@ import {
 } from "@ionic/vue";
 import {HEADERS, TEXTS} from "@/config/localisations";
 import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
-import {add, addOutline, close, closeCircleOutline, pencilOutline, saveOutline, trashOutline} from "ionicons/icons";
+import {add, addOutline, closeCircleOutline, pencilOutline, saveOutline, trashOutline} from "ionicons/icons";
 import {computed, onBeforeMount, ref, watch} from "vue";
+import {extractDominantColorFromUrl} from "@/utils/imageAmbient";
 import {useCreateInventoryItemStore} from "@/stores/CreateInventoryItemStore";
 import axios from "axios";
 import {v4 as uuidv4} from 'uuid';
@@ -28,6 +28,9 @@ import {type ItemSkill, Price} from "@/components/models/response/InventoryRespo
 import {useRoute, useRouter} from "vue-router";
 import EditItemSkillValueModal from "@/views/character/tabs/inventory/EditItemSkillValueModal.vue";
 import {useInventoryStore} from "@/stores/InventoryStore";
+import goldenCoinIcon from "@/static/icons/GoldenCoin.svg";
+import silverCoinIcon from "@/static/icons/SilverCoin.svg";
+import copperCoinIcon from "@/static/icons/CopperCoin.svg";
 
 const router = useRouter();
 const route = useRoute();
@@ -61,6 +64,10 @@ const editingItemSkill = ref<ItemSkill>(); // Управляем видимос�
 const createItemSkills = ref<ItemSkill[]>([]);
 const noDexBonusLimit = ref<boolean>(false);
 const noStrengthRequirement = ref<boolean>(false);
+const ambientColor = ref<string | null>(null);
+
+const SKILL_IMAGE_PLACEHOLDER =
+    "https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png";
 
 const oldItemId = ref<string>();
 const oldItemCount = ref<number | undefined>();
@@ -101,7 +108,8 @@ onBeforeMount(() => {
       weight: 0,
       armorClassMaxDexterityBonus: "",
       requirement: "",
-      tags: []
+      tags: [],
+      defaultPrice: [{value: 0, coinType: "GOLDEN"}],
     };
     createInventoryItemStore.item.stats.weight = 0;
     createInventoryItemStore.item.name = {
@@ -123,10 +131,11 @@ onBeforeMount(() => {
                 : existingDamageType === "SLASHING"
                     ? "CHOPPING"
                     : existingDamageType;
-    damageValue.value = createInventoryItemStore.item.stats.damage?.value;
-    defaultPrice.value = createInventoryItemStore.item?.stats?.defaultPrice[0];
-    defaultPriceCoinType.value = createInventoryItemStore.item?.stats?.defaultPrice[0]?.coinType
-    defaultPriceValue.value = createInventoryItemStore.item?.stats?.defaultPrice[0]?.value
+    damageValue.value = createInventoryItemStore.item.stats?.damage?.value;
+    const firstDefaultPrice = createInventoryItemStore.item.stats?.defaultPrice?.[0];
+    defaultPrice.value = firstDefaultPrice ?? {value: 0, coinType: "GOLDEN"};
+    defaultPriceCoinType.value = firstDefaultPrice?.coinType ?? "GOLDEN";
+    defaultPriceValue.value = firstDefaultPrice?.value ?? 0;
     itemRarity.value = createInventoryItemStore.item.rarity ? createInventoryItemStore.item.rarity : 'COMMON';
     oldItemId.value = createInventoryItemStore.inventoryItemId
     oldItemCount.value = createInventoryItemStore.item.count;
@@ -189,10 +198,18 @@ watch(() => createInventoryItemStore.item.type, (newType) => {
 
 
 watch(defaultPriceValue, (newValue) => {
+  if (!defaultPrice.value) {
+    defaultPrice.value = {value: newValue, coinType: defaultPriceCoinType.value};
+    return;
+  }
   defaultPrice.value.value = newValue;
 });
 
 watch(defaultPriceCoinType, (newValue) => {
+  if (!defaultPrice.value) {
+    defaultPrice.value = {value: defaultPriceValue.value, coinType: newValue};
+    return;
+  }
   defaultPrice.value.coinType = newValue;
 });
 
@@ -341,24 +358,6 @@ const uploadToMinio = async (file: File): Promise<string> => {
   );
   return res.data;
 };
-
-function getAbbreviation(str: string | undefined): string {
-  if (!str) {
-    return "";
-  }
-  if (isLetter(str)) {
-    return str.split(/\s+/).map(word => word[0].toUpperCase()).join('');
-  } else {
-    return 'Bad name';
-  }
-}
-
-function isLetter(str: string) {
-  const regExp = /[0-9]/;
-  if (!regExp.test(str) && str.length >= 3) {
-    return str;
-  }
-}
 
 const sanitizeWeightInput = (rawValue: string): string => {
   if (!rawValue) {
@@ -678,11 +677,11 @@ function validateItem(type: string): boolean {
       errors.push("Не указан класс брони (armorClass)");
       invalidFields.value.push('armorClass');
     }
-    if (!item.stats.armorClassMaxDexterityBonus?.trim()) {
+    if (!noDexBonusLimit.value && !item.stats.armorClassMaxDexterityBonus?.trim()) {
       errors.push("Не указан максимальный бонус ловкости (armorClassMaxDexterityBonus)");
       invalidFields.value.push('armorClassMaxDexterityBonus');
     }
-    if (!item.stats.requirement?.trim()) {
+    if (!noStrengthRequirement.value && !item.stats.requirement?.trim()) {
       errors.push("Не указано требование силы (requirement)");
       invalidFields.value.push('requirement');
     }
@@ -741,42 +740,153 @@ function removeSkill(itemSkill: ItemSkill) {
   createItemSkills.value = createItemSkills.value.filter((skill) => skill !== itemSkill);
 }
 
-const getSkillImageUrl = (imgUrl: string | undefined) => {
-  return imgUrl != null
-      ? `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.skills_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.download}/${imgUrl}`
-      : 'https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png';
-};
+const getSkillImageUrl = (imgUrl: string | undefined) =>
+    imgUrl != null && imgUrl.trim()
+        ? `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.skills_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.download}/${imgUrl}`
+        : SKILL_IMAGE_PLACEHOLDER;
+
+const currentImageUrl = computed(() => {
+  if (previewImage.value) {
+    return previewImage.value;
+  }
+  const imgUrl = createInventoryItemStore.item.imgUrl;
+  if (!imgUrl?.trim()) {
+    return null;
+  }
+  return `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.items_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.download}/${imgUrl}`;
+});
+
+watch(currentImageUrl, (src) => {
+  if (!src) {
+    ambientColor.value = null;
+    return;
+  }
+  void extractDominantColorFromUrl(src).then((color) => {
+    if (src === currentImageUrl.value) {
+      ambientColor.value = color;
+    }
+  });
+}, {immediate: true});
+
+const hasSubtypes = computed(() =>
+    ["ARMOR", "WEAPON"].includes(createInventoryItemStore.item?.type ?? "")
+);
+
+const rarityClass = computed(() => {
+  switch (itemRarity.value) {
+    case "UNCOMMON":
+      return "rarity-uncommon";
+    case "RARE":
+      return "rarity-rare";
+    case "VERY_RARE":
+      return "rarity-very-rare";
+    case "LEGENDARY":
+      return "rarity-legendary";
+    default:
+      return "rarity-common";
+  }
+});
+
+function getCoinIcon(coinType: string | undefined) {
+  switch (coinType) {
+    case "SILVER":
+      return silverCoinIcon;
+    case "COPPER":
+      return copperCoinIcon;
+    case "GOLDEN":
+    default:
+      return goldenCoinIcon;
+  }
+}
+
+const selectedCoinIcon = computed(() => getCoinIcon(defaultPriceCoinType.value));
+
+function getTypeAbbreviation(typeName: string | undefined): string {
+  if (!typeName?.trim()) return "—";
+  const name = typeName.trim();
+  if (name === HEADERS.other.rus || name === "Другое" || name === "Прочее") return "П";
+  if (name === HEADERS.armor.rus || name === "Доспех") return "Д";
+  if (name === HEADERS.weapon.rus || name === "Оружие") return "О";
+  if (name === HEADERS.magic_items.rus || name === "Магический предмет") return "М";
+  return name.charAt(0).toUpperCase();
+}
+
+function getSubtypeAbbreviation(subtypeName: string | undefined): string {
+  if (!subtypeName?.trim()) return "—";
+  return subtypeName
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((word) => word.charAt(0).toUpperCase())
+      .join("");
+}
+
+function getRefillLabel(refill: ItemSkill["chargesRefill"]): string {
+  return refill === "SHORT_REST" ? "короткий отдых" : "долгий отдых";
+}
+
+function cancelEdit() {
+  router.back();
+}
 </script>
 
 <template>
-  <ion-page>
+  <ion-page class="item-page-root">
     <ion-header>
-      <ion-toolbar color="dark">
+      <ion-toolbar color="dark" class="item-toolbar">
         <ion-buttons slot="start">
-          <ion-back-button/>
+          <ion-back-button default-href="/" text=""/>
         </ion-buttons>
       </ion-toolbar>
     </ion-header>
-    <ion-content class="ion-padding" color="dark">
-      <div class="container">
-        <div class="header">
-          <div class="avatar" @click="triggerFileInput" :class="`rarity-${itemRarity.toLowerCase()}`">
-            <img v-if="previewImage" :src="previewImage" class="avatar-img" alt="Room Image"/>
-            <img v-else-if="createInventoryItemStore.item.imgUrl" :src="FILE_STORAGE_INTEGRATION_ROUTES.baseURL +
-                 FILE_STORAGE_INTEGRATION_ROUTES.api +
-                 FILE_STORAGE_INTEGRATION_ROUTES.items_images_bucket +
-                 FILE_STORAGE_INTEGRATION_ROUTES.download + '/' + createInventoryItemStore.item.imgUrl"
-                 class="avatar-img" alt="avatar"/>
-            <div v-else class="avatar-img">
-              <ion-icon :icon="add" class="placeholder-icon"></ion-icon>
+
+    <ion-content class="item-ion-content" color="dark">
+      <div class="item-page">
+        <div class="item-header">
+          <button
+              type="button"
+              class="avatar"
+              :class="rarityClass"
+              :style="ambientColor ? { '--ambient-color': ambientColor } : undefined"
+              @click="triggerFileInput"
+          >
+            <div v-if="currentImageUrl" class="avatar-ambient" aria-hidden="true">
+              <img :src="currentImageUrl" alt="" class="avatar-ambient__img"/>
             </div>
-            <input type="file" ref="fileInput" @change="handleFileUpload" accept="image/*" style="display: none;"/>
-          </div>
+            <img
+                v-if="previewImage"
+                :src="previewImage"
+                class="avatar-img"
+                alt=""
+            />
+            <img
+                v-else-if="createInventoryItemStore.item.imgUrl"
+                :src="currentImageUrl ?? undefined"
+                class="avatar-img"
+                alt=""
+            />
+            <div v-else class="avatar-placeholder">
+              <ion-icon :icon="add" class="avatar-placeholder__icon"/>
+              <span class="avatar-placeholder__text">Фото</span>
+            </div>
+            <input
+                ref="fileInput"
+                type="file"
+                accept="image/*"
+                class="avatar-file-input"
+                @change="handleFileUpload"
+            />
+          </button>
+
           <div class="stats">
             <div class="stat">
-              {{ TEXTS.itemType.rus }} :
-              <span class="stat-value" @click="openTypeSelect">
-                {{ getAbbreviation(createInventoryItemStore.item?.typeName) }}
+              <span class="stat__label">Тип</span>
+              <span
+                  class="stat-value"
+                  :class="{ 'invalid-field': invalidFields.includes('selectedType') }"
+                  @click="openTypeSelect"
+              >
+                {{ getTypeAbbreviation(createInventoryItemStore.item?.typeName) }}
               </span>
               <ion-select
                   ref="typeSelectRef"
@@ -784,8 +894,7 @@ const getSkillImageUrl = (imgUrl: string | undefined) => {
                   interface="action-sheet"
                   v-model="selectedType"
                   @ionChange="onTypeNameChange($event)"
-                  style="display: none"
-                  :class="{ 'invalid-field': invalidFields.includes('selectedType') }"
+                  class="hidden-select"
               >
                 <ion-select-option :value="HEADERS.armor.rus">{{ HEADERS.armor.rus }}</ion-select-option>
                 <ion-select-option :value="HEADERS.weapon.rus">{{ HEADERS.weapon.rus }}</ion-select-option>
@@ -793,19 +902,22 @@ const getSkillImageUrl = (imgUrl: string | undefined) => {
                 <ion-select-option :value="HEADERS.other.rus">{{ HEADERS.other.rus }}</ion-select-option>
               </ion-select>
             </div>
-            <div class="stat"
-                 v-if="createInventoryItemStore.item?.type && ['WEAPON', 'ARMOR'].includes(createInventoryItemStore.item?.type)">
-              {{ createInventoryItemStore.item.type == 'ARMOR' ? TEXTS.armorType.rus : TEXTS.weaponType.rus }} :
-              <span class="stat-value" @click="openSubtypeSelect">
-                {{ getAbbreviation(createInventoryItemStore.item.subtypeName) }}
+
+            <div v-if="hasSubtypes" class="stat">
+              <span class="stat__label">Подтип</span>
+              <span
+                  class="stat-value stat-value--wide"
+                  :class="{ 'invalid-field': invalidFields.includes('selectedSubtype') }"
+                  @click="openSubtypeSelect"
+              >
+                {{ getSubtypeAbbreviation(createInventoryItemStore.item.subtypeName) }}
               </span>
               <ion-select
                   ref="subtypeSelectRef"
                   interface="action-sheet"
                   :value="selectedSubtype"
                   v-model="selectedSubtype"
-                  style="display: none"
-                  :class="{ 'invalid-field': invalidFields.includes('selectedSubtype') }"
+                  class="hidden-select"
               >
                 <ion-select-option
                     v-for="option in getSubtypesByType(createInventoryItemStore.item.type)"
@@ -816,825 +928,1005 @@ const getSkillImageUrl = (imgUrl: string | undefined) => {
                 </ion-select-option>
               </ion-select>
             </div>
-            <div class="stat">
-              {{ TEXTS.weight.rus }} :
+
+            <div class="stat stat--price">
+              <span class="stat__label">Цена</span>
               <span
-                  class="stat-value"
-                  contenteditable="true"
-                  @focus="startWeightEditing()"
-                  @blur="saveWeightField($event)"
-                  @input="updateWeightField($event)"
-                  @keydown="handleWeightKeydown($event)"
-                  @keydown.enter.prevent="saveWeightField($event)"
-                  :class="{ 'invalid-field': invalidFields.includes('weight') }"
-              >{{ createInventoryItemStore.item?.stats?.weight }}</span>
+                  class="stat-value stat-value--wide stat-value--price"
+                  :class="{ 'invalid-field': invalidFields.includes('defaultPriceValue') || invalidFields.includes('defaultPriceCoinType') }"
+              >
+                <ion-input
+                    v-model="defaultPriceValue"
+                    type="number"
+                    inputmode="numeric"
+                    class="inline-stat-input"
+                    @ionInput="invalidFields = invalidFields.filter(field => field !== 'defaultPriceValue')"
+                />
+                <div class="coin-select-wrap coin-select-wrap--header">
+                  <ion-icon
+                      class="coin-select-wrap__icon"
+                      :src="selectedCoinIcon"
+                      aria-hidden="true"
+                  />
+                  <ion-select
+                      v-model="defaultPriceCoinType"
+                      interface="action-sheet"
+                      aria-label="Монета"
+                      class="coin-select-wrap__select"
+                      @ionChange="invalidFields = invalidFields.filter(field => field !== 'defaultPriceCoinType')"
+                  >
+                    <ion-select-option value="GOLDEN">Золотые монеты</ion-select-option>
+                    <ion-select-option value="SILVER">Серебряные монеты</ion-select-option>
+                    <ion-select-option value="COPPER">Медные монеты</ion-select-option>
+                  </ion-select>
+                </div>
+              </span>
             </div>
           </div>
         </div>
-        <div class="stats-section armor" v-if="viewType==='ARMOR'">
-          <div class="stat-section name">
-            <div class="stat-section-name">{{ TEXTS.rus_armor_name.rus }}</div>
-            <ion-input
-                type="text"
-                fill="outline"
-                color="primary"
-                v-model="createInventoryItemStore.item.name.rus"
-                label-placement="floating"
-                class="input-block"
-                shape=""
-                :class="{ 'invalid-field': invalidFields.includes('nameRus') }"
-                @ionInput="invalidFields = invalidFields.filter(field => field !== 'nameRus')"
-            />
-          </div>
-          <div class="stat-section name">
-            <div class="stat-section-name">{{ TEXTS.eng_armor_name.rus }}</div>
-            <ion-input
-                type="text"
-                fill="outline"
-                color="primary"
-                v-model="createInventoryItemStore.item.name.eng"
-                label-placement="floating"
-                class="input-block"
-                shape=""
-                :class="{ 'invalid-field': invalidFields.includes('nameEng') }"
-                @ionInput="invalidFields = invalidFields.filter(field => field !== 'nameEng')"
-            />
-          </div>
-          <div class="stat-section armory-class">
-            <div class="stat-section-name">{{ HEADERS.armoryClass.rus }}</div>
-            <ion-input
-                type="number" inputmode="numeric"
-                fill="outline"
-                color="primary"
-                v-model="createInventoryItemStore.item.stats.armorClass"
-                label-placement="floating"
-                class="input-block"
-                shape=""
-                :class="{ 'invalid-field': invalidFields.includes('armorClass') }"
-                @ionInput="invalidFields = invalidFields.filter(field => field !== 'armorClass')"
-            />
-          </div>
-          <div class="stat-section armor-class-max-dexterity-bonus">
-            <div class="stat-section-name">{{ HEADERS.max_dex_bonus.rus }}</div>
-            <ion-input
-                type="number" inputmode="numeric"
-                fill="outline"
-                color="primary"
-                v-model="createInventoryItemStore.item.stats.armorClassMaxDexterityBonus"
-                :disabled="noDexBonusLimit"
-                label-placement="floating"
-                class="input-block"
-                shape=""
-                :class="{ 'invalid-field': invalidFields.includes('armorClassMaxDexterityBonus') }"
-                @ionInput="invalidFields = invalidFields.filter(field => field !== 'armorClassMaxDexterityBonus')"
-            />
-            <ion-checkbox v-model="noDexBonusLimit">
-              Нет ограничений бонуса ловкости
-            </ion-checkbox>
-          </div>
-          <div class="stat-section requirement">
-            <div class="stat-section-name">{{ HEADERS.force_requirements.rus }}</div>
-            <ion-input
-                type="number" inputmode="numeric"
-                fill="outline"
-                color="primary"
-                v-model="createInventoryItemStore.item.stats.requirement"
-                :disabled="noStrengthRequirement"
-                label-placement="floating"
-                class="input-block"
-                shape=""
-                :class="{ 'invalid-field': invalidFields.includes('requirement') }"
-                @ionInput="invalidFields = invalidFields.filter(field => field !== 'requirement')"
-            />
-            <ion-checkbox v-model="noStrengthRequirement">
-              Нет требований к силе
-            </ion-checkbox>
-          </div>
-          <div class="stat-section customization">
-            <div class="stat-section-name">{{ HEADERS.need_customization.rus }}</div>
-            <ion-toggle :checked="createInventoryItemStore.item?.customization" v-model="customization"></ion-toggle>
-          </div>
-          <div class="stat-section tags">
-            <div class="stat-section-name">{{ HEADERS.tags.rus }}</div>
-            <div class="tags-value">
-              <ion-chip
-                  v-for="(tag, idx) in createInventoryItemStore.item.stats.tags"
-                  :key="idx"
-                  @click="removeTag(tag)"
-                  class="tag-chip"
-              >
-                {{ tag }}
-                <ion-icon color="dark" :icon="close" class="tag-close-icon"></ion-icon>
-              </ion-chip>
-              <div class="tag-input-container">
-                <ion-input
-                    type="text"
-                    v-model="newTag"
-                    :placeholder="TEXTS.enterTag.rus"
-                    class="tag-input"
-                    @keydown.enter.prevent="addTag"
-                    fill="outline"
-                />
-                <ion-button size="small" shape="round" @click="addTag">
-                  <ion-icon slot="icon-only" :icon="addOutline"></ion-icon>
-                </ion-button>
-              </div>
-            </div>
-          </div>
-          <div class="stat-section price">
-            <div class="stat-section-name">{{ HEADERS.default_price.rus }}</div>
-            <div class="price-value">
-              <ion-input
-                  type="number" inputmode="numeric"
-                  fill="outline"
-                  color="primary"
-                  v-model="defaultPriceValue"
-                  label-placement="floating"
-                  class="input-block"
-                  shape=""
-                  :class="{ 'invalid-field': invalidFields.includes('defaultPriceValue') }">
-                <ion-select value="GOLDEN" v-model="defaultPriceCoinType" slot="start" aria-label="Coin"
-                            interface="action-sheet"
-                            :class="{ 'invalid-field': invalidFields.includes('defaultPriceCoinType') }">
-                  <ion-select-option value="GOLDEN">🪙</ion-select-option>
-                  <ion-select-option value="SILVER">⚪</ion-select-option>
-                  <ion-select-option value="COPPER">🟠</ion-select-option>
-                </ion-select>
-              </ion-input>
-            </div>
-          </div>
-          <div class="stat-section rarity">
-            <div class="stat-section-name">Редкость</div>
-            <ion-select
-                v-model="itemRarity"
-                interface="action-sheet"
-                :class="[`rarity-${itemRarity.toLowerCase()}`, { 'invalid-field': invalidFields.includes('itemRarity') }]"
-            >
-              <ion-select-option value="COMMON">Обычный</ion-select-option>
-              <ion-select-option value="UNCOMMON">Необычный</ion-select-option>
-              <ion-select-option value="RARE">Редкий</ion-select-option>
-              <ion-select-option value="VERY_RARE">Очень редкий</ion-select-option>
-              <ion-select-option value="LEGENDARY">Легендарный</ion-select-option>
-            </ion-select>
-          </div>
-          <div class="stat-section description">
-            <div class="stat-section-name">{{ HEADERS.description.rus }}</div>
-            <div class="section-description">
-              <ion-textarea
-                  type="text"
-                  fill="outline"
-                  color="primary"
-                  :clear-input="true"
-                  v-model="createInventoryItemStore.item.description"
-                  class="input-block"
-                  :rows="15"
-              ></ion-textarea>
-            </div>
-          </div>
+
+        <div class="item-identity">
+          <ion-input
+              v-model="createInventoryItemStore.item.name.rus"
+              type="text"
+              class="identity-input identity-input--name"
+              :placeholder="viewType === 'ARMOR' ? TEXTS.rus_armor_name.rus : viewType === 'WEAPON' ? TEXTS.rus_weapon_name.rus : TEXTS.rus_other_name.rus"
+              :class="{ 'invalid-field': invalidFields.includes('nameRus') }"
+              @ionInput="invalidFields = invalidFields.filter(field => field !== 'nameRus')"
+          />
+          <ion-input
+              v-model="createInventoryItemStore.item.name.eng"
+              type="text"
+              class="identity-input identity-input--eng"
+              :placeholder="viewType === 'ARMOR' ? TEXTS.eng_armor_name.rus : viewType === 'WEAPON' ? TEXTS.eng_weapon_name.rus : TEXTS.eng_other_name.rus"
+              :class="{ 'invalid-field': invalidFields.includes('nameEng') }"
+              @ionInput="invalidFields = invalidFields.filter(field => field !== 'nameEng')"
+          />
         </div>
-        <div class="stats-section weapon" v-else-if="viewType==='WEAPON'">
-          <div class="stat-section name">
-            <div class="stat-section-name">{{ TEXTS.rus_weapon_name.rus }}</div>
-            <ion-input
-                type="text"
-                fill="outline"
-                color="primary"
-                v-model="createInventoryItemStore.item.name.rus"
-                label-placement="floating"
-                class="input-block"
-                shape=""
-                :class="{ 'invalid-field': invalidFields.includes('nameRus') }"
-                @ionInput="invalidFields = invalidFields.filter(field => field !== 'nameRus')"
-            />
-          </div>
-          <div class="stat-section name">
-            <div class="stat-section-name">{{ TEXTS.eng_weapon_name.rus }}</div>
-            <ion-input
-                type="text"
-                fill="outline"
-                color="primary"
-                v-model="createInventoryItemStore.item.name.eng"
-                label-placement="floating"
-                class="input-block"
-                shape=""
-                :class="{ 'invalid-field': invalidFields.includes('nameEng') }"
-                @ionInput="invalidFields = invalidFields.filter(field => field !== 'nameEng')"
-            />
-          </div>
-          <div class="stat-section damage">
-            <div class="stat-section-name">{{ HEADERS.damage.rus }}</div>
-            <ion-input
-                type="text"
-                fill="outline"
-                color="primary"
-                v-model="damageValue"
-                label-placement="floating"
-                class="input-block"
-                placeholder="1d6 + STR / 1d4 + СИЛ"
-                shape=""
-                :class="{ 'invalid-field': invalidFields.includes('damageValue') }"
-                @ionInput="invalidFields = invalidFields.filter(field => field !== 'damageValue')"
-            />
-            <div class="damage-hint">
-              Формат: кубики + модификаторы. Примеры: <b>1d6 + STR</b>, <b>2d8 + 1 + WIS</b>, <b>1d4 + СИЛ</b>.
-            </div>
-          </div>
-          <div class="stat-section damage-type">
-            <div class="stat-section-name">{{ HEADERS.damageType.rus }}</div>
-            <ion-select
-                fill="outline"
-                value="CRUSHING"
-                v-model="damageType"
-                slot="start"
-                aria-label="Damage type"
-                interface="action-sheet"
-                :class="{ 'invalid-field': invalidFields.includes('damageType') }"
-                @ionChange="invalidFields = invalidFields.filter(field => field !== 'damageType')"
-            >
-              <ion-select-option value="STABBING">Колющий (Piercing)</ion-select-option>
-              <ion-select-option value="CHOPPING">Рубящий (Slashing)</ion-select-option>
-              <ion-select-option value="CRUSHING">Дробящий (Bludgeoning)</ion-select-option>
-              <ion-select-option value="ACID">Кислотный (Acid)</ion-select-option>
-              <ion-select-option value="COLD">Холодом (Cold)</ion-select-option>
-              <ion-select-option value="FIRE">Огненный (Fire)</ion-select-option>
-              <ion-select-option value="FORCE">Силовой (Force)</ion-select-option>
-              <ion-select-option value="LIGHTNING">Молнией (Lightning)</ion-select-option>
-              <ion-select-option value="NECROTIC">Некротический (Necrotic)</ion-select-option>
-              <ion-select-option value="POISON">Ядовитый (Poison)</ion-select-option>
-              <ion-select-option value="PSYCHIC">Психический (Psychic)</ion-select-option>
-              <ion-select-option value="RADIANT">Сияющий (Radiant)</ion-select-option>
-              <ion-select-option value="THUNDER">Громовой (Thunder)</ion-select-option>
-            </ion-select>
-          </div>
-          <div class="stat-section customization">
-            <div class="stat-section-name">{{ HEADERS.need_customization.rus }}</div>
-            <ion-toggle :checked="createInventoryItemStore.item?.customization" v-model="customization"></ion-toggle>
-          </div>
-          <div class="stat-section tags">
-            <div class="stat-section-name">{{ HEADERS.tags.rus }}</div>
-            <div class="tags-value">
-              <ion-chip
-                  v-for="(tag, idx) in createInventoryItemStore.item.stats.tags"
-                  :key="idx"
-                  @click="removeTag(tag)"
-                  class="tag-chip"
-              >
-                {{ tag }}
-                <ion-icon color="dark" :icon="close" class="tag-close-icon"></ion-icon>
-              </ion-chip>
-              <div class="tag-input-container">
-                <ion-input
-                    type="text"
-                    v-model="newTag"
-                    :placeholder="TEXTS.enterTag.rus"
-                    class="tag-input"
-                    @keydown.enter.prevent="addTag"
-                    fill="outline"
-                />
-                <ion-button size="small" shape="round" @click="addTag">
-                  <ion-icon slot="icon-only" :icon="addOutline"></ion-icon>
-                </ion-button>
+
+        <div class="item-details">
+          <section class="panel">
+            <h2 class="panel__title">Характеристики</h2>
+            <div class="details-grid">
+              <div class="detail-row">
+                <span class="detail-row__label">{{ TEXTS.weight.rus }}</span>
+                <span
+                    class="detail-row__input detail-row__input--weight"
+                    contenteditable="true"
+                    @focus="startWeightEditing()"
+                    @blur="saveWeightField($event)"
+                    @input="updateWeightField($event)"
+                    @keydown="handleWeightKeydown($event)"
+                    @keydown.enter.prevent="saveWeightField($event)"
+                    :class="{ 'invalid-field': invalidFields.includes('weight') }"
+                >{{ createInventoryItemStore.item?.stats?.weight }}</span>
               </div>
-            </div>
-          </div>
-          <div class="stat-section price">
-            <div class="stat-section-name">{{ HEADERS.default_price.rus }}</div>
-            <div class="price-value">
-              <ion-input
-                  type="number" inputmode="numeric"
-                  fill="outline"
-                  color="primary"
-                  v-model="defaultPriceValue"
-                  label-placement="floating"
-                  class="input-block"
-                  shape=""
-                  :class="{ 'invalid-field': invalidFields.includes('defaultPriceValue') }"
-                  @ionInput="invalidFields = invalidFields.filter(field => field !== 'defaultPriceValue')"
-              >
+
+              <div v-if="viewType === 'ARMOR'" class="detail-row">
+                <span class="detail-row__label">{{ HEADERS.armoryClass.rus }}</span>
+                <ion-input
+                    v-model="createInventoryItemStore.item.stats.armorClass"
+                    type="number"
+                    inputmode="numeric"
+                    class="detail-row__input"
+                    :class="{ 'invalid-field': invalidFields.includes('armorClass') }"
+                    @ionInput="invalidFields = invalidFields.filter(field => field !== 'armorClass')"
+                />
+              </div>
+
+              <div v-if="viewType === 'ARMOR'" class="detail-row detail-row--with-extra">
+                <div class="detail-row__left">
+                  <span class="detail-row__label">{{ HEADERS.max_dex_bonus.rus }}</span>
+                  <label class="detail-row__checkbox">
+                    <ion-checkbox v-model="noDexBonusLimit"/>
+                    <span>Нет ограничений</span>
+                  </label>
+                </div>
+                <ion-input
+                    v-model="createInventoryItemStore.item.stats.armorClassMaxDexterityBonus"
+                    type="number"
+                    inputmode="numeric"
+                    class="detail-row__input"
+                    :disabled="noDexBonusLimit"
+                    :class="{ 'invalid-field': invalidFields.includes('armorClassMaxDexterityBonus') }"
+                    @ionInput="invalidFields = invalidFields.filter(field => field !== 'armorClassMaxDexterityBonus')"
+                />
+              </div>
+
+              <div v-if="viewType === 'ARMOR'" class="detail-row detail-row--with-extra">
+                <div class="detail-row__left">
+                  <span class="detail-row__label">{{ HEADERS.force_requirements.rus }}</span>
+                  <label class="detail-row__checkbox">
+                    <ion-checkbox v-model="noStrengthRequirement"/>
+                    <span>Нет требований</span>
+                  </label>
+                </div>
+                <ion-input
+                    v-model="createInventoryItemStore.item.stats.requirement"
+                    type="number"
+                    inputmode="numeric"
+                    class="detail-row__input"
+                    :disabled="noStrengthRequirement"
+                    :class="{ 'invalid-field': invalidFields.includes('requirement') }"
+                    @ionInput="invalidFields = invalidFields.filter(field => field !== 'requirement')"
+                />
+              </div>
+
+              <div v-if="viewType === 'WEAPON'" class="detail-row detail-row--with-extra">
+                <div class="detail-row__left">
+                  <span class="detail-row__label">{{ HEADERS.damage.rus }}</span>
+                  <p class="damage-hint">
+                    Примеры: <b>1d6 + STR</b>, <b>2d8 + 1 + WIS</b>
+                  </p>
+                </div>
+                <ion-input
+                    v-model="damageValue"
+                    type="text"
+                    class="detail-row__input"
+                    placeholder="1d6 + STR"
+                    :class="{ 'invalid-field': invalidFields.includes('damageValue') }"
+                    @ionInput="invalidFields = invalidFields.filter(field => field !== 'damageValue')"
+                />
+              </div>
+
+              <div v-if="viewType === 'WEAPON'" class="detail-row">
+                <span class="detail-row__label">{{ HEADERS.damageType.rus }}</span>
                 <ion-select
-                    value="GOLDEN"
-                    v-model="defaultPriceCoinType"
-                    slot="start"
-                    aria-label="Coin"
+                    v-model="damageType"
                     interface="action-sheet"
-                    :class="{ 'invalid-field': invalidFields.includes('defaultPriceCoinType') }"
-                    @ionChange="invalidFields = invalidFields.filter(field => field !== 'defaultPriceCoinType')"
+                    class="detail-row__select"
+                    :class="{ 'invalid-field': invalidFields.includes('damageType') }"
+                    @ionChange="invalidFields = invalidFields.filter(field => field !== 'damageType')"
                 >
-                  <ion-select-option value="GOLDEN">🪙</ion-select-option>
-                  <ion-select-option value="SILVER">⚪</ion-select-option>
-                  <ion-select-option value="COPPER">🟠</ion-select-option>
+                  <ion-select-option value="STABBING">Колющий</ion-select-option>
+                  <ion-select-option value="CHOPPING">Рубящий</ion-select-option>
+                  <ion-select-option value="CRUSHING">Дробящий</ion-select-option>
+                  <ion-select-option value="ACID">Кислотный</ion-select-option>
+                  <ion-select-option value="COLD">Холодом</ion-select-option>
+                  <ion-select-option value="FIRE">Огненный</ion-select-option>
+                  <ion-select-option value="FORCE">Силовой</ion-select-option>
+                  <ion-select-option value="LIGHTNING">Молнией</ion-select-option>
+                  <ion-select-option value="NECROTIC">Некротический</ion-select-option>
+                  <ion-select-option value="POISON">Ядовитый</ion-select-option>
+                  <ion-select-option value="PSYCHIC">Психический</ion-select-option>
+                  <ion-select-option value="RADIANT">Сияющий</ion-select-option>
+                  <ion-select-option value="THUNDER">Громовой</ion-select-option>
                 </ion-select>
-              </ion-input>
+              </div>
+
+              <div class="detail-row">
+                <span class="detail-row__label">Редкость</span>
+                <ion-select
+                    v-model="itemRarity"
+                    interface="action-sheet"
+                    class="detail-row__select"
+                    :class="[rarityClass, { 'invalid-field': invalidFields.includes('itemRarity') }]"
+                >
+                  <ion-select-option value="COMMON">Обычный</ion-select-option>
+                  <ion-select-option value="UNCOMMON">Необычный</ion-select-option>
+                  <ion-select-option value="RARE">Редкий</ion-select-option>
+                  <ion-select-option value="VERY_RARE">Очень редкий</ion-select-option>
+                  <ion-select-option value="LEGENDARY">Легендарный</ion-select-option>
+                </ion-select>
+              </div>
+
+              <div class="detail-row">
+                <span class="detail-row__label">{{ HEADERS.need_customization.rus }}</span>
+                <div class="detail-row__control-slot">
+                  <ion-toggle v-model="customization"/>
+                </div>
+              </div>
             </div>
-          </div>
-          <div class="stat-section rarity">
-            <div class="stat-section-name">Редкость</div>
-            <ion-select
-                v-model="itemRarity"
-                interface="action-sheet"
-                :class="[`rarity-${itemRarity.toLowerCase()}`, { 'invalid-field': invalidFields.includes('itemRarity') }]"
-            >
-              <ion-select-option value="COMMON">Обычный</ion-select-option>
-              <ion-select-option value="UNCOMMON">Необычный</ion-select-option>
-              <ion-select-option value="RARE">Редкий</ion-select-option>
-              <ion-select-option value="VERY_RARE">Очень редкий</ion-select-option>
-              <ion-select-option value="LEGENDARY">Легендарный</ion-select-option>
-            </ion-select>
-          </div>
-          <div class="stat-section description">
-            <div class="stat-section-name">{{ HEADERS.description.rus }}</div>
-            <div class="section-description">
-              <ion-textarea
-                  type="text"
-                  fill="outline"
-                  color="primary"
-                  :clear-input="true"
-                  v-model="createInventoryItemStore.item.description"
-                  class="input-block"
-                  :rows="15"
-              ></ion-textarea>
-            </div>
-          </div>
-        </div>
-        <div class="stats-section other" v-else>
-          <div class="stat-section name">
-            <div class="stat-section-name">{{ TEXTS.rus_other_name.rus }}</div>
-            <ion-input
-                type="text"
-                fill="outline"
-                color="primary"
-                v-model="createInventoryItemStore.item.name.rus"
-                label-placement="floating"
-                class="input-block"
-                shape=""
-                :class="{ 'invalid-field': invalidFields.includes('nameRus') }"
-                @ionInput="invalidFields = invalidFields.filter(field => field !== 'nameRus')"
-            />
-          </div>
-          <div class="stat-section name">
-            <div class="stat-section-name">{{ TEXTS.eng_other_name.rus }}</div>
-            <ion-input
-                type="text"
-                fill="outline"
-                color="primary"
-                v-model="createInventoryItemStore.item.name.eng"
-                label-placement="floating"
-                class="input-block"
-                shape=""
-                :class="{ 'invalid-field': invalidFields.includes('nameEng') }"
-                @ionInput="invalidFields = invalidFields.filter(field => field !== 'nameEng')"
-            />
-          </div>
-          <div class="stat-section customization">
-            <div class="stat-section-name">{{ HEADERS.need_customization.rus }}</div>
-            <ion-toggle :checked="createInventoryItemStore.item?.customization" v-model="customization"></ion-toggle>
-          </div>
-          <div class="stat-section tags">
-            <div class="stat-section-name">{{ HEADERS.tags.rus }}</div>
-            <div class="tags-value">
-              <ion-chip
-                  v-for="(tag, idx) in createInventoryItemStore.item.stats.tags"
-                  :key="idx"
-                  @click="removeTag(tag)"
-                  class="tag-chip"
-              >
-                {{ tag }}
-                <ion-icon color="dark" :icon="close" class="tag-close-icon"></ion-icon>
-              </ion-chip>
-              <div class="tag-input-container">
+
+            <div class="tags-block">
+              <div class="tags-block__label">{{ HEADERS.tags.rus }}</div>
+              <div class="tags">
+                <button
+                    v-for="(tag, idx) in createInventoryItemStore.item.stats.tags"
+                    :key="idx"
+                    type="button"
+                    class="tag tag--removable"
+                    @click="removeTag(tag)"
+                >
+                  {{ tag }}
+                  <span class="tag__remove" aria-hidden="true">×</span>
+                </button>
+              </div>
+              <div class="tag-input-row">
                 <ion-input
-                    type="text"
                     v-model="newTag"
+                    type="text"
                     :placeholder="TEXTS.enterTag.rus"
                     class="tag-input"
                     @keydown.enter.prevent="addTag"
-                    fill="outline"
                 />
                 <ion-button size="small" shape="round" @click="addTag">
-                  <ion-icon slot="icon-only" :icon="addOutline"></ion-icon>
+                  <ion-icon slot="icon-only" :icon="addOutline"/>
+                </ion-button>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <h2 class="panel__title">{{ HEADERS.description.rus }}</h2>
+            <ion-textarea
+                v-model="createInventoryItemStore.item.description"
+                class="description-input"
+                :rows="8"
+                auto-grow
+            />
+          </section>
+
+          <section class="panel panel--settings">
+            <div class="detail-row">
+              <span class="detail-row__label">{{ HEADERS.gm_access.rus }}</span>
+              <span class="detail-row__value detail-row__value--toggle">
+                <ion-toggle v-model="visibleForPlayers"/>
+              </span>
+            </div>
+          </section>
+        </div>
+
+        <section class="panel panel--skills">
+          <h2 class="panel__title">Навыки предмета</h2>
+          <div v-if="createItemSkills.length" class="skills-list">
+            <div
+                v-for="skill in createItemSkills"
+                :key="skill.id"
+                class="skill-card"
+            >
+              <div class="skill-card__media">
+                <img
+                    class="skill-card__img"
+                    :src="getSkillImageUrl(skill.imgUrl)"
+                    :alt="skill.name.rus"
+                    @error="($event.target as HTMLImageElement).src = SKILL_IMAGE_PLACEHOLDER"
+                />
+              </div>
+              <div class="skill-card__body">
+                <div class="skill-card__name">{{ skill.name.rus }}</div>
+                <div v-if="skill.shortDescription" class="skill-card__desc">{{ skill.shortDescription }}</div>
+                <div class="skill-card__meta">
+                  Зарядов: {{ skill.charges }} · {{ getRefillLabel(skill.chargesRefill) }}
+                </div>
+              </div>
+              <div class="skill-card__actions">
+                <ion-button size="small" shape="round" fill="clear" @click="openEditItemSkillModal(false, skill)">
+                  <ion-icon slot="icon-only" :icon="pencilOutline"/>
+                </ion-button>
+                <ion-button size="small" shape="round" fill="clear" color="danger" @click="removeSkill(skill)">
+                  <ion-icon slot="icon-only" :icon="trashOutline"/>
                 </ion-button>
               </div>
             </div>
           </div>
-          <div class="stat-section price">
-            <div class="stat-section-name">{{ HEADERS.default_price.rus }}</div>
-            <div class="price-value">
-              <ion-input
-                  type="number" inputmode="numeric"
-                  fill="outline"
-                  color="primary"
-                  v-model="defaultPriceValue"
-                  label-placement="floating"
-                  class="input-block"
-                  shape=""
-                  :class="{ 'invalid-field': invalidFields.includes('defaultPriceValue') }"
-                  @ionInput="invalidFields = invalidFields.filter(field => field !== 'defaultPriceValue')"
-              >
-                <ion-select
-                    value="GOLDEN"
-                    v-model="defaultPriceCoinType"
-                    slot="start"
-                    aria-label="Coin"
-                    interface="action-sheet"
-                    :class="{ 'invalid-field': invalidFields.includes('defaultPriceCoinType') }"
-                    @ionChange="invalidFields = invalidFields.filter(field => field !== 'defaultPriceCoinType')"
-                >
-                  <ion-select-option value="GOLDEN">🪙</ion-select-option>
-                  <ion-select-option value="SILVER">⚪</ion-select-option>
-                  <ion-select-option value="COPPER">🟠</ion-select-option>
-                </ion-select>
-              </ion-input>
-            </div>
-          </div>
-          <div class="stat-section rarity">
-            <div class="stat-section-name">Редкость</div>
-            <ion-select
-                v-model="itemRarity"
-                interface="action-sheet"
-                :class="[`rarity-${itemRarity.toLowerCase()}`, { 'invalid-field': invalidFields.includes('itemRarity') }]"
-            >
-              <ion-select-option value="COMMON">Обычный</ion-select-option>
-              <ion-select-option value="UNCOMMON">Необычный</ion-select-option>
-              <ion-select-option value="RARE">Редкий</ion-select-option>
-              <ion-select-option value="VERY_RARE">Очень редкий</ion-select-option>
-              <ion-select-option value="LEGENDARY">Легендарный</ion-select-option>
-            </ion-select>
-          </div>
-          <div class="stat-section description">
-            <div class="stat-section-name">{{ HEADERS.description.rus }}</div>
-            <div class="section-description">
-              <ion-textarea
-                  type="text"
-                  fill="outline"
-                  color="primary"
-                  :clear-input="true"
-                  v-model="createInventoryItemStore.item.description"
-                  class="input-block"
-                  :rows="15"
-              ></ion-textarea>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="item-skills">
-        <div class="section" v-for="item in createItemSkills" :key="item.id">
-          <div class="section-start-block" @click="">
-            <div class="image-block">
-              <img v-if="item.imgUrl" width="55px" height="55px" class="skill-image"
-                   :src="getSkillImageUrl(item.imgUrl)"
-                   :alt="item.name.rus"/>
-              <img v-else width="55px" height="55px" class="skill-image"
-                   :src="'https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"
-                   :alt="item.name.rus"/>
-            </div>
-            <div class="stats-block">
-              <div class="skill-stats-block">
-                <div class="skill-name">
-                  {{ item.name.rus }}
-                </div>
-                <div class="skill-short-description">
-                  {{ item.shortDescription }}
-                </div>
-                <div class="skill-limitations">
-                  Зарядов: {{ item.charges }} ({{
-                    item.chargesRefill === "SHORT_REST"
-                        ? "короткий отдых"
-                        : "долгий отдых"
-                  }})
-                </div>
-              </div>
-            </div>
-          </div>
-          <ion-buttons class="skill-buttons-block">
-            <ion-buttons>
-              <ion-button size="small" shape="round" @click="openEditItemSkillModal(false, item)">
-                <ion-icon slot="icon-only" :icon="pencilOutline"></ion-icon>
-              </ion-button>
-              <ion-button size="small" shape="round" @click="removeSkill(item)">
-                <ion-icon slot="icon-only" :icon="trashOutline"></ion-icon>
-              </ion-button>
-            </ion-buttons>
-          </ion-buttons>
-        </div>
-        <div class="add-skill-button">
-          <ion-button size="default" shape="round" @click="openEditItemSkillModal(true, undefined)">
-            <ion-icon slot="start" :icon="addOutline"></ion-icon>
+          <ion-button
+              class="add-skill-btn"
+              expand="block"
+              fill="outline"
+              shape="round"
+              @click="openEditItemSkillModal(true, undefined)"
+          >
+            <ion-icon slot="start" :icon="addOutline"/>
             Добавить навык
           </ion-button>
-        </div>
+        </section>
       </div>
-      <div class="settings">
-        <div class="settings-gm-access">
-          <div class="settings-section-name">{{ HEADERS.gm_access.rus }}</div>
-          <ion-toggle class="settings-section-value" v-model="visibleForPlayers" :checked="true"></ion-toggle>
-        </div>
-      </div>
-      <ion-buttons class="buttons-block">
-        <ion-button color="primary" fill="solid" shape="round">
-          <ion-icon slot="start" :icon="closeCircleOutline"></ion-icon>
-          Отменить
-        </ion-button>
-        <ion-button color="primary" fill="solid" shape="round" @click="saveItem()">
-          <ion-icon slot="start" :icon="saveOutline"></ion-icon>
-          Сохранить
-        </ion-button>
-      </ion-buttons>
     </ion-content>
-    <EditItemSkillValueModal v-if="showEditItemSkillModal"
-                             :isOpen="showEditItemSkillModal"
-                             :character-id="String(route.params.characterId ?? '')"
-                             :is-editing="isEditingItemSkill"
-                             :item-skill="editingItemSkill"
-                             @closeEditItemSkillModal="closeEditItemSkillModal"
-                             @saveItemSkill="(itemSkill : ItemSkill) => addItemSkill(itemSkill)"/>
+
+    <div class="item-footer">
+      <ion-button
+          class="item-footer__btn item-footer__btn--secondary"
+          expand="block"
+          fill="clear"
+          shape="round"
+          @click="cancelEdit"
+      >
+        <ion-icon slot="start" :icon="closeCircleOutline"/>
+        Отменить
+      </ion-button>
+      <ion-button
+          class="item-footer__btn item-footer__btn--primary"
+          expand="block"
+          fill="solid"
+          shape="round"
+          color="primary"
+          @click="saveItem()"
+      >
+        <ion-icon slot="start" :icon="saveOutline"/>
+        Сохранить
+      </ion-button>
+    </div>
+
+    <EditItemSkillValueModal
+        v-if="showEditItemSkillModal"
+        :isOpen="showEditItemSkillModal"
+        :character-id="String(route.params.characterId ?? '')"
+        :is-editing="isEditingItemSkill"
+        :item-skill="editingItemSkill"
+        @closeEditItemSkillModal="closeEditItemSkillModal"
+        @saveItemSkill="(itemSkill: ItemSkill) => addItemSkill(itemSkill)"
+    />
   </ion-page>
 </template>
 
 <style scoped>
-.container {
-  background: var(--ion-color-dark);
+.item-page-root {
+  --item-footer-height: 112px;
 }
 
-ion-modal {
-  --width: 96%;
+.item-toolbar {
+  --min-height: 44px;
 }
 
-.header {
+.item-ion-content {
+  --background: var(--ion-color-dark);
+  --padding-top: 4px;
+  --padding-bottom: calc(var(--item-footer-height) + env(safe-area-inset-bottom, 0px) + 16px);
+}
+
+.item-page {
   display: flex;
-  flex-direction: row;
-  width: 100%;
-  align-items: center;
-  justify-content: start;
+  flex-direction: column;
+  gap: 10px;
+  padding: 8px 14px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.item-header {
+  display: grid;
+  grid-template-columns: repeat(2, 180px);
+  justify-content: center;
   gap: 20px;
+  width: 100%;
 }
 
 .avatar {
+  position: relative;
+  flex-shrink: 0;
+  width: 180px;
+  height: 180px;
+  padding: 0;
   border-radius: 25px;
   overflow: hidden;
-  border-width: 2px;
-  border-style: solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--ambient-color, var(--ion-color-dark));
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: background-color 0.45s ease, border-color 0.25s ease;
+}
+
+.avatar-ambient {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.avatar-ambient__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.14);
+  filter: blur(20px) saturate(1.5);
 }
 
 .avatar-img {
-  width: 180px;
-  height: 180px;
-  border-radius: 25px;
-  align-content: center;
-  justify-content: center;
-  display: flex;
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
 }
 
-.placeholder-icon {
-  align-self: center;
-  justify-self: center;
-  font-size: 48px;
-  color: white;
+.avatar-placeholder {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: rgba(var(--ion-color-light-rgb), 0.45);
+}
+
+.avatar-placeholder__icon {
+  font-size: 36px;
+}
+
+.avatar-placeholder__text {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.avatar-file-input {
+  display: none;
 }
 
 .stats {
+  flex-shrink: 0;
+  width: 180px;
+  height: 180px;
+  box-sizing: border-box;
   border-radius: 25px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 8px;
   background-color: var(--ion-color-medium);
-  width: 180px;
-  height: 180px;
 }
 
 .stat {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 6px;
   background-color: var(--ion-color-secondary-opacity-40);
-  margin-bottom: 3%;
-  height: 23%;
+  flex: 1 1 0;
+  min-height: 0;
   border-radius: 15px;
-  padding-left: 5%;
-  padding-right: 5%;
-  margin-right: 5%;
-  margin-left: 5%;
+  padding: 0 8px;
   font-weight: bold;
-  font-size: 10pt;
+  font-size: 11px;
+  line-height: 1.2;
+  color: var(--ion-color-light);
+}
+
+.stat__label {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .stat-value {
   display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
   background-color: var(--ion-color-primary);
   color: var(--ion-color-primary-contrast);
   border-radius: 50%;
   height: 30px;
   width: 30px;
-  align-items: center;
-  justify-content: center;
-  font-size: 10pt;
-  scrollbar-width: none;
-}
-
-.stat-section {
-  margin-top: 12px;
-  font-size: 16px;
-}
-
-.damage-hint {
-  margin-top: 6px;
-  font-size: 12px;
-  line-height: 1.35;
-  color: var(--ion-color-light);
-  opacity: 0.85;
-}
-
-.customization {
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-}
-
-.tags-value {
-  display: flex;
-  justify-content: start;
-  align-items: center;
-}
-
-.tags-value {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
-.tag-chip {
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
   cursor: pointer;
-  background-color: var(--ion-color-primary);
-  color: var(--ion-color-primary-contrast);
-  padding: 4px 8px;
-  border-radius: 16px;
+}
+
+.stat-value--wide {
+  width: auto;
+  min-width: 30px;
+  max-width: 48px;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  letter-spacing: -0.02em;
+}
+
+.stat-value--price {
+  gap: 2px;
+  max-width: 76px;
+  min-width: 58px;
+  padding: 0 4px 0 6px;
+  cursor: default;
+}
+
+.inline-stat-input {
+  --padding-start: 0;
+  --padding-end: 0;
+  --padding-top: 0;
+  --padding-bottom: 0;
+  min-height: 24px;
+  max-width: 34px;
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+  --background: transparent;
+  --color: var(--ion-color-primary-contrast);
+}
+
+.coin-select-wrap--header {
+  position: relative;
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+}
+
+.coin-select-wrap--header .coin-select-wrap__icon {
+  width: 16px;
+  height: 16px;
+}
+
+.hidden-select {
+  display: none;
+}
+
+.item-identity {
+  padding: 0 4px;
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 4px;
 }
 
-.tag-close-icon {
+.identity-input {
+  --background: transparent;
+  --padding-start: 0;
+  --padding-end: 0;
+  --highlight-color-focused: var(--ion-color-primary);
+}
+
+.identity-input--name {
+  font-size: 22px;
+  font-weight: 700;
+  --color: var(--ion-color-light);
+  --placeholder-color: rgba(var(--ion-color-light-rgb), 0.35);
+  --placeholder-opacity: 1;
+}
+
+.identity-input--eng {
+  font-size: 13px;
+  --color: rgba(var(--ion-color-light-rgb), 0.55);
+  --placeholder-color: rgba(var(--ion-color-light-rgb), 0.3);
+  --placeholder-opacity: 1;
+}
+
+.item-details {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.panel {
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--ion-color-medium);
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.1);
+}
+
+.panel__title {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(var(--ion-color-light-rgb), 0.45);
+}
+
+.details-grid {
+  --detail-control-width: 132px;
+  display: flex;
+  flex-direction: column;
+}
+
+.detail-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--detail-control-width);
+  align-items: center;
+  column-gap: 12px;
+  min-height: 48px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(var(--ion-color-light-rgb), 0.06);
+
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.detail-row--with-extra {
+  align-items: center;
+}
+
+.detail-row__left {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 48px;
+}
+
+.detail-row__label {
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.35;
+  color: rgba(var(--ion-color-light-rgb), 0.62);
+}
+
+.detail-row__control-slot {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  width: 100%;
+}
+
+.detail-row__checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.2;
+  color: rgba(var(--ion-color-light-rgb), 0.55);
+  cursor: pointer;
+}
+
+.detail-row__input,
+.detail-row__select,
+.price-input-group {
+  width: 100%;
+  max-width: var(--detail-control-width);
+  justify-self: end;
+  --border-radius: 999px;
+}
+
+.detail-row__input {
+  --background: rgba(0, 0, 0, 0.16);
+  --padding-start: 10px;
+  --padding-end: 10px;
+  --color: var(--ion-color-light);
+  --highlight-color-focused: var(--ion-color-primary);
+  min-height: 36px;
+  --border-radius: 999px;
+  text-align: right;
+  font-weight: 600;
   font-size: 14px;
 }
 
-.tag-input-container {
+.price-input-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.price-input-group.invalid-field {
+  outline: 1px solid var(--ion-color-danger);
+  outline-offset: 1px;
+}
+
+.detail-row__input--price {
+  flex: 1 1 auto;
+  min-width: 0;
+  --background: transparent;
+}
+
+.coin-select-wrap {
+  position: relative;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 36px;
+}
+
+.coin-select-wrap__icon {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 20px;
+  height: 20px;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.28));
+}
+
+.coin-select-wrap__select {
+  width: 100%;
+  height: 100%;
+  --padding-start: 0;
+  --padding-end: 0;
+  opacity: 0;
+}
+
+.detail-row__input--weight {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  outline: none;
+  cursor: text;
+}
+
+.detail-row__select {
+  --background: rgba(0, 0, 0, 0.16);
+  --padding-start: 10px;
+  --padding-end: 28px;
+  min-height: 36px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: right;
+}
+
+.damage-hint {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.35;
+  color: rgba(var(--ion-color-light-rgb), 0.45);
+}
+
+.tags-block {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(var(--ion-color-light-rgb), 0.06);
+}
+
+.tags-block__label {
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(var(--ion-color-light-rgb), 0.45);
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(var(--ion-color-primary-rgb), 0.95);
+  background: rgba(var(--ion-color-primary-rgb), 0.12);
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.22);
+}
+
+.tag--removable {
+  cursor: pointer;
+}
+
+.tag__remove {
+  font-size: 14px;
+  line-height: 1;
+  opacity: 0.7;
+}
+
+.tag-input-row {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
 .tag-input {
-  max-width: 150px;
-  --padding-start: 8px;
-  --padding-end: 8px;
-}
-
-.section-description {
-  overflow: hidden;
-  transition: max-height 4s ease;
-}
-
-.buttons-block {
-  margin-top: 10px;
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-}
-
-.rarity-common {
-  border: 2px solid gray;
-}
-
-.rarity-uncommon {
-  border: 2px solid green;
-}
-
-.rarity-rare {
-  border: 2px solid blue;
-}
-
-.rarity-very_rare {
-  border: 2px solid purple;
-}
-
-.rarity-legendary {
-  border: 2px solid orange;
-}
-
-.stat-section.rarity ion-select {
-  width: 100%;
-  --border-radius: 8px;
+  flex: 1;
+  --background: rgba(0, 0, 0, 0.16);
   --padding-start: 12px;
   --padding-end: 12px;
+  --color: var(--ion-color-light);
+  --highlight-color-focused: var(--ion-color-primary);
+  border-radius: 12px;
+  min-height: 40px;
 }
 
-.settings {
-  margin-top: 10px;
-  display: flex;
-  flex-direction: row;
-  justify-content: end;
+.description-input {
+  --background: rgba(0, 0, 0, 0.16);
+  --padding-start: 12px;
+  --padding-end: 12px;
+  --padding-top: 10px;
+  --padding-bottom: 10px;
+  --color: var(--ion-color-light);
+  --highlight-color-focused: var(--ion-color-primary);
+  border-radius: 12px;
+  font-size: 15px;
+  line-height: 1.55;
 }
 
-.settings-gm-access {
+.skills-list {
   display: flex;
   flex-direction: column;
-  justify-content: end;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 
-.settings-section-value {
-  margin-top: 10px;
-  justify-items: end;
+.skill-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.16);
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.12);
+}
+
+.skill-card__media {
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ion-color-dark);
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.14);
+}
+
+.skill-card__img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  background: var(--ion-color-dark);
+}
+
+.skill-card__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.skill-card__name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ion-color-light);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.skill-card__desc,
+.skill-card__meta {
+  font-size: 12px;
+  line-height: 1.35;
+  color: rgba(var(--ion-color-light-rgb), 0.55);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.skill-card__meta {
+  margin-top: 3px;
+  color: rgba(var(--ion-color-primary-rgb), 0.85);
+}
+
+.skill-card__actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 2px;
+}
+
+.add-skill-btn {
+  margin: 0;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 600;
+  --border-radius: 14px;
+}
+
+.item-footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: rgba(var(--ion-color-dark-rgb), 0.94);
+  border-top: 1px solid rgba(var(--ion-color-primary-rgb), 0.12);
+  backdrop-filter: blur(12px);
+}
+
+.item-footer__btn {
+  margin: 0;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 15px;
+  font-weight: 600;
+  --border-radius: 14px;
+}
+
+.item-footer__btn--primary {
+  min-height: 46px;
+}
+
+.item-footer__btn--secondary {
+  min-height: 40px;
+  --padding-top: 0;
+  --padding-bottom: 0;
 }
 
 .invalid-field {
-  --border-color: red !important;
-  --border-width: 2px !important;
+  --border-color: var(--ion-color-danger) !important;
+  --highlight-color-focused: var(--ion-color-danger) !important;
+  outline: 1px solid var(--ion-color-danger);
+  outline-offset: 1px;
 }
 
 .stat-value.invalid-field {
-  border: 2px solid red;
+  outline: 2px solid var(--ion-color-danger);
 }
 
-.section {
-  margin-top: 10px;
-  background-color: var(--ion-color-medium);
-  border-radius: 25px;
-  padding: 10px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  min-height: 75px;
+.rarity-common {
+  border-color: gray;
 }
 
-.section-start-block {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 10px;
-  flex: 1;
-  min-width: 0;
+.rarity-uncommon {
+  border-color: green;
 }
 
-.image-block {
-  flex-shrink: 0;
+.rarity-rare {
+  border-color: blue;
 }
 
-.skill-image {
-  border-radius: 15px;
-  border: 2px solid transparent;
-  width: 55px;
-  height: 55px;
-  object-fit: cover;
+.rarity-very-rare {
+  border-color: purple;
 }
 
-.stats-block {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  overflow: hidden;
-  min-width: 0;
-  flex: 1;
+.rarity-legendary {
+  border-color: orange;
 }
 
-.skill-stats-block {
-  min-width: 0;
-}
+@media (min-width: 1024px) {
+  .item-page {
+    max-width: 960px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      "header header"
+      "identity identity"
+      "details skills";
+    column-gap: 16px;
+    row-gap: 12px;
+    align-items: start;
+    padding-top: 8px;
+  }
 
-.skill-name {
-  scrollbar-width: none;
-  font-size: 16px;
-  font-weight: bold;
-  white-space: nowrap;
-  overflow: scroll;
-  scrollbar-width: none;
-}
+  .item-header {
+    grid-area: header;
+    gap: 38px;
+  }
 
-.skill-short-description,
-.skill-limitations {
-  scrollbar-width: none;
-  font-size: 12px;
-  white-space: nowrap;
-  overflow: scroll;
-  scrollbar-width: none;
-}
+  .item-identity {
+    grid-area: identity;
+  }
 
-.skill-buttons-block {
-  display: flex;
-  justify-content: end;
-  align-items: center;
-  flex-shrink: 0;
-  gap: 5px;
-}
+  .item-details {
+    grid-area: details;
+  }
 
-.add-skill-button {
-  margin-top: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+  .panel--skills {
+    grid-area: skills;
+    align-self: start;
+  }
 
+  .item-footer {
+    max-width: 960px;
+    left: 50%;
+    transform: translateX(-50%);
+    flex-direction: row;
+    gap: 10px;
+    border-radius: 16px 16px 0 0;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .item-footer__btn--primary {
+    flex: 1.2;
+  }
+
+  .item-footer__btn--secondary {
+    flex: 1;
+    border: 1px solid rgba(var(--ion-color-light-rgb), 0.2);
+    border-radius: 14px;
+  }
+}
 </style>

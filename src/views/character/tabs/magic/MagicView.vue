@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {IonButton, IonIcon, onIonViewDidEnter, toastController, useIonRouter} from "@ionic/vue";
-import {add, addOutline, chevronDownOutline, chevronUpOutline, flashOutline, removeOutline} from "ionicons/icons";
+import {add, addOutline, chevronDownOutline, flashOutline, removeOutline} from "ionicons/icons";
 import {useRoute} from "vue-router";
 import {computed, onMounted, ref} from "vue";
 import {createSpellCellForBook, deleteSpellCell, updateSpellCell, useSpellCell} from "@/api/magicApi";
@@ -525,14 +525,18 @@ onIonViewDidEnter(loadMagicData);
           <div class="hint-title">Как редактировать ячейки</div>
           <ion-button
             size="small"
-            fill="outline"
+            fill="clear"
             shape="round"
-            color="light"
             class="hint-toggle-button"
             @click.stop
             @click="isSpellCellHintExpanded = !isSpellCellHintExpanded"
           >
-            <ion-icon slot="icon-only" :icon="isSpellCellHintExpanded ? chevronUpOutline : chevronDownOutline"></ion-icon>
+            <ion-icon
+              slot="icon-only"
+              class="hint-toggle-button__icon"
+              :class="{ 'hint-toggle-button__icon--expanded': isSpellCellHintExpanded }"
+              :icon="chevronDownOutline"
+            ></ion-icon>
           </ion-button>
         </div>
         <div v-if="isSpellCellHintExpanded" class="hint-text">
@@ -902,15 +906,30 @@ onIonViewDidEnter(loadMagicData);
 }
 
 .hint-toggle-button {
-  --padding-start: 6px;
-  --padding-end: 6px;
-  --border-width: 1px;
-  min-height: 26px;
+  --background: var(--ion-color-medium-shade);
+  --background-hover: var(--ion-color-medium-shade);
+  --background-activated: var(--ion-color-medium-shade);
+  --background-focused: var(--ion-color-medium-shade);
+  --padding-start: 0;
+  --padding-end: 0;
+  --border-radius: 999px;
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  min-height: 28px;
+  margin: 0;
 }
 
-.hint-toggle-button ion-icon {
-  width: 16px;
-  height: 16px;
+.hint-toggle-button__icon {
+  width: 14px;
+  height: 14px;
+  color: rgba(var(--ion-color-light-rgb), 0.7);
+  transition: transform 0.3s ease, color 0.3s ease;
+}
+
+.hint-toggle-button__icon--expanded {
+  transform: rotate(180deg);
+  color: var(--ion-color-primary);
 }
 
 .hint-text {

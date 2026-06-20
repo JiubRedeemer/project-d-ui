@@ -67,6 +67,8 @@ watch(
     {deep: true}
 );
 
+const hasSkillImage = (imgUrl: string | undefined | null) => Boolean(imgUrl?.trim());
+
 function closeModal() {
   emit("closeEditItemSkillModal");
   isEditing.value = false;
@@ -145,11 +147,13 @@ const uploadToMinio = async (file: File): Promise<string> => {
         </div>
         <div class="image" @click="triggerFileInput">
           <img v-if="previewImage" :src="previewImage" class="item-skill-image" alt="Item's Skill Image"/>
-          <img v-else-if="editableSkill.imgUrl" :src="FILE_STORAGE_INTEGRATION_ROUTES.baseURL +
-                 FILE_STORAGE_INTEGRATION_ROUTES.api +
-                 FILE_STORAGE_INTEGRATION_ROUTES.skills_images_bucket +
-                 FILE_STORAGE_INTEGRATION_ROUTES.download + '/' + editableSkill.imgUrl"
-               class="item-skill-image" alt="avatar"/>
+          <img
+              v-else-if="hasSkillImage(editableSkill.imgUrl)"
+              :src="`${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.skills_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.download}/${editableSkill.imgUrl}`"
+              class="item-skill-image"
+              alt="Item skill"
+              @error="($event.target as HTMLImageElement).style.display = 'none'"
+          />
           <div v-else-if="isEditing" class="avatar-img">
             <ion-icon :icon="add" class="placeholder-icon"></ion-icon>
           </div>
@@ -401,7 +405,19 @@ const uploadToMinio = async (file: File): Promise<string> => {
 }
 
 .image {
+  display: flex;
+  justify-content: center;
   margin-top: 10px;
+}
+
+.item-skill-image {
+  display: block;
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+  border-radius: 16px;
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.35);
+  background: var(--ion-color-dark);
 }
 
 .footer {
@@ -418,16 +434,6 @@ ion-modal {
   --border-radius: 10px;
   --height: auto;
   --background: var(--ion-color-medium-shade);
-}
-
-.item-skill-image {
-  border-radius: 10px;
-  border: 1px solid var(--ion-color-primary);
-  width: 55px;
-  height: 55px;
-  align-content: center;
-  justify-content: center;
-  display: flex;
 }
 
 .stat ion-item {
