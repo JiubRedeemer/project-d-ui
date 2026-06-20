@@ -91,7 +91,7 @@ onUnmounted(() => {
 <style scoped>
 .block {
   width: 100%;
-  height: 75vh;
+  height: 85vh;
   display: flex;
   justify-content: space-between;
   flex-direction: column;
@@ -113,6 +113,7 @@ onUnmounted(() => {
 
 .footer {
   padding: 10px;
+  margin-bottom: 50px;
   display: flex;
   justify-content: end;
 }

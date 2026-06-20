@@ -53,13 +53,24 @@ const bodyStyle = computed(() => ({
 
 .hp-liquid__body {
   position: absolute;
-  left: -55%;
+  left: -70%;
   bottom: -2px;
-  width: 210%;
+  width: 240%;
   min-height: 16%;
   transform-origin: center bottom;
   will-change: transform, height;
   transition: height 0.55s cubic-bezier(0.22, 1, 0.36, 1), transform 0.12s linear;
+}
+
+/* Solid skirt extending far below the block so tilting never reveals gaps */
+.hp-liquid__body::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 200px;
+  background: inherit;
 }
 
 .hp-liquid__body--normal {
@@ -68,16 +79,28 @@ const bodyStyle = computed(() => ({
     rgba(var(--ion-color-danger-rgb), 0.66) 100%);
 }
 
+.hp-liquid__body--normal::after {
+  background: rgba(var(--ion-color-danger-rgb), 0.66);
+}
+
 .hp-liquid__body--warn {
   background: linear-gradient(180deg,
     rgba(244, 172, 58, 0.95) 0%,
     rgba(214, 132, 30, 0.7) 100%);
 }
 
+.hp-liquid__body--warn::after {
+  background: rgba(214, 132, 30, 0.7);
+}
+
 .hp-liquid__body--critical {
   background: linear-gradient(180deg,
     rgba(224, 64, 78, 0.98) 0%,
     rgba(150, 24, 36, 0.8) 100%);
+}
+
+.hp-liquid__body--critical::after {
+  background: rgba(150, 24, 36, 0.8);
 }
 
 .hp-liquid__surface {
