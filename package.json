@@ -21,7 +21,6 @@
     "@capacitor/filesystem": "^8.1.2",
     "@capacitor/haptics": "8.0.1",
     "@capacitor/keyboard": "8.0.1",
-    "@capacitor/motion": "^8.0.0",
     "@capacitor/status-bar": "8.0.1",
     "@ionic/vue": "^8.7.18",
     "@ionic/vue-router": "^8.7.18",

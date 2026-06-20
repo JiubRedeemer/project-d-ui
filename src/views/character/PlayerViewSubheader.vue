@@ -1,10 +1,8 @@
 <script setup lang="ts">
 
-import {computed, onMounted} from "vue";
+import {computed} from "vue";
 import {IonIcon} from "@ionic/vue";
 import {chevronDownOutline, heartOutline, locateOutline} from "ionicons/icons";
-import HpLiquidFill from "@/components/HpLiquidFill.vue";
-import {useDeviceTilt} from "@/composables/useDeviceTilt";
 import armorIcon from "../../static/icons/Armor.svg"
 import speedIcon from "../../static/icons/Speed.svg"
 import restIcon from "../../static/icons/rest.svg"
@@ -17,7 +15,6 @@ import {useInventoryStore} from "@/stores/InventoryStore";
 const characterStore = useCharacterStore()
 const subheaderStore = useSubheaderOpenedStore();
 const inventoryStore = useInventoryStore();
-const { tiltX, tiltY, start: startDeviceTilt } = useDeviceTilt();
 
 function getArmoryClassBonusSum(itemStats: EquippedItemsStatsResponse | null): number {
   if (!itemStats) return 0;
@@ -62,7 +59,6 @@ const selectInitiative = (character: Character) => {
 };
 
 const selectHealth = (character: Character) => {
-  void startDeviceTilt();
   emits("health-selected", character);
 };
 
@@ -142,22 +138,9 @@ const maxHp = computed(() =>
     (characterStore.character?.health?.maxHp ?? 0)
     + (characterStore.character?.health?.bonusValue ?? 0)
 );
-
-const hpPercent = computed(() =>
-    maxHp.value > 0 ? (currentHp.value / maxHp.value) * 100 : 0
-);
-
-const hpTone = computed<'normal' | 'warn' | 'critical'>(() => {
-  if (hpPercent.value <= 25) return 'critical';
-  if (hpPercent.value <= 50) return 'warn';
-  return 'normal';
-});
+const tempHp = computed(() => characterStore.character?.health?.tempHp ?? 0);
 
 const isOpen = computed(() => subheaderStore.subheaderOpened);
-
-onMounted(() => {
-  void startDeviceTilt();
-});
 </script>
 
 <template>
@@ -198,17 +181,11 @@ onMounted(() => {
           class="stat-card stat-card--hp"
           @click="selectHealth(characterStore.character!!)"
       >
-        <HpLiquidFill
-            :fill-percent="hpPercent"
-            :tilt-x="tiltX"
-            :tilt-y="tiltY"
-            :tone="hpTone"
-        />
-        <div class="stat-card__content stat-card__content--hp">
-          <ion-icon class="stat-card__icon stat-card__icon--hp" :icon="heartOutline"/>
-          <span class="stat-card__value stat-card__value--hp">{{ currentHp }}/{{ maxHp }}</span>
-          <span class="stat-card__label">Здоровье</span>
-        </div>
+        <ion-icon class="stat-card__icon stat-card__icon--hp" :icon="heartOutline"/>
+        <span class="stat-card__value stat-card__value--hp">
+          {{ currentHp }}/{{ maxHp }}<span v-if="tempHp > 0" class="stat-card__temp-hp">+{{ tempHp }}</span>
+        </span>
+        <span class="stat-card__label">Здоровье</span>
       </button>
 
       <button
@@ -410,37 +387,22 @@ onMounted(() => {
 }
 
 .stat-card--hp {
-  position: relative;
-  overflow: hidden;
   border-color: rgba(var(--ion-color-danger-rgb), 0.28);
-  background: rgba(var(--ion-color-dark-rgb), 0.55);
-}
-
-.stat-card__content {
-  position: relative;
-  z-index: 1;
-  display: contents;
-}
-
-.stat-card__content--hp .stat-card__icon--hp,
-.stat-card__content--hp .stat-card__value--hp,
-.stat-card__content--hp .stat-card__label {
-  position: relative;
-  z-index: 1;
 }
 
 .stat-card__icon--hp {
-  color: rgba(255, 255, 255, 0.95);
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
+  color: var(--ion-color-danger);
 }
 
 .stat-card__value--hp {
-  color: #fff;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+  color: var(--ion-color-danger-tint);
 }
 
-.stat-card__content--hp .stat-card__label {
-  color: rgba(255, 255, 255, 0.72);
+.stat-card__temp-hp {
+  margin-left: 2px;
+  font-size: 0.82em;
+  font-weight: 700;
+  color: rgba(124, 212, 255, 0.98);
 }
 
 .rest-action {

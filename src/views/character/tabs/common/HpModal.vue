@@ -27,6 +27,13 @@ const isDesktop = ref<boolean>(window.innerWidth >= 1024);
 const modalBreakpoints = computed(() => (isDesktop.value ? undefined : [0, 1]));
 const modalInitialBreakpoint = computed(() => (isDesktop.value ? undefined : 1));
 
+const currentHp = computed(() => characterStore.character?.health?.currentHp ?? 0);
+const maxHp = computed(() =>
+    (characterStore.character?.health?.maxHp ?? 0)
+    + (characterStore.character?.health?.bonusValue ?? 0)
+);
+const tempHp = computed(() => characterStore.character?.health?.tempHp ?? 0);
+
 async function onSubmit() {
   emit('closeHpModal');
 }
@@ -65,9 +72,7 @@ onUnmounted(() => {
         <div class="name">{{ HEADERS.health.rus }}
         </div>
         <div class="value">
-          {{ characterStore.character.health.currentHp }}/{{
-            characterStore.character.health.maxHp + characterStore.character.health.bonusValue
-          }}({{ characterStore.character.health.tempHp }})
+          {{ currentHp }}/{{ maxHp }}<span v-if="tempHp > 0" class="temp-hp"> +{{ tempHp }}</span>
         </div>
       </div>
       <div class="input-block">
@@ -104,6 +109,13 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   flex-direction: row;
+}
+
+.temp-hp {
+  margin-left: 4px;
+  font-size: 0.9em;
+  font-weight: 700;
+  color: rgba(124, 212, 255, 0.98);
 }
 
 .input-block {
