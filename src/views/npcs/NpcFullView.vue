@@ -1,52 +1,88 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import {computed, onMounted, ref, watch} from "vue";
+import {useRoute, useRouter} from "vue-router";
 import {
+  IonBackButton,
   IonButton,
-  IonChip,
+  IonButtons,
   IonContent,
-  IonFab,
-  IonFabButton,
+  IonHeader,
   IonIcon,
-  IonLabel,
   IonPage,
+  IonToolbar,
 } from "@ionic/vue";
-import { arrowBackOutline, createOutline, sparkles } from "ionicons/icons";
-import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
-import { FILE_STORAGE_INTEGRATION_ROUTES } from "@/config/integrationRoutes";
-import { getNpcByIdForRoom } from "@/api/npcApi";
-import type { NpcDto, NpcTypeEnum } from "@/api/npcApi.types";
+import {createOutline} from "ionicons/icons";
+import {FILE_STORAGE_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {getNpcByIdForRoom} from "@/api/npcApi";
+import type {NpcDto, NpcTypeEnum} from "@/api/npcApi.types";
+import {marked} from "marked";
+import {extractDominantColorFromUrl} from "@/utils/imageAmbient";
 
-const NPC_TYPE_LABELS: Record<NpcTypeEnum, string> = {
-  RATIONAL: "Разумное",
-  BEAST: "Животное",
-  MONSTER: "Монстр",
-  DEITY: "Божество",
-  UNDEAD: "Нежить",
+marked.setOptions({breaks: true});
+
+const NPC_TYPE_ABBREVIATIONS: Record<NpcTypeEnum, string> = {
+  RATIONAL: "Р",
+  BEAST: "Ж",
+  MONSTER: "М",
+  DEITY: "Б",
+  UNDEAD: "Н",
 };
 
-const getNpcTypeLabel = (type: NpcTypeEnum | undefined | null) =>
-  type ? (NPC_TYPE_LABELS[type] ?? type) : "";
+const NPC_IMAGE_PLACEHOLDER =
+    "https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png";
 
 const route = useRoute();
 const ionRouter = useRouter();
 
 const npc = ref<NpcDto | null>(null);
+const ambientColor = ref<string | null>(null);
 
-const getImageUrl = (imgUrl: string | undefined | null) => {
-  return imgUrl != null
-    ? `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.npc_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.download}/${imgUrl}`
-    : "https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png";
-};
+const getImageUrl = (imgUrl: string | undefined | null) =>
+    imgUrl != null && imgUrl.trim()
+        ? `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.npc_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.download}/${imgUrl}`
+        : NPC_IMAGE_PLACEHOLDER;
 
-const previousStep = () => {
-  ionRouter.back();
+const npcImageUrl = computed(() => getImageUrl(npc.value?.imgUrl));
+
+watch(npcImageUrl, (src) => {
+  if (!src || src === NPC_IMAGE_PLACEHOLDER) {
+    ambientColor.value = null;
+    return;
+  }
+  void extractDominantColorFromUrl(src).then((color) => {
+    if (src === npcImageUrl.value) {
+      ambientColor.value = color;
+    }
+  });
+}, {immediate: true});
+
+function getNpcTypeAbbreviation(type: NpcTypeEnum | undefined | null): string {
+  if (!type) return "—";
+  return NPC_TYPE_ABBREVIATIONS[type] ?? type.charAt(0);
+}
+
+function formatBool(value: boolean | undefined | null): string {
+  return value ? "Да" : "Нет";
+}
+
+const headerStats = computed(() => {
+  if (!npc.value) return [];
+  return [
+    {key: "type", label: "Тип", value: getNpcTypeAbbreviation(npc.value.type)},
+    {key: "visible", label: "Видимость", value: formatBool(npc.value.visible), wide: true},
+    {key: "unique", label: "Уникальность", value: formatBool(npc.value.unique), wide: true},
+  ];
+});
+
+const renderMarkdown = (text: string | undefined | null): string => {
+  if (!text?.trim()) return "";
+  return marked.parse(text.replace(/\r\n/g, "\n"), {gfm: true, breaks: true}) as string;
 };
 
 const goToEdit = () => {
   const roomId = route.params.roomId as string;
-  const npcId = npc.value?.id;
-  if (npcId) ionRouter.push(`/rooms/${roomId}/npcs/${npcId}/edit`);
+  const id = npc.value?.id;
+  if (id) ionRouter.push(`/rooms/${roomId}/npcs/${id}/edit`);
 };
 
 onMounted(async () => {
@@ -61,246 +97,373 @@ onMounted(async () => {
 </script>
 
 <template>
-  <ion-page>
-    <RoomsHeader :header-name="npc?.name || 'NPC'"></RoomsHeader>
-    <ion-content>
-      <div class="container" v-if="npc">
-        <div class="header">
-          <div class="avatar-wrap">
-            <img :src="getImageUrl(npc.imgUrl)" class="avatar-img" alt="npc" />
-            <div v-if="npc.unique" class="unique-badge" title="Уникальный">
-              <ion-icon :icon="sparkles" />
-              <span>Уникальный</span>
+  <ion-page class="item-page-root">
+    <ion-header>
+      <ion-toolbar color="dark" class="item-toolbar">
+        <ion-buttons slot="start">
+          <ion-back-button default-href="/" text=""/>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+
+    <ion-content class="item-ion-content" color="dark">
+      <div v-if="npc" class="item-page">
+        <div class="item-header">
+          <div
+              class="avatar"
+              :style="ambientColor ? { '--ambient-color': ambientColor } : undefined"
+          >
+            <div class="avatar-ambient" aria-hidden="true">
+              <img :src="npcImageUrl" alt="" class="avatar-ambient__img"/>
+            </div>
+            <img :src="npcImageUrl" :alt="npc.name" class="avatar-img"/>
+          </div>
+
+          <div class="stats">
+            <div v-for="stat in headerStats" :key="stat.key" class="stat">
+              <span class="stat__label">{{ stat.label }}</span>
+              <span class="stat-value" :class="{ 'stat-value--wide': stat.wide }">{{ stat.value }}</span>
             </div>
           </div>
         </div>
-        <div class="body">
-          <div class="stat" v-if="npc.visible != null">
-            <div class="stat-header">Видимость</div>
-            <ion-chip class="stat-chip" :color="npc.visible ? 'success' : 'danger'">
-              <ion-label>{{ npc.visible ? "Видимый" : "Скрытый" }}</ion-label>
-            </ion-chip>
-          </div>
-          <div class="description" v-if="npc.description">
-            {{ npc.description }}
-          </div>
 
-          <div class="stat">
-            <div class="stat-header">Тип</div>
-            <ion-chip class="stat-chip" color="primary">
-              <ion-label>{{ getNpcTypeLabel(npc.type) }}</ion-label>
-            </ion-chip>
-          </div>
+        <div class="item-identity">
+          <h1 class="item-identity__name">{{ npc.name }}</h1>
+        </div>
 
-          <div class="stat" v-if="npc.clazzInfo?.name || npc.clazzCode">
-            <div class="stat-header">Класс</div>
-            <ion-chip class="stat-chip" color="primary">
-              <ion-label>{{ npc.clazzInfo?.name || npc.clazzCode }}</ion-label>
-            </ion-chip>
-          </div>
-
-          <div class="stat" v-if="npc.raceInfo?.name || npc.raceCode">
-            <div class="stat-header">Раса</div>
-            <ion-chip class="stat-chip" color="primary">
-              <ion-label>{{ npc.raceInfo?.name || npc.raceCode }}</ion-label>
-            </ion-chip>
-          </div>
-
-          <div class="stat" v-if="npc.armoryClass || npc.speed || npc.initiative != null">
-            <div class="stat-header">Базовые параметры</div>
-            <div class="stat-row">
-              <ion-chip v-if="npc.armoryClass" class="stat-chip" color="primary">
-                <ion-label>КД: {{ npc.armoryClass }}</ion-label>
-              </ion-chip>
-              <ion-chip v-if="npc.speed" class="stat-chip" color="primary">
-                <ion-label>Скорость: {{ npc.speed }}</ion-label>
-              </ion-chip>
-              <ion-chip v-if="npc.initiative != null" class="stat-chip" color="primary">
-                <ion-label>Инициатива: {{ npc.initiative }}</ion-label>
-              </ion-chip>
+        <div class="item-details">
+          <section class="panel">
+            <h2 class="panel__title">Характеристики</h2>
+            <div class="details-grid">
+              <div v-if="npc.clazzInfo?.name || npc.clazzCode" class="detail-row">
+                <span class="detail-row__label">Класс</span>
+                <span class="detail-row__value detail-row__value--pill">
+                  {{ npc.clazzInfo?.name || npc.clazzCode }}
+                </span>
+              </div>
+              <div v-if="npc.raceInfo?.name || npc.raceCode" class="detail-row">
+                <span class="detail-row__label">Раса</span>
+                <span class="detail-row__value detail-row__value--pill">
+                  {{ npc.raceInfo?.name || npc.raceCode }}
+                </span>
+              </div>
+              <div v-if="npc.armoryClass" class="detail-row">
+                <span class="detail-row__label">КД</span>
+                <span class="detail-row__value detail-row__value--pill">{{ npc.armoryClass }}</span>
+              </div>
+              <div v-if="npc.speed" class="detail-row">
+                <span class="detail-row__label">Скорость</span>
+                <span class="detail-row__value detail-row__value--pill">{{ npc.speed }}</span>
+              </div>
+              <div v-if="npc.initiative != null" class="detail-row">
+                <span class="detail-row__label">Инициатива</span>
+                <span class="detail-row__value detail-row__value--pill">{{ npc.initiative }}</span>
+              </div>
             </div>
-          </div>
+          </section>
 
-          <div class="stat">
-            <ion-button fill="outline" size="small" @click="goToEdit">
-              <ion-icon :icon="createOutline" slot="start" />
-              Редактировать
-            </ion-button>
-          </div>
-
-          <div style="height: 10vh"></div>
+          <section v-if="npc.description" class="panel">
+            <h2 class="panel__title">Описание</h2>
+            <div class="description-html" v-html="renderMarkdown(npc.description)"/>
+          </section>
         </div>
       </div>
     </ion-content>
-    <ion-fab slot="fixed" vertical="bottom" horizontal="start">
-      <ion-fab-button color="medium" @click="previousStep()">
-        <ion-icon :icon="arrowBackOutline" color="light"></ion-icon>
-      </ion-fab-button>
-    </ion-fab>
+
+    <div v-if="npc" class="item-footer">
+      <ion-button
+          class="item-footer__btn item-footer__btn--primary"
+          expand="block"
+          fill="solid"
+          shape="round"
+          color="primary"
+          @click="goToEdit"
+      >
+        <ion-icon slot="start" :icon="createOutline"/>
+        Редактировать
+      </ion-button>
+    </div>
   </ion-page>
 </template>
 
 <style scoped>
-.description {
-  margin-top: 10px;
-  margin-left: 10px;
-  margin-right: 10px;
-  padding: 10px;
-  text-align: left;
-  background-color: var(--ion-color-medium);
-  border-radius: 10px;
+.item-page-root {
+  --item-footer-height: 72px;
 }
 
-.stat {
-  margin-top: 10px;
+.item-toolbar {
+  --min-height: 44px;
 }
 
-.stat-header {
-  font-size: 24px;
-  padding-left: 10px;
+.item-ion-content {
+  --background: var(--ion-color-dark);
+  --padding-top: 4px;
+  --padding-bottom: calc(var(--item-footer-height) + env(safe-area-inset-bottom, 0px) + 16px);
 }
 
-.stat-chip {
-  margin-left: 10px;
-}
-
-.stat-row {
+.item-page {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  padding-left: 10px;
-  padding-right: 10px;
+  flex-direction: column;
+  gap: 10px;
+  padding: 8px 14px;
+  max-width: 720px;
+  margin: 0 auto;
 }
 
-.avatar-img {
-  border-radius: 25px;
-  align-content: center;
-  justify-content: center;
+.item-header {
   display: flex;
-}
-
-.avatar-wrap {
-  margin-top: 10px;
-  margin-left: 10px;
-  margin-right: 10px;
-  display: flex;
-  justify-content: center;
-  position: relative;
-}
-
-.unique-badge {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  display: flex;
+  flex-direction: row;
+  width: 100%;
   align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #ffd700, #ffb347);
-  color: #5c3d00;
-  font-size: 12px;
-  font-weight: 600;
-  box-shadow: 0 2px 8px rgba(255, 193, 7, 0.4);
-}
-
-.unique-badge ion-icon {
-  font-size: 16px;
+  justify-content: flex-start;
+  gap: 20px;
 }
 
 .avatar {
-  margin-top: 10px;
-  margin-left: 10px;
-  margin-right: 10px;
+  position: relative;
+  flex-shrink: 0;
+  height: 180px;
+  width: 180px;
+  border-radius: 25px;
+  overflow: hidden;
   display: flex;
+  align-items: center;
   justify-content: center;
+  background-color: var(--ambient-color, var(--ion-color-dark));
+  border: 1px solid var(--ion-color-medium);
+  transition: background-color 0.45s ease;
 }
 
-.header {
-  display: flex;
-  justify-content: center;
+.avatar-ambient {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
 }
 
-.container {
-  padding-bottom: 90px;
+.avatar-ambient__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.14);
+  filter: blur(20px) saturate(1.5);
+}
+
+.avatar-img {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 180px;
+  max-height: 180px;
+  object-fit: contain;
+}
+
+.stats {
+  flex: 1;
+  width: 180px;
+  height: 180px;
+  border-radius: 25px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  background-color: var(--ion-color-medium);
+}
+
+.stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  background-color: var(--ion-color-secondary-opacity-40);
+  margin: 0 5%;
+  height: 23%;
+  min-height: 36px;
+  border-radius: 15px;
+  padding: 0 8px;
+  font-weight: bold;
+  font-size: 11px;
+  line-height: 1.2;
+  color: var(--ion-color-light);
+}
+
+.stat__label {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stat-value {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background-color: var(--ion-color-primary);
+  color: var(--ion-color-primary-contrast);
+  border-radius: 50%;
+  height: 30px;
+  width: 30px;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-value--wide {
+  width: auto;
+  min-width: 30px;
+  max-width: 58px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 10px;
+}
+
+.item-identity {
+  padding: 0 4px;
+}
+
+.item-identity__name {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--ion-color-light);
+}
+
+.item-details {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.panel {
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--ion-color-medium);
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.1);
+}
+
+.panel__title {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(var(--ion-color-light-rgb), 0.45);
+}
+
+.details-grid {
+  display: flex;
+  flex-direction: column;
+}
+
+.detail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 46px;
+  padding: 9px 0;
+  border-bottom: 1px solid rgba(var(--ion-color-light-rgb), 0.06);
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.detail-row__label {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.35;
+  color: rgba(var(--ion-color-light-rgb), 0.62);
+}
+
+.detail-row__value {
+  flex-shrink: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ion-color-light);
+  text-align: right;
+}
+
+.detail-row__value--pill {
+  min-width: 28px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(var(--ion-color-primary-rgb), 0.14);
+  color: var(--ion-color-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.description-html :deep(p) {
+  margin: 0 0 0.75em;
+  font-size: 15px;
+  line-height: 1.6;
+  color: rgba(var(--ion-color-light-rgb), 0.9);
+  word-break: break-word;
+}
+
+.description-html :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+.description-html :deep(ul),
+.description-html :deep(ol) {
+  margin: 0.5em 0 0.75em;
+  padding-left: 1.25em;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.item-footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: rgba(var(--ion-color-dark-rgb), 0.94);
+  border-top: 1px solid rgba(var(--ion-color-primary-rgb), 0.12);
+  backdrop-filter: blur(12px);
+}
+
+.item-footer__btn {
+  margin: 0;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 15px;
+  font-weight: 600;
+  --border-radius: 14px;
+}
+
+.item-footer__btn--primary {
+  min-height: 46px;
 }
 
 @media (min-width: 1024px) {
-  .container {
-    max-width: 1240px;
-    margin: 0 auto;
-    padding: 18px 20px 96px;
-    display: grid;
-    grid-template-columns: minmax(320px, 400px) minmax(560px, 1fr);
-    gap: 18px 20px;
-    align-items: start;
+  .item-page {
+    max-width: 960px;
+    padding-top: 8px;
   }
 
-  .header {
-    grid-column: 1;
-    position: sticky;
-    top: 14px;
+  .item-header {
+    gap: 38px;
   }
 
-  .avatar-wrap {
-    width: 100%;
-    margin: 0;
-    border-radius: 16px;
-    overflow: hidden;
-    border: 1px solid rgba(var(--ion-color-light-rgb), 0.12);
-    background: var(--ion-color-medium);
-  }
-
-  .avatar-img {
-    width: 100%;
-    height: min(62vh, 560px);
-    object-fit: cover;
-    border-radius: 0;
-  }
-
-  .unique-badge {
-    top: 12px;
-    right: 12px;
-  }
-
-  .body {
-    grid-column: 2;
-  }
-
-  .description {
-    margin: 0;
-    padding: 14px;
-    line-height: 1.45;
-    border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
-    border-radius: 12px;
-  }
-
-  .stat {
-    margin-top: 14px;
-  }
-
-  .stat-header {
-    font-size: 20px;
-    padding-left: 0;
-    margin-bottom: 6px;
-  }
-
-  .stat-chip {
-    margin-left: 0;
-    margin-right: 8px;
-    margin-bottom: 8px;
-  }
-
-  .stat-row {
-    padding-left: 0;
-    padding-right: 0;
-    gap: 8px;
-  }
-
-  ion-fab {
-    left: 22px;
-    bottom: 18px;
+  .item-footer {
+    max-width: 960px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 16px 16px 0 0;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
   }
 }
 </style>
-
