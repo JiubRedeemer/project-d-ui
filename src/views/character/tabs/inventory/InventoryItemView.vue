@@ -151,7 +151,7 @@ function getCoinType(coinType: string | undefined) {
 }
 
 const headerStats = computed(() => {
-  const stats: Array<{key: string; label: string; value: string; wide?: boolean; coinIcon?: string}> = [];
+  const stats: Array<{ key: string; label: string; value: string; wide?: boolean; coinIcon?: string }> = [];
   const currentItem = item.value;
   if (!currentItem) return stats;
 
@@ -258,11 +258,11 @@ function getRefillLabel(refill: ItemSkill["chargesRefill"]): string {
               <span class="stat__label">{{ stat.label }}</span>
               <span class="stat-value" :class="{ 'stat-value--wide': stat.wide }">
                 {{ stat.value }}<ion-icon
-                    v-if="stat.coinIcon"
-                    class="stat-value__coin"
-                    :src="stat.coinIcon"
-                    aria-hidden="true"
-                />
+                  v-if="stat.coinIcon"
+                  class="stat-value__coin"
+                  :src="stat.coinIcon"
+                  aria-hidden="true"
+              />
               </span>
             </div>
           </div>
@@ -278,61 +278,63 @@ function getRefillLabel(refill: ItemSkill["chargesRefill"]): string {
           </section>
 
           <section class="panel">
-          <h2 class="panel__title">Характеристики</h2>
-          <div class="details-grid">
-            <div v-if="item.stats?.weight != null" class="detail-row">
-              <span class="detail-row__label">{{ TEXTS.weight.rus }}</span>
-              <span class="detail-row__value detail-row__value--pill">{{ item.stats.weight }}</span>
-            </div>
-            <div v-if="isWeapon && item.stats?.damage" class="detail-row">
-              <span class="detail-row__label">Урон</span>
-              <span class="detail-row__value detail-row__value--pill">
+            <h2 class="panel__title">Характеристики</h2>
+            <div class="details-grid">
+              <div v-if="item.stats?.weight != null" class="detail-row">
+                <span class="detail-row__label">{{ TEXTS.weight.rus }}</span>
+                <span class="detail-row__value detail-row__value--pill">{{ item.stats.weight }}</span>
+              </div>
+              <div v-if="isWeapon && item.stats?.damage" class="detail-row">
+                <span class="detail-row__label">Урон</span>
+                <span class="detail-row__value detail-row__value--pill">
                 {{ item.stats.damage.value }}
                 <template v-if="item.stats.damage.damageTypeName">
                   ({{ item.stats.damage.damageTypeName }})
                 </template>
               </span>
-            </div>
-            <div v-if="isArmor && item.stats?.armorClass" class="detail-row">
-              <span class="detail-row__label">{{ HEADERS.armoryClass.rus }}</span>
-              <span class="detail-row__value detail-row__value--pill">{{ item.stats.armorClass }}</span>
-            </div>
-            <div
-                v-if="isArmor && Number(item.stats?.armorClassMaxDexterityBonus) > 0"
-                class="detail-row"
-            >
-              <span class="detail-row__label">{{ HEADERS.max_dex_bonus.rus }}</span>
-              <span class="detail-row__value detail-row__value--pill">{{ item.stats.armorClassMaxDexterityBonus }}</span>
-            </div>
-            <div v-if="isArmor && hasArmorStatRequirement" class="detail-row">
-              <span class="detail-row__label">{{ HEADERS.force_requirements.rus }}</span>
-              <span class="detail-row__value detail-row__value--pill">{{ item.stats?.requirement }}</span>
-            </div>
-            <div class="detail-row">
-              <span class="detail-row__label">Настройка</span>
-              <span class="detail-row__value detail-row__value--toggle">
+              </div>
+              <div v-if="isArmor && item.stats?.armorClass" class="detail-row">
+                <span class="detail-row__label">{{ HEADERS.armoryClass.rus }}</span>
+                <span class="detail-row__value detail-row__value--pill">{{ item.stats.armorClass }}</span>
+              </div>
+              <div
+                  v-if="isArmor && Number(item.stats?.armorClassMaxDexterityBonus) > 0"
+                  class="detail-row"
+              >
+                <span class="detail-row__label">{{ HEADERS.max_dex_bonus.rus }}</span>
+                <span class="detail-row__value detail-row__value--pill">{{
+                    item.stats.armorClassMaxDexterityBonus
+                  }}</span>
+              </div>
+              <div v-if="isArmor && hasArmorStatRequirement" class="detail-row">
+                <span class="detail-row__label">{{ HEADERS.force_requirements.rus }}</span>
+                <span class="detail-row__value detail-row__value--pill">{{ item.stats?.requirement }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-row__label">Настройка</span>
+                <span class="detail-row__value detail-row__value--toggle">
                 <ion-toggle :checked="item.customization" :disabled="true"/>
               </span>
+              </div>
+              <div v-if="inventoryItem.attackBonusValue" class="detail-row">
+                <span class="detail-row__label">Бонус атаки</span>
+                <span class="detail-row__value">+{{ inventoryItem.attackBonusValue }}</span>
+              </div>
+              <div v-if="inventoryItem.damageBonusValue" class="detail-row">
+                <span class="detail-row__label">Бонус урона</span>
+                <span class="detail-row__value">+{{ inventoryItem.damageBonusValue }}</span>
+              </div>
             </div>
-            <div v-if="inventoryItem.attackBonusValue" class="detail-row">
-              <span class="detail-row__label">Бонус атаки</span>
-              <span class="detail-row__value">+{{ inventoryItem.attackBonusValue }}</span>
-            </div>
-            <div v-if="inventoryItem.damageBonusValue" class="detail-row">
-              <span class="detail-row__label">Бонус урона</span>
-              <span class="detail-row__value">+{{ inventoryItem.damageBonusValue }}</span>
-            </div>
-          </div>
 
-          <div v-if="item.stats?.tags?.length" class="tags">
-            <span v-for="(tag, idx) in item.stats.tags" :key="idx" class="tag">{{ tag }}</span>
-          </div>
-        </section>
+            <div v-if="item.stats?.tags?.length" class="tags">
+              <span v-for="(tag, idx) in item.stats.tags" :key="idx" class="tag">{{ tag }}</span>
+            </div>
+          </section>
 
-        <section v-if="item.description" class="panel">
-          <h2 class="panel__title">Описание</h2>
-          <div class="description-html" v-html="renderMarkdown(item.description)"/>
-        </section>
+          <section v-if="item.description" class="panel">
+            <h2 class="panel__title">Описание</h2>
+            <div class="description-html" v-html="renderMarkdown(item.description)"/>
+          </section>
         </div>
 
         <section v-if="item.skills?.length" class="panel panel--skills">
@@ -439,8 +441,8 @@ function getRefillLabel(refill: ItemSkill["chargesRefill"]): string {
 .avatar {
   position: relative;
   flex-shrink: 0;
-  min-width: 180px;
-  min-height: 180px;
+  height: 180px;
+  width: 180px;
   border-radius: 25px;
   overflow: hidden;
   display: flex;
