@@ -308,103 +308,112 @@ function calculateCheckValue(value: any, ability: AbilityDto) {
   }
   return result;
 }
+
+function abilityModifier(ability: AbilityDto): number {
+  const score = (ability.value ?? 0) + (ability.bonusValue ?? 0);
+  return Math.floor((score - 10) / 2);
+}
+
+function formatModifier(value: number): string {
+  return value >= 0 ? `+${value}` : `${value}`;
+}
 </script>
 
 
 <template>
   <div class="abilities" v-if="resultAbilities">
-    <div class="ability-item ability-item--proficiency">
-      <div class="skill-item skill-item--proficiency">
-        <div class="skill-name">Бонус мастерства</div>
-        <div class="skill-value">{{ characterStore.character.proficiencyBonus }}</div>
-      </div>
+    <div class="prof-banner">
+      <span class="prof-banner__label">Бонус мастерства</span>
+      <span class="prof-banner__value">{{ formatModifier(characterStore.character.proficiencyBonus) }}</span>
     </div>
-    <div class="ability-item" v-for="(ability, key) in orderedAbilities" :key="key">
-      <div class="ability-header">
-        <div class="ability" @click="selectAbility(ability[1])">
-          <div class="ability-name">{{ ability[1].name }}</div>
-          <div class="ability-value">{{ ability[1].value + ability[1].bonusValue }}</div>
+
+    <div class="abilities-grid">
+    <div class="ability-card" v-for="(ability, key) in orderedAbilities" :key="key">
+      <button type="button" class="ability-card__head" @click="selectAbility(ability[1])">
+        <span class="ability-card__name">{{ ability[1].name }}</span>
+        <span class="ability-card__mod">{{ formatModifier(abilityModifier(ability[1])) }}</span>
+        <span class="ability-card__score">{{ ability[1].value + ability[1].bonusValue }}</span>
+      </button>
+
+      <div class="ability-card__rolls">
+        <div
+            class="roll-row roll-row--check"
+            :class="{
+              'roll-row--adv': ability[1].advantageCheckValue === 1,
+              'roll-row--dis': ability[1].advantageCheckValue === -1
+            }"
+        >
+          <span class="roll-row__toggle">
+            <AbilityParamUp :checked="ability[1].masteryCheckValue > 0"
+                            :doubleChecked="ability[1].masteryCheckValue > 1"
+                            @click="changeCheckedAbilityCheck(ability[1])"/>
+          </span>
+          <span class="roll-row__label">Проверка</span>
+          <button
+              type="button"
+              class="roll-pill"
+              :class="getRollModifierClass(ability[1].advantageCheckValue, 'check')"
+              :title="`${getAdvantageLabel(ability[1].advantageCheckValue)} — нажмите, чтобы сменить`"
+              :aria-label="rollModifierAriaLabel(ability[1].advantageCheckValue, calculateCheckValue(ability[1].value + ability[1].bonusValue, ability[1]))"
+              @click.stop="changeAdvantageAbilityCheck(ability[1])"
+          >
+            {{ formatModifier(calculateCheckValue(ability[1].value + ability[1].bonusValue, ability[1])) }}
+          </button>
         </div>
-        <div class="ability-side-block">
-          <div
-              class="check"
-              :class="{
-                'skill-item--roll-adv': ability[1].advantageCheckValue === 1,
-                'skill-item--roll-dis': ability[1].advantageCheckValue === -1
-              }"
+        <div
+            class="roll-row roll-row--save"
+            :class="{
+              'roll-row--adv': ability[1].advantageSavingThrowValue === 1,
+              'roll-row--dis': ability[1].advantageSavingThrowValue === -1
+            }"
+        >
+          <span class="roll-row__toggle">
+            <AbilityParamUp :checked="ability[1].masterySavingThrowValue > 0"
+                            :doubleChecked="ability[1].masterySavingThrowValue > 1"
+                            @click="changeCheckedAbilitySavingThrow(ability[1])"/>
+          </span>
+          <span class="roll-row__label">Спасбросок</span>
+          <button
+              type="button"
+              class="roll-pill"
+              :class="getRollModifierClass(ability[1].advantageSavingThrowValue, 'save')"
+              :title="`${getAdvantageLabel(ability[1].advantageSavingThrowValue)} — нажмите, чтобы сменить`"
+              :aria-label="rollModifierAriaLabel(ability[1].advantageSavingThrowValue, calculateSavingThrow(ability[1].value + ability[1].bonusValue, ability[1]))"
+              @click.stop="changeAdvantageAbilitySavingThrow(ability[1])"
           >
-            <div class="skill-up">
-              <AbilityParamUp :checked="ability[1].masteryCheckValue > 0"
-                              :doubleChecked="ability[1].masteryCheckValue > 1"
-                              @click="changeCheckedAbilityCheck(ability[1])"/>
-            </div>
-            <div class="check-name">Проверка</div>
-            <button
-                type="button"
-                class="check-value check-value--roll"
-                :class="getRollModifierClass(ability[1].advantageCheckValue, 'check')"
-                :title="`${getAdvantageLabel(ability[1].advantageCheckValue)} — нажмите, чтобы сменить`"
-                :aria-label="rollModifierAriaLabel(ability[1].advantageCheckValue, calculateCheckValue(ability[1].value + ability[1].bonusValue, ability[1]))"
-                @click.stop="changeAdvantageAbilityCheck(ability[1])"
-            >
-              {{ calculateCheckValue(ability[1].value + ability[1].bonusValue, ability[1]) }}
-            </button>
-          </div>
-          <div
-              class="saving-throw"
-              :class="{
-                'skill-item--roll-adv': ability[1].advantageSavingThrowValue === 1,
-                'skill-item--roll-dis': ability[1].advantageSavingThrowValue === -1
-              }"
-          >
-            <div class="skill-up">
-              <AbilityParamUp :checked="ability[1].masterySavingThrowValue > 0"
-                              :doubleChecked="ability[1].masterySavingThrowValue > 1"
-                              @click="changeCheckedAbilitySavingThrow(ability[1])"/>
-            </div>
-            <div class="saving-throw-name">Спасбросок</div>
-            <button
-                type="button"
-                class="saving-throw-value saving-throw-value--roll"
-                :class="getRollModifierClass(ability[1].advantageSavingThrowValue, 'save')"
-                :title="`${getAdvantageLabel(ability[1].advantageSavingThrowValue)} — нажмите, чтобы сменить`"
-                :aria-label="rollModifierAriaLabel(ability[1].advantageSavingThrowValue, calculateSavingThrow(ability[1].value + ability[1].bonusValue, ability[1]))"
-                @click.stop="changeAdvantageAbilitySavingThrow(ability[1])"
-            >
-              {{ calculateSavingThrow(ability[1].value + ability[1].bonusValue, ability[1]) }}
-            </button>
-          </div>
+            {{ formatModifier(calculateSavingThrow(ability[1].value + ability[1].bonusValue, ability[1])) }}
+          </button>
         </div>
       </div>
-      <div class="skills" v-if="ability[1].skills && ability[1].skills.length">
+
+      <div class="ability-card__skills" v-if="ability[1].skills && ability[1].skills.length">
         <div
-            class="skill-item"
+            class="skill-row"
             :class="{
-              'skill-item--roll-adv': skill.advantageValue === 1,
-              'skill-item--roll-dis': skill.advantageValue === -1
+              'skill-row--adv': skill.advantageValue === 1,
+              'skill-row--dis': skill.advantageValue === -1
             }"
             v-for="(skill, index) in ability[1].skills"
             :key="index"
         >
-          <div class="skill-start-block">
-            <div class="skill-up">
-              <SkillUp :checked="skill.masteryValue > 0" :doubleChecked="skill.masteryValue > 1"
-                       @click="changeChecked(skill)"/>
-            </div>
-            <div class="skill-name" @click="selectSkill(skill)">{{ skill.name }}</div>
-          </div>
+          <span class="skill-row__toggle">
+            <SkillUp :checked="skill.masteryValue > 0" :doubleChecked="skill.masteryValue > 1"
+                     @click="changeChecked(skill)"/>
+          </span>
+          <span class="skill-row__name" @click="selectSkill(skill)">{{ skill.name }}</span>
           <button
               type="button"
-              class="skill-value skill-value--roll"
+              class="roll-pill roll-pill--sm"
               :class="getRollModifierClass(skill.advantageValue)"
               :title="`${getAdvantageLabel(skill.advantageValue)} — нажмите, чтобы сменить`"
               :aria-label="rollModifierAriaLabel(skill.advantageValue, calculateSkillValue(ability[1].value + ability[1].bonusValue, skill))"
               @click.stop="changeAdvantage(skill)"
           >
-            {{ calculateSkillValue(ability[1].value + ability[1].bonusValue, skill) }}
+            {{ formatModifier(calculateSkillValue(ability[1].value + ability[1].bonusValue, skill)) }}
           </button>
         </div>
       </div>
+    </div>
     </div>
   </div>
 </template>
@@ -414,325 +423,294 @@ function calculateCheckValue(value: any, ability: AbilityDto) {
   width: 100%;
 }
 
-.ability-item {
-  margin-top: 10px;
-  padding: 10px;
-  background: var(--ion-color-medium);
-  border-radius: 15px;
+.abilities-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
 }
 
-.ability-header {
-  display: flex;
-  flex-direction: row;
+@media (min-width: 640px) {
+  .abilities-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
-.ability {
+@media (min-width: 1100px) {
+  .abilities-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Proficiency banner */
+.prof-banner {
   display: flex;
-  flex-direction: row;
   align-items: center;
-  justify-content: space-between;
-  width: 70%;
-  height: 50px;
-  padding-left: 15px;
-  padding-right: 15px;
-  background: var(--ion-color-medium-tint);
-  border-radius: 15px;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.28);
+  background: linear-gradient(150deg, rgba(var(--ion-color-primary-rgb), 0.14) 0%, rgba(var(--ion-color-medium-rgb), 0.6) 100%);
 }
 
-.ability-side-block {
+.prof-banner__label {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(var(--ion-color-light-rgb), 0.78);
+}
+
+.prof-banner__value {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--ion-color-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Ability card */
+.ability-card {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  width: 30%;
-  padding-left: 6px;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
+  background: linear-gradient(155deg, rgba(var(--ion-color-medium-rgb), 0.95) 0%, rgba(var(--ion-color-dark-rgb), 0.92) 100%);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.check,
-.saving-throw {
+.ability-card:hover {
+  border-color: rgba(var(--ion-color-primary-rgb), 0.35);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.38);
+}
+
+.ability-card__head {
   display: flex;
   align-items: center;
-  height: 22px;
-  padding-left: 2px;
-  font-size: 11px;
-  background: var(--ion-color-medium-tint);
-  border-radius: 10px;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
+  border-radius: 14px;
+  background: rgba(var(--ion-color-dark-rgb), 0.45);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.2s ease, transform 0.15s ease;
 }
 
-.check-name,
-.saving-throw-name {
+.ability-card__head:hover {
+  border-color: rgba(var(--ion-color-primary-rgb), 0.3);
+}
+
+.ability-card__head:active {
+  transform: scale(0.995);
+}
+
+.ability-card__name {
   flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: rgba(var(--ion-color-light-rgb), 0.72);
   overflow: hidden;
-  text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.check-value,
-.saving-throw-value {
+.ability-card__mod {
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--ion-color-light);
+  font-variant-numeric: tabular-nums;
+}
+
+.ability-card__score {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 9px;
+  background: rgba(var(--ion-color-primary-rgb), 0.16);
+  color: var(--ion-color-primary);
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Rolls (check / saving throw) — grouped block with divider */
+.ability-card__rolls {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(var(--ion-color-dark-rgb), 0.35);
+}
+
+.roll-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px 9px 12px;
+  border-left: 3px solid transparent;
+  border-bottom: 1px solid rgba(var(--ion-color-light-rgb), 0.07);
+  transition: background 0.15s ease;
+}
+
+.roll-row:last-child {
+  border-bottom: none;
+}
+
+.roll-row--check {
+  border-left-color: rgba(var(--ion-color-primary-rgb), 0.85);
+}
+
+.roll-row--save {
+  border-left-color: rgba(var(--ion-color-tertiary-rgb), 0.9);
+}
+
+.roll-row--adv {
+  background: rgba(var(--ion-color-success-rgb), 0.12);
+}
+
+.roll-row--dis {
+  background: rgba(var(--ion-color-danger-rgb), 0.12);
+}
+
+.roll-row__toggle {
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  height: 16px;
-  width: 16px;
-  min-width: 16px;
-  font-size: 11px;
-  color: var(--ion-color-primary-contrast);
-  background: var(--ion-color-primary);
-  border-radius: 50%;
-  box-sizing: border-box;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
 }
 
-.check-value--roll,
-.saving-throw-value--roll {
-  margin: 0;
-  padding: 0;
+.roll-row__label {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: rgba(var(--ion-color-light-rgb), 0.82);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Skills */
+.ability-card__skills {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.skill-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: rgba(var(--ion-color-light-rgb), 0.04);
+  border: 1px solid transparent;
+}
+
+.skill-row--adv {
+  border-color: rgba(var(--ion-color-success-rgb), 0.45);
+}
+
+.skill-row--dis {
+  border-color: rgba(var(--ion-color-danger-rgb), 0.45);
+}
+
+.skill-row__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.skill-row__name {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--ion-color-light);
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Roll value pills (shared) */
+.roll-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 32px;
+  height: 28px;
+  padding: 0 8px;
   border: none;
-  font: inherit;
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 800;
   line-height: 1;
+  font-variant-numeric: tabular-nums;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   appearance: none;
   transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease, color 0.12s ease;
 }
 
-.check-value--roll:active,
-.saving-throw-value--roll:active {
+.roll-pill:active {
   transform: scale(0.94);
 }
 
-.skill-item {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  height: 27px;
-  margin-top: 10px;
-  padding: 2px 4px;
-  background: var(--ion-color-medium-tint);
-  border-radius: 20px;
+.roll-pill--sm {
+  min-width: 30px;
+  height: 26px;
+  font-size: 13px;
 }
 
-.skill-item--roll-adv {
-  border-right: 2px solid var(--ion-color-success-shade);
-}
-
-.skill-item--roll-dis {
-  border-right: 2px solid var(--ion-color-danger-shade);
-}
-
-.skill-item--proficiency {
-  margin-top: 0;
-}
-
-.skill-start-block {
-  display: flex;
-  justify-content: start;
-}
-
-.skill-name {
-  scrollbar-width: none;
-  padding-left: 4px;
-}
-
-.skill-value {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 18px;
-  height: 18px;
-  color: var(--ion-color-primary-contrast);
-  background: var(--ion-color-primary);
-  border-radius: 50%;
-}
-
-.skill-value--roll {
-  margin: 0;
-  padding: 0;
-  font: inherit;
-  line-height: 1;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease, color 0.12s ease;
-}
-
-.skill-value--roll:active {
-  transform: scale(0.94);
-}
-
-.skill-value--roll-neutral,
-.check-value--roll-neutral,
-.saving-throw-value--roll-neutral {
+.roll-pill.skill-value--roll-neutral,
+.roll-pill.check-value--roll-neutral,
+.roll-pill.saving-throw-value--roll-neutral {
   color: var(--ion-color-primary-contrast);
   background: var(--ion-color-primary);
   box-shadow: 0 0 0 1px rgba(var(--ion-color-primary-rgb), 0.22);
-  font-size: 12px;
 }
 
-.skill-value--roll-adv,
-.check-value--roll-adv,
-.saving-throw-value--roll-adv {
+.roll-pill.skill-value--roll-adv,
+.roll-pill.check-value--roll-adv,
+.roll-pill.saving-throw-value--roll-adv {
   color: var(--ion-color-success-contrast);
   background: var(--ion-color-success-shade);
   box-shadow:
-      0 0 0 1px rgba(var(--ion-color-success-rgb), 0.28),
+      0 0 0 1px rgba(var(--ion-color-success-rgb), 0.3),
       inset 0 1px 0 rgba(255, 255, 255, 0.12);
-  font-size: 12px;
 }
 
-.skill-value--roll-dis,
-.check-value--roll-dis,
-.saving-throw-value--roll-dis {
+.roll-pill.skill-value--roll-dis,
+.roll-pill.check-value--roll-dis,
+.roll-pill.saving-throw-value--roll-dis {
   color: var(--ion-color-danger-contrast);
   background: var(--ion-color-danger-shade);
   box-shadow:
-      0 0 0 1px rgba(var(--ion-color-danger-rgb), 0.3),
+      0 0 0 1px rgba(var(--ion-color-danger-rgb), 0.32),
       inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  font-size: 12px;
-}
-
-.skill-up {
-  display: flex;
-  align-items: center;
-  width: 18px;
-  height: 18px;
 }
 
 ion-content {
   --padding-start: 0;
   --padding-end: 0;
-}
-
-@media (min-width: 1024px) {
-  .abilities {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 14px;
-    margin-top: -8px;
-  }
-
-  .ability-item {
-    margin-top: 0;
-    padding: 14px;
-    border-radius: 16px;
-    border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
-  }
-
-  .ability-item--proficiency {
-    grid-column: 1 / -1;
-    display: flex;
-    align-items: center;
-    padding: 8px 12px;
-    border-radius: 12px;
-    background: color-mix(in srgb, var(--ion-color-medium-tint) 78%, transparent);
-  }
-
-  .ability-item--proficiency .skill-item--proficiency {
-    width: 100%;
-    margin-top: 0;
-    min-height: 28px;
-    height: 28px;
-    padding: 0 8px;
-    border-radius: 999px;
-    background: transparent;
-    border: 1px solid rgba(var(--ion-color-light-rgb), 0.18);
-  }
-
-  .ability-item--proficiency .skill-name {
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 0.01em;
-  }
-
-  .ability-item--proficiency .skill-value {
-    width: 22px;
-    height: 22px;
-    font-size: 12px;
-  }
-
-  .ability-header {
-    display: grid;
-    grid-template-columns: minmax(280px, 1fr) minmax(260px, 360px);
-    gap: 10px;
-    align-items: stretch;
-  }
-
-  .ability {
-    width: 100%;
-    height: auto;
-    min-height: 54px;
-    padding: 10px 16px;
-  }
-
-  .ability-name {
-    font-size: 16px;
-    font-weight: 600;
-  }
-
-  .ability-value {
-    font-size: 18px;
-    font-weight: 700;
-  }
-
-  .ability-side-block {
-    width: 100%;
-    padding-left: 0;
-    gap: 8px;
-  }
-
-  .check,
-  .saving-throw {
-    height: auto;
-    min-height: 24px;
-    padding: 6px 8px;
-    font-size: 13px;
-  }
-
-  .check-value,
-  .saving-throw-value {
-    width: 22px;
-    min-width: 22px;
-    height: 22px;
-    font-size: 12px;
-  }
-
-  .skills {
-    margin-top: 10px;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(240px, 1fr));
-    gap: 8px 10px;
-  }
-
-  .skill-item {
-    margin-top: 0;
-    height: auto;
-    min-height: 30px;
-    padding: 4px 8px;
-    border-radius: 14px;
-  }
-
-  .skill-name {
-    scrollbar-width: none;
-    padding-left: 8px;
-    font-size: 14px;
-  }
-
-  .skill-value {
-    width: 22px;
-    height: 22px;
-    font-size: 12px;
-  }
-
-  .skill-up {
-    width: 20px;
-    height: 20px;
-  }
-}
-
-@media (min-width: 1400px) {
-  .abilities {
-    grid-template-columns: repeat(2, minmax(420px, 1fr));
-  }
 }
 </style>

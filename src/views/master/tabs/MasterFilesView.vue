@@ -90,6 +90,13 @@ const isTooLargeForPreview = (file: UserFile): boolean => {
   return size !== null && size > MAX_PREVIEW_FILE_SIZE_BYTES;
 };
 
+const getFileExtension = (file: UserFile): string => {
+  const name = displayedFileName(file.filename);
+  const dot = name.lastIndexOf(".");
+  if (dot <= 0 || dot === name.length - 1) return "FILE";
+  return name.slice(dot + 1).toUpperCase().slice(0, 4);
+};
+
 async function getMyId(): Promise<string> {
   const myIdResponse = await axios.get(`${GATEWAY_INTEGRATION_ROUTES.baseURL}/users/myId`, {
     headers: {
@@ -656,11 +663,10 @@ async function onFileSelected(event: Event) {
     </div>
 
     <ion-list v-else class="master-files__list">
-      <ion-item lines="none" class="master-files__section master-files__section--first" color="dark">
-        <ion-label class="master-files__section-inner">
-          <span class="master-files__section-badge">Видимые для всех</span>
-        </ion-label>
-      </ion-item>
+      <div class="files-heading files-heading--first">
+        <span class="files-heading__title">Видимые для всех</span>
+        <span class="files-heading__count files-heading__count--public">{{ visibleForAllFiles.length }}</span>
+      </div>
 
       <ion-reorder-group
         class="master-files__groups"
@@ -685,7 +691,10 @@ async function onFileSelected(event: Event) {
             <h2 class="master-files__title" :title="displayedFileName(f.filename)">
               {{ displayedFileName(f.filename) }}
             </h2>
-            <p class="master-files__meta">{{ formatFileUploadedAt(f.uploadedAt) }}</p>
+            <p class="master-files__meta">
+              <span class="master-files__ext">{{ getFileExtension(f) }}</span>
+              {{ formatFileUploadedAt(f.uploadedAt) }}
+            </p>
             <p v-if="isTooLargeForPreview(f)" class="master-files__warning">
               Файл слишком велик для просмотра (больше 10 МБ)
             </p>
@@ -724,9 +733,10 @@ async function onFileSelected(event: Event) {
 
         <ion-item lines="none" class="master-files__section master-files__section--divider" color="dark">
           <ion-label class="master-files__section-inner">
-            <span class="master-files__section-badge master-files__section-badge--private">
-              Видимые только для меня
-            </span>
+            <div class="files-heading">
+              <span class="files-heading__title">Видимые только для меня</span>
+              <span class="files-heading__count files-heading__count--private">{{ visibleOnlyForMeFiles.length }}</span>
+            </div>
           </ion-label>
         </ion-item>
 
@@ -748,7 +758,10 @@ async function onFileSelected(event: Event) {
             <h2 class="master-files__title" :title="displayedFileName(f.filename)">
               {{ displayedFileName(f.filename) }}
             </h2>
-            <p class="master-files__meta">{{ formatFileUploadedAt(f.uploadedAt) }}</p>
+            <p class="master-files__meta">
+              <span class="master-files__ext master-files__ext--private">{{ getFileExtension(f) }}</span>
+              {{ formatFileUploadedAt(f.uploadedAt) }}
+            </p>
             <p v-if="isTooLargeForPreview(f)" class="master-files__warning">
               Файл слишком велик для просмотра (больше 10 МБ)
             </p>
@@ -976,15 +989,11 @@ async function onFileSelected(event: Event) {
 .master-files__section {
   --background: transparent;
   --min-height: 0;
-  --padding-top: 16px;
+  --padding-top: 8px;
   --padding-bottom: 8px;
   --inner-padding-end: 0;
   --inner-padding-start: 0;
   margin: 0;
-}
-
-.master-files__section--first {
-  --padding-top: 8px;
 }
 
 .master-files__section-inner {
@@ -992,50 +1001,78 @@ async function onFileSelected(event: Event) {
   width: 100%;
 }
 
-.master-files__section-badge {
-  display: inline-block;
-  font-size: 11px;
+.master-files__section--divider {
+  --padding-top: 12px;
+}
+
+.files-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 2px;
+}
+
+.files-heading--first {
+  margin-bottom: 10px;
+}
+
+.files-heading__title {
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(var(--ion-color-secondary-rgb), 0.95);
-  padding: 6px 12px;
+  color: rgba(var(--ion-color-light-rgb), 0.55);
+}
+
+.files-heading__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
   border-radius: 999px;
-  background: rgba(var(--ion-color-secondary-rgb), 0.14);
-  border: 1px solid rgba(var(--ion-color-secondary-rgb), 0.28);
+  font-size: 12px;
+  font-weight: 700;
 }
 
-.master-files__section-badge--private {
-  color: rgba(var(--ion-color-tertiary-rgb), 0.98);
-  background: rgba(var(--ion-color-tertiary-rgb), 0.12);
-  border-color: rgba(var(--ion-color-tertiary-rgb), 0.22);
+.files-heading__count--public {
+  background: rgba(var(--ion-color-primary-rgb), 0.16);
+  color: var(--ion-color-primary);
 }
 
-.master-files__section--divider {
-  --padding-top: 20px;
+.files-heading__count--private {
+  background: rgba(var(--ion-color-tertiary-rgb), 0.16);
+  color: var(--ion-color-tertiary);
 }
 
 .master-files__card {
-  --background: linear-gradient(
-    145deg,
-    rgba(255, 255, 255, 0.06) 0%,
-    rgba(255, 255, 255, 0.02) 100%
-  );
-  --border-radius: 14px;
+  --background: linear-gradient(150deg, rgba(var(--ion-color-medium-rgb), 0.92) 0%, rgba(var(--ion-color-dark-rgb), 0.88) 100%);
+  --border-radius: 16px;
   --padding-start: 10px;
   --padding-end: 6px;
   --inner-padding-end: 4px;
   --inner-padding-top: 10px;
   --inner-padding-bottom: 10px;
-  --min-height: 72px;
+  --min-height: 74px;
   margin: 0;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  border-radius: 16px;
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.22);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.master-files__card:hover {
+  border-color: rgba(var(--ion-color-primary-rgb), 0.4);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.4);
 }
 
 .master-files__card--private {
-  border-color: rgba(var(--ion-color-tertiary-rgb), 0.12);
-  box-shadow: 0 4px 22px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(var(--ion-color-tertiary-rgb), 0.06);
+  border-color: rgba(var(--ion-color-tertiary-rgb), 0.18);
+}
+
+.master-files__card--private:hover {
+  border-color: rgba(var(--ion-color-tertiary-rgb), 0.45);
 }
 
 .master-files__reorder {
@@ -1044,27 +1081,48 @@ async function onFileSelected(event: Event) {
 }
 
 .master-files__thumb {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-inline-end: 10px;
-  background: rgba(var(--ion-color-secondary-rgb), 0.18);
-  border: 1px solid rgba(var(--ion-color-secondary-rgb), 0.22);
+  background: rgba(var(--ion-color-primary-rgb), 0.14);
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.28);
   flex-shrink: 0;
 }
 
 .master-files__thumb--private {
   background: rgba(var(--ion-color-tertiary-rgb), 0.14);
-  border-color: rgba(var(--ion-color-tertiary-rgb), 0.2);
+  border-color: rgba(var(--ion-color-tertiary-rgb), 0.26);
 }
 
 .master-files__thumb ion-icon {
   font-size: 22px;
-  color: var(--ion-color-light);
-  opacity: 0.92;
+  color: var(--ion-color-primary);
+}
+
+.master-files__thumb--private ion-icon {
+  color: var(--ion-color-tertiary);
+}
+
+.master-files__ext {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+  background: rgba(var(--ion-color-primary-rgb), 0.16);
+  color: var(--ion-color-primary);
+}
+
+.master-files__ext--private {
+  background: rgba(var(--ion-color-tertiary-rgb), 0.16);
+  color: var(--ion-color-tertiary);
 }
 
 .master-files__label {
@@ -1122,9 +1180,13 @@ async function onFileSelected(event: Event) {
 }
 
 .master-files__error {
-  color: var(--ion-color-danger);
   margin: 8px 0;
-  padding: 0 4px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  font-size: 14px;
+  color: var(--ion-color-danger-tint);
+  background: rgba(var(--ion-color-danger-rgb), 0.12);
+  border: 1px solid rgba(var(--ion-color-danger-rgb), 0.3);
 }
 
 .master-files__filename {
@@ -1154,11 +1216,15 @@ async function onFileSelected(event: Event) {
 }
 
 .master-files__loading-list {
-  color: rgba(var(--ion-color-light-rgb), 0.45);
-  padding: 28px 16px;
+  margin-top: 8px;
+  color: rgba(var(--ion-color-light-rgb), 0.5);
+  padding: 32px 24px;
   text-align: center;
   font-size: 14px;
   letter-spacing: 0.02em;
+  border: 1px dashed rgba(var(--ion-color-light-rgb), 0.12);
+  border-radius: 16px;
+  background: rgba(var(--ion-color-medium-rgb), 0.35);
 }
 
 .master-files__empty-group {

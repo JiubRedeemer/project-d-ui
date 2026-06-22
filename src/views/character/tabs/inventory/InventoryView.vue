@@ -40,14 +40,22 @@ const walletStore = useWalletStore();
 const { isOpen, keyboardHeight } = useKeyboard();
 const moneyRootRef = ref<HTMLElement | null>(null);
 
-const moneyRootMaxHeight = computed(() => {
-  if (isOpen.value && keyboardHeight.value > 0) {
-    // Высота окна - высота клавиатуры - отступы (например, 10px для верхнего отступа)
-    return `${window.innerHeight - keyboardHeight.value - 10}px`;
+const moneyRootMaxHeight = ref<string>("70vh");
+
+// Кошелёк раскрывается ровно до верхней кромки клавиатуры:
+// высота = (верх клавиатуры | низ окна) - верх блока кошелька - небольшой отступ.
+const recomputeWalletHeight = () => {
+  if (!walletStore.moneyExpanded || !moneyRootRef.value) {
+    return;
   }
-  // По умолчанию, если клавиатура не открыта, используем фиксированную высоту
-  return '1150px';
-});
+  const top = moneyRootRef.value.getBoundingClientRect().top;
+  const keyboardTop = isOpen.value && keyboardHeight.value > 0
+    ? window.innerHeight - keyboardHeight.value
+    : window.innerHeight;
+  const bottomGap = 12;
+  const height = Math.max(240, Math.round(keyboardTop - top - bottomGap));
+  moneyRootMaxHeight.value = `${height}px`;
+};
 const ensureMoneyBlockVisible = async () => {
   if (!walletStore.moneyExpanded || !moneyRootRef.value) {
     return;
@@ -94,8 +102,10 @@ watch(
     }
 
     void ensureMoneyBlockVisible();
+    recomputeWalletHeight();
     window.setTimeout(() => {
       void ensureMoneyBlockVisible();
+      recomputeWalletHeight();
     }, 300);
   }
 );
@@ -105,9 +115,18 @@ watch(keyboardHeight, () => {
     return;
   }
 
+  recomputeWalletHeight();
   window.setTimeout(() => {
     void ensureMoneyBlockVisible();
+    recomputeWalletHeight();
   }, 60);
+});
+
+watch(isOpen, () => {
+  if (!walletStore.moneyExpanded) {
+    return;
+  }
+  recomputeWalletHeight();
 });
 
 const loadInventoryData = async () => {
@@ -673,22 +692,42 @@ async function takeMoney() {
 }
 
 .sectionHeader {
-  color: var(--ion-color-light);
-  font-size: 18px;
-  font-weight: normal;
-  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 18px 0 10px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(var(--ion-color-light-rgb), 0.72);
+}
+
+.sectionHeader::before {
+  content: "";
+  flex-shrink: 0;
+  width: 4px;
+  height: 16px;
+  border-radius: 2px;
+  background: var(--ion-color-primary);
 }
 
 .section {
-  background-color: var(--ion-color-medium);
-  border-radius: 20px;
-  padding: 5px;
+  background: linear-gradient(155deg, rgba(var(--ion-color-medium-rgb), 0.95) 0%, rgba(var(--ion-color-dark-rgb), 0.92) 100%);
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
+  border-radius: 16px;
+  padding: 7px;
   overflow: hidden;
-  max-height: 70px;
+  max-height: 74px;
   margin-bottom: 10px;
   display: flex;
   flex-direction: row;
   justify-content: space-between;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.section:active {
+  border-color: rgba(var(--ion-color-primary-rgb), 0.4);
 }
 
 .section-start-block {
@@ -752,8 +791,9 @@ async function takeMoney() {
   width: 100%;
   min-height: 40px;
   margin-top: 10px;
-  background-color: var(--ion-color-medium);
-  border-radius: 20px;
+  background: linear-gradient(155deg, rgba(var(--ion-color-medium-rgb), 0.95) 0%, rgba(var(--ion-color-dark-rgb), 0.92) 100%);
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
+  border-radius: 16px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -763,7 +803,8 @@ async function takeMoney() {
 .money-root.openMoney {
   width: 100%;
   min-height: 40px;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .money {
@@ -861,8 +902,8 @@ async function takeMoney() {
 .coin-chip.golden {
   background:
     radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0) 60%),
-    linear-gradient(180deg, rgba(255, 251, 0, 0.26), rgba(255, 251, 0, 0.10));
-  border-color: rgba(255, 251, 0, 0.40);
+    linear-gradient(180deg, rgba(212, 175, 55, 0.24), rgba(212, 175, 55, 0.09));
+  border-color: rgba(212, 175, 55, 0.38);
 }
 
 .coin-chip.selected {
@@ -871,10 +912,10 @@ async function takeMoney() {
 }
 
 .coin-chip.golden.selected {
-  border-color: rgba(255, 251, 0, 0.55);
+  border-color: rgba(212, 175, 55, 0.55);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.10),
-    0 0 0 2px rgba(255, 251, 0, 0.14),
+    0 0 0 2px rgba(212, 175, 55, 0.14),
     0 6px 14px rgba(0, 0, 0, 0.22);
 }
 
@@ -936,7 +977,6 @@ async function takeMoney() {
   }
 
   .money {
-    min-height: 46px;
     padding-left: 14px;
     padding-right: 14px;
   }

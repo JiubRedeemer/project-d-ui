@@ -3,7 +3,6 @@ import {
   defineProps,
   IonAvatar,
   IonButton,
-  IonButtons,
   IonIcon,
   IonItem,
   IonLabel,
@@ -95,13 +94,13 @@ watch(
     {immediate: true}
 );
 
-const SECTIONS: { id: Section; label: string; icon: string }[] = [
-  {id: "races", label: "Расы", icon: "peopleOutline"},
-  {id: "classes", label: "Классы", icon: "bookOutline"},
-  {id: "backgrounds", label: "Предыстории", icon: "documentTextOutline"},
-  {id: "items", label: "Предметы", icon: "cubeOutline"},
-  {id: "spells", label: "Заклинания", icon: "sparklesOutline"},
-  {id: "npcs", label: "NPC", icon: "personOutline"}
+const SECTIONS: { id: Section; label: string; icon: string; description: string; accent: string }[] = [
+  {id: "races", label: "Расы", icon: "peopleOutline", description: "Расы и их подвиды", accent: "197, 0, 15"},
+  {id: "classes", label: "Классы", icon: "bookOutline", description: "Классы и архетипы", accent: "255, 196, 9"},
+  {id: "backgrounds", label: "Предыстории", icon: "documentTextOutline", description: "Происхождение героев", accent: "208, 188, 254"},
+  {id: "items", label: "Предметы", icon: "cubeOutline", description: "Снаряжение и артефакты", accent: "149, 115, 253"},
+  {id: "spells", label: "Заклинания", icon: "sparklesOutline", description: "Магия по уровням", accent: "85, 191, 255"},
+  {id: "npcs", label: "NPC", icon: "personOutline", description: "Персонажи мира", accent: "45, 213, 91"}
 ];
 
 const sectionIcons: Record<string, unknown> = {
@@ -1172,29 +1171,34 @@ async function onCatalogApplied(
   <div class="guidebook">
     <!-- Список разделов -->
     <div v-show="!isLockedSection && currentSection === 'list'" class="sections-list">
-      <ion-list class="guidebook-list">
-        <ion-item
+      <div class="sections-grid">
+        <button
             v-for="section in SECTIONS"
             :key="section.id"
-            :button="true"
-            color="dark"
+            type="button"
+            class="section-card"
+            :style="{ '--accent': section.accent }"
             @click="goToSection(section.id)"
         >
-          <ion-icon :icon="sectionIcons[section.icon]" slot="start" class="section-icon"/>
-          <ion-icon :icon="chevronForwardOutline" slot="end"/>
-          <ion-label>{{ section.label }}</ion-label>
-        </ion-item>
-      </ion-list>
+          <span class="section-card__glow" aria-hidden="true"/>
+          <span class="section-card__icon">
+            <ion-icon :icon="sectionIcons[section.icon]"/>
+          </span>
+          <span class="section-card__body">
+            <span class="section-card__title">{{ section.label }}</span>
+            <span class="section-card__desc">{{ section.description }}</span>
+          </span>
+          <ion-icon class="section-card__chevron" :icon="chevronForwardOutline" aria-hidden="true"/>
+        </button>
+      </div>
     </div>
 
     <!-- Контент раздела с кнопкой назад -->
     <template v-if="currentSection !== 'list'">
       <div v-if="!isLockedSection" class="section-header">
-        <ion-buttons>
-          <ion-button fill="clear" @click="goBack">
-            <ion-icon :icon="menuOutline"/>
-          </ion-button>
-        </ion-buttons>
+        <button type="button" class="section-back" aria-label="Назад к разделам" @click="goBack">
+          <ion-icon :icon="menuOutline"/>
+        </button>
         <h2 class="section-title">{{ sectionTitles[currentSection] }}</h2>
       </div>
 
@@ -1747,26 +1751,144 @@ async function onCatalogApplied(
 }
 
 .sections-list {
-  padding-top: 8px;
+  padding-top: 12px;
 }
 
-.section-icon {
+.sections-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.section-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
+  background: linear-gradient(155deg, rgba(var(--ion-color-medium-rgb), 0.95) 0%, rgba(var(--ion-color-dark-rgb), 0.92) 100%);
+  cursor: pointer;
+  overflow: hidden;
+  text-align: left;
+  isolation: isolate;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.22s ease, box-shadow 0.22s ease;
+}
+
+.section-card__glow {
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  background: radial-gradient(120% 90% at 0% 0%, rgba(var(--accent), 0.16), transparent 62%);
+  opacity: 0.85;
+  transition: opacity 0.25s ease;
+}
+
+.section-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(var(--accent), 0.5);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.4);
+}
+
+.section-card:hover .section-card__glow {
+  opacity: 1;
+}
+
+.section-card:active {
+  transform: translateY(-1px) scale(0.992);
+}
+
+.section-card__icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: rgba(var(--accent), 0.14);
+  border: 1px solid rgba(var(--accent), 0.3);
+}
+
+.section-card__icon ion-icon {
   font-size: 24px;
-  margin-right: 12px;
-  color: var(--ion-color-primary);
+  color: rgb(var(--accent));
+}
+
+.section-card__body {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.section-card__title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ion-color-light);
+  line-height: 1.2;
+}
+
+.section-card__desc {
+  font-size: 12px;
+  color: rgba(var(--ion-color-light-rgb), 0.5);
+  line-height: 1.3;
+}
+
+.section-card__chevron {
+  flex-shrink: 0;
+  font-size: 18px;
+  color: rgba(var(--ion-color-light-rgb), 0.3);
+  transition: transform 0.22s ease, color 0.22s ease;
+}
+
+.section-card:hover .section-card__chevron {
+  transform: translateX(3px);
+  color: rgb(var(--accent));
 }
 
 .section-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 0;
+  gap: 12px;
+  padding: 10px 0 14px;
+}
+
+.section-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.1);
+  background: rgba(var(--ion-color-medium-rgb), 0.6);
+  color: var(--ion-color-light);
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+}
+
+.section-back ion-icon {
+  font-size: 20px;
+}
+
+.section-back:hover {
+  background: rgba(var(--ion-color-primary-rgb), 0.16);
+  border-color: rgba(var(--ion-color-primary-rgb), 0.4);
+}
+
+.section-back:active {
+  transform: scale(0.94);
 }
 
 .section-title {
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ion-color-light);
 }
 
 .segment-content {
@@ -1779,29 +1901,66 @@ async function onCatalogApplied(
 
 .guidebook-list {
   background: transparent;
+  padding: 0;
 }
 
 .guidebook-list ion-item {
-  --min-height: 52px;
+  --min-height: 60px;
+  --background: transparent;
+  --background-hover: transparent;
+  --background-activated: transparent;
+  --inner-border-width: 0;
+  --padding-start: 12px;
+  --inner-padding-end: 12px;
+  --color: var(--ion-color-light);
+  margin-bottom: 8px;
+}
+
+.guidebook-list ion-item::part(native) {
+  border-radius: 14px;
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
+  background: linear-gradient(150deg, rgba(var(--ion-color-medium-rgb), 0.9) 0%, rgba(var(--ion-color-dark-rgb), 0.85) 100%);
+  transition: border-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.guidebook-list ion-item:hover::part(native) {
+  border-color: rgba(var(--ion-color-primary-rgb), 0.4);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.32);
+}
+
+.guidebook-list ion-item:active::part(native) {
+  transform: scale(0.992);
+}
+
+.guidebook-list ion-label h3 {
+  font-weight: 600;
+  color: var(--ion-color-light);
 }
 
 .guidebook-list ion-avatar {
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.12);
+  background: rgba(var(--ion-color-dark-rgb), 0.6);
 }
 
 .guidebook-list ion-avatar img {
-  width: 40px;
-  height: 40px;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
   border-radius: 50%;
 }
 
 .loading-placeholder,
 .empty-placeholder {
-  padding: 24px;
+  margin-top: 8px;
+  padding: 32px 24px;
   text-align: center;
-  color: var(--ion-color-medium);
+  color: rgba(var(--ion-color-light-rgb), 0.5);
+  font-size: 14px;
+  border: 1px dashed rgba(var(--ion-color-light-rgb), 0.12);
+  border-radius: 16px;
+  background: rgba(var(--ion-color-medium-rgb), 0.35);
 }
 
 ion-searchbar {

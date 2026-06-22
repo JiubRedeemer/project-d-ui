@@ -353,6 +353,8 @@ const isOpen = computed(() => subheaderStore.subheaderOpened);
 }
 
 .stat-card__value {
+  display: inline-flex;
+  align-items: center;
   font-size: 14px;
   font-weight: 700;
   line-height: 1;
@@ -399,10 +401,10 @@ const isOpen = computed(() => subheaderStore.subheaderOpened);
 }
 
 .stat-card__temp-hp {
-  margin-left: 2px;
+  margin-left: 3px;
   font-size: 0.82em;
   font-weight: 700;
-  color: rgba(124, 212, 255, 0.98);
+  color: var(--ion-color-primary);
 }
 
 .rest-action {

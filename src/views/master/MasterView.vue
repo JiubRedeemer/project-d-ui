@@ -244,66 +244,74 @@ onIonViewDidLeave(() => {
 }
 
 .desktop-sidebar {
-  background: var(--ion-color-medium);
-  border: 1px solid var(--ion-color-primary);
-  border-radius: 16px;
+  background: linear-gradient(160deg, rgba(var(--ion-color-medium-rgb), 0.95) 0%, rgba(var(--ion-color-dark-rgb), 0.9) 100%);
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
+  border-radius: 18px;
   padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .desktop-tab-button {
+  position: relative;
   width: 100%;
-  border: none;
+  border: 1px solid transparent;
   border-radius: 12px;
   background: transparent;
-  color: var(--ion-color-light);
+  color: rgba(var(--ion-color-light-rgb), 0.82);
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px;
+  gap: 12px;
+  padding: 11px 14px;
   cursor: pointer;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  font-size: 14px;
+  font-weight: 600;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .desktop-tab-button ion-icon {
   font-size: 22px;
+  flex-shrink: 0;
 }
 
 .desktop-tab-button:hover {
-  background: rgba(var(--ion-color-primary-rgb), 0.12);
+  background: rgba(var(--ion-color-primary-rgb), 0.1);
+  color: var(--ion-color-light);
 }
 
 .desktop-tab-button.active {
-  background: var(--ion-color-primary);
+  background: linear-gradient(120deg, rgba(var(--ion-color-primary-rgb), 0.95) 0%, rgba(var(--ion-color-primary-rgb), 0.78) 100%);
   color: var(--ion-color-primary-contrast);
+  border-color: rgba(var(--ion-color-primary-rgb), 0.4);
+  box-shadow: 0 8px 20px rgba(var(--ion-color-primary-rgb), 0.22);
 }
 
 .desktop-content {
-  border-radius: 16px;
-  border: 1px solid rgba(var(--ion-color-light-rgb), 0.12);
+  border-radius: 18px;
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
   overflow: hidden;
   display: flex;
   flex-direction: column;
   min-width: 0;
+  background: linear-gradient(160deg, rgba(var(--ion-color-medium-rgb), 0.5) 0%, rgba(var(--ion-color-dark-rgb), 0.55) 100%);
 }
 
 .desktop-content-header {
   padding: 16px 20px;
-  background: rgba(var(--ion-color-medium-rgb), 0.65);
-  border-bottom: 1px solid rgba(var(--ion-color-light-rgb), 0.12);
+  background: rgba(var(--ion-color-medium-rgb), 0.55);
+  border-bottom: 1px solid rgba(var(--ion-color-light-rgb), 0.1);
 }
 
 .desktop-content-header h2 {
   margin: 0;
   color: var(--ion-color-light);
   font-size: 20px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .desktop-content-inner {
-  margin-top: -80px;
+  margin-top: -60px;
 }
 
 .tab-bar,
@@ -317,8 +325,8 @@ onIonViewDidLeave(() => {
 
 /* Подсветка выбранной вкладки (Ionic проставляет класс tab-selected) */
 .tab-bar ion-tab-button.tab-selected .tab-icon-wrapper {
-  background: var(--ion-color-secondary);
-  border-color: var(--ion-color-tertiary);
+  background: var(--ion-color-primary);
+  border-color: var(--ion-color-primary);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--ion-color-primary) 35%, transparent),
     0 8px 16px rgba(0, 0, 0, 0.35);
   transform: translateY(-2px);
@@ -359,6 +367,7 @@ onIonViewDidLeave(() => {
   height: 40px;
   border: 1px solid var(--ion-color-primary);
   border-radius: 50%;
+  background: rgba(var(--ion-color-dark-rgb), 0.55);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -368,13 +377,13 @@ onIonViewDidLeave(() => {
 .tab-bar ion-tab-button ion-icon {
   width: 28px;
   height: 28px;
-  color: white;
+  color: var(--ion-color-light);
 }
 
 .characters,
 .guidebook,
 .files {
-  margin-top: 32px;
+  margin-top: 50px;
   padding-top: 0;
 }
 

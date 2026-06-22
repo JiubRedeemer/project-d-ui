@@ -165,12 +165,17 @@ const nameTextScale = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   border: 2px solid var(--ion-color-primary);
-  background: var(--ion-color-medium);
-  transition: transform 0.15s ease;
+  background: radial-gradient(circle at 35% 30%, rgba(var(--ion-color-primary-rgb), 0.28), var(--ion-color-medium) 70%);
+  box-shadow: 0 0 0 3px rgba(var(--ion-color-primary-rgb), 0.12), 0 4px 10px rgba(0, 0, 0, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.level-badge:hover .level-badge__circle {
+  box-shadow: 0 0 0 4px rgba(var(--ion-color-primary-rgb), 0.18), 0 6px 14px rgba(0, 0, 0, 0.4);
 }
 
 .level-badge__level {

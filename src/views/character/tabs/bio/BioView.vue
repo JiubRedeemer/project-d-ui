@@ -802,10 +802,11 @@ onBeforeUnmount(() => {
 }
 
 .section {
-  background-color: var(--ion-color-medium);
+  background: linear-gradient(155deg, rgba(var(--ion-color-medium-rgb), 0.95) 0%, rgba(var(--ion-color-dark-rgb), 0.92) 100%);
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
   color: var(--ion-color-light);
-  border-radius: 15px;
-  padding: 10px;
+  border-radius: 16px;
+  padding: 12px 14px;
   overflow: hidden;
 }
 
@@ -813,11 +814,15 @@ onBeforeUnmount(() => {
   position: relative;
   max-height: 200px;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.section--preview:hover {
+  border-color: rgba(var(--ion-color-primary-rgb), 0.3);
 }
 
 .section--preview:active {
-  background-color: var(--ion-color-medium-tint);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
 }
 
 .section--preview::after {
@@ -827,8 +832,8 @@ onBeforeUnmount(() => {
   right: 0;
   bottom: 0;
   height: 48px;
-  border-radius: 0 0 15px 15px;
-  background: linear-gradient(to bottom, transparent, var(--ion-color-medium));
+  border-radius: 0 0 16px 16px;
+  background: linear-gradient(to bottom, transparent, rgba(var(--ion-color-dark-rgb), 0.92));
   pointer-events: none;
 }
 
@@ -1071,12 +1076,24 @@ onBeforeUnmount(() => {
 }
 
 .sectionHeader {
-  color: var(--ion-color-light);
-  font-size: 16px;
-  font-weight: bold;
-  margin-top: 15px;
-  margin-bottom: 8px;
-  margin-left: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 20px 0 12px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(var(--ion-color-light-rgb), 0.72);
+}
+
+.sectionHeader::before {
+  content: "";
+  flex-shrink: 0;
+  width: 4px;
+  height: 16px;
+  border-radius: 2px;
+  background: var(--ion-color-primary);
 }
 
 .bio-section {
@@ -1101,16 +1118,20 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
   width: 170px;
   height: 170px;
-  border-radius: 25px;
+  border-radius: 20px;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
   background-color: var(--ambient-color, var(--ion-color-dark));
   cursor: pointer;
-  border-color: var(--ion-color-medium);
-  border-style: solid;
-  transition: background-color 0.45s ease;
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
+  transition: background-color 0.45s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.avatar:hover {
+  border-color: rgba(var(--ion-color-primary-rgb), 0.4);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.4);
 }
 
 .avatar-ambient {
@@ -1198,8 +1219,9 @@ div.avatar-img {
 }
 
 .npc-section {
-  background-color: var(--ion-color-medium);
-  border-radius: 15px;
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
+  background: linear-gradient(155deg, rgba(var(--ion-color-medium-rgb), 0.95) 0%, rgba(var(--ion-color-dark-rgb), 0.92) 100%);
+  border-radius: 16px;
 }
 
 .npc-relations-list {
@@ -1228,6 +1250,11 @@ div.avatar-img {
   flex-direction: column;
   align-items: center;
   gap: 8px;
+  cursor: pointer;
+}
+
+.npc-card:active {
+  transform: scale(0.97);
 }
 
 .npc-card-avatar-wrap {
@@ -1260,6 +1287,13 @@ div.avatar-img {
   border-radius: 18px;
   object-fit: cover;
   background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.1);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.npc-card:hover .npc-avatar {
+  border-color: rgba(var(--ion-color-primary-rgb), 0.45);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
 }
 
 .npc-delete-btn {
@@ -1287,6 +1321,8 @@ div.avatar-img {
   display: flex;
   align-items: center;
   justify-content: center;
+  background: rgba(var(--ion-color-primary-rgb), 0.06);
+  border: 1px dashed rgba(var(--ion-color-primary-rgb), 0.5);
 }
 
 .npc-add-icon {

@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'io.ionic.starter',
-  appName: 'project-d-ui',
+  appId: 'ru.jiubredeemer.mythrill',
+  appName: 'Mythrill',
   webDir: 'dist'
 };
 

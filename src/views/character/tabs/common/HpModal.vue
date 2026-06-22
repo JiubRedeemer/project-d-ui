@@ -115,7 +115,7 @@ onUnmounted(() => {
   margin-left: 4px;
   font-size: 0.9em;
   font-weight: 700;
-  color: rgba(124, 212, 255, 0.98);
+  color: var(--ion-color-primary);
 }
 
 .input-block {
