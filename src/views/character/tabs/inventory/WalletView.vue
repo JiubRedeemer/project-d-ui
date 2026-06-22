@@ -3,7 +3,6 @@ import {IonButton, IonIcon, IonInput, IonSelect, IonSelectOption} from "@ionic/v
 import goldenCoinIcon from "@/static/icons/GoldenCoin.svg";
 import silverCoinIcon from "@/static/icons/SilverCoin.svg";
 import copperCoinIcon from "@/static/icons/CopperCoin.svg";
-import {person} from "ionicons/icons";
 import {useWalletStore} from "@/stores/WalletStore";
 import {computed, ref, watch} from "vue";
 import axios from "axios";
@@ -197,11 +196,6 @@ async function exchangeMoneyRequest(goldenCount: number, silverCount: number, co
           <div class="exchange-button-value">={{ toCopper.toFixed(1) }}</div>
           <ion-icon class="exchange-button-icon" size="small" slot="end" :src="copperCoinIcon"></ion-icon>
         </div>
-      </ion-button>
-      <ion-button disabled="disabled" class="exchange-to-person-button" fill="outline" shape="default" expand="block"
-                  size="small">
-        <span class="ion-text-left exchange-button-name">Передать игроку</span>
-        <ion-icon class="exchange-button-icon" size="small" slot="end" :icon="person"></ion-icon>
       </ion-button>
     </div>
   </div>
