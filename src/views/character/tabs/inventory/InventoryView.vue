@@ -377,7 +377,11 @@ async function takeMoney() {
       :color="((totalWeight / weightLimit) >= 1) ? 'danger' : 'primary'"></ion-progress-bar>
     <div class="money-root" :class="{ openMoney: walletStore.moneyExpanded }"
       ref="moneyRootRef"
-      :style="{ maxHeight: walletStore.moneyExpanded ? moneyRootMaxHeight : '40px' }">
+      :style="walletStore.moneyExpanded
+        ? (isOpen
+          ? { height: moneyRootMaxHeight, maxHeight: moneyRootMaxHeight }
+          : { maxHeight: moneyRootMaxHeight })
+        : { maxHeight: '40px' }">
       <div class="money" @click="expandMoneyBlock()">
         <div class="money-title">{{ HEADERS.wallet.rus }}:</div>
         <div class="coins-group">
@@ -803,6 +807,7 @@ async function takeMoney() {
 .money-root.openMoney {
   width: 100%;
   min-height: 40px;
+  padding-bottom: 10px;
   overflow-y: auto;
   overflow-x: hidden;
 }
@@ -830,7 +835,8 @@ async function takeMoney() {
   width: 100%;
   padding-left: 10px;
   padding-right: 10px;
-  margin-top: 10px;
+  margin-top: auto;
+  padding-top: 10px;
   display: flex;
   flex-direction: row;
   justify-content: space-between;

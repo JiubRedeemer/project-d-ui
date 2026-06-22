@@ -78,11 +78,12 @@ onUnmounted(() => {
       <div class="input-block">
         <HpEditBlock @editHpSelect="openEditHpModal()"/>
       </div>
-      <div class="footer">
+      <div class="footer" v-if="isDesktop">
         <ion-button size="large" shape="round" @click="onSubmit">
           <ion-icon slot="icon-only" :icon="checkmarkOutline" color="onPrimary"></ion-icon>
         </ion-button>
       </div>
+      <div class="safe-bottom" v-else aria-hidden="true"></div>
     </div>
     <EditHpBonusValueModal v-if="showEditHpModal"
                       :isOpen="showEditHpModal"
@@ -96,7 +97,7 @@ onUnmounted(() => {
 <style scoped>
 .block {
   width: 100%;
-  height: 85vh;
+  height: 75vh;
   display: flex;
   justify-content: space-between;
   flex-direction: column;
@@ -128,6 +129,11 @@ onUnmounted(() => {
   margin-bottom: 50px;
   display: flex;
   justify-content: end;
+}
+
+.safe-bottom {
+  flex-shrink: 0;
+  height: 50px;
 }
 
 ion-modal {
