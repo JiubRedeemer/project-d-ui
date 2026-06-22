@@ -375,7 +375,7 @@ async function takeMoney() {
     <div class="weight">{{ totalWeight }}/{{ weightLimit }}</div>
     <ion-progress-bar :value="totalWeight / weightLimit"
       :color="((totalWeight / weightLimit) >= 1) ? 'danger' : 'primary'"></ion-progress-bar>
-    <div class="money-root" :class="{ openMoney: walletStore.moneyExpanded }"
+    <div class="money-root" :class="{ openMoney: walletStore.moneyExpanded, compact: walletStore.moneyExpanded && isOpen }"
       ref="moneyRootRef"
       :style="walletStore.moneyExpanded
         ? (isOpen
@@ -810,6 +810,36 @@ async function takeMoney() {
   padding-bottom: 10px;
   overflow-y: auto;
   overflow-x: hidden;
+}
+
+/* Компактный режим: клавиатура открыта — ужимаем все отступы, чтобы влезть */
+.money-root.compact.openMoney {
+  padding-bottom: 6px;
+}
+
+.money-root.compact .money {
+  min-height: 34px;
+}
+
+.money-root.compact .money-input {
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.money-root.compact .money-submit-buttons {
+  padding-top: 6px;
+}
+
+.money-root.compact :deep(.input-block) {
+  gap: 4px;
+}
+
+.money-root.compact :deep(.exchange-button),
+.money-root.compact :deep(.exchange-to-person-button) {
+  margin-top: 6px;
+  min-height: 30px;
+  --padding-top: 3px;
+  --padding-bottom: 3px;
 }
 
 .money {
