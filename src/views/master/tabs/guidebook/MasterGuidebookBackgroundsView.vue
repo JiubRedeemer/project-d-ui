@@ -9,7 +9,7 @@ const searchQuery = ref("");
 
 <template>
   <ion-page>
-    <RoomsHeader header-name="Предыстории" searchable v-model:search-query="searchQuery" />
+    <RoomsHeader header-name="Предыстории" force-back-button searchable v-model:search-query="searchQuery" />
     <ion-content color="dark" class="ion-padding">
       <MasterGuidebookView locked-section="backgrounds" :external-search-query="searchQuery" />
     </ion-content>

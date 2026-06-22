@@ -42,6 +42,9 @@ const moneyRootRef = ref<HTMLElement | null>(null);
 
 const moneyRootMaxHeight = ref<string>("70vh");
 
+// Клавиатура реально открыта (есть и флаг, и ненулевая высота).
+const keyboardOpen = computed(() => isOpen.value && keyboardHeight.value > 0);
+
 // Кошелёк раскрывается ровно до верхней кромки клавиатуры:
 // высота = (верх клавиатуры | низ окна) - верх блока кошелька - небольшой отступ.
 const recomputeWalletHeight = () => {
@@ -375,12 +378,12 @@ async function takeMoney() {
     <div class="weight">{{ totalWeight }}/{{ weightLimit }}</div>
     <ion-progress-bar :value="totalWeight / weightLimit"
       :color="((totalWeight / weightLimit) >= 1) ? 'danger' : 'primary'"></ion-progress-bar>
-    <div class="money-root" :class="{ openMoney: walletStore.moneyExpanded, compact: walletStore.moneyExpanded && isOpen }"
+    <div class="money-root" :class="{ openMoney: walletStore.moneyExpanded, compact: walletStore.moneyExpanded && keyboardOpen }"
       ref="moneyRootRef"
       :style="walletStore.moneyExpanded
-        ? (isOpen
+        ? (keyboardOpen
           ? { height: moneyRootMaxHeight, maxHeight: moneyRootMaxHeight }
-          : { maxHeight: moneyRootMaxHeight })
+          : { maxHeight: 'none' })
         : { maxHeight: '40px' }">
       <div class="money" @click="expandMoneyBlock()">
         <div class="money-title">{{ HEADERS.wallet.rus }}:</div>
