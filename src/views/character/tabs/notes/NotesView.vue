@@ -372,7 +372,42 @@ const autoGrow = (event: Event) => {
   const textarea = event.target as HTMLTextAreaElement;
   textarea.style.height = "auto";
   textarea.style.height = textarea.scrollHeight + "px";
+  scrollToKeepCursorVisible(textarea);
 };
+
+// ── Keyboard avoidance ────────────────────────────────────────────────────
+
+let vpResizeHandler: (() => void) | null = null;
+
+function scrollToKeepCursorVisible(el: HTMLElement) {
+  const vv = window.visualViewport;
+  if (!vv) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    return;
+  }
+  const rect = el.getBoundingClientRect();
+  const visibleBottom = vv.offsetTop + vv.height;
+  if (rect.bottom > visibleBottom - 8) {
+    const diff = rect.bottom - visibleBottom + 24;
+    window.scrollBy({ top: diff, behavior: 'smooth' });
+  }
+}
+
+function onTextareaFocus(e: FocusEvent) {
+  const textarea = e.currentTarget as HTMLTextAreaElement;
+  if (!window.visualViewport) return;
+  vpResizeHandler = () => scrollToKeepCursorVisible(textarea);
+  window.visualViewport.addEventListener('resize', vpResizeHandler);
+  // initial scroll after keyboard animation (~300ms)
+  setTimeout(() => scrollToKeepCursorVisible(textarea), 350);
+}
+
+function onTextareaBlur() {
+  if (vpResizeHandler && window.visualViewport) {
+    window.visualViewport.removeEventListener('resize', vpResizeHandler);
+    vpResizeHandler = null;
+  }
+}
 
 const getSheetAccentStyle = (section: NoteSection) => {
   const color = section.tags?.[0]?.color;
@@ -561,6 +596,8 @@ const onNotesViewOutsideClick = (e: MouseEvent) => {
                   placeholder="Введите текст заметки (Markdown)..."
                   @input="autoGrow($event)"
                   @click="autoGrow($event)"
+                  @focus="onTextareaFocus($event)"
+                  @blur="onTextareaBlur"
               />
 
               <div
