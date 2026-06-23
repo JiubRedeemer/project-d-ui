@@ -1304,6 +1304,7 @@ const onNotesViewOutsideClick = (e: MouseEvent) => {
   overflow: hidden;
   transition: height 0.2s ease;
   box-sizing: border-box;
+  max-height: 25vh;
 }
 
 .notes-card__textarea::placeholder {
