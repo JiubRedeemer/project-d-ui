@@ -379,6 +379,9 @@ const autoGrow = (event: Event) => {
 
 let vpResizeHandler: (() => void) | null = null;
 
+// Height of the fixed bottom toolbar (add-new-button + safe area)
+const TOOLBAR_H = 80;
+
 function scrollToKeepCursorVisible(el: HTMLElement) {
   const vv = window.visualViewport;
   if (!vv) {
@@ -386,9 +389,9 @@ function scrollToKeepCursorVisible(el: HTMLElement) {
     return;
   }
   const rect = el.getBoundingClientRect();
-  const visibleBottom = vv.offsetTop + vv.height;
-  if (rect.bottom > visibleBottom - 8) {
-    const diff = rect.bottom - visibleBottom + 24;
+  const visibleBottom = vv.offsetTop + vv.height - TOOLBAR_H;
+  if (rect.bottom > visibleBottom) {
+    const diff = rect.bottom - visibleBottom + 16;
     window.scrollBy({ top: diff, behavior: 'smooth' });
   }
 }
@@ -902,7 +905,7 @@ const onNotesViewOutsideClick = (e: MouseEvent) => {
 <style scoped>
 .notes-body {
   min-height: 90vh;
-  padding-bottom: max(60px, calc(52px + env(safe-area-inset-bottom, 0)));
+  padding-bottom: max(100px, calc(80px + env(safe-area-inset-bottom, 0)));
 }
 
 .sectionHeader {
