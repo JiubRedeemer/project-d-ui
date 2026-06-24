@@ -22,7 +22,7 @@ import {
   useIonRouter,
 } from "@ionic/vue";
 import {add, addOutline, arrowBack} from "ionicons/icons";
-import {computed, ref, watch} from "vue";
+import {computed, ref, watch, shallowRef} from "vue";
 import {useRoute, useRouter} from "vue-router";
 import {
   addSpellToBook,
@@ -52,8 +52,9 @@ const roomStore = useRoomStore();
 const roomId = computed(() => String(route.params.roomId));
 const characterId = computed(() => String(route.params.characterId));
 
-const allSpells = ref<SpellDto[]>([]);
+const allSpells = shallowRef<SpellDto[]>([]);
 const searchQuery = ref("");
+const debouncedQuery = ref("");
 const forMyClass = ref(true);
 const selectedSchool = ref<string>(""); // "" => all schools
 const selectedLevel = ref<string>(""); // "" => all levels
@@ -93,9 +94,15 @@ function getCatalogLabel(catalog: SpellCatalog): string {
   return catalog === "DND2024" ? "2024" : "2014";
 }
 
+let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+watch(searchQuery, (val) => {
+  if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(() => { debouncedQuery.value = val; }, 250);
+});
+
 const filteredSpells = computed(() => {
   let list = allSpells.value;
-  const q = searchQuery.value.trim().toLowerCase();
+  const q = debouncedQuery.value.trim().toLowerCase();
   if (q) {
     list = list.filter((s) => {
       const name =
@@ -141,12 +148,31 @@ const availableLevels = computed(() => {
   });
 });
 
+interface SpellRow {
+  id: string;
+  name: string;
+  line1: string;
+  line2: string;
+  imgUrl: string;
+  inBook: boolean;
+  raw: SpellDto;
+}
+
 const spellsByLevel = computed(() => {
-  const byLevel = new Map<string, SpellDto[]>();
+  const inBook = spellsInBook.value;
+  const byLevel = new Map<string, SpellRow[]>();
   for (const spell of filteredSpells.value) {
     const level = spell.level ?? "0";
     if (!byLevel.has(level)) byLevel.set(level, []);
-    byLevel.get(level)!.push(spell);
+    byLevel.get(level)!.push({
+      id: spell.id ?? "",
+      name: getSpellName(spell),
+      line1: getDetailsLine1(spell),
+      line2: getDetailsLine2(spell),
+      imgUrl: getSpellImageUrl(spell.imgUrl),
+      inBook: spell.id != null && inBook.has(spell.id),
+      raw: spell,
+    });
   }
   return Array.from(byLevel.entries()).sort(
       ([a], [b]) => parseInt(a, 10) - parseInt(b, 10)
@@ -248,6 +274,7 @@ async function loadSpells() {
 }
 
 async function loadSpellBook() {
+  if (magicStore.spellBook?.characterId === characterId.value) return;
   try {
     const book = await getSpellBookByRoomAndCharacter(
         roomId.value,
@@ -366,33 +393,34 @@ function openAddSpellView() {
     <ion-content>
       <div v-if="loading" class="loading">Загрузка...</div>
       <div v-else class="found" :class="{ 'has-content': filteredSpells.length > 0 }">
-        <template v-for="[level, spells] in spellsByLevel" :key="level">
+        <template v-for="[level, rows] in spellsByLevel" :key="level">
           <h1 class="sectionHeader">{{ getLevelLabel(level) }}</h1>
-          <div class="section" v-for="spell in spells" :key="spell.id">
-            <div class="section-start-block" @click="openSpellModal(spell)">
+          <div class="section" v-for="row in rows" :key="row.id">
+            <div class="section-start-block" @click="openSpellModal(row.raw)">
               <div class="image-block">
                 <img
                     width="55"
                     height="55"
                     class="spell-image"
-                    :src="getSpellImageUrl(spell.imgUrl)"
-                    :alt="getSpellName(spell)"
+                    loading="lazy"
+                    :src="row.imgUrl"
+                    :alt="row.name"
                 />
               </div>
               <div class="stats-block">
-                <div class="item-name">{{ getSpellName(spell) }}</div>
-                <div class="item-stats">{{ getDetailsLine1(spell) }}</div>
-                <div class="item-stats">{{ getDetailsLine2(spell) }}</div>
+                <div class="item-name">{{ row.name }}</div>
+                <div class="item-stats">{{ row.line1 }}</div>
+                <div class="item-stats">{{ row.line2 }}</div>
               </div>
             </div>
             <div class="add-button-block">
               <ion-button
-                  v-if="canAdd(spell)"
-                  @click="addSpell(spell)"
+                  v-if="!row.inBook"
+                  @click="addSpell(row.raw)"
                   size="small"
                   shape="round"
                   class="add-button"
-                  :disabled="addingSpellId === spell.id"
+                  :disabled="addingSpellId === row.id"
               >
                 <ion-icon slot="icon-only" :icon="addOutline"/>
               </ion-button>
@@ -497,6 +525,8 @@ ion-segment-button {
   display: flex;
   flex-direction: row;
   justify-content: space-between;
+  content-visibility: auto;
+  contain-intrinsic-size: 0 75px;
 }
 
 .section-start-block {
