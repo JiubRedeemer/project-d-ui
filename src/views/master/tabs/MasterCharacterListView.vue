@@ -8,7 +8,7 @@ import {
   shieldOutline,
   sparklesOutline
 } from "ionicons/icons";
-import {computed, ref} from "vue";
+import {computed, onMounted, ref} from "vue";
 import {useRoute} from "vue-router";
 import {Character} from "@/components/models/response/Character";
 import {useRoomStore} from "@/stores/RoomStore";
@@ -16,6 +16,8 @@ import CachedFileImage from "@/components/CachedFileImage.vue";
 import {CHARACTER_AVATAR_PLACEHOLDER, getCharacterAvatarUrl} from "@/utils/characterAvatar";
 import {TEXTS} from "@/config/localisations";
 import MasterCharacterStateModal from "@/views/master/modals/MasterCharacterStateModal.vue";
+import {getStatesForRoom} from "@/api/statesApi";
+import type {StateDto} from "@/api/statesApi.types";
 
 const route = useRoute();
 const ionRouter = useIonRouter();
@@ -105,6 +107,32 @@ const goToCharacter = (characterId: string) => {
   );
 };
 
+const roomStates = ref<StateDto[]>([]);
+const stateNameMap = computed(() => {
+  const m = new Map<string, string>();
+  for (const s of roomStates.value) {
+    if (s.code) m.set(s.code, s.name ?? s.code);
+  }
+  return m;
+});
+
+function stateName(code: string): string {
+  return stateNameMap.value.get(code) ?? code;
+}
+
+function characterActiveStates(character: Character) {
+  return character.states ?? [];
+}
+
+onMounted(async () => {
+  const roomId = route.params.roomId as string;
+  try {
+    roomStates.value = await getStatesForRoom(roomId);
+  } catch {
+    // states unavailable — chips will show raw code
+  }
+});
+
 const stateModalCharacter = ref<Character | null>(null);
 
 function openStateModal(e: Event, character: Character) {
@@ -177,37 +205,50 @@ function closeStateModal() {
               <ion-icon class="character-card__chevron" :icon="chevronForwardOutline" aria-hidden="true" />
             </div>
 
-            <div class="character-card__stats">
-              <div v-if="character.health" class="hp-meter">
-                <div class="hp-meter__head">
-                  <span class="hp-meter__label">HP</span>
-                  <span class="hp-meter__value">
-                    {{ character.health.currentHp }}<span class="hp-meter__max">/{{ maxHpValue(character) }}</span>
-                    <span v-if="character.health.tempHp > 0" class="hp-meter__temp">+{{ character.health.tempHp }}</span>
-                  </span>
-                </div>
-                <div class="hp-meter__track">
-                  <div
-                    class="hp-meter__fill"
-                    :class="`hp-meter__fill--${hpTone(character)}`"
-                    :style="{ width: `${hpPercent(character)}%` }"
-                  />
-                </div>
-              </div>
-              <div class="ac-chip" :aria-label="`Класс брони ${armoryClassValue(character)}`">
-                <ion-icon :icon="shieldOutline" aria-hidden="true" />
-                <span>{{ armoryClassValue(character) }}</span>
-              </div>
-              <ion-button
-                class="state-btn"
-                fill="clear"
-                size="small"
-                color="danger"
-                :aria-label="`Состояния ${character.name}`"
-                @click="openStateModal($event, character)"
+            <div class="character-card__bottom">
+              <div
+                v-if="characterActiveStates(character).length"
+                class="character-card__states"
+                @click.stop="openStateModal($event, character)"
               >
-                <ion-icon slot="icon-only" :icon="alertCircleOutline"/>
-              </ion-button>
+                <span
+                  v-for="state in characterActiveStates(character)"
+                  :key="state.id ?? state.stateCode"
+                  class="state-chip"
+                  :title="state.stateCode ?? ''"
+                >{{ stateName(state.stateCode ?? '') }}</span>
+              </div>
+
+              <div class="character-card__stats">
+                <div v-if="character.health" class="hp-meter">
+                  <div class="hp-meter__head">
+                    <span class="hp-meter__label">HP</span>
+                    <span class="hp-meter__value">
+                      {{ character.health.currentHp }}<span class="hp-meter__max">/{{ maxHpValue(character) }}</span>
+                      <span v-if="character.health.tempHp > 0" class="hp-meter__temp">+{{ character.health.tempHp }}</span>
+                    </span>
+                  </div>
+                  <div class="hp-meter__track">
+                    <div
+                      class="hp-meter__fill"
+                      :class="`hp-meter__fill--${hpTone(character)}`"
+                      :style="{ width: `${hpPercent(character)}%` }"
+                    />
+                  </div>
+                </div>
+                <div class="ac-chip" :aria-label="`Класс брони ${armoryClassValue(character)}`">
+                  <ion-icon :icon="shieldOutline" aria-hidden="true" />
+                  <span>{{ armoryClassValue(character) }}</span>
+                </div>
+                <button
+                  class="state-manage-btn"
+                  :class="{ 'state-manage-btn--active': characterActiveStates(character).length }"
+                  :aria-label="`Состояния ${character.name}`"
+                  @click.stop="openStateModal($event, character)"
+                >
+                  <ion-icon :icon="alertCircleOutline"/>
+                </button>
+              </div>
             </div>
           </button>
         </div>
@@ -356,7 +397,7 @@ function closeStateModal() {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 0;
   padding: 16px;
   border-radius: 18px;
   border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
@@ -425,6 +466,15 @@ function closeStateModal() {
 
 .character-card__level ion-icon {
   font-size: 12px;
+}
+
+/* Bottom anchor — always at the card's bottom edge */
+.character-card__bottom {
+  margin-top: auto;
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 /* Top row */
@@ -527,7 +577,7 @@ function closeStateModal() {
 /* Stats row */
 .character-card__stats {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   gap: 12px;
 }
 
@@ -619,12 +669,63 @@ function closeStateModal() {
   color: var(--ion-color-primary);
 }
 
-.state-btn {
+/* States row */
+.character-card__states {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.state-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  background: rgba(var(--ion-color-danger-rgb), 0.15);
+  border: 1px solid rgba(var(--ion-color-danger-rgb), 0.45);
+  color: var(--ion-color-danger-tint);
+  transition: background 0.18s ease, border-color 0.18s ease;
+  pointer-events: none;
+}
+
+.character-card__states:hover .state-chip {
+  background: rgba(var(--ion-color-danger-rgb), 0.24);
+  border-color: rgba(var(--ion-color-danger-rgb), 0.7);
+}
+
+/* State manage button */
+.state-manage-btn {
   flex-shrink: 0;
-  --padding-start: 6px;
-  --padding-end: 6px;
-  margin: 0;
-  font-size: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.1);
+  background: rgba(var(--ion-color-light-rgb), 0.05);
+  color: rgba(var(--ion-color-light-rgb), 0.35);
+  font-size: 18px;
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+  padding: 0;
+}
+
+.state-manage-btn--active {
+  border-color: rgba(var(--ion-color-danger-rgb), 0.45);
+  color: var(--ion-color-danger);
+  background: rgba(var(--ion-color-danger-rgb), 0.1);
+}
+
+.state-manage-btn:hover {
+  background: rgba(var(--ion-color-danger-rgb), 0.18);
+  border-color: rgba(var(--ion-color-danger-rgb), 0.6);
+  color: var(--ion-color-danger-tint);
 }
 
 /* Empty state */
