@@ -33,7 +33,7 @@ import {
   sparkles,
   sparklesOutline
 } from "ionicons/icons";
-import {computed, onMounted, ref, watch, withDefaults} from "vue";
+import {computed, onMounted, ref, shallowRef, watch, withDefaults} from "vue";
 import {useRoute} from "vue-router";
 import {
   getBackgroundsForRoom,
@@ -145,7 +145,8 @@ const races = ref<RaceDto[]>([]);
 const classes = ref<ClazzDto[]>([]);
 const backgrounds = ref<BackgroundDto[]>([]);
 const items = ref<Item[]>([]);
-const spells = ref<SpellDto[]>([]);
+const spells = shallowRef<SpellDto[]>([]);
+const loadedSpellKey = ref<string | null>(null);
 const itemSearchQuery = ref("");
 const spellSearchQuery = ref("");
 const selectedSpellSchool = ref("");
@@ -469,12 +470,26 @@ const filteredSpells = computed(() => {
   return list;
 });
 
+interface SpellRow {
+  id: string;
+  name: string;
+  line1: string;
+  imgUrl: string;
+  raw: SpellDto;
+}
+
 const spellsByLevel = computed(() => {
-  const byLevel = new Map<string, SpellDto[]>();
+  const byLevel = new Map<string, SpellRow[]>();
   for (const spell of filteredSpells.value) {
     const level = spell.level ?? "0";
     if (!byLevel.has(level)) byLevel.set(level, []);
-    byLevel.get(level)!.push(spell);
+    byLevel.get(level)!.push({
+      id: spell.id ?? "",
+      name: getSpellName(spell),
+      line1: [spell.school, spell.damageType].filter(Boolean).join(" — "),
+      imgUrl: getSpellImageUrl(spell.imgUrl),
+      raw: spell,
+    });
   }
   return Array.from(byLevel.entries()).sort(
       ([a], [b]) => parseInt(a, 10) - parseInt(b, 10)
@@ -687,7 +702,13 @@ function closeSpellModal() {
   selectedSpell.value = null;
 }
 
+function getSpellCacheKey() {
+  return `${selectedSpellCatalog.value}:${selectedSpellClass.value}`;
+}
+
 async function loadSpells() {
+  const key = getSpellCacheKey();
+  if (spells.value.length > 0 && loadedSpellKey.value === key) return;
   loading.value = true;
   try {
     const spellClass =
@@ -701,6 +722,7 @@ async function loadSpells() {
     } else {
       spells.value = await listSpells(spellClass, rootSpellClass ?? undefined);
     }
+    loadedSpellKey.value = key;
   } finally {
     loading.value = false;
   }
@@ -727,6 +749,7 @@ async function loadSpellClassesForRoom() {
 watch([selectedSpellClass, selectedSpellCatalog], () => {
   selectedSpellSchool.value = "";
   selectedSpellLevel.value = "";
+  loadedSpellKey.value = null;
   loadSpells();
 });
 
@@ -1602,21 +1625,20 @@ async function onCatalogApplied(
             <div class="spell-level-label">{{ getSpellLevelLabel(level) }}</div>
             <ion-list class="guidebook-list">
               <ion-item
-                  v-for="spell in levelSpells"
-                  :key="spell.id"
+                  v-for="row in levelSpells"
+                  :key="row.id"
                   :button="true"
                   color="dark"
-                  @click="openSpellModal(spell)"
+                  class="spell-item-cv"
+                  @click="openSpellModal(row.raw)"
               >
                 <ion-avatar slot="start">
-                  <img :src="getSpellImageUrl(spell.imgUrl)" alt=""/>
+                  <img :src="row.imgUrl" :alt="row.name" loading="lazy"/>
                 </ion-avatar>
                 <ion-icon :icon="chevronForwardOutline" slot="end"/>
                 <ion-label>
-                  <h3>{{ getSpellName(spell) }}</h3>
-                  <p class="spell-school">{{ spell.school }} <span v-if="spell.damageType">— {{
-                      spell.damageType
-                    }}</span></p>
+                  <h3>{{ row.name }}</h3>
+                  <p class="spell-school">{{ row.line1 }}</p>
                 </ion-label>
               </ion-item>
             </ion-list>
@@ -2101,6 +2123,11 @@ ion-searchbar {
 
 .spell-level-group {
   margin-bottom: 16px;
+}
+
+.spell-item-cv {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 68px;
 }
 
 .spell-level-label {

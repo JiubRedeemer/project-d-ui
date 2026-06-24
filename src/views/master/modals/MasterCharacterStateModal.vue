@@ -100,7 +100,7 @@ watch(() => props.isOpen, async (open) => {
 </script>
 
 <template>
-  <ion-modal :is-open="isOpen" @didDismiss="emit('close')" :initial-breakpoint="0.75" :breakpoints="[0, 0.75, 1]">
+  <ion-modal :is-open="isOpen" @didDismiss="emit('close')" :initial-breakpoint="1" :breakpoints="[0, 1]">
     <ion-header>
       <ion-toolbar color="dark">
         <ion-title>{{ character?.name }}</ion-title>
