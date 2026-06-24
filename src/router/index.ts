@@ -37,6 +37,7 @@ import MasterGuidebookBackgroundsView from "@/views/master/tabs/guidebook/Master
 import MasterGuidebookItemsView from "@/views/master/tabs/guidebook/MasterGuidebookItemsView.vue";
 import MasterGuidebookSpellsView from "@/views/master/tabs/guidebook/MasterGuidebookSpellsView.vue";
 import MasterGuidebookNpcsView from "@/views/master/tabs/guidebook/MasterGuidebookNpcsView.vue";
+import MasterGuidebookStatesView from "@/views/master/tabs/guidebook/MasterGuidebookStatesView.vue";
 import ProfilePage from "@/views/profile/ProfilePage.vue";
 
 const routes: Array<RouteRecordRaw> = [
@@ -253,6 +254,11 @@ const routes: Array<RouteRecordRaw> = [
         path: '/rooms/:roomId/master/guidebook/npcs',
         component: MasterGuidebookNpcsView,
         name: 'masterGuidebookNpcsView',
+    },
+    {
+        path: '/rooms/:roomId/master/guidebook/states',
+        component: MasterGuidebookStatesView,
+        name: 'masterGuidebookStatesView',
     }
 ]
 

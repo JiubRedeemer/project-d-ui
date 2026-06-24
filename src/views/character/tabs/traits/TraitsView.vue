@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import {useCharacterStore} from "@/stores/CharacterStore";
-import {addOutline, reorderThreeOutline, trashOutline} from "ionicons/icons";
+import {addOutline, chevronDownOutline, reorderThreeOutline, trashOutline} from "ionicons/icons";
 import {IonButton, IonIcon, toastController} from "@ionic/vue";
-import {computed, ref} from "vue";
+import {computed, onMounted, ref} from "vue";
 import CreateTraitModal from "./CreateTraitModal.vue";
 import axios from "axios";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {useRoute} from "vue-router";
+import {deleteCharacterState, getStatesForRoom, saveCharacterState} from "@/api/statesApi";
+import type {CharacterStateDto, StateDto} from "@/api/statesApi.types";
 
 const characterStore = useCharacterStore();
 const showCreateTraitModal = ref(false);
@@ -26,7 +28,7 @@ function getPassiveByInt() {
 
 // ── Order persistence ─────────────────────────────────────────────────────
 
-type Group = 'race' | 'bg' | 'custom';
+type Group = 'race' | 'bg' | 'custom' | 'states';
 
 function orderKey(group: Group) {
   return `traitOrder_${characterStore.character.id}_${group}`;
@@ -87,6 +89,11 @@ function commitReorder(group: Group, from: number, to: number) {
     list.splice(to, 0, list.splice(from, 1)[0]);
     saveOrder('bg', list.map(t => t.name));
     characterStore.character.backgroundInfo!.stats!.traits = list;
+  } else if (group === 'states') {
+    const list = [...orderedCharacterStates.value];
+    list.splice(to, 0, list.splice(from, 1)[0]);
+    saveStatesOrder(list.map(s => s.id ?? s.stateCode ?? ''));
+    characterStore.character.states = list;
   } else {
     const list = [...customTraits.value];
     list.splice(to, 0, list.splice(from, 1)[0]);
@@ -111,6 +118,7 @@ let ghostOffsetY = 0;
 function listForGroup(group: Group) {
   if (group === 'race') return raceTraits.value;
   if (group === 'bg') return bgTraits.value;
+  if (group === 'states') return orderedCharacterStates.value;
   return customTraits.value;
 }
 
@@ -219,6 +227,96 @@ function onHandlePointerCancel(e: PointerEvent) {
   removeGhost();
 }
 
+// ── Character states ─────────────────────────────────────────────────────
+
+const roomStates = ref<StateDto[]>([]);
+
+function statesOrderKey() {
+  return `statesOrder_${characterStore.character.id}`;
+}
+function loadStatesOrder(): string[] {
+  try { return JSON.parse(localStorage.getItem(statesOrderKey()) ?? '[]'); } catch { return []; }
+}
+function saveStatesOrder(keys: string[]) {
+  localStorage.setItem(statesOrderKey(), JSON.stringify(keys));
+}
+
+const characterStates = computed(() => characterStore.character.states ?? []);
+
+const orderedCharacterStates = computed(() => {
+  const saved = loadStatesOrder();
+  if (!saved.length) return characterStates.value;
+  return applyOrder(characterStates.value, s => s.id ?? s.stateCode ?? '', saved);
+});
+
+function stateDescription(stateCode: string | null | undefined): string | null {
+  return roomStates.value.find(s => s.code === stateCode)?.description ?? null;
+}
+
+const statesLoading = ref(false);
+const addingState = ref(false);
+const showAddStates = ref(false);
+
+const roomId = computed(() => String(route.params.roomId));
+const characterId = computed(() => String(route.params.characterId));
+
+const activeStateCodes = computed(() => new Set(characterStates.value.map(s => s.stateCode)));
+const availableStatesToAdd = computed(() =>
+    roomStates.value.filter(s => s.code && !activeStateCodes.value.has(s.code))
+);
+
+function stateLabel(stateCode: string | null | undefined): string {
+  const found = roomStates.value.find(s => s.code === stateCode);
+  return found?.name ?? stateCode ?? '—';
+}
+
+async function loadStates() {
+  statesLoading.value = true;
+  try {
+    roomStates.value = await getStatesForRoom(roomId.value);
+  } catch (e) {
+    console.error('Failed to load states:', e);
+  } finally {
+    statesLoading.value = false;
+  }
+}
+
+async function addCharacterState(code: string) {
+  if (!code || addingState.value) return;
+  addingState.value = true;
+  try {
+    const saved = await saveCharacterState(roomId.value, characterId.value, {
+      characterId: characterId.value,
+      stateCode: code,
+    });
+    if (!characterStore.character.states) characterStore.character.states = [];
+    characterStore.character.states.push(saved);
+
+  } catch (e) {
+    console.error('Failed to add state:', e);
+    const toast = await toastController.create({ message: 'Ошибка при добавлении состояния', duration: 2000, position: 'top', color: 'danger' });
+    await toast.present();
+  } finally {
+    addingState.value = false;
+  }
+}
+
+async function removeCharacterState(state: CharacterStateDto) {
+  if (!state.id) return;
+  try {
+    await deleteCharacterState(roomId.value, characterId.value, state.id);
+    if (characterStore.character.states) {
+      characterStore.character.states = characterStore.character.states.filter(s => s.id !== state.id);
+    }
+  } catch (e) {
+    console.error('Failed to delete state:', e);
+    const toast = await toastController.create({ message: 'Ошибка при удалении состояния', duration: 2000, position: 'top', color: 'danger' });
+    await toast.present();
+  }
+}
+
+onMounted(loadStates);
+
 // ── Delete ────────────────────────────────────────────────────────────────
 
 async function deleteTrait(traitId: string) {
@@ -257,6 +355,67 @@ async function deleteTrait(traitId: string) {
         <span class="passive-tile__name">Анализ<span class="passive-tile__src">Интеллект</span></span>
       </div>
     </div>
+
+    <!-- Состояния персонажа -->
+    <template v-if="!statesLoading && (characterStates.length || availableStatesToAdd.length)">
+      <h3 class="section-heading" :class="characterStates.length ? 'section-heading--states' : 'section-heading--passive'">Состояния</h3>
+      <div class="traits-list">
+        <div
+            v-for="(state, index) in orderedCharacterStates"
+            :key="state.id ?? state.stateCode"
+            class="trait-card trait-card--states"
+            :class="{
+              'is-dragging': dragGroup === 'states' && dragFromIndex === index,
+              'is-drag-over': dragGroup === 'states' && dragOverIndex === index && dragFromIndex !== index,
+            }"
+            :data-drag-group="'states'"
+            :data-drag-index="index"
+        >
+          <div class="trait-card__header">
+            <div class="trait-card__name">{{ stateLabel(state.stateCode) }}</div>
+            <ion-button
+                class="trait-card__delete"
+                size="small"
+                shape="round"
+                color="danger"
+                fill="clear"
+                @click.stop="removeCharacterState(state)"
+            >
+              <ion-icon slot="icon-only" :icon="trashOutline"></ion-icon>
+            </ion-button>
+            <div
+                class="drag-handle"
+                @pointerdown="onHandlePointerDown($event, 'states', index)"
+                @pointermove="onHandlePointerMove($event, 'states')"
+                @pointerup="onHandlePointerUp($event)"
+                @pointercancel="onHandlePointerCancel($event)"
+            >
+              <ion-icon :icon="reorderThreeOutline"/>
+            </div>
+          </div>
+          <div class="trait-card__desc" v-if="stateDescription(state.stateCode)">{{ stateDescription(state.stateCode) }}</div>
+        </div>
+      </div>
+      <div class="states-add-row" v-if="availableStatesToAdd.length">
+        <button type="button" class="states-add-toggle" @click="showAddStates = !showAddStates">
+          <span>Добавить состояние</span>
+          <ion-icon :icon="chevronDownOutline" class="states-add-toggle__icon" :class="{ 'states-add-toggle__icon--open': showAddStates }"/>
+        </button>
+        <div v-if="showAddStates" class="states-add-chips">
+          <button
+              v-for="s in availableStatesToAdd"
+              :key="s.code"
+              type="button"
+              class="states-add-chip"
+              :disabled="addingState"
+              @click="addCharacterState(s.code!)"
+          >
+            <span class="states-add-chip__plus">+</span>
+            {{ s.name ?? s.code }}
+          </button>
+        </div>
+      </div>
+    </template>
 
     <template v-if="raceTraits.length">
       <h3 class="section-heading section-heading--race">Владения вида</h3>
@@ -483,6 +642,7 @@ async function deleteTrait(traitId: string) {
 .trait-card--race   { --accent: var(--ion-color-primary); }
 .trait-card--bg     { --accent: var(--ion-color-tertiary); }
 .trait-card--custom { --accent: var(--ion-color-secondary-tint); }
+.trait-card--states { --accent: var(--ion-color-danger); }
 
 /* Drag handle */
 .drag-handle {
@@ -532,6 +692,85 @@ async function deleteTrait(traitId: string) {
   margin: 0;
   --padding-start: 6px;
   --padding-end: 6px;
+}
+
+.section-heading--states { --accent: var(--ion-color-danger); }
+
+.states-add-row {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.states-add-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(var(--ion-color-light-rgb), 0.4);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.15s ease;
+}
+
+.states-add-toggle:hover {
+  color: rgba(var(--ion-color-light-rgb), 0.7);
+}
+
+.states-add-toggle__icon {
+  font-size: 13px;
+  transition: transform 0.2s ease;
+}
+
+.states-add-toggle__icon--open {
+  transform: rotate(180deg);
+}
+
+.states-add-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.states-add-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px dashed rgba(var(--ion-color-danger-rgb), 0.45);
+  background: rgba(var(--ion-color-danger-rgb), 0.06);
+  color: rgba(var(--ion-color-danger-rgb), 0.8);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.states-add-chip:not(:disabled):hover,
+.states-add-chip:not(:disabled):active {
+  background: rgba(var(--ion-color-danger-rgb), 0.18);
+  border-color: rgba(var(--ion-color-danger-rgb), 0.75);
+  color: var(--ion-color-danger);
+}
+
+.states-add-chip:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.states-add-chip__plus {
+  font-size: 14px;
+  line-height: 1;
+  font-weight: 400;
+  opacity: 0.7;
 }
 
 .add-new-button {

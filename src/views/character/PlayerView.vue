@@ -44,10 +44,17 @@ import RestViewModal from "@/views/character/tabs/rest/RestViewModal.vue";
 import EditSkillValueModal from "./tabs/common/bonus/EditSkillValueModal.vue";
 import LevelUpViewModal from "@/views/character/tabs/level/LevelUpViewModal.vue";
 import TraitsView from "@/views/character/tabs/traits/TraitsView.vue";
+import {useCharacterWebSocket} from "@/composables/useCharacterWebSocket";
+import {useMagicStore} from "@/stores/MagicStore";
+import {useNoteStore} from "@/stores/NoteStore";
+import {useWalletStore} from "@/stores/WalletStore";
 
 const route = useRoute();
 const characterStore = useCharacterStore()
 const inventoryStore = useInventoryStore()
+const magicStore = useMagicStore()
+const noteStore = useNoteStore()
+const walletStore = useWalletStore()
 const asyncDone = ref<boolean>(false)
 // const subheaderVisible = ref(true);
 const showEditAbilityBonusModal = ref(false); // Управляем видимостью модалки
@@ -107,40 +114,30 @@ const onEarlyVersionStubClick = async () => {
   }
 };
 
-const POLL_INTERVAL_MS = 10_000;
-let pollTimer: ReturnType<typeof setInterval> | null = null;
+let wsClient: ReturnType<typeof useCharacterWebSocket> | null = null;
 
-const startPolling = () => {
+onIonViewDidEnter(async () => {
   const roomId = route.params.roomId as string;
   const characterId = route.params.characterId as string;
 
-  const poll = async () => {
-    await characterStore.updateCharacterInStoreById(roomId, characterId);
-    await inventoryStore.updateInventoryInStoreById(roomId, characterId);
-    await characterSkillsStore.updateCharacterSkills(roomId, characterId);
-  };
+  await characterStore.updateCharacterInStoreById(roomId, characterId);
+  await inventoryStore.updateInventoryInStoreById(roomId, characterId);
+  await characterSkillsStore.updateCharacterSkills(roomId, characterId);
 
-  poll();
-  pollTimer = setInterval(poll, POLL_INTERVAL_MS);
-};
+  wsClient = useCharacterWebSocket(roomId, characterId, () => {
+    characterStore.updateCharacterInStoreById(roomId, characterId);
+    inventoryStore.updateInventoryInStoreById(roomId, characterId);
+    walletStore.updateWallet(roomId, characterId);
+    magicStore.updateSpellBookInStore(roomId, characterId);
+    noteStore.triggerRefresh();
+  });
 
-const stopPolling = () => {
-  if (pollTimer) {
-    clearInterval(pollTimer);
-    pollTimer = null;
-  }
-};
-
-onIonViewDidEnter(async () => {
-  await characterStore.updateCharacterInStoreById(route.params.roomId, route.params.characterId);
-  await inventoryStore.updateInventoryInStoreById(route.params.roomId, route.params.characterId);
-  await characterSkillsStore.updateCharacterSkills(route.params.roomId, route.params.characterId);
-  startPolling();
   asyncDone.value = true;
 });
 
 onIonViewDidLeave(() => {
-  stopPolling();
+  wsClient?.deactivate();
+  wsClient = null;
 });
 
 const onResize = () => {

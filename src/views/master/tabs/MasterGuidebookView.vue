@@ -19,6 +19,7 @@ import {
 import {
   add,
   addOutline,
+  alertCircleOutline,
   bookOutline,
   chevronForwardOutline,
   cubeOutline,
@@ -48,6 +49,8 @@ import type {SpellDto} from "@/components/models/response/MagicApi";
 import {listSpells, listSpellsDnd2024} from "@/api/magicApi";
 import {getNpcsByRoomIdForRoom, saveCharacterNpcRelationForRoom} from "@/api/npcApi";
 import type {NpcDto, NpcTypeEnum, RelationTypeEnum} from "@/api/npcApi.types";
+import {getStatesForRoom} from "@/api/statesApi";
+import type {StateDto} from "@/api/statesApi.types";
 import {sortNpcsByName} from "@/utils/sortNpcsByName";
 import {
   FILE_STORAGE_INTEGRATION_ROUTES,
@@ -67,6 +70,7 @@ import axios from "axios";
 import MasterGuidebookAddFromCatalogModal from "@/views/master/modals/MasterGuidebookAddFromCatalogModal.vue";
 import MasterGuidebookItemModal from "@/views/master/modals/MasterGuidebookItemModal.vue";
 import MasterGuidebookSpellModal from "@/views/master/modals/MasterGuidebookSpellModal.vue";
+import MasterGuidebookStateModal from "@/views/master/modals/MasterGuidebookStateModal.vue";
 import {useGuidebookStore} from "@/stores/GuidebookStore";
 
 const route = useRoute();
@@ -78,7 +82,7 @@ const fullBackgroundStore = useFullBackgroundStore();
 const guidebookStore = useGuidebookStore();
 const createInventoryItemStore = useCreateInventoryItemStore();
 
-type Section = "list" | "races" | "classes" | "backgrounds" | "items" | "spells" | "npcs";
+type Section = "list" | "races" | "classes" | "backgrounds" | "items" | "spells" | "npcs" | "states";
 const props = withDefaults(defineProps<{ lockedSection?: Section | null; externalSearchQuery?: string }>(), {
   lockedSection: null,
   externalSearchQuery: ""
@@ -100,7 +104,8 @@ const SECTIONS: { id: Section; label: string; icon: string; description: string;
   {id: "backgrounds", label: "Предыстории", icon: "documentTextOutline", description: "Происхождение героев", accent: "208, 188, 254"},
   {id: "items", label: "Предметы", icon: "cubeOutline", description: "Снаряжение и артефакты", accent: "149, 115, 253"},
   {id: "spells", label: "Заклинания", icon: "sparklesOutline", description: "Магия по уровням", accent: "85, 191, 255"},
-  {id: "npcs", label: "NPC", icon: "personOutline", description: "Персонажи мира", accent: "45, 213, 91"}
+  {id: "npcs", label: "NPC", icon: "personOutline", description: "Персонажи мира", accent: "45, 213, 91"},
+  {id: "states", label: "Состояния", icon: "alertCircleOutline", description: "Состояния персонажей", accent: "208, 188, 254"}
 ];
 
 const sectionIcons: Record<string, unknown> = {
@@ -109,7 +114,8 @@ const sectionIcons: Record<string, unknown> = {
   bookOutline,
   documentTextOutline,
   cubeOutline,
-  sparklesOutline
+  sparklesOutline,
+  alertCircleOutline
 };
 
 const NPC_TYPE_LABELS: Record<NpcTypeEnum, string> = {
@@ -161,6 +167,11 @@ const selectedSpellCatalog = ref<SpellCatalog>("DND5E");
 
 const npcs = ref<NpcDto[]>([]);
 const npcsLoading = ref(false);
+
+const states = ref<StateDto[]>([]);
+const statesLoading = ref(false);
+const selectedState = ref<StateDto | null>(null);
+const showStateModal = ref(false);
 const npcFilterType = ref<NpcTypeEnum | "">("");
 const npcFilterClass = ref<string>("");
 const npcFilterRace = ref<string>("");
@@ -406,6 +417,14 @@ const filteredNpcs = computed(() => {
     result = result.filter((n) => (n.name ?? "").toLowerCase().includes(q));
   }
   return sortNpcsByName(result);
+});
+
+const filteredStates = computed(() => {
+  const q = normalizedExternalSearchQuery.value;
+  if (!q || currentSection.value !== "states") return states.value;
+  return states.value.filter(
+      (s) => (s.name ?? "").toLowerCase().includes(q) || (s.code ?? "").toLowerCase().includes(q)
+  );
 });
 
 const availableSpellSchools = computed(() => {
@@ -871,6 +890,28 @@ async function loadNpcs() {
   }
 }
 
+function openStateModal(state: StateDto) {
+  selectedState.value = state;
+  showStateModal.value = true;
+}
+
+function closeStateModal() {
+  showStateModal.value = false;
+  selectedState.value = null;
+}
+
+async function loadStates() {
+  if (!roomId.value) return;
+  statesLoading.value = true;
+  try {
+    states.value = await getStatesForRoom(roomId.value);
+  } catch (e) {
+    console.error("Failed to load states:", e);
+  } finally {
+    statesLoading.value = false;
+  }
+}
+
 function getNpcImageUrl(imgUrl: string | undefined | null) {
   if (!imgUrl) return "https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png";
   return `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.npc_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.download}/${imgUrl}`;
@@ -1022,6 +1063,8 @@ async function ensureSectionDataLoaded(section: Section) {
     }
   } else if (section === "npcs" && npcs.value.length === 0) {
     await loadNpcs();
+  } else if (section === "states" && states.value.length === 0) {
+    await loadStates();
   }
 }
 
@@ -1031,7 +1074,8 @@ const sectionTitles: Record<string, string> = {
   backgrounds: "Предыстории",
   items: "Предметы",
   spells: "Заклинания",
-  npcs: "NPC"
+  npcs: "NPC",
+  states: "Состояния"
 };
 
 onIonViewDidEnter(async () => {
@@ -1669,6 +1713,24 @@ async function onCatalogApplied(
         </ion-button>
       </div>
 
+      <!-- Состояния -->
+      <div v-show="currentSection === 'states'" class="segment-content">
+        <div v-if="!statesLoading && filteredStates.length" class="states-grid">
+          <button
+              v-for="state in filteredStates"
+              :key="state.id ?? state.code ?? ''"
+              type="button"
+              class="state-card"
+              @click="openStateModal(state)"
+          >
+            <span class="state-card__name">{{ state.name ?? state.code }}</span>
+            <span v-if="state.description" class="state-card__desc">{{ state.description }}</span>
+          </button>
+        </div>
+        <div v-else-if="statesLoading" class="loading-placeholder">Загрузка...</div>
+        <div v-else class="empty-placeholder">Нет состояний в этой комнате</div>
+      </div>
+
       <ion-popover
           :is-open="npcRelationPopoverOpen"
           :event="npcRelationPopoverEvent"
@@ -1729,6 +1791,11 @@ async function onCatalogApplied(
         :spell="selectedSpell"
         :is-open="showSpellModal"
         @close="closeSpellModal"
+    />
+    <MasterGuidebookStateModal
+        :state="selectedState"
+        :is-open="showStateModal"
+        @close="closeStateModal"
     />
     <MasterGuidebookAddFromCatalogModal
         :is-open="addFromCatalogOpen"
@@ -2217,6 +2284,54 @@ ion-searchbar {
   gap: 10px;
   padding: 8px 0 max(8px, env(safe-area-inset-bottom, 0));
 }
+
+.states-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.state-card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.15);
+  background: linear-gradient(135deg, rgba(var(--ion-color-medium-rgb), 0.95) 0%, rgba(var(--ion-color-dark-rgb), 0.9) 100%);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.15s ease;
+  width: 100%;
+}
+
+.state-card:hover {
+  border-color: rgba(var(--ion-color-primary-rgb), 0.4);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.state-card:active {
+  transform: scale(0.985);
+}
+
+.state-card__name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ion-color-primary);
+  line-height: 1.25;
+}
+
+.state-card__desc {
+  font-size: 13px;
+  color: rgba(var(--ion-color-light-rgb), 0.55);
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 
 /** Как в MagicView / InventoryView: плавающая кнопка по центру снизу */
 .add-new-button--centered {

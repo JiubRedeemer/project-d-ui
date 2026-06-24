@@ -6,7 +6,7 @@ import {useInventoryStore} from "@/stores/InventoryStore";
 import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {useCharacterStore} from "@/stores/CharacterStore";
 import {InventoryItem, InventoryItemSkill, ItemSkill} from "@/components/models/response/InventoryResponse";
-import {addOutline, chevronDownOutline, chevronUpOutline, contractOutline, handRightOutline, manOutline, skullOutline} from "ionicons/icons";
+import {addOutline, chevronDownOutline, chevronUpOutline, contractOutline, handRightOutline, manOutline, reorderThreeOutline, skullOutline} from "ionicons/icons";
 import {IonButton, IonIcon, IonProgressBar, toastController, useIonRouter} from "@ionic/vue";
 import axios from "axios";
 import {useRoute} from "vue-router";
@@ -18,6 +18,7 @@ import EditCharacterSkillValueModal from "@/views/character/tabs/attacksAndSkill
 import {storeToRefs} from "pinia";
 import EditItemCombatBonusModal from "@/views/character/tabs/attacksAndSkills/EditItemCombatBonusModal.vue";
 import inventoryTabIcon from "@/static/icons/InventoryTab.svg";
+import {useDragSort} from "@/composables/useDragSort";
 
 const route = useRoute();
 
@@ -38,18 +39,30 @@ const int = computed(() => getAbilityModifier("INT"));
 const wis = computed(() => getAbilityModifier("WIS"));
 const cha = computed(() => getAbilityModifier("CHA"));
 
-const equippedItems = computed(() => inventoryStore.inventory?.items?.filter(item => item.inUse && (item.item.type === "WEAPON")));
-const hasEquippedWeapons = computed(() => (equippedItems.value?.length ?? 0) > 0);
+const {characterSkills: characterSkillsRef} = storeToRefs(characterSkillsStore);
+const charId = String(route.params.characterId);
 
-const {characterSkills} = storeToRefs(characterSkillsStore)
+const equippedDrag = useDragSort<InventoryItem>({
+  key: `att_equipped_${charId}`,
+  source: () => inventoryStore.inventory?.items?.filter(item => item.inUse && item.item.type === 'WEAPON') ?? [],
+  getKey: item => item.id,
+});
+const hasEquippedWeapons = computed(() => equippedDrag.ordered.length > 0);
 
-const skills = computed(() =>
-    inventoryStore.inventory?.items?.flatMap(invItem =>
-        invItem.skills ?? []
-    )
-);
-const hasItemSkills = computed(() => (skills.value?.length ?? 0) > 0);
-const hasCharacterSkills = computed(() => (characterSkills.value?.length ?? 0) > 0);
+const skillsDrag = useDragSort<InventoryItemSkill>({
+  key: `att_skills_${charId}`,
+  source: () => inventoryStore.inventory?.items?.flatMap(i => i.skills ?? []) ?? [],
+  getKey: skill => skill.id,
+});
+const hasItemSkills = computed(() => skillsDrag.ordered.length > 0);
+
+const charSkillsDrag = useDragSort<CharacterSkill>({
+  key: `att_charskills_${charId}`,
+  source: () => characterSkillsRef.value ?? [],
+  getKey: skill => skill.id,
+  onCommit: list => { characterSkillsRef.value = list; },
+});
+const hasCharacterSkills = computed(() => charSkillsDrag.ordered.length > 0);
 
 const isEquippedSectionExpanded = ref(true);
 const isItemSkillsSectionExpanded = ref(true);
@@ -532,7 +545,17 @@ async function deleteCharacterSkill(id: string) {
       </div>
     </div>
     <div class="equipped" v-if="hasEquippedWeapons">
-      <div class="section" v-for="item in equippedItems" :key="item.id">
+      <div class="section"
+           v-for="(item, idx) in equippedDrag.ordered" :key="item.id"
+           :data-drag-list="equippedDrag.listId" :data-drag-index="idx"
+           :class="{ 'is-dragging': equippedDrag.dragFromIndex === idx, 'is-drag-over': equippedDrag.dragOverIndex === idx && equippedDrag.dragFromIndex !== idx }">
+        <div class="drag-handle drag-handle--corner"
+             @pointerdown="equippedDrag.onHandlePointerDown($event, idx)"
+             @pointermove="equippedDrag.onHandlePointerMove($event)"
+             @pointerup="equippedDrag.onHandlePointerUp($event)"
+             @pointercancel="equippedDrag.onHandlePointerCancel($event)">
+          <ion-icon :icon="reorderThreeOutline"/>
+        </div>
         <div class="image-block" @click="openInventoryItem(item)">
           <img width="75px" height="75px" class="item-image" :class="getRarityClass(item.item.rarity)"
                :src="getItemImageUrl(item.item.imgUrl)" :alt="item.item.name.rus"
@@ -628,7 +651,17 @@ async function deleteCharacterSkill(id: string) {
       </div>
     </div>
     <div class="skills" v-if="hasItemSkills">
-      <div class="section-skill" v-for="skill in skills" :key="skill.id">
+      <div class="section-skill"
+           v-for="(skill, idx) in skillsDrag.ordered" :key="skill.id"
+           :data-drag-list="skillsDrag.listId" :data-drag-index="idx"
+           :class="{ 'is-dragging': skillsDrag.dragFromIndex === idx, 'is-drag-over': skillsDrag.dragOverIndex === idx && skillsDrag.dragFromIndex !== idx }">
+        <div class="drag-handle drag-handle--corner"
+             @pointerdown="skillsDrag.onHandlePointerDown($event, idx)"
+             @pointermove="skillsDrag.onHandlePointerMove($event)"
+             @pointerup="skillsDrag.onHandlePointerUp($event)"
+             @pointercancel="skillsDrag.onHandlePointerCancel($event)">
+          <ion-icon :icon="reorderThreeOutline"/>
+        </div>
         <div class="image-block">
           <img width="75px" height="75px" class="item-image"
                :src="getSkillImageUrl(skill.skill.imgUrl)"
@@ -698,7 +731,17 @@ async function deleteCharacterSkill(id: string) {
       <div class="hint-arrow" aria-hidden="true">↓</div>
     </div>
     <div class="skills" v-if="hasCharacterSkills">
-      <div class="section-skill" v-for="skill in characterSkills" :key="skill.id">
+      <div class="section-skill"
+           v-for="(skill, idx) in charSkillsDrag.ordered" :key="skill.id"
+           :data-drag-list="charSkillsDrag.listId" :data-drag-index="idx"
+           :class="{ 'is-dragging': charSkillsDrag.dragFromIndex === idx, 'is-drag-over': charSkillsDrag.dragOverIndex === idx && charSkillsDrag.dragFromIndex !== idx }">
+        <div class="drag-handle drag-handle--corner"
+             @pointerdown="charSkillsDrag.onHandlePointerDown($event, idx)"
+             @pointermove="charSkillsDrag.onHandlePointerMove($event)"
+             @pointerup="charSkillsDrag.onHandlePointerUp($event)"
+             @pointercancel="charSkillsDrag.onHandlePointerCancel($event)">
+          <ion-icon :icon="reorderThreeOutline"/>
+        </div>
         <div class="image-block">
           <img width="75px" height="75px" class="item-image"
                :src="getSkillImageUrl(skill.imgUrl)"
@@ -977,6 +1020,10 @@ async function deleteCharacterSkill(id: string) {
   justify-content: flex-start;
   gap: 10px;
   width: 100%;
+  position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: opacity 0.15s ease, box-shadow 0.15s ease;
 }
 
 .section-skill {
@@ -990,6 +1037,39 @@ async function deleteCharacterSkill(id: string) {
   justify-content: flex-start;
   gap: 10px;
   width: 100%;
+  position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: opacity 0.15s ease, box-shadow 0.15s ease;
+}
+
+.section.is-dragging,
+.section-skill.is-dragging { opacity: 0.35; box-shadow: none; }
+
+.section.is-drag-over,
+.section-skill.is-drag-over { box-shadow: 0 0 0 2px var(--ion-color-primary), 0 8px 20px rgba(0,0,0,.35); }
+
+.drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  flex-shrink: 0;
+  color: rgba(var(--ion-color-light-rgb), 0.35);
+  font-size: 20px;
+  cursor: grab;
+  touch-action: none;
+  transition: color 0.15s ease;
+}
+.drag-handle:hover { color: rgba(var(--ion-color-light-rgb), 0.7); }
+
+.drag-handle--corner {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  font-size: 22px;
 }
 
 .info-block {

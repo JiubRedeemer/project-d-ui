@@ -24,6 +24,7 @@
     "@capacitor/status-bar": "8.0.1",
     "@ionic/vue": "^8.7.18",
     "@ionic/vue-router": "^8.7.18",
+    "@stomp/stompjs": "^7.3.0",
     "@types/swiper": "^6.0.0",
     "@types/uuid": "^10.0.0",
     "aws-sdk": "2.1693.0",

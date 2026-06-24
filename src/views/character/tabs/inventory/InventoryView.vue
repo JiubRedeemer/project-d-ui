@@ -183,21 +183,11 @@ const sortItemsById = (items: InventoryItem[]) => {
   return [...items].sort((a, b) => a.id.localeCompare(b.id));
 };
 
-const equippedItems = computed(() =>
-  sortItemsById((inventoryStore.inventory?.items ?? []).filter((item) => item.inUse))
-);
-const armorItems = computed(() =>
-  sortItemsById((inventoryStore.inventory?.items ?? []).filter((item) => item.item.type === "ARMOR"))
-);
-const weaponItems = computed(() =>
-  sortItemsById((inventoryStore.inventory?.items ?? []).filter((item) => item.item.type === "WEAPON"))
-);
-const magicItems = computed(() =>
-  sortItemsById((inventoryStore.inventory?.items ?? []).filter((item) => item.item.type === "MAGIC_ITEM"))
-);
-const otherItems = computed(() =>
-  sortItemsById((inventoryStore.inventory?.items ?? []).filter((item) => item.item.type === "OTHER"))
-);
+const equippedItems = computed(() => sortItemsById((inventoryStore.inventory?.items ?? []).filter(i => i.inUse)));
+const armorItems    = computed(() => sortItemsById((inventoryStore.inventory?.items ?? []).filter(i => i.item.type === 'ARMOR')));
+const weaponItems   = computed(() => sortItemsById((inventoryStore.inventory?.items ?? []).filter(i => i.item.type === 'WEAPON')));
+const magicItems    = computed(() => sortItemsById((inventoryStore.inventory?.items ?? []).filter(i => i.item.type === 'MAGIC_ITEM')));
+const otherItems    = computed(() => sortItemsById((inventoryStore.inventory?.items ?? []).filter(i => i.item.type === 'OTHER')));
 const hasInventoryItems = computed(() => (inventoryStore.inventory?.items?.length ?? 0) > 0);
 const totalWeight = computed(() => inventoryStore.inventory?.totalWeight || 0);
 
@@ -730,7 +720,7 @@ async function takeMoney() {
   display: flex;
   flex-direction: row;
   justify-content: space-between;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.15s ease;
 }
 
 .section:active {

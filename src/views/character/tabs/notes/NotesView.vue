@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {computed, onMounted, ref, watch} from "vue";
+import {useNoteStore} from "@/stores/NoteStore";
 import {useRoute} from "vue-router";
 import axios from "axios";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
@@ -16,6 +17,8 @@ import {
 import {addOutline, attachOutline, chevronDownOutline, createOutline, saveOutline, trashOutline} from "ionicons/icons";
 
 import {marked} from "marked";
+import {useDragSort} from "@/composables/useDragSort";
+import {reorderThreeOutline} from "ionicons/icons";
 
 marked.setOptions({
   breaks: true,
@@ -38,6 +41,13 @@ const route = useRoute();
 const ionRouter = useIonRouter();
 
 const notes = ref<any[]>([]);
+
+const notesDrag = useDragSort<any>({
+  key: `notes_${route.params.characterId}`,
+  source: () => notes.value,
+  getKey: n => n.id,
+  onCommit: list => { notes.value = list; },
+});
 const notebook = ref<any | null>(null);
 const isEditing = ref<string | null>(null);
 
@@ -342,6 +352,9 @@ const openFilesView = () => {
   ionRouter.navigate(`/rooms/${roomId}/characters/${characterId}/files`, "forward", "push");
 };
 
+const noteStore = useNoteStore();
+watch(() => noteStore.refreshTrigger, (val, old) => { if (val !== old) loadNotesData(); });
+
 onMounted(loadNotesData);
 onIonViewDidEnter(loadNotesData);
 
@@ -451,7 +464,7 @@ const onNotesViewOutsideClick = (e: MouseEvent) => {
   }
 
   const index = exp;
-  const section = notes.value[index];
+  const section = notesDrag.ordered[index];
   if (!section) return;
   if (pathTouchesRoot(path, noteArticleElById[section.id])) return;
 
@@ -532,15 +545,29 @@ const onNotesViewOutsideClick = (e: MouseEvent) => {
 
     <div class="note-list">
       <article
-          v-for="(section, index) in notes"
+          v-for="(section, index) in notesDrag.ordered"
           :key="section.id"
           :ref="(el) => setNoteArticleRef(el as Element | null, section.id)"
-          :class="{ 'notes-card--expanded': isBlockExpanded === index }"
+          :class="{
+            'notes-card--expanded': isBlockExpanded === index,
+            'is-dragging': notesDrag.dragFromIndex === index && isBlockExpanded === null,
+            'is-drag-over': notesDrag.dragOverIndex === index && notesDrag.dragFromIndex !== index && isBlockExpanded === null,
+          }"
+          :data-drag-list="notesDrag.listId"
+          :data-drag-index="index"
           class="notes-card"
           v-show="isBlockExpanded === null || isBlockExpanded === index"
           @click.stop="expandBlock(index, section)"
       >
         <header class="notes-card__header">
+          <div v-if="isBlockExpanded !== index"
+               class="notes-card__drag-handle"
+               @pointerdown.stop="notesDrag.onHandlePointerDown($event, index)"
+               @pointermove.stop="notesDrag.onHandlePointerMove($event)"
+               @pointerup.stop="notesDrag.onHandlePointerUp($event)"
+               @pointercancel.stop="notesDrag.onHandlePointerCancel($event)">
+            <ion-icon :icon="reorderThreeOutline"/>
+          </div>
           <h2
               class="notes-card__title"
               contenteditable="true"
@@ -1067,11 +1094,30 @@ const onNotesViewOutsideClick = (e: MouseEvent) => {
   overflow: hidden;
   min-height: 100px;
   max-height: 140px;
-  transition: max-height 0.35s ease-out, box-shadow 0.2s ease, transform 0.2s ease;
+  transition: max-height 0.35s ease-out, box-shadow 0.2s ease, transform 0.2s ease, opacity 0.15s ease;
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05);
   border: 1px solid rgba(0, 0, 0, 0.06);
+  user-select: none;
+  -webkit-user-select: none;
 }
+
+.notes-card.is-dragging { opacity: 0.35; box-shadow: none; }
+.notes-card.is-drag-over { box-shadow: 0 0 0 2px var(--ion-color-primary), 0 8px 20px rgba(0,0,0,.35); }
+
+.notes-card__drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  flex-shrink: 0;
+  font-size: 18px;
+  color: rgba(var(--ion-color-light-rgb), 0.35);
+  cursor: grab;
+  touch-action: none;
+  transition: color 0.15s ease;
+}
+.notes-card__drag-handle:hover { color: rgba(var(--ion-color-light-rgb), 0.7); }
 
 .notes-card:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.06);

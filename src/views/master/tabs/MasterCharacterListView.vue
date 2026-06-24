@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import {IonIcon, onIonViewWillEnter, useIonRouter} from "@ionic/vue";
+import {IonButton, IonIcon, useIonRouter} from "@ionic/vue";
 import {
+  alertCircleOutline,
   chevronForwardOutline,
   peopleOutline,
   searchOutline,
@@ -14,6 +15,7 @@ import {useRoomStore} from "@/stores/RoomStore";
 import CachedFileImage from "@/components/CachedFileImage.vue";
 import {CHARACTER_AVATAR_PLACEHOLDER, getCharacterAvatarUrl} from "@/utils/characterAvatar";
 import {TEXTS} from "@/config/localisations";
+import MasterCharacterStateModal from "@/views/master/modals/MasterCharacterStateModal.vue";
 
 const route = useRoute();
 const ionRouter = useIonRouter();
@@ -95,10 +97,6 @@ const maxHpValue = (character: Character) => {
 const armoryClassValue = (character: Character) =>
   character.armoryClass + (character.bonusArmoryClass ?? 0);
 
-onIonViewWillEnter(() => {
-  roomStore.getCharacters(route.params.roomId as string);
-});
-
 const goToCharacter = (characterId: string) => {
   ionRouter.navigate(
     `/rooms/${route.params.roomId}/characters/${characterId}`,
@@ -106,6 +104,16 @@ const goToCharacter = (characterId: string) => {
     "push"
   );
 };
+
+const stateModalCharacter = ref<Character | null>(null);
+
+function openStateModal(e: Event, character: Character) {
+  e.stopPropagation();
+  stateModalCharacter.value = character;
+}
+function closeStateModal() {
+  stateModalCharacter.value = null;
+}
 </script>
 
 <template>
@@ -190,6 +198,16 @@ const goToCharacter = (characterId: string) => {
                 <ion-icon :icon="shieldOutline" aria-hidden="true" />
                 <span>{{ armoryClassValue(character) }}</span>
               </div>
+              <ion-button
+                class="state-btn"
+                fill="clear"
+                size="small"
+                color="danger"
+                :aria-label="`Состояния ${character.name}`"
+                @click="openStateModal($event, character)"
+              >
+                <ion-icon slot="icon-only" :icon="alertCircleOutline"/>
+              </ion-button>
             </div>
           </button>
         </div>
@@ -206,6 +224,13 @@ const goToCharacter = (characterId: string) => {
       <p class="empty-state__text">{{ TEXTS.emptyCharactersList.rus }}</p>
     </div>
   </div>
+
+  <MasterCharacterStateModal
+    :is-open="!!stateModalCharacter"
+    :room-id="String(route.params.roomId)"
+    :character="stateModalCharacter"
+    @close="closeStateModal"
+  />
 </template>
 
 <style scoped>
@@ -592,6 +617,14 @@ const goToCharacter = (characterId: string) => {
 .ac-chip ion-icon {
   font-size: 15px;
   color: var(--ion-color-primary);
+}
+
+.state-btn {
+  flex-shrink: 0;
+  --padding-start: 6px;
+  --padding-end: 6px;
+  margin: 0;
+  font-size: 20px;
 }
 
 /* Empty state */

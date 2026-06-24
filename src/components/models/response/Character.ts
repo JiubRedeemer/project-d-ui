@@ -1,5 +1,6 @@
 import {ChargesRefill} from "@/components/models/response/InventoryResponse";
 import {BackgroundDto, BackgroundTraitDto, RaceTraitDto} from "@/api/rulebookApi.types";
+import {CharacterStateDto} from "@/api/statesApi.types";
 
 export interface Character {
     id: string;
@@ -22,6 +23,7 @@ export interface Character {
     bonusInitiative: number;
     abilities: Ability[];
     skills: Skill[];
+    states: CharacterStateDto[];
     characterBio: CharacterBio;
     health: Health;
     level: Level;

@@ -18,7 +18,8 @@ import MasterGuidebookView from "@/views/master/tabs/MasterGuidebookView.vue";
 import MasterFilesView from "@/views/master/tabs/MasterFilesView.vue";
 import {useRoute} from "vue-router";
 import {useRoomStore} from "@/stores/RoomStore";
-import {computed, onMounted, onUnmounted, ref, watch} from "vue";
+import {computed, onMounted, onUnmounted, ref} from "vue";
+import {useRoomCharactersWebSocket} from "@/composables/useCharacterWebSocket";
 
 const asyncDone = ref<boolean>(false);
 const route = useRoute();
@@ -29,9 +30,7 @@ const isDesktop = ref<boolean>(window.innerWidth >= 1024);
 
 const DESKTOP_BREAKPOINT_PX = 1024;
 
-const POLL_INTERVAL_MS = 5000;
-let pollTimer: ReturnType<typeof setInterval> | null = null;
-let isMasterViewActive = false;
+let wsClient: ReturnType<typeof useRoomCharactersWebSocket> | null = null;
 
 const tabs = [
   {key: "characters", icon: peopleOutline, label: "Персонажи"},
@@ -43,31 +42,10 @@ const selectedTabTitle = computed(() => {
   return tabs.find((tab) => tab.key === selectedTab.value)?.label ?? "";
 });
 
-const startPolling = () => {
-  stopPolling();
-  const roomId = route.params.roomId as string;
-  roomStore.getCharacters(roomId);
-  pollTimer = setInterval(() => {
-    roomStore.getCharacters(roomId);
-  }, POLL_INTERVAL_MS);
-};
-
-const stopPolling = () => {
-  if (pollTimer) {
-    clearInterval(pollTimer);
-    pollTimer = null;
-  }
-};
-
 const onTabsChange = (event: CustomEvent<{ tab: string }>) => {
   const tab = event?.detail?.tab;
   if (tab === "characters" || tab === "guidebook" || tab === "files") {
     selectedTab.value = tab;
-  }
-  if (tab === "characters") {
-    startPolling();
-  } else {
-    stopPolling();
   }
 };
 
@@ -79,28 +57,6 @@ const selectDesktopTab = (tab: "characters" | "guidebook" | "files") => {
   selectedTab.value = tab;
 };
 
-watch(selectedTab, (tab) => {
-  if (!isMasterViewActive || !isDesktop.value) return;
-  if (tab === "characters") {
-    startPolling();
-  } else {
-    stopPolling();
-  }
-});
-
-watch(isDesktop, (desktop) => {
-  if (!isMasterViewActive) return;
-  if (!desktop && selectedTab.value !== "characters") {
-    stopPolling();
-    return;
-  }
-  if (selectedTab.value === "characters") {
-    startPolling();
-  } else {
-    stopPolling();
-  }
-});
-
 onMounted(() => {
   window.addEventListener("resize", onResize);
 });
@@ -110,27 +66,19 @@ onUnmounted(() => {
 });
 
 onIonViewDidEnter(async () => {
-  isMasterViewActive = true;
   onResize();
-  roomStore.getRoomInfo(route.params.roomId as string);
+  const roomId = route.params.roomId as string;
+  roomStore.getRoomInfo(roomId);
   asyncDone.value = true;
-  await roomStore.getCharacters(route.params.roomId as string);
-  if (isDesktop.value) {
-    if (selectedTab.value === "characters") startPolling();
-    return;
-  }
-  const el = tabsRef.value?.$el as HTMLElement & { getSelected?: () => Promise<string> };
-  try {
-    const selectedTab = el?.getSelected ? await el.getSelected() : "characters";
-    if (selectedTab === "characters") startPolling();
-  } catch {
-    startPolling();
-  }
+  await roomStore.getCharacters(roomId);
+  wsClient = useRoomCharactersWebSocket(roomId, (event) => {
+    roomStore.updateSingleCharacter(roomId, event.characterId);
+  });
 });
 
 onIonViewDidLeave(() => {
-  isMasterViewActive = false;
-  stopPolling();
+  wsClient?.deactivate();
+  wsClient = null;
 });
 </script>
 

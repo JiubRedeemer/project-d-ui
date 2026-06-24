@@ -4,10 +4,12 @@ import AbilityParamUp from "@/views/common/AbilityParamUp.vue";
 import axios from "axios";
 import {useRoute} from "vue-router";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
-import {computed, onMounted, ref} from "vue";
-import {onIonViewDidEnter} from "@ionic/vue";
+import {computed, onMounted, ref, watch} from "vue";
+import {onIonViewDidEnter, IonIcon} from "@ionic/vue";
+import {reorderThreeOutline} from "ionicons/icons";
 import {Ability, Character} from "@/components/models/response/Character";
 import {useCharacterStore} from "@/stores/CharacterStore";
+import {useDragSort} from "@/composables/useDragSort";
 
 const route = useRoute();
 const characterStore = useCharacterStore();
@@ -17,11 +19,15 @@ let ruleBookAbilityCodeMap: Map<string, AbilityResponse>;
 let characterAbilityCodeMap: Map<string, Ability>;
 const resultAbilities = ref<Record<string, AbilityDto>>();
 
-const orderedAbilities = computed(() => {
-  if (!resultAbilities.value || !ruleBookAbilityCodeMap) return [];
-  return Array.from(ruleBookAbilityCodeMap.keys())
-      .filter((code) => resultAbilities.value && code in resultAbilities.value)
-      .map((code) => [code, resultAbilities.value![code]] as [string, AbilityDto]);
+const abilitiesDrag = useDragSort<[string, AbilityDto]>({
+  key: `abilities_${route.params.characterId}`,
+  source: () => {
+    if (!resultAbilities.value || !ruleBookAbilityCodeMap) return [];
+    return Array.from(ruleBookAbilityCodeMap.keys())
+        .filter(code => resultAbilities.value && code in resultAbilities.value)
+        .map(code => [code, resultAbilities.value![code]] as [string, AbilityDto]);
+  },
+  getKey: ([code]) => code,
 });
 
 const emits = defineEmits(["ability-selected", "skill-selected"]);
@@ -63,6 +69,13 @@ const loadAbilitiesData = async () => {
 
 onMounted(loadAbilitiesData);
 onIonViewDidEnter(loadAbilitiesData);
+
+watch(() => characterStore.character, (newChar, oldChar) => {
+  if (!ruleBookAbilityCodeMap || newChar === oldChar) return;
+  characterAbilityCodeMap = buildCharacterAbilityCodeMap(newChar);
+  characterAbilityCodeMap = buildCharacterAbilitiesWithNameAndValue(characterAbilityCodeMap);
+  resultAbilities.value = Object.fromEntries(characterAbilityCodeMap);
+});
 
 function buildAbilityCodeMap(abilities: AbilityResponse[]): Map<string, AbilityResponse> {
   const codeMap = new Map<string, AbilityResponse>();
@@ -328,7 +341,17 @@ function formatModifier(value: number): string {
     </div>
 
     <div class="abilities-grid">
-    <div class="ability-card" v-for="(ability, key) in orderedAbilities" :key="key">
+    <div class="ability-card"
+         v-for="(ability, idx) in abilitiesDrag.ordered" :key="ability[0]"
+         :data-drag-list="abilitiesDrag.listId" :data-drag-index="idx"
+         :class="{ 'is-dragging': abilitiesDrag.dragFromIndex === idx, 'is-drag-over': abilitiesDrag.dragOverIndex === idx && abilitiesDrag.dragFromIndex !== idx }">
+      <div class="ability-card__drag-handle"
+           @pointerdown="abilitiesDrag.onHandlePointerDown($event, idx)"
+           @pointermove="abilitiesDrag.onHandlePointerMove($event)"
+           @pointerup="abilitiesDrag.onHandlePointerUp($event)"
+           @pointercancel="abilitiesDrag.onHandlePointerCancel($event)">
+        <ion-icon :icon="reorderThreeOutline"/>
+      </div>
       <button type="button" class="ability-card__head" @click="selectAbility(ability[1])">
         <span class="ability-card__name">{{ ability[1].name }}</span>
         <span class="ability-card__mod">{{ formatModifier(abilityModifier(ability[1])) }}</span>
@@ -478,13 +501,31 @@ function formatModifier(value: number): string {
   border-radius: 18px;
   border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
   background: linear-gradient(155deg, rgba(var(--ion-color-medium-rgb), 0.95) 0%, rgba(var(--ion-color-dark-rgb), 0.92) 100%);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.15s ease;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .ability-card:hover {
   border-color: rgba(var(--ion-color-primary-rgb), 0.35);
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.38);
 }
+
+.ability-card.is-dragging { opacity: 0.35; box-shadow: none; }
+.ability-card.is-drag-over { box-shadow: 0 0 0 2px var(--ion-color-primary), 0 12px 28px rgba(0,0,0,.4); }
+
+.ability-card__drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  font-size: 20px;
+  color: rgba(var(--ion-color-light-rgb), 0.3);
+  cursor: grab;
+  touch-action: none;
+  margin-bottom: -4px;
+  transition: color 0.15s ease;
+}
+.ability-card__drag-handle:hover { color: rgba(var(--ion-color-light-rgb), 0.65); }
 
 .ability-card__head {
   display: flex;
