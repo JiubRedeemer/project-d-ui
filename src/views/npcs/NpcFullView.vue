@@ -13,10 +13,30 @@ import {
 } from "@ionic/vue";
 import {createOutline} from "ionicons/icons";
 import {FILE_STORAGE_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
-import {getNpcByIdForRoom} from "@/api/npcApi";
-import type {NpcDto, NpcTypeEnum} from "@/api/npcApi.types";
+import {
+  deleteCharacterNpcRelationByIdForRoom,
+  deleteNpcNpcRelation,
+  getNpcByIdForRoom,
+  getNpcNpcRelationsByNpcId,
+  getNpcsByRoomIdForRoom,
+  getRelationsByNpcId,
+  saveCharacterNpcRelationForRoom,
+  saveNpcNpcRelation,
+} from "@/api/npcApi";
+import type {
+  CharacterNpcRelationDto,
+  NpcDto,
+  NpcNpcRelationDto,
+  NpcTypeEnum,
+  RelationTypeEnum,
+  SaveCharacterNpcRelationRequest,
+  SaveNpcNpcRelationRequest,
+} from "@/api/npcApi.types";
 import {marked} from "marked";
 import {extractDominantColorFromUrl} from "@/utils/imageAmbient";
+import {getRoomCharacters} from "@/api/masterApi";
+import type {Character} from "@/components/models/response/Character";
+import {addOutline} from "ionicons/icons";
 
 marked.setOptions({breaks: true});
 
@@ -36,6 +56,84 @@ const ionRouter = useRouter();
 
 const npc = ref<NpcDto | null>(null);
 const ambientColor = ref<string | null>(null);
+const relations = ref<CharacterNpcRelationDto[]>([]);
+const npcNpcRelations = ref<NpcNpcRelationDto[]>([]);
+const characters = ref<Character[]>([]);
+const roomNpcs = ref<NpcDto[]>([]);
+
+// ——— Add relation modal state ———
+const showAddRelation = ref(false);
+const addRelationType = ref<"character" | "npc">("character");
+const newRelationTargetId = ref<string>("");
+const newRelationType = ref<RelationTypeEnum>("OTHER");
+const newRelationNote = ref<string>("");
+const savingRelation = ref(false);
+
+const RELATION_LABELS: Record<RelationTypeEnum, string> = {
+  FRIEND: "Друг",
+  ENEMY: "Враг",
+  RULER: "Правитель",
+  PET: "Питомец",
+  OTHER: "Другое",
+};
+
+const RELATION_COLORS: Record<RelationTypeEnum, { bg: string; border: string; text: string }> = {
+  FRIEND:  { bg: "rgba(45, 213, 91, 0.12)",  border: "rgba(45, 213, 91, 0.4)",  text: "rgb(45, 213, 91)" },
+  ENEMY:   { bg: "rgba(235, 68, 90, 0.12)",  border: "rgba(235, 68, 90, 0.4)",  text: "rgb(235, 68, 90)" },
+  RULER:   { bg: "rgba(255, 196, 9, 0.12)",  border: "rgba(255, 196, 9, 0.4)",  text: "rgb(255, 196, 9)" },
+  PET:     { bg: "rgba(85, 191, 255, 0.12)", border: "rgba(85, 191, 255, 0.4)", text: "rgb(85, 191, 255)" },
+  OTHER:   { bg: "rgba(208, 188, 254, 0.12)", border: "rgba(208, 188, 254, 0.4)", text: "rgb(208, 188, 254)" },
+};
+
+const characterMap = computed(() => {
+  const m = new Map<string, string>();
+  for (const c of characters.value) {
+    if (c.id) m.set(c.id, c.name ?? c.id);
+  }
+  return m;
+});
+
+const enrichedRelations = computed(() =>
+  relations.value
+    .filter((r) => r.relationType)
+    .map((r) => ({
+      id: r.id,
+      kind: "character" as const,
+      subjectName: r.characterId ? (characterMap.value.get(r.characterId) ?? "Персонаж") : "Персонаж",
+      relationType: r.relationType!,
+      label: RELATION_LABELS[r.relationType!] ?? r.relationType,
+      colors: RELATION_COLORS[r.relationType!],
+      note: r.note ?? null,
+    }))
+);
+
+const npcMap = computed(() => {
+  const m = new Map<string, string>();
+  for (const n of roomNpcs.value) m.set(n.id, n.name);
+  return m;
+});
+
+const enrichedNpcRelations = computed(() =>
+  npcNpcRelations.value
+    .filter((r) => r.relationType)
+    .map((r) => {
+      const currentId = npc.value?.id;
+      const otherId = r.fromNpcId === currentId ? r.toNpcId : r.fromNpcId;
+      return {
+        id: r.id,
+        kind: "npc" as const,
+        subjectName: npcMap.value.get(otherId) ?? "NPC",
+        relationType: r.relationType!,
+        label: RELATION_LABELS[r.relationType!] ?? r.relationType,
+        colors: RELATION_COLORS[r.relationType!],
+        note: r.note ?? null,
+      };
+    })
+);
+
+const allRelations = computed(() => [...enrichedRelations.value, ...enrichedNpcRelations.value]);
+
+const RELATION_TYPE_OPTIONS: RelationTypeEnum[] = ["FRIEND", "ENEMY", "RULER", "PET", "OTHER"];
 
 const getImageUrl = (imgUrl: string | undefined | null) =>
     imgUrl != null && imgUrl.trim()
@@ -85,15 +183,87 @@ const goToEdit = () => {
   if (id) ionRouter.push(`/rooms/${roomId}/npcs/${id}/edit`);
 };
 
+async function loadRelations() {
+  const roomId = route.params.roomId as string;
+  const npcId = route.params.npcId as string;
+  [relations.value, npcNpcRelations.value] = await Promise.all([
+    getRelationsByNpcId(roomId, npcId),
+    getNpcNpcRelationsByNpcId(roomId, npcId),
+  ]);
+}
+
 onMounted(async () => {
   const roomId = route.params.roomId as string;
   const npcId = route.params.npcId as string;
   try {
-    npc.value = await getNpcByIdForRoom(roomId, npcId);
+    [npc.value, characters.value, roomNpcs.value] = await Promise.all([
+      getNpcByIdForRoom(roomId, npcId),
+      getRoomCharacters(roomId),
+      getNpcsByRoomIdForRoom(roomId, { forceAll: true }),
+    ]);
+    await loadRelations();
   } catch (e) {
     console.error("Failed to load NPC for full view:", e);
   }
 });
+
+async function deleteRelation(rel: { id: string; kind: "character" | "npc" }) {
+  const roomId = route.params.roomId as string;
+  const npcId = route.params.npcId as string;
+  try {
+    if (rel.kind === "character") {
+      const r = relations.value.find((x) => x.id === rel.id);
+      if (r?.characterId) {
+        await deleteCharacterNpcRelationByIdForRoom(roomId, r.characterId, rel.id);
+      }
+    } else {
+      await deleteNpcNpcRelation(roomId, rel.id);
+    }
+    await loadRelations();
+  } catch (e) {
+    console.error("Failed to delete relation:", e);
+  }
+}
+
+function openAddRelation() {
+  newRelationTargetId.value = "";
+  newRelationType.value = "OTHER";
+  newRelationNote.value = "";
+  addRelationType.value = "character";
+  showAddRelation.value = true;
+}
+
+async function submitAddRelation() {
+  const roomId = route.params.roomId as string;
+  const npcId = route.params.npcId as string;
+  if (!newRelationTargetId.value || savingRelation.value) return;
+  savingRelation.value = true;
+  try {
+    if (addRelationType.value === "character") {
+      const body: SaveCharacterNpcRelationRequest = {
+        characterId: newRelationTargetId.value,
+        npcId,
+        relationType: newRelationType.value,
+        note: newRelationNote.value || null,
+      };
+      await saveCharacterNpcRelationForRoom(roomId, newRelationTargetId.value, body);
+    } else {
+      const body: SaveNpcNpcRelationRequest = {
+        fromNpcId: npcId,
+        toNpcId: newRelationTargetId.value,
+        relationType: newRelationType.value,
+        note: newRelationNote.value || null,
+      };
+      await saveNpcNpcRelation(roomId, body);
+    }
+    showAddRelation.value = false;
+    await loadRelations();
+  } catch (e) {
+    console.error("Failed to save relation:", e);
+  } finally {
+    savingRelation.value = false;
+  }
+}
 </script>
 
 <template>
@@ -130,6 +300,91 @@ onMounted(async () => {
         <div class="item-identity">
           <h1 class="item-identity__name">{{ npc.name }}</h1>
         </div>
+
+        <div class="relations-panel">
+          <div class="relations-panel__header">
+            <div class="relations-panel__title">Связи</div>
+            <button class="relations-panel__add-btn" @click="openAddRelation">
+              <ion-icon :icon="addOutline"/>
+            </button>
+          </div>
+          <div v-if="allRelations.length" class="relations-panel__list">
+            <div
+                v-for="rel in allRelations"
+                :key="rel.id"
+                class="relation-entry"
+            >
+              <div
+                  class="relation-chip"
+                  :style="{
+                    background: rel.colors.bg,
+                    borderColor: rel.colors.border,
+                    color: rel.colors.text,
+                  }"
+              >
+                <span class="relation-chip__kind">{{ rel.kind === 'npc' ? 'NPC' : 'П' }}</span>
+                <span class="relation-chip__sep">·</span>
+                <span class="relation-chip__name">{{ rel.subjectName }}</span>
+                <span class="relation-chip__sep">·</span>
+                <span class="relation-chip__type">{{ rel.label }}</span>
+                <button class="relation-chip__delete" @click.stop="deleteRelation(rel)" aria-label="Удалить">×</button>
+              </div>
+              <div v-if="rel.note" class="relation-note">{{ rel.note }}</div>
+            </div>
+          </div>
+          <div v-else class="relations-panel__empty">Нет связей</div>
+        </div>
+
+        <!-- Add relation modal -->
+        <Teleport to="body">
+        <div v-if="showAddRelation" class="add-relation-overlay" @click.self="showAddRelation = false">
+          <div class="add-relation-modal">
+            <div class="add-relation-modal__scroll">
+              <div class="add-relation-modal__title">Добавить связь</div>
+
+              <div class="add-relation-field">
+                <label class="add-relation-field__label">Тип участника</label>
+                <div class="add-relation-toggle">
+                  <button :class="['toggle-btn', { active: addRelationType === 'character' }]" @click="addRelationType = 'character'">Персонаж</button>
+                  <button :class="['toggle-btn', { active: addRelationType === 'npc' }]" @click="addRelationType = 'npc'">NPC</button>
+                </div>
+              </div>
+
+              <div class="add-relation-field">
+                <label class="add-relation-field__label">{{ addRelationType === 'character' ? 'Персонаж' : 'NPC' }}</label>
+                <select v-model="newRelationTargetId" class="add-relation-select">
+                  <option value="" disabled>Выберите...</option>
+                  <template v-if="addRelationType === 'character'">
+                    <option v-for="c in characters" :key="c.id" :value="c.id">{{ c.name }}</option>
+                  </template>
+                  <template v-else>
+                    <option v-for="n in roomNpcs.filter(n => n.id !== npc?.id)" :key="n.id" :value="n.id">{{ n.name }}</option>
+                  </template>
+                </select>
+              </div>
+
+              <div class="add-relation-field">
+                <label class="add-relation-field__label">Отношение</label>
+                <select v-model="newRelationType" class="add-relation-select">
+                  <option v-for="t in RELATION_TYPE_OPTIONS" :key="t" :value="t">{{ RELATION_LABELS[t] }}</option>
+                </select>
+              </div>
+
+              <div class="add-relation-field">
+                <label class="add-relation-field__label">Заметка (необязательно)</label>
+                <textarea v-model="newRelationNote" class="add-relation-textarea" placeholder="Описание отношения..." rows="2"/>
+              </div>
+            </div>
+
+            <div class="add-relation-modal__actions">
+              <button class="add-relation-modal__cancel" @click="showAddRelation = false">Отмена</button>
+              <button class="add-relation-modal__save" :disabled="!newRelationTargetId || savingRelation" @click="submitAddRelation">
+                {{ savingRelation ? '...' : 'Сохранить' }}
+              </button>
+            </div>
+          </div>
+        </div>
+        </Teleport>
 
         <div class="item-details">
           <section class="panel">
@@ -334,6 +589,135 @@ onMounted(async () => {
   color: var(--ion-color-light);
 }
 
+.relations-panel {
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: var(--ion-color-medium);
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.1);
+}
+
+.relations-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.relations-panel__title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(var(--ion-color-light-rgb), 0.45);
+}
+
+.relations-panel__add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(var(--ion-color-primary-rgb), 0.15);
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.3);
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+  color: var(--ion-color-primary);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0;
+}
+
+.relations-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.relations-panel__empty {
+  font-size: 13px;
+  color: rgba(var(--ion-color-light-rgb), 0.3);
+  text-align: center;
+  padding: 6px 0;
+}
+
+.relation-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.relation-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.relation-chip__kind {
+  font-size: 10px;
+  font-weight: 800;
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+.relation-chip__name {
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.relation-chip__sep {
+  opacity: 0.55;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.relation-chip__type {
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.9;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.relation-chip__delete {
+  margin-left: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.55;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 0 0 2px;
+  flex-shrink: 0;
+}
+
+.relation-chip__delete:hover {
+  opacity: 1;
+}
+
+.relation-note {
+  font-size: 12px;
+  color: rgba(var(--ion-color-light-rgb), 0.55);
+  padding-left: 14px;
+  line-height: 1.4;
+}
+
+/* ——— Add relation modal ——— */
+/* modal styles moved to global style block below */
+
 .item-details {
   display: flex;
   flex-direction: column;
@@ -465,5 +849,156 @@ onMounted(async () => {
     border-radius: 16px 16px 0 0;
     padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
   }
+}
+</style>
+
+<style>
+.add-relation-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.add-relation-modal {
+  background: #1e1e2e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px 20px 0 0;
+  width: 100%;
+  max-width: 560px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.add-relation-modal__title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+}
+
+.add-relation-modal__scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 18px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.add-relation-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.add-relation-field__label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.add-relation-toggle {
+  display: flex;
+  gap: 8px;
+}
+
+.toggle-btn {
+  flex: 1;
+  padding: 9px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: #2a2a3e;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.toggle-btn.active {
+  background: rgba(99, 102, 241, 0.25);
+  border-color: rgba(99, 102, 241, 0.55);
+  color: #a5b4fc;
+}
+
+.add-relation-select {
+  background: #2a2a3e;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: #ffffff;
+  font-size: 14px;
+  width: 100%;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.add-relation-select option {
+  background: #2a2a3e;
+  color: #ffffff;
+}
+
+.add-relation-textarea {
+  background: #2a2a3e;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: #ffffff;
+  font-size: 14px;
+  width: 100%;
+  box-sizing: border-box;
+  resize: none;
+  font-family: inherit;
+}
+
+.add-relation-textarea::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.add-relation-modal__actions {
+  display: flex;
+  gap: 10px;
+  padding: 12px 18px calc(12px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: #1e1e2e;
+  flex-shrink: 0;
+}
+
+.add-relation-modal__cancel {
+  flex: 1;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: #2a2a3e;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.add-relation-modal__save {
+  flex: 2;
+  padding: 12px;
+  border-radius: 12px;
+  border: none;
+  background: #6366f1;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.add-relation-modal__save:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 </style>

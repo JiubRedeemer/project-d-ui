@@ -44,6 +44,7 @@ export type NpcDto = {
   imgUrl?: string | null;
   createdBy: string;
   createdAt: string;
+  tags?: string[] | null;
 };
 
 export type SaveNpcRequest = {
@@ -61,6 +62,7 @@ export type SaveNpcRequest = {
   initiative?: number | null;
   imgUrl?: string | null;
   createdBy: string;
+  tags?: string[] | null;
 };
 
 export type CharacterNpcRelationDto = {
@@ -78,6 +80,22 @@ export type SaveCharacterNpcRelationRequest = {
   id?: string | null;
   characterId: string;
   npcId: string;
+  note?: string | null;
+  relationType?: RelationTypeEnum | null;
+};
+
+export type NpcNpcRelationDto = {
+  id: string;
+  fromNpcId: string;
+  toNpcId: string;
+  note?: string | null;
+  relationType?: RelationTypeEnum | null;
+};
+
+export type SaveNpcNpcRelationRequest = {
+  id?: string | null;
+  fromNpcId: string;
+  toNpcId: string;
   note?: string | null;
   relationType?: RelationTypeEnum | null;
 };

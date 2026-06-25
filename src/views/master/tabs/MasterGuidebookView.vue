@@ -22,6 +22,7 @@ import {
   alertCircleOutline,
   bookOutline,
   chevronForwardOutline,
+  closeOutline,
   cubeOutline,
   documentTextOutline,
   eyeOffOutline,
@@ -30,6 +31,7 @@ import {
   menuOutline,
   peopleOutline,
   personOutline,
+  searchOutline,
   sparkles,
   sparklesOutline
 } from "ionicons/icons";
@@ -47,8 +49,8 @@ import type {BackgroundDto, ClazzDto, RaceDto} from "@/api/rulebookApi.types";
 import {Item} from "@/components/models/response/InventoryResponse";
 import type {SpellDto} from "@/components/models/response/MagicApi";
 import {listSpells, listSpellsDnd2024} from "@/api/magicApi";
-import {getNpcsByRoomIdForRoom, saveCharacterNpcRelationForRoom} from "@/api/npcApi";
-import type {NpcDto, NpcTypeEnum, RelationTypeEnum} from "@/api/npcApi.types";
+import {getAllNpcNpcRelationsForRoom, getAllNpcRelationsForRoom, getNpcsByRoomIdForRoom, saveCharacterNpcRelationForRoom, saveNpcForRoom} from "@/api/npcApi";
+import type {CharacterNpcRelationDto, NpcDto, NpcNpcRelationDto, NpcTypeEnum, RelationTypeEnum} from "@/api/npcApi.types";
 import {getStatesForRoom} from "@/api/statesApi";
 import type {StateDto} from "@/api/statesApi.types";
 import {sortNpcsByName} from "@/utils/sortNpcsByName";
@@ -168,6 +170,54 @@ const selectedSpellCatalog = ref<SpellCatalog>("DND5E");
 
 const npcs = ref<NpcDto[]>([]);
 const npcsLoading = ref(false);
+const npcRelations = ref<CharacterNpcRelationDto[]>([]);
+const npcNpcRelationsAll = ref<NpcNpcRelationDto[]>([]);
+
+const RELATION_LABELS: Record<RelationTypeEnum, string> = {
+  FRIEND: "Друг",
+  ENEMY: "Враг",
+  RULER: "Правитель",
+  PET: "Питомец",
+  OTHER: "Другое",
+};
+const RELATION_COLORS: Record<RelationTypeEnum, { bg: string; border: string; text: string }> = {
+  FRIEND:  { bg: "rgba(45,213,91,0.12)",   border: "rgba(45,213,91,0.4)",   text: "rgb(45,213,91)" },
+  ENEMY:   { bg: "rgba(235,68,90,0.12)",   border: "rgba(235,68,90,0.4)",   text: "rgb(235,68,90)" },
+  RULER:   { bg: "rgba(255,196,9,0.12)",   border: "rgba(255,196,9,0.4)",   text: "rgb(255,196,9)" },
+  PET:     { bg: "rgba(85,191,255,0.12)",  border: "rgba(85,191,255,0.4)",  text: "rgb(85,191,255)" },
+  OTHER:   { bg: "rgba(208,188,254,0.12)", border: "rgba(208,188,254,0.4)", text: "rgb(208,188,254)" },
+};
+
+const npcRelationsMap = computed(() => {
+  const map = new Map<string, Array<{ characterName: string; relationType: RelationTypeEnum; label: string; colors: { bg: string; border: string; text: string } }>>();
+  const charMap = new Map<string, string>(roomCharacters.value.map((c) => [c.id, c.name ?? c.id] as [string, string]));
+  for (const rel of npcRelations.value) {
+    if (!rel.npcId || !rel.relationType) continue;
+    if (!map.has(rel.npcId)) map.set(rel.npcId, []);
+    map.get(rel.npcId)!.push({
+      characterName: rel.characterId ? (charMap.get(rel.characterId) ?? "Персонаж") : "Персонаж",
+      relationType: rel.relationType,
+      label: RELATION_LABELS[rel.relationType] ?? rel.relationType,
+      colors: RELATION_COLORS[rel.relationType],
+    });
+  }
+  return map;
+});
+
+const npcNpcRelationsMap = computed(() => {
+  const map = new Map<string, Array<{ otherNpcName: string; relationType: RelationTypeEnum; label: string; colors: { bg: string; border: string; text: string } }>>();
+  const npcNameMap = new Map<string, string>(npcs.value.map((n) => [n.id, n.name] as [string, string]));
+  for (const rel of npcNpcRelationsAll.value) {
+    if (!rel.relationType) continue;
+    const colors = RELATION_COLORS[rel.relationType];
+    const label = RELATION_LABELS[rel.relationType] ?? rel.relationType;
+    for (const [npcId, otherId] of [[rel.fromNpcId, rel.toNpcId], [rel.toNpcId, rel.fromNpcId]] as [string, string][]) {
+      if (!map.has(npcId)) map.set(npcId, []);
+      map.get(npcId)!.push({ otherNpcName: npcNameMap.get(otherId) ?? "NPC", relationType: rel.relationType, label, colors });
+    }
+  }
+  return map;
+});
 
 const states = ref<StateDto[]>([]);
 const statesLoading = ref(false);
@@ -176,6 +226,10 @@ const showStateModal = ref(false);
 const npcFilterType = ref<NpcTypeEnum | "">("");
 const npcFilterClass = ref<string>("");
 const npcFilterRace = ref<string>("");
+const npcSearch = ref<string>("");
+const npcTagFilter = ref<Set<string>>(new Set());
+const npcTagInput = ref<string>("");
+const npcTagInputNpcId = ref<string | null>(null);
 
 const roomCharacters = ref<Character[]>([]);
 const roomCharactersLoading = ref(false);
@@ -186,6 +240,7 @@ const npcRelationPopoverEvent = ref<Event | null>(null);
 const npcRelationPopoverNpcId = ref<string | null>(null);
 const npcRelationPopoverCharacterId = ref<string>("");
 const npcRelationPopoverType = ref<RelationTypeEnum | "">("");
+const npcRelationPopoverNote = ref<string>("");
 
 const roomId = computed(() => {
   const v = route.params.roomId as string | string[] | undefined;
@@ -408,14 +463,30 @@ const npcClassOptions = computed(() =>
 const npcRaceOptions = computed(() =>
     races.value.map((r) => ({value: r.code, label: r.name?.trim() || r.code || ""}))
 );
+const allNpcTags = computed(() => {
+  const set = new Set<string>();
+  for (const npc of npcs.value) {
+    for (const tag of npc.tags ?? []) set.add(tag);
+  }
+  return Array.from(set).sort();
+});
+
 const filteredNpcs = computed(() => {
   let result = npcs.value;
   if (npcFilterType.value) result = result.filter((n) => n.type === npcFilterType.value);
   if (npcFilterClass.value) result = result.filter((n) => n.clazzCode === npcFilterClass.value);
   if (npcFilterRace.value) result = result.filter((n) => n.raceCode === npcFilterRace.value);
-  const q = normalizedExternalSearchQuery.value;
+  if (npcTagFilter.value.size > 0) {
+    result = result.filter((n) =>
+      [...npcTagFilter.value].every((t) => (n.tags ?? []).includes(t))
+    );
+  }
+  const q = npcSearch.value.trim().toLowerCase() || normalizedExternalSearchQuery.value;
   if (q && currentSection.value === "npcs") {
-    result = result.filter((n) => (n.name ?? "").toLowerCase().includes(q));
+    result = result.filter((n) =>
+      (n.name ?? "").toLowerCase().includes(q) ||
+      (n.tags ?? []).some((t) => t.toLowerCase().includes(q))
+    );
   }
   return sortNpcsByName(result);
 });
@@ -903,9 +974,18 @@ async function loadNpcs() {
   if (!roomId.value) return;
   npcsLoading.value = true;
   try {
-    npcs.value = await getNpcsByRoomIdForRoom(roomId.value, {forceAll: true});
+    const [loadedNpcs, loadedRelations] = await Promise.all([
+      getNpcsByRoomIdForRoom(roomId.value, {forceAll: true}),
+      getAllNpcRelationsForRoom(roomId.value),
+    ]);
+    npcs.value = loadedNpcs;
+    npcRelations.value = loadedRelations;
+    const npcIds = loadedNpcs.map((n) => n.id);
+    npcNpcRelationsAll.value = await getAllNpcNpcRelationsForRoom(roomId.value, npcIds);
     if (classes.value.length === 0) classes.value = await getClassesForRoom(roomId.value, baseRuleType.value ?? undefined);
     if (races.value.length === 0) races.value = await getRacesForRoom(roomId.value, baseRuleType.value ?? undefined);
+    // Load characters for chip name resolution if not yet loaded
+    if (roomCharacters.value.length === 0) void loadRoomCharactersIfNeeded();
   } catch (e) {
     console.error("Failed to load NPCs:", e);
   } finally {
@@ -942,6 +1022,18 @@ function getNpcImageUrl(imgUrl: string | undefined | null) {
 
 function getNpcTypeLabel(type: NpcTypeEnum | undefined | null) {
   return type ? (NPC_TYPE_LABELS[type] ?? type) : "";
+}
+
+const NPC_TYPE_ABBR: Record<NpcTypeEnum, string> = {
+  RATIONAL: "Разумное",
+  BEAST: "Животное",
+  MONSTER: "Монстр",
+  DEITY: "Божество",
+  UNDEAD: "Нежить",
+};
+
+function getNpcTypeAbbr(type: NpcTypeEnum | undefined | null) {
+  return type ? (NPC_TYPE_ABBR[type] ?? "?") : "?";
 }
 
 async function loadRoomCharactersIfNeeded() {
@@ -1001,6 +1093,7 @@ function dismissNpcRelationPopover() {
   npcRelationPopoverOpen.value = false;
   npcRelationPopoverEvent.value = null;
   npcRelationPopoverNpcId.value = null;
+  npcRelationPopoverNote.value = "";
 }
 
 async function confirmNpcRelation() {
@@ -1018,7 +1111,7 @@ async function confirmNpcRelation() {
       characterId,
       npcId,
       relationType,
-      note: null,
+      note: npcRelationPopoverNote.value || null,
     });
   } catch (e) {
     console.error("Failed to create NPC relation:", e);
@@ -1027,6 +1120,83 @@ async function confirmNpcRelation() {
   } finally {
     dismissNpcRelationPopover();
   }
+}
+
+function toggleTagFilter(tag: string) {
+  const next = new Set(npcTagFilter.value);
+  if (next.has(tag)) next.delete(tag); else next.add(tag);
+  npcTagFilter.value = next;
+}
+
+function openTagInput(npcId: string) {
+  npcTagInputNpcId.value = npcId;
+  npcTagInput.value = "";
+}
+
+async function addTagToNpc(npc: NpcDto) {
+  const tag = npcTagInput.value.trim().toLowerCase();
+  npcTagInputNpcId.value = null;
+  npcTagInput.value = "";
+  if (!tag || !roomId.value) return;
+  const currentTags = npc.tags ?? [];
+  if (currentTags.includes(tag)) return;
+  const newTags = [...currentTags, tag];
+  try {
+    const saved = await saveNpcForRoom(roomId.value, {
+      id: npc.id,
+      roomId: roomId.value,
+      name: npc.name,
+      description: npc.description,
+      type: npc.type,
+      visible: npc.visible,
+      unique: npc.unique,
+      clazzCode: npc.clazzCode,
+      raceCode: npc.raceCode,
+      armoryClass: npc.armoryClass,
+      speed: npc.speed,
+      initiative: npc.initiative,
+      imgUrl: npc.imgUrl,
+      createdBy: npc.createdBy,
+      tags: newTags,
+    });
+    const idx = npcs.value.findIndex((n) => n.id === npc.id);
+    if (idx !== -1) npcs.value[idx] = { ...npcs.value[idx], tags: saved.tags ?? newTags };
+  } catch (e) {
+    console.error("Failed to add tag:", e);
+  }
+}
+
+async function removeTagFromNpc(npc: NpcDto, tag: string) {
+  if (!roomId.value) return;
+  const newTags = (npc.tags ?? []).filter((t) => t !== tag);
+  try {
+    const saved = await saveNpcForRoom(roomId.value, {
+      id: npc.id,
+      roomId: roomId.value,
+      name: npc.name,
+      description: npc.description,
+      type: npc.type,
+      visible: npc.visible,
+      unique: npc.unique,
+      clazzCode: npc.clazzCode,
+      raceCode: npc.raceCode,
+      armoryClass: npc.armoryClass,
+      speed: npc.speed,
+      initiative: npc.initiative,
+      imgUrl: npc.imgUrl,
+      createdBy: npc.createdBy,
+      tags: newTags,
+    });
+    const idx = npcs.value.findIndex((n) => n.id === npc.id);
+    if (idx !== -1) npcs.value[idx] = { ...npcs.value[idx], tags: saved.tags ?? newTags };
+  } catch (e) {
+    console.error("Failed to remove tag:", e);
+  }
+}
+
+function handleTagInputKey(e: KeyboardEvent, npc: NpcDto) {
+  if (e.key === "Enter") { void addTagToNpc(npc); }
+  if (e.key === "Escape") { npcTagInputNpcId.value = null; npcTagInput.value = ""; }
 }
 
 function goToNpc(npcId: string) {
@@ -1656,6 +1826,21 @@ async function onCatalogApplied(
 
       <!-- NPC -->
       <div v-show="currentSection === 'npcs'" class="segment-content npcs-section">
+
+        <!-- Search + quick filters -->
+        <div class="npcs-search-bar">
+          <ion-icon :icon="searchOutline" class="npcs-search-icon"/>
+          <input
+              v-model="npcSearch"
+              class="npcs-search-input"
+              placeholder="Поиск по имени или тегу..."
+          />
+          <button v-if="npcSearch" class="npcs-search-clear" @click="npcSearch = ''">
+            <ion-icon :icon="closeOutline"/>
+          </button>
+        </div>
+
+        <!-- Type/class/race dropdowns -->
         <div class="npcs-filters">
           <IonSelect
               interface="popover"
@@ -1691,45 +1876,109 @@ async function onCatalogApplied(
             </IonSelectOption>
           </IonSelect>
         </div>
-        <ion-list v-if="!npcsLoading && filteredNpcs.length" class="guidebook-list">
-          <ion-item
-              v-for="npc in filteredNpcs"
-              :key="npc.id"
-              :button="true"
-              color="dark"
-              @click="goToNpc(npc.id)"
+
+        <!-- Tag filter chips -->
+        <div v-if="allNpcTags.length" class="npcs-tag-filter">
+          <button
+              v-for="tag in allNpcTags"
+              :key="tag"
+              :class="['npc-filter-tag', { 'npc-filter-tag--active': npcTagFilter.has(tag) }]"
+              @click="toggleTagFilter(tag)"
           >
-            <div class="npc-avatar-wrap" slot="start">
-              <ion-avatar>
-                <img :src="getNpcImageUrl(npc.imgUrl)" :alt="npc.name"/>
-              </ion-avatar>
-              <div v-if="npc.unique" class="npc-unique-badge" title="Уникальный">
-                <ion-icon :icon="sparkles"/>
+            {{ tag }}
+            <ion-icon v-if="npcTagFilter.has(tag)" :icon="closeOutline" class="npc-filter-tag__x"/>
+          </button>
+        </div>
+
+        <!-- NPC cards -->
+        <div v-if="!npcsLoading && filteredNpcs.length" class="npc-cards">
+          <div v-for="npc in filteredNpcs" :key="npc.id" class="npc-card">
+
+            <!-- Top row: avatar + name/meta + actions -->
+            <div class="npc-card__top" @click="goToNpc(npc.id)">
+              <div class="npc-card__avatar-wrap">
+                <img :src="getNpcImageUrl(npc.imgUrl)" :alt="npc.name" class="npc-card__avatar"/>
+                <span v-if="npc.unique" class="npc-card__unique-dot" title="Уникальный"/>
+              </div>
+              <div class="npc-card__info">
+                <div class="npc-card__name">{{ npc.name }}</div>
+                <div class="npc-card__meta">
+                  <span class="npc-card__type-badge" :data-type="npc.type">{{ getNpcTypeAbbr(npc.type) }}</span>
+                  <span v-if="npc.clazzInfo?.name || npc.clazzCode">{{ npc.clazzInfo?.name || npc.clazzCode }}</span>
+                  <span v-if="(npc.clazzInfo?.name || npc.clazzCode) && (npc.raceInfo?.name || npc.raceCode)" class="npc-card__meta-dot">·</span>
+                  <span v-if="npc.raceInfo?.name || npc.raceCode">{{ npc.raceInfo?.name || npc.raceCode }}</span>
+                </div>
+              </div>
+              <div class="npc-card__actions" @click.stop>
+                <button class="npc-card__action-btn" @click="openNpcRelationPopover(npc.id, $event)" title="Добавить связь">
+                  <ion-icon :icon="personOutline"/>
+                </button>
+                <button class="npc-card__action-btn npc-card__action-btn--chevron" @click="goToNpc(npc.id)">
+                  <ion-icon :icon="chevronForwardOutline"/>
+                </button>
               </div>
             </div>
-            <div class="npc-end-actions" slot="end">
-              <ion-button
-                  fill="clear"
-                  size="small"
-                  color="primary"
-                  @click.stop="openNpcRelationPopover(npc.id, $event)"
-              >
-                <ion-icon :icon="personOutline"/>
-              </ion-button>
-              <ion-icon :icon="chevronForwardOutline"/>
+
+            <!-- Tags row -->
+            <div class="npc-card__tags" @click.stop>
+              <span
+                  v-for="tag in (npc.tags ?? [])"
+                  :key="tag"
+                  class="npc-tag"
+                  @click="removeTagFromNpc(npc, tag)"
+                  title="Удалить тег"
+              >{{ tag }}<span class="npc-tag__x">×</span></span>
+
+              <template v-if="npcTagInputNpcId === npc.id">
+                <input
+                    v-model="npcTagInput"
+                    class="npc-tag-input"
+                    placeholder="тег..."
+                    autofocus
+                    @keydown="handleTagInputKey($event, npc)"
+                    @blur="addTagToNpc(npc)"
+                />
+              </template>
+              <button v-else class="npc-tag npc-tag--add" @click="openTagInput(npc.id)">
+                <ion-icon :icon="addOutline"/>
+              </button>
             </div>
-            <ion-label>
-              <h3>{{ npc.name }}</h3>
-              <p class="npc-info">
-                {{ getNpcTypeLabel(npc.type) }}
-                <span v-if="npc.clazzInfo?.name || npc.clazzCode"> • {{ npc.clazzInfo?.name || npc.clazzCode }}</span>
-                <span v-if="npc.raceInfo?.name || npc.raceCode"> • {{ npc.raceInfo?.name || npc.raceCode }}</span>
-              </p>
-            </ion-label>
-          </ion-item>
-        </ion-list>
+
+            <!-- Relations -->
+            <template v-if="npcRelationsMap.get(npc.id)?.length || npcNpcRelationsMap.get(npc.id)?.length">
+              <div class="npc-card__divider"/>
+              <div class="npc-card__relations">
+                <span
+                    v-for="rel in npcRelationsMap.get(npc.id)"
+                    :key="'c-' + rel.characterName + rel.relationType"
+                    class="npc-relation-chip"
+                    :style="{ background: rel.colors.bg, borderColor: rel.colors.border, color: rel.colors.text }"
+                >
+                  <span class="npc-relation-chip__kind">П</span>
+                  <span class="npc-relation-chip__dot">·</span>
+                  <span class="npc-relation-chip__name">{{ rel.characterName }}</span>
+                  <span class="npc-relation-chip__dot">·</span>
+                  <span class="npc-relation-chip__type">{{ rel.label }}</span>
+                </span>
+                <span
+                    v-for="rel in npcNpcRelationsMap.get(npc.id)"
+                    :key="'n-' + rel.otherNpcName + rel.relationType"
+                    class="npc-relation-chip"
+                    :style="{ background: rel.colors.bg, borderColor: rel.colors.border, color: rel.colors.text }"
+                >
+                  <span class="npc-relation-chip__kind">N</span>
+                  <span class="npc-relation-chip__dot">·</span>
+                  <span class="npc-relation-chip__name">{{ rel.otherNpcName }}</span>
+                  <span class="npc-relation-chip__dot">·</span>
+                  <span class="npc-relation-chip__type">{{ rel.label }}</span>
+                </span>
+              </div>
+            </template>
+          </div>
+        </div>
         <div v-else-if="npcsLoading" class="loading-placeholder">Загрузка...</div>
         <div v-else class="empty-placeholder">Нет NPC</div>
+
         <ion-button fill="solid" color="primary" shape="round" class="add-npc-fab" @click="goToCreateNpc">
           <ion-icon :icon="add"/>
         </ion-button>
@@ -1785,6 +2034,11 @@ async function onCatalogApplied(
                   {{ opt.label }}
                 </option>
               </select>
+            </div>
+
+            <div class="npc-relation-field">
+              <div class="npc-relation-label">Заметка</div>
+              <textarea v-model="npcRelationPopoverNote" class="npc-relation-textarea" placeholder="Необязательно..." rows="2"/>
             </div>
 
             <div class="npc-relation-actions">
@@ -2182,6 +2436,55 @@ ion-searchbar {
   margin-top: 2px;
 }
 
+.npc-relation-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px;
+}
+
+.npc-relation-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+  max-width: 180px;
+}
+
+.npc-relation-chip__kind {
+  font-size: 9px;
+  font-weight: 800;
+  opacity: 0.65;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.npc-relation-chip__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100px;
+}
+
+.npc-relation-chip__dot {
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+.npc-relation-chip__type {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
 .npc-avatar-wrap {
   position: relative;
   display: inline-flex;
@@ -2268,6 +2571,19 @@ ion-searchbar {
   border-radius: 8px;
   padding: 10px;
   border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.npc-relation-textarea {
+  width: 100%;
+  background: var(--ion-color-medium);
+  color: var(--ion-color-light);
+  border-radius: 8px;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  resize: none;
+  font-family: inherit;
+  font-size: 14px;
+  box-sizing: border-box;
 }
 
 .npc-relation-actions {
@@ -2367,6 +2683,302 @@ ion-searchbar {
   justify-content: center;
   gap: 0;
   background: transparent;
+}
+
+/* ── NPC search bar ─────────────────────────────────────────────── */
+.npcs-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+}
+
+.npcs-search-icon {
+  font-size: 18px;
+  color: var(--ion-color-secondary);
+  flex-shrink: 0;
+}
+
+.npcs-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--ion-color-light);
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.npcs-search-input::placeholder {
+  color: var(--ion-color-secondary);
+}
+
+.npcs-search-clear {
+  background: transparent;
+  border: none;
+  color: var(--ion-color-medium);
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  font-size: 18px;
+}
+
+/* ── Tag filter row ─────────────────────────────────────────────── */
+.npcs-tag-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.npc-filter-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--ion-color-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.npc-filter-tag:hover {
+  background: rgba(var(--ion-color-primary-rgb), 0.12);
+  border-color: rgba(var(--ion-color-primary-rgb), 0.4);
+  color: var(--ion-color-primary);
+}
+
+.npc-filter-tag--active {
+  background: rgba(var(--ion-color-primary-rgb), 0.2);
+  border-color: var(--ion-color-primary);
+  color: var(--ion-color-primary);
+  font-weight: 600;
+}
+
+.npc-filter-tag__x {
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+/* ── NPC card list ──────────────────────────────────────────────── */
+.npc-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 72px;
+}
+
+.npc-card {
+  background: linear-gradient(135deg, rgba(var(--ion-color-medium-rgb), 0.9) 0%, rgba(var(--ion-color-dark-rgb), 0.85) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 12px 14px 10px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.npc-card:hover {
+  border-color: rgba(var(--ion-color-primary-rgb), 0.35);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+/* top row */
+.npc-card__top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.npc-card__avatar-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.npc-card__avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+}
+
+.npc-card__unique-dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffd700, #ffb347);
+  border: 1.5px solid var(--ion-background-color, #1a1a2e);
+}
+
+.npc-card__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.npc-card__name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ion-color-light);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.npc-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--ion-color-secondary);
+  flex-wrap: wrap;
+}
+
+.npc-card__meta-dot {
+  opacity: 0.5;
+}
+
+.npc-card__type-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 800;
+  flex-shrink: 0;
+  padding-left: 10px;
+  padding-right: 10px;
+  background: rgba(var(--ion-color-primary-rgb), 0.2);
+  color: var(--ion-color-primary);
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.4);
+}
+
+.npc-card__type-badge[data-type="BEAST"] { background: rgba(139,90,43,0.25); color: #c8a06c; border-color: rgba(139,90,43,0.5); }
+.npc-card__type-badge[data-type="MONSTER"] { background: rgba(180,30,30,0.2); color: #e07070; border-color: rgba(180,30,30,0.45); }
+.npc-card__type-badge[data-type="DEITY"] { background: rgba(200,160,20,0.2); color: #e8cc60; border-color: rgba(200,160,20,0.45); }
+.npc-card__type-badge[data-type="UNDEAD"] { background: rgba(100,70,150,0.25); color: #b89ee0; border-color: rgba(100,70,150,0.5); }
+
+.npc-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.npc-card__action-btn {
+  background: transparent;
+  border: none;
+  color: var(--ion-color-medium);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  font-size: 18px;
+  transition: background 0.12s, color 0.12s;
+}
+
+.npc-card__action-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ion-color-primary);
+}
+
+.npc-card__action-btn--chevron {
+  font-size: 16px;
+}
+
+/* divider */
+.npc-card__divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.07);
+  margin: 8px 0;
+}
+
+/* tags row */
+.npc-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.npc-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(var(--ion-color-primary-rgb), 0.12);
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.3);
+  color: rgba(var(--ion-color-primary-rgb), 0.9);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.npc-tag:hover {
+  background: rgba(220, 60, 60, 0.18);
+  border-color: rgba(220, 60, 60, 0.45);
+  color: #e07070;
+}
+
+.npc-tag__x {
+  font-size: 13px;
+  opacity: 0;
+  transition: opacity 0.1s;
+  margin-left: 1px;
+}
+
+.npc-tag:hover .npc-tag__x {
+  opacity: 1;
+}
+
+.npc-tag--add {
+  background: transparent;
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  color: var(--ion-color-secondary);
+  padding: 2px 8px;
+  font-size: 14px;
+}
+
+.npc-tag--add:hover {
+  border-color: rgba(var(--ion-color-primary-rgb), 0.5);
+  color: var(--ion-color-primary);
+  background: rgba(var(--ion-color-primary-rgb), 0.08);
+}
+
+.npc-tag-input {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(var(--ion-color-primary-rgb), 0.08);
+  border: 1px solid var(--ion-color-primary);
+  color: var(--ion-color-light);
+  font-size: 11px;
+  font-family: inherit;
+  outline: none;
+  width: 90px;
+}
+
+/* relations row inside card */
+.npc-card__relations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
 }
 
 </style>
