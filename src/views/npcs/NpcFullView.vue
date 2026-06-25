@@ -304,9 +304,6 @@ async function submitAddRelation() {
         <div class="relations-panel">
           <div class="relations-panel__header">
             <div class="relations-panel__title">Связи</div>
-            <button class="relations-panel__add-btn" @click="openAddRelation">
-              <ion-icon :icon="addOutline"/>
-            </button>
           </div>
           <div v-if="allRelations.length" class="relations-panel__list">
             <div
@@ -333,6 +330,10 @@ async function submitAddRelation() {
             </div>
           </div>
           <div v-else class="relations-panel__empty">Нет связей</div>
+          <button class="relations-panel__add-btn" @click="openAddRelation">
+            <ion-icon :icon="addOutline"/>
+            Добавить связь
+          </button>
         </div>
 
         <!-- Add relation modal -->
@@ -597,9 +598,6 @@ async function submitAddRelation() {
 }
 
 .relations-panel__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   margin-bottom: 10px;
 }
 
@@ -616,15 +614,23 @@ async function submitAddRelation() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(var(--ion-color-primary-rgb), 0.15);
-  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.3);
-  border-radius: 50%;
-  width: 26px;
-  height: 26px;
+  gap: 6px;
+  width: 100%;
+  margin-top: 10px;
+  padding: 9px;
+  background: rgba(var(--ion-color-primary-rgb), 0.1);
+  border: 1px dashed rgba(var(--ion-color-primary-rgb), 0.35);
+  border-radius: 10px;
   color: var(--ion-color-primary);
   cursor: pointer;
-  font-size: 16px;
-  padding: 0;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.relations-panel__add-btn:hover {
+  background: rgba(var(--ion-color-primary-rgb), 0.18);
+  border-color: rgba(var(--ion-color-primary-rgb), 0.6);
 }
 
 .relations-panel__list {

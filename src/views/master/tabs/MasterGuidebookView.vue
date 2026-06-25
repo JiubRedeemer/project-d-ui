@@ -24,6 +24,7 @@ import {
   chevronForwardOutline,
   closeOutline,
   cubeOutline,
+  filterOutline,
   documentTextOutline,
   eyeOffOutline,
   eyeOutline,
@@ -226,10 +227,12 @@ const showStateModal = ref(false);
 const npcFilterType = ref<NpcTypeEnum | "">("");
 const npcFilterClass = ref<string>("");
 const npcFilterRace = ref<string>("");
+const npcFilterCharacterId = ref<string>("");
 const npcSearch = ref<string>("");
 const npcTagFilter = ref<Set<string>>(new Set());
 const npcTagInput = ref<string>("");
 const npcTagInputNpcId = ref<string | null>(null);
+const showNpcFiltersModal = ref(false);
 
 const roomCharacters = ref<Character[]>([]);
 const roomCharactersLoading = ref(false);
@@ -476,6 +479,13 @@ const filteredNpcs = computed(() => {
   if (npcFilterType.value) result = result.filter((n) => n.type === npcFilterType.value);
   if (npcFilterClass.value) result = result.filter((n) => n.clazzCode === npcFilterClass.value);
   if (npcFilterRace.value) result = result.filter((n) => n.raceCode === npcFilterRace.value);
+  if (npcFilterCharacterId.value) {
+    const charId = npcFilterCharacterId.value;
+    const npcIdsWithChar = new Set(
+      npcRelations.value.filter((r) => r.characterId === charId).map((r) => r.npcId)
+    );
+    result = result.filter((n) => npcIdsWithChar.has(n.id));
+  }
   if (npcTagFilter.value.size > 0) {
     result = result.filter((n) =>
       [...npcTagFilter.value].every((t) => (n.tags ?? []).includes(t))
@@ -490,6 +500,24 @@ const filteredNpcs = computed(() => {
   }
   return sortNpcsByName(result);
 });
+
+const npcActiveFiltersCount = computed(() => {
+  let count = 0;
+  if (npcFilterType.value) count++;
+  if (npcFilterClass.value) count++;
+  if (npcFilterRace.value) count++;
+  if (npcFilterCharacterId.value) count++;
+  if (npcTagFilter.value.size > 0) count++;
+  return count;
+});
+
+function resetNpcFilters() {
+  npcFilterType.value = "";
+  npcFilterClass.value = "";
+  npcFilterRace.value = "";
+  npcFilterCharacterId.value = "";
+  npcTagFilter.value = new Set();
+}
 
 const filteredStates = computed(() => {
   const q = normalizedExternalSearchQuery.value;
@@ -1827,58 +1855,133 @@ async function onCatalogApplied(
       <!-- NPC -->
       <div v-show="currentSection === 'npcs'" class="segment-content npcs-section">
 
-        <!-- Search + quick filters -->
-        <div class="npcs-search-bar">
-          <ion-icon :icon="searchOutline" class="npcs-search-icon"/>
-          <input
-              v-model="npcSearch"
-              class="npcs-search-input"
-              placeholder="Поиск по имени или тегу..."
-          />
-          <button v-if="npcSearch" class="npcs-search-clear" @click="npcSearch = ''">
-            <ion-icon :icon="closeOutline"/>
+        <!-- Search bar + filter button -->
+        <div class="npcs-search-row">
+          <div class="npcs-search-bar">
+            <ion-icon :icon="searchOutline" class="npcs-search-icon"/>
+            <input
+                v-model="npcSearch"
+                class="npcs-search-input"
+                placeholder="Поиск по имени или тегу..."
+            />
+            <button v-if="npcSearch" class="npcs-search-clear" @click="npcSearch = ''">
+              <ion-icon :icon="closeOutline"/>
+            </button>
+          </div>
+          <button
+              :class="['npcs-filter-btn', { 'npcs-filter-btn--active': npcActiveFiltersCount > 0 }]"
+              @click="showNpcFiltersModal = true"
+          >
+            <ion-icon :icon="filterOutline"/>
+            <span>Фильтры</span>
+            <span v-if="npcActiveFiltersCount > 0" class="npcs-filter-btn__badge">{{ npcActiveFiltersCount }}</span>
           </button>
         </div>
 
-        <!-- Type/class/race dropdowns -->
-        <div class="npcs-filters">
-          <IonSelect
-              interface="popover"
-              placeholder="Тип"
-              :value="npcFilterType"
-              @ionChange="npcFilterType = ($event as CustomEvent).detail.value"
-          >
-            <IonSelectOption value="">Все</IonSelectOption>
-            <IonSelectOption v-for="(label, type) in NPC_TYPE_LABELS" :key="type" :value="type">
-              {{ label }}
-            </IonSelectOption>
-          </IonSelect>
-          <IonSelect
-              interface="popover"
-              placeholder="Класс"
-              :value="npcFilterClass"
-              @ionChange="npcFilterClass = ($event as CustomEvent).detail.value"
-          >
-            <IonSelectOption value="">Все</IonSelectOption>
-            <IonSelectOption v-for="opt in npcClassOptions" :key="opt.value" :value="opt.value">
-              {{ opt.label }}
-            </IonSelectOption>
-          </IonSelect>
-          <IonSelect
-              interface="popover"
-              placeholder="Раса"
-              :value="npcFilterRace"
-              @ionChange="npcFilterRace = ($event as CustomEvent).detail.value"
-          >
-            <IonSelectOption value="">Все</IonSelectOption>
-            <IonSelectOption v-for="opt in npcRaceOptions" :key="opt.value" :value="opt.value">
-              {{ opt.label }}
-            </IonSelectOption>
-          </IonSelect>
+        <!-- Active filter chips summary -->
+        <div v-if="npcActiveFiltersCount > 0" class="npcs-active-filters">
+          <span v-if="npcFilterType" class="npc-active-chip">
+            {{ NPC_TYPE_LABELS[npcFilterType] }}
+            <button @click="npcFilterType = ''"><ion-icon :icon="closeOutline"/></button>
+          </span>
+          <span v-if="npcFilterClass" class="npc-active-chip">
+            {{ npcClassOptions.find(o => o.value === npcFilterClass)?.label ?? npcFilterClass }}
+            <button @click="npcFilterClass = ''"><ion-icon :icon="closeOutline"/></button>
+          </span>
+          <span v-if="npcFilterRace" class="npc-active-chip">
+            {{ npcRaceOptions.find(o => o.value === npcFilterRace)?.label ?? npcFilterRace }}
+            <button @click="npcFilterRace = ''"><ion-icon :icon="closeOutline"/></button>
+          </span>
+          <span v-if="npcFilterCharacterId" class="npc-active-chip">
+            {{ roomCharacters.find(c => c.id === npcFilterCharacterId)?.name ?? 'Персонаж' }}
+            <button @click="npcFilterCharacterId = ''"><ion-icon :icon="closeOutline"/></button>
+          </span>
+          <span v-for="tag in [...npcTagFilter]" :key="tag" class="npc-active-chip npc-active-chip--tag">
+            #{{ tag }}
+            <button @click="toggleTagFilter(tag)"><ion-icon :icon="closeOutline"/></button>
+          </span>
+          <button class="npc-active-chip npc-active-chip--reset" @click="resetNpcFilters">Сбросить всё</button>
         </div>
 
-        <!-- Tag filter chips -->
-        <div v-if="allNpcTags.length" class="npcs-tag-filter">
+        <!-- Filters modal -->
+        <Teleport to="body">
+          <div v-if="showNpcFiltersModal" class="npc-filters-overlay" @click.self="showNpcFiltersModal = false">
+            <div class="npc-filters-modal">
+              <div class="npc-filters-modal__header">
+                <span>Фильтры</span>
+                <button class="npc-filters-modal__close" @click="showNpcFiltersModal = false">
+                  <ion-icon :icon="closeOutline"/>
+                </button>
+              </div>
+
+              <div class="npc-filters-modal__body">
+                <div class="npc-filters-section">
+                  <div class="npc-filters-label">Тип</div>
+                  <div class="npc-filters-chips">
+                    <button
+                        v-for="(label, type) in NPC_TYPE_LABELS" :key="type"
+                        :class="['npc-filters-chip', { 'npc-filters-chip--active': npcFilterType === type }]"
+                        @click="npcFilterType = npcFilterType === type ? '' : type"
+                    >{{ label }}</button>
+                  </div>
+                </div>
+
+                <div class="npc-filters-section">
+                  <div class="npc-filters-label">Класс</div>
+                  <div class="npc-filters-chips">
+                    <button
+                        v-for="opt in npcClassOptions" :key="opt.value"
+                        :class="['npc-filters-chip', { 'npc-filters-chip--active': npcFilterClass === opt.value }]"
+                        @click="npcFilterClass = npcFilterClass === opt.value ? '' : opt.value"
+                    >{{ opt.label }}</button>
+                  </div>
+                </div>
+
+                <div class="npc-filters-section">
+                  <div class="npc-filters-label">Раса</div>
+                  <div class="npc-filters-chips">
+                    <button
+                        v-for="opt in npcRaceOptions" :key="opt.value"
+                        :class="['npc-filters-chip', { 'npc-filters-chip--active': npcFilterRace === opt.value }]"
+                        @click="npcFilterRace = npcFilterRace === opt.value ? '' : opt.value"
+                    >{{ opt.label }}</button>
+                  </div>
+                </div>
+
+                <div class="npc-filters-section">
+                  <div class="npc-filters-label">Персонаж</div>
+                  <div class="npc-filters-chips">
+                    <button
+                        v-for="char in roomCharacters" :key="char.id"
+                        :class="['npc-filters-chip', { 'npc-filters-chip--active': npcFilterCharacterId === char.id }]"
+                        @click="npcFilterCharacterId = npcFilterCharacterId === char.id ? '' : char.id"
+                    >{{ char.name ?? char.id }}</button>
+                  </div>
+                  <div v-if="!roomCharacters.length" class="npc-filters-empty">Нет персонажей в комнате</div>
+                </div>
+
+                <div v-if="allNpcTags.length" class="npc-filters-section">
+                  <div class="npc-filters-label">Теги</div>
+                  <div class="npc-filters-chips">
+                    <button
+                        v-for="tag in allNpcTags" :key="tag"
+                        :class="['npc-filters-chip', { 'npc-filters-chip--active': npcTagFilter.has(tag) }]"
+                        @click="toggleTagFilter(tag)"
+                    >#{{ tag }}</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="npc-filters-modal__footer">
+                <button class="npc-filters-reset" @click="resetNpcFilters">Сбросить</button>
+                <button class="npc-filters-apply" @click="showNpcFiltersModal = false">Применить</button>
+              </div>
+            </div>
+          </div>
+        </Teleport>
+
+        <!-- placeholder for removed tag-filter row (now in modal) -->
+        <div v-if="false" class="npcs-tag-filter">
           <button
               v-for="tag in allNpcTags"
               :key="tag"
@@ -1910,9 +2013,6 @@ async function onCatalogApplied(
                 </div>
               </div>
               <div class="npc-card__actions" @click.stop>
-                <button class="npc-card__action-btn" @click="openNpcRelationPopover(npc.id, $event)" title="Добавить связь">
-                  <ion-icon :icon="personOutline"/>
-                </button>
                 <button class="npc-card__action-btn npc-card__action-btn--chevron" @click="goToNpc(npc.id)">
                   <ion-icon :icon="chevronForwardOutline"/>
                 </button>
@@ -1945,35 +2045,36 @@ async function onCatalogApplied(
             </div>
 
             <!-- Relations -->
-            <template v-if="npcRelationsMap.get(npc.id)?.length || npcNpcRelationsMap.get(npc.id)?.length">
-              <div class="npc-card__divider"/>
-              <div class="npc-card__relations">
-                <span
-                    v-for="rel in npcRelationsMap.get(npc.id)"
-                    :key="'c-' + rel.characterName + rel.relationType"
-                    class="npc-relation-chip"
-                    :style="{ background: rel.colors.bg, borderColor: rel.colors.border, color: rel.colors.text }"
-                >
-                  <span class="npc-relation-chip__kind">П</span>
-                  <span class="npc-relation-chip__dot">·</span>
-                  <span class="npc-relation-chip__name">{{ rel.characterName }}</span>
-                  <span class="npc-relation-chip__dot">·</span>
-                  <span class="npc-relation-chip__type">{{ rel.label }}</span>
-                </span>
-                <span
-                    v-for="rel in npcNpcRelationsMap.get(npc.id)"
-                    :key="'n-' + rel.otherNpcName + rel.relationType"
-                    class="npc-relation-chip"
-                    :style="{ background: rel.colors.bg, borderColor: rel.colors.border, color: rel.colors.text }"
-                >
-                  <span class="npc-relation-chip__kind">N</span>
-                  <span class="npc-relation-chip__dot">·</span>
-                  <span class="npc-relation-chip__name">{{ rel.otherNpcName }}</span>
-                  <span class="npc-relation-chip__dot">·</span>
-                  <span class="npc-relation-chip__type">{{ rel.label }}</span>
-                </span>
-              </div>
-            </template>
+            <div class="npc-card__divider"/>
+            <div class="npc-card__relations" @click.stop>
+              <span
+                  v-for="rel in npcRelationsMap.get(npc.id)"
+                  :key="'c-' + rel.characterName + rel.relationType"
+                  class="npc-relation-chip"
+                  :style="{ background: rel.colors.bg, borderColor: rel.colors.border, color: rel.colors.text }"
+              >
+                <span class="npc-relation-chip__kind">П</span>
+                <span class="npc-relation-chip__dot">·</span>
+                <span class="npc-relation-chip__name">{{ rel.characterName }}</span>
+                <span class="npc-relation-chip__dot">·</span>
+                <span class="npc-relation-chip__type">{{ rel.label }}</span>
+              </span>
+              <span
+                  v-for="rel in npcNpcRelationsMap.get(npc.id)"
+                  :key="'n-' + rel.otherNpcName + rel.relationType"
+                  class="npc-relation-chip"
+                  :style="{ background: rel.colors.bg, borderColor: rel.colors.border, color: rel.colors.text }"
+              >
+                <span class="npc-relation-chip__kind">N</span>
+                <span class="npc-relation-chip__dot">·</span>
+                <span class="npc-relation-chip__name">{{ rel.otherNpcName }}</span>
+                <span class="npc-relation-chip__dot">·</span>
+                <span class="npc-relation-chip__type">{{ rel.label }}</span>
+              </span>
+              <button class="npc-card__add-relation-btn" @click="openNpcRelationPopover(npc.id, $event)" title="Добавить связь">
+                <ion-icon :icon="addOutline"/>
+              </button>
+            </div>
           </div>
         </div>
         <div v-else-if="npcsLoading" class="loading-placeholder">Загрузка...</div>
@@ -2432,7 +2533,7 @@ ion-searchbar {
 
 .npc-info {
   font-size: 13px;
-  color: var(--ion-color-medium);
+  color: var(--ion-color-secondary);
   margin-top: 2px;
 }
 
@@ -2550,7 +2651,7 @@ ion-searchbar {
 }
 
 .npc-relation-loading-text {
-  color: var(--ion-color-medium);
+  color: var(--ion-color-secondary);
   font-size: 12px;
 }
 
@@ -2606,7 +2707,7 @@ ion-searchbar {
 .row-action-btn {
   border: none;
   background: transparent;
-  color: var(--ion-color-medium);
+  color: var(--ion-color-secondary);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2685,6 +2786,258 @@ ion-searchbar {
   background: transparent;
 }
 
+/* ── NPC search row (bar + filter button) ───────────────────────── */
+.npcs-search-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.npcs-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 13px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--ion-color-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  flex-shrink: 0;
+  height: 37px;
+}
+
+.npcs-filter-btn:hover {
+  background: rgba(var(--ion-color-primary-rgb), 0.1);
+  border-color: rgba(var(--ion-color-primary-rgb), 0.35);
+  color: var(--ion-color-primary);
+}
+
+.npcs-filter-btn--active {
+  background: rgba(var(--ion-color-primary-rgb), 0.18);
+  border-color: var(--ion-color-primary);
+  color: var(--ion-color-primary);
+}
+
+.npcs-filter-btn__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--ion-color-primary);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* ── Active filter summary chips ────────────────────────────────── */
+.npcs-active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.npc-active-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px 3px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.4);
+  background: rgba(var(--ion-color-primary-rgb), 0.14);
+  color: var(--ion-color-primary);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.npc-active-chip button {
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+.npc-active-chip button:hover { opacity: 1; }
+
+.npc-active-chip--tag {
+  border-color: rgba(var(--ion-color-secondary-rgb), 0.4);
+  background: rgba(var(--ion-color-secondary-rgb), 0.12);
+  color: var(--ion-color-secondary);
+}
+
+.npc-active-chip--reset {
+  background: transparent;
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  color: var(--ion-color-secondary);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 3px 10px;
+}
+
+.npc-active-chip--reset:hover {
+  border-color: rgba(220, 60, 60, 0.5);
+  color: #e07070;
+}
+
+/* ── Filters modal (teleported) ─────────────────────────────────── */
+.npc-filters-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 99998;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.npc-filters-modal {
+  background: #1e1e2e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px 20px 0 0;
+  width: 100%;
+  max-width: 600px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.npc-filters-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ion-color-light);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.npc-filters-modal__close {
+  background: transparent;
+  border: none;
+  color: var(--ion-color-secondary);
+  font-size: 22px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 2px;
+}
+
+.npc-filters-modal__close:hover { color: var(--ion-color-light); }
+
+.npc-filters-modal__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.npc-filters-section {}
+
+.npc-filters-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--ion-color-secondary);
+  margin-bottom: 8px;
+}
+
+.npc-filters-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.npc-filters-chip {
+  padding: 5px 13px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--ion-color-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.13s, border-color 0.13s, color 0.13s;
+}
+
+.npc-filters-chip:hover {
+  background: rgba(var(--ion-color-primary-rgb), 0.1);
+  border-color: rgba(var(--ion-color-primary-rgb), 0.35);
+  color: var(--ion-color-primary);
+}
+
+.npc-filters-chip--active {
+  background: rgba(var(--ion-color-primary-rgb), 0.22);
+  border-color: var(--ion-color-primary);
+  color: var(--ion-color-primary);
+  font-weight: 600;
+}
+
+.npc-filters-empty {
+  font-size: 12px;
+  color: var(--ion-color-secondary);
+  opacity: 0.6;
+  padding: 4px 0;
+}
+
+.npc-filters-modal__footer {
+  display: flex;
+  gap: 10px;
+  padding: 12px 20px max(16px, env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.npc-filters-reset {
+  flex: 1;
+  padding: 11px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: transparent;
+  color: var(--ion-color-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.13s;
+}
+
+.npc-filters-reset:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--ion-color-light);
+}
+
+.npc-filters-apply {
+  flex: 2;
+  padding: 11px;
+  border-radius: 12px;
+  border: none;
+  background: var(--ion-color-primary);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.13s;
+}
+
+.npc-filters-apply:hover { opacity: 0.88; }
+
 /* ── NPC search bar ─────────────────────────────────────────────── */
 .npcs-search-bar {
   display: flex;
@@ -2694,7 +3047,7 @@ ion-searchbar {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   padding: 8px 12px;
-  margin-bottom: 10px;
+  flex: 1;
 }
 
 .npcs-search-icon {
@@ -2720,7 +3073,7 @@ ion-searchbar {
 .npcs-search-clear {
   background: transparent;
   border: none;
-  color: var(--ion-color-medium);
+  color: var(--ion-color-secondary);
   cursor: pointer;
   padding: 0;
   display: flex;
@@ -2881,7 +3234,7 @@ ion-searchbar {
 .npc-card__action-btn {
   background: transparent;
   border: none;
-  color: var(--ion-color-medium);
+  color: var(--ion-color-secondary);
   cursor: pointer;
   padding: 6px;
   border-radius: 8px;
@@ -2978,7 +3331,35 @@ ion-searchbar {
 .npc-card__relations {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 5px;
+}
+
+.npc-card__add-relation-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  background: transparent;
+  color: var(--ion-color-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: opacity 0.15s, border-color 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+
+.npc-card:hover .npc-card__add-relation-btn {
+  opacity: 1;
+}
+
+.npc-card__add-relation-btn:hover {
+  border-color: var(--ion-color-primary);
+  color: var(--ion-color-primary);
+  background: rgba(var(--ion-color-primary-rgb), 0.1);
 }
 
 </style>
