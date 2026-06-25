@@ -6,6 +6,7 @@ import {computed, onMounted, onUnmounted, ref} from "vue";
 import {checkmarkOutline} from "ionicons/icons";
 import {HEADERS} from "@/config/localisations";
 import HpEditBlock from "@/views/character/tabs/common/HpEditBlock.vue";
+import DeathSaveBlock from "@/views/character/tabs/common/DeathSaveBlock.vue";
 import EditHpBonusValueModal from "@/views/character/tabs/common/bonus/EditHpBonusValueModal.vue";
 import {useCharacterStore} from "@/stores/CharacterStore";
 
@@ -28,6 +29,12 @@ const modalBreakpoints = computed(() => (isDesktop.value ? undefined : [0, 1]));
 const modalInitialBreakpoint = computed(() => (isDesktop.value ? undefined : 1));
 
 const currentHp = computed(() => characterStore.character?.health?.currentHp ?? 0);
+const isDying = computed(() => currentHp.value <= 0);
+
+const modalStyle = computed(() => {
+  if (isDesktop.value) return {};
+  return { '--height': isDying.value ? '85vh' : '75vh' };
+});
 const maxHp = computed(() =>
     (characterStore.character?.health?.maxHp ?? 0)
     + (characterStore.character?.health?.bonusValue ?? 0)
@@ -36,6 +43,19 @@ const tempHp = computed(() => characterStore.character?.health?.tempHp ?? 0);
 
 async function onSubmit() {
   emit('closeHpModal');
+}
+
+// Called when death save block rolls a natural 20 — heal to 1 HP
+async function onCritSuccess() {
+  if (characterStore.character?.health) {
+    characterStore.character.health.currentHp = 1;
+  }
+  const url = `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${route.params.characterId}${GATEWAY_INTEGRATION_ROUTES.health}${GATEWAY_INTEGRATION_ROUTES.updateCurrent}`;
+  await import('axios').then(({ default: axios }) =>
+    axios.patch(url, { type: 'HEAL', value: 1 }, {
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('accessToken')}` },
+    })
+  );
 }
 
 const openEditHpModal = () => {
@@ -66,8 +86,9 @@ onUnmounted(() => {
       :initial-breakpoint="modalInitialBreakpoint"
       :breakpoints="modalBreakpoints"
       :class="{ 'desktop-modal': isDesktop }"
+      :style="modalStyle"
   >
-    <div class="block">
+    <div :class="['block', { 'block--dying': isDying && isDesktop }]">
       <div class="header">
         <div class="name">{{ HEADERS.health.rus }}
         </div>
@@ -75,8 +96,13 @@ onUnmounted(() => {
           {{ currentHp }}/{{ maxHp }}<span v-if="tempHp > 0" class="temp-hp"> +{{ tempHp }}</span>
         </div>
       </div>
-      <div class="input-block">
-        <HpEditBlock @editHpSelect="openEditHpModal()"/>
+      <div class="scrollable-content">
+        <div v-if="currentHp <= 0" class="death-save-wrap">
+          <DeathSaveBlock @critSuccess="onCritSuccess"/>
+        </div>
+        <div class="input-block">
+          <HpEditBlock @editHpSelect="openEditHpModal()"/>
+        </div>
       </div>
       <div class="footer" v-if="isDesktop">
         <ion-button size="large" shape="round" @click="onSubmit">
@@ -97,7 +123,7 @@ onUnmounted(() => {
 <style scoped>
 .block {
   width: 100%;
-  height: 75vh;
+  height: 100%;
   display: flex;
   justify-content: space-between;
   flex-direction: column;
@@ -119,6 +145,16 @@ onUnmounted(() => {
   color: var(--ion-color-primary);
 }
 
+.scrollable-content {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.death-save-wrap {
+  padding: 10px 10px 0;
+}
+
 .input-block {
   padding: 10px;
   justify-content: center;
@@ -138,7 +174,7 @@ onUnmounted(() => {
 
 ion-modal {
   --border-radius: 10px;
-  --height: auto;
+  --height: 75vh;
   --width: 90%;
   --background: var(--ion-color-dark);
 }
@@ -149,6 +185,11 @@ ion-modal {
     min-height: 420px;
     max-height: min(80vh, 760px);
     padding: 8px;
+  }
+
+  .block--dying {
+    min-height: 480px;
+    max-height: min(85vh, 820px);
   }
 
   .header {

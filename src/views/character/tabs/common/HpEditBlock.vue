@@ -180,13 +180,13 @@ const backspace = () => {
 };
 
 const updateCurrentHealth = async (type: string, value: number) => {
+  const health = characterStore.character?.health;
+  const wasAtZero = health ? health.currentHp <= 0 : false;
+
   try {
     await axios.patch(
         `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${route.params.characterId}${GATEWAY_INTEGRATION_ROUTES.health}${GATEWAY_INTEGRATION_ROUTES.updateCurrent}`,
-        {
-          type,
-          value
-        },
+        { type, value },
         {
           headers: {
             "Content-Type": "application/json",
@@ -197,27 +197,38 @@ const updateCurrentHealth = async (type: string, value: number) => {
 
     if (characterStore.character) {
       if (type === "HEAL") {
-        // eslint-disable-next-line vue/no-mutating-props
         characterStore.character.health.currentHp = Math.min(characterStore.character.health.currentHp + value, characterStore.character.health.maxHp + characterStore.character.health.bonusValue);
+        // reset death saves when healed from 0
+        if (wasAtZero && characterStore.character.health.currentHp > 0) {
+          characterStore.character.health.deathSaveSuccesses = 0;
+          characterStore.character.health.deathSaveFailures = 0;
+          await axios.patch(
+            `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${route.params.characterId}/health/death-saves`,
+            { type: 'RESET' },
+            { headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("accessToken")}` } }
+          );
+        }
       } else if (type === "DAMAGE") {
         if (characterStore.character.health.tempHp >= value) {
-          // eslint-disable-next-line vue/no-mutating-props
           characterStore.character.health.tempHp -= value;
         } else {
           const remainingDamage = value - characterStore.character.health.tempHp;
-          // eslint-disable-next-line vue/no-mutating-props
           characterStore.character.health.currentHp = Math.max(0, characterStore.character.health.currentHp - remainingDamage);
-          // eslint-disable-next-line vue/no-mutating-props
           characterStore.character.health.tempHp = 0;
         }
+        // damage while at 0 HP = 1 extra failure
+        if (wasAtZero && characterStore.character.health.currentHp <= 0) {
+          characterStore.character.health.deathSaveFailures = Math.min((characterStore.character.health.deathSaveFailures ?? 0) + 1, 3);
+          await axios.patch(
+            `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${route.params.characterId}/health/death-saves`,
+            { type: 'FAILURE' },
+            { headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("accessToken")}` } }
+          );
+        }
       } else if (type === "TEMP") {
-        // eslint-disable-next-line vue/no-mutating-props
         characterStore.character.health.tempHp += value;
       }
-
     }
-
-
   } catch (error) {
     console.error("Ошибка при обновлении данных:", error);
   }

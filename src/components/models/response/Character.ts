@@ -95,6 +95,8 @@ export interface Health {
     maxHp: number;
     tempHp: number;
     bonusValue: number;
+    deathSaveSuccesses: number;
+    deathSaveFailures: number;
 }
 
 export interface Level {
