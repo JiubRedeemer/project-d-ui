@@ -81,6 +81,9 @@ export const GATEWAY_INTEGRATION_ROUTES = {
 
     // NPC API (room-scoped, under /api/rooms/:roomId)
     npcs: "/npcs",
+
+    // Companions API (room + character scoped)
+    companions: "/companions",
     npcRelations: "/relations",
     npcRelationType: "/relationType",
 

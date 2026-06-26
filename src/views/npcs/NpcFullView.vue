@@ -12,7 +12,7 @@ import {
   IonToolbar,
   onIonViewWillEnter,
 } from "@ionic/vue";
-import {createOutline} from "ionicons/icons";
+import {addOutline, createOutline, pawOutline} from "ionicons/icons";
 import {FILE_STORAGE_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {
   deleteCharacterNpcRelationByIdForRoom,
@@ -37,7 +37,6 @@ import {marked} from "marked";
 import {extractDominantColorFromUrl} from "@/utils/imageAmbient";
 import {getRoomCharacters} from "@/api/masterApi";
 import type {Character} from "@/components/models/response/Character";
-import {addOutline} from "ionicons/icons";
 
 marked.setOptions({breaks: true});
 
@@ -182,6 +181,20 @@ const goToEdit = () => {
   const roomId = route.params.roomId as string;
   const id = npc.value?.id;
   if (id) ionRouter.push(`/rooms/${roomId}/npcs/${id}/edit`);
+};
+
+const characterIdFromQuery = computed(() => route.query.characterId as string | undefined);
+
+const goCreateCompanion = () => {
+  const roomId = route.params.roomId as string;
+  const characterId = characterIdFromQuery.value;
+  const id = npc.value?.id;
+  if (!characterId || !id) return;
+  ionRouter.push({
+    name: 'CreateCompanion',
+    params: { roomId, characterId },
+    query: { type: 'PET', sourceNpcId: id },
+  });
 };
 
 async function loadRelations() {
@@ -499,6 +512,19 @@ async function submitAddRelation() {
     </ion-content>
 
     <div v-if="npc" class="item-footer">
+      <ion-button
+          v-if="characterIdFromQuery"
+          class="item-footer__btn"
+          expand="block"
+          fill="outline"
+          shape="round"
+          color="secondary"
+          style="margin-bottom: 8px"
+          @click="goCreateCompanion"
+      >
+        <ion-icon slot="start" :icon="pawOutline"/>
+        Создать спутника
+      </ion-button>
       <ion-button
           class="item-footer__btn item-footer__btn--primary"
           expand="block"

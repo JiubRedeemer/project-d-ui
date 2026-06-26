@@ -32,6 +32,7 @@ import inventoryTabIcon from "../../static/icons/InventoryTab.svg"
 import notesTabIcon from "../../static/icons/NotesTab.svg"
 import magicTabIcon from "../../static/icons/Magic.svg"
 import traitsTabIcon from "../../static/icons/TraitsTab.svg"
+import { pawOutline } from 'ionicons/icons'
 import InventoryView from "@/views/character/tabs/inventory/InventoryView.vue";
 import {useCharacterStore} from "@/stores/CharacterStore";
 import {useSubheaderOpenedStore} from "@/stores/SubheaderStore";
@@ -44,6 +45,7 @@ import RestViewModal from "@/views/character/tabs/rest/RestViewModal.vue";
 import EditSkillValueModal from "./tabs/common/bonus/EditSkillValueModal.vue";
 import LevelUpViewModal from "@/views/character/tabs/level/LevelUpViewModal.vue";
 import TraitsView from "@/views/character/tabs/traits/TraitsView.vue";
+import CompanionsView from "@/views/character/tabs/companions/CompanionsView.vue";
 import {useCharacterWebSocket} from "@/composables/useCharacterWebSocket";
 import {useCombatWebSocket} from "@/composables/useCombatWebSocket";
 import {useMagicStore} from "@/stores/MagicStore";
@@ -76,7 +78,7 @@ const subheaderStore = useSubheaderOpenedStore();
 const characterSkillsStore = useCharacterSkillsStore();
 
 const earlyVersionClickCount = ref(0);
-type PlayerTabKey = "abilities" | "attacks" | "bio" | "traits" | "inventory" | "notes" | "magic";
+type PlayerTabKey = "abilities" | "attacks" | "bio" | "traits" | "inventory" | "notes" | "magic" | "companions";
 const selectedTab = ref<PlayerTabKey>("abilities");
 const isDesktop = ref<boolean>(window.innerWidth >= 1024);
 const DESKTOP_BREAKPOINT_PX = 1024;
@@ -98,6 +100,7 @@ const tabs = [
   {key: "inventory", icon: inventoryTabIcon, label: "Инвентарь"},
   {key: "notes", icon: notesTabIcon, label: "Заметки"},
   {key: "magic", icon: magicTabIcon, label: "Магия"},
+  {key: "companions", icon: pawOutline, label: "Спутники"},
 ] as const;
 
 const selectedTabTitle = computed(() => {
@@ -204,7 +207,7 @@ const selectDesktopTab = (tab: PlayerTabKey) => {
 
 const onTabsChange = (event: CustomEvent<{ tab: string }>) => {
   const tab = event?.detail?.tab;
-  if (tab === "abilities" || tab === "attacks" || tab === "bio" || tab === "traits" || tab === "inventory" || tab === "notes" || tab === "magic") {
+  if (tab === "abilities" || tab === "attacks" || tab === "bio" || tab === "traits" || tab === "inventory" || tab === "notes" || tab === "magic" || tab === "companions") {
     selectedTab.value = tab;
   }
 };
@@ -415,6 +418,9 @@ const openSubheader = () => {
             <Suspense>
               <MagicView v-if="asyncDone && selectedTab === 'magic'"/>
             </Suspense>
+            <Suspense>
+              <CompanionsView v-if="asyncDone && selectedTab === 'companions'"/>
+            </Suspense>
           </div>
         </ion-content>
       </section>
@@ -508,6 +514,19 @@ const openSubheader = () => {
           </div>
         </ion-content>
       </ion-tab>
+      <ion-tab tab="companions">
+        <ion-content class="ion-padding"
+                     :fullscreen="true"
+                     color="dark"
+                     direction="y"
+                     :scroll-x="false">
+          <div class="tab-content companions" :class="{ openSubheader: subheaderStore.subheaderOpened }">
+            <Suspense>
+              <CompanionsView v-if="asyncDone"/>
+            </Suspense>
+          </div>
+        </ion-content>
+      </ion-tab>
       <ion-tab-bar slot="bottom" color="dark" class="tab-bar" :translucent="true">
         <ion-tab-button tab="abilities">
           <div class="tab-icon-wrapper">
@@ -542,6 +561,11 @@ const openSubheader = () => {
         <ion-tab-button tab="magic">
           <div class="tab-icon-wrapper">
             <ion-icon :icon="magicTabIcon"/>
+          </div>
+        </ion-tab-button>
+        <ion-tab-button tab="companions">
+          <div class="tab-icon-wrapper">
+            <ion-icon :icon="pawOutline" style="--ionicon-stroke-width: 12px;"/>
           </div>
         </ion-tab-button>
       </ion-tab-bar>
@@ -830,13 +854,21 @@ ion-page {
   color: white;
 }
 
+/* pawOutline визуально жирнее кастомных SVG — делаем тоньше */
+.tab-bar ion-tab-button[tab="companions"] ion-icon {
+  width: 22px;
+  height: 22px;
+  --ionicon-stroke-width: 2px;
+}
+
 .abilities.openSubheader,
 .attacks.openSubheader,
 .bio.openSubheader,
 .traits.openSubheader,
 .inventory.openSubheader,
 .notes.openSubheader,
-.magic.openSubheader {
+.magic.openSubheader,
+.companions.openSubheader {
   margin-top: 200px;
 }
 
@@ -846,7 +878,8 @@ ion-page {
 .traits,
 .inventory,
 .notes,
-.magic {
+.magic,
+.companions {
   margin-top: 95px;
   transition: margin-top 0.3s ease;
 }

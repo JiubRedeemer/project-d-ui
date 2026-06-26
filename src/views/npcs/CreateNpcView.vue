@@ -1189,11 +1189,16 @@ onMounted(() => {
   }
 }
 
+.detail-row--dice {
+  grid-template-columns: auto 1fr;
+}
+
 .dice-row {
   display: flex;
   align-items: center;
   gap: 4px;
   flex: 1;
+  min-width: 0;
 }
 .dice-count-input, .dice-size-input, .dice-bonus-input {
   flex: 1;

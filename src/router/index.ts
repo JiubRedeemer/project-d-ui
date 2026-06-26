@@ -26,6 +26,7 @@ import CreateBackground from "@/views/common/createEntity/CreateBackground.vue";
 import MasterView from "@/views/master/MasterView.vue";
 import CharacterFilesView from "@/views/character/CharacterFilesView.vue";
 import CreateNpcView from "@/views/npcs/CreateNpcView.vue";
+import CreateCompanionView from "@/views/character/tabs/companions/CreateCompanionView.vue";
 import NpcFullView from "@/views/npcs/NpcFullView.vue";
 import SearchNpcView from "@/views/npcs/SearchNpcView.vue";
 import CreateClassView from "@/views/master/tabs/CreateClassView.vue";
@@ -191,6 +192,11 @@ const routes: Array<RouteRecordRaw> = [
         path: '/rooms/:roomId/npcs/:npcId/edit',
         component: CreateNpcView,
         name: 'editNpc',
+    },
+    {
+        path: '/rooms/:roomId/characters/:characterId/companions/create',
+        component: CreateCompanionView,
+        name: 'CreateCompanion',
     },
 
 

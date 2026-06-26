@@ -222,7 +222,7 @@ const goToNpcIfNotLongPress = (npcId: string) => {
     didOpenDeleteRelationPopover.value = false;
     return;
   }
-  ionRouter.push(`/rooms/${route.params.roomId}/npcs/${npcId}/full`);
+  ionRouter.push(`/rooms/${route.params.roomId}/npcs/${npcId}/full?characterId=${route.params.characterId}`);
 };
 
 const NPC_PLACEHOLDER =
