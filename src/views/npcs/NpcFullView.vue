@@ -10,6 +10,7 @@ import {
   IonIcon,
   IonPage,
   IonToolbar,
+  onIonViewWillEnter,
 } from "@ionic/vue";
 import {createOutline} from "ionicons/icons";
 import {FILE_STORAGE_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
@@ -192,7 +193,7 @@ async function loadRelations() {
   ]);
 }
 
-onMounted(async () => {
+async function loadNpc() {
   const roomId = route.params.roomId as string;
   const npcId = route.params.npcId as string;
   try {
@@ -205,7 +206,10 @@ onMounted(async () => {
   } catch (e) {
     console.error("Failed to load NPC for full view:", e);
   }
-});
+}
+
+onMounted(loadNpc);
+onIonViewWillEnter(loadNpc);
 
 async function deleteRelation(rel: { id: string; kind: "character" | "npc" }) {
   const roomId = route.params.roomId as string;
@@ -414,6 +418,74 @@ async function submitAddRelation() {
               <div v-if="npc.initiative != null" class="detail-row">
                 <span class="detail-row__label">Инициатива</span>
                 <span class="detail-row__value detail-row__value--pill">{{ npc.initiative }}</span>
+              </div>
+              <div v-if="npc.maxHp || npc.hpDiceCount" class="detail-row">
+                <span class="detail-row__label">ХП</span>
+                <span class="detail-row__value detail-row__value--pill">
+                  <template v-if="npc.hpDiceCount && npc.hpDieSize">
+                    {{ npc.hpDiceCount }}d{{ npc.hpDieSize }}<template v-if="npc.hpDiceBonus && npc.hpDiceBonus !== 0">{{ npc.hpDiceBonus > 0 ? '+' : '' }}{{ npc.hpDiceBonus }}</template><template v-if="npc.maxHp"> ({{ npc.maxHp }})</template>
+                  </template>
+                  <template v-else>{{ npc.maxHp }}</template>
+                </span>
+              </div>
+            </div>
+          </section>
+
+          <section v-if="npc.abilities && npc.abilities.length > 0" class="panel">
+            <h2 class="panel__title">Характеристики</h2>
+            <div class="npc-abilities-grid">
+              <div v-for="ab in npc.abilities" :key="ab.code" class="npc-ability-cell">
+                <span class="npc-ability-cell__code">{{ ab.code }}</span>
+                <span class="npc-ability-cell__val">{{ ab.value }}</span>
+                <span class="npc-ability-cell__mod">{{ ab.value >= 10 ? '+' : '' }}{{ Math.floor((ab.value - 10) / 2) }}</span>
+              </div>
+            </div>
+          </section>
+
+          <section v-if="npc.level || npc.proficiencyBonus || npc.challengeRating" class="panel">
+            <h2 class="panel__title">Боевые параметры</h2>
+            <div class="detail-grid">
+              <div v-if="npc.level" class="detail-row">
+                <span class="detail-row__label">Уровень</span>
+                <span class="detail-row__value detail-row__value--pill">{{ npc.level }}</span>
+              </div>
+              <div v-if="npc.proficiencyBonus" class="detail-row">
+                <span class="detail-row__label">Бонус мастерства</span>
+                <span class="detail-row__value detail-row__value--pill">+{{ npc.proficiencyBonus }}</span>
+              </div>
+              <div v-if="npc.challengeRating" class="detail-row">
+                <span class="detail-row__label">Опасность (CR)</span>
+                <span class="detail-row__value detail-row__value--pill">{{ npc.challengeRating }}</span>
+              </div>
+            </div>
+          </section>
+
+          <section v-if="npc.skills && npc.skills.length > 0" class="panel">
+            <h2 class="panel__title">Навыки</h2>
+            <div class="skill-chips">
+              <div v-for="skill in npc.skills" :key="skill.name" class="skill-chip">
+                <span class="skill-chip__name">{{ skill.name }}</span>
+                <span class="skill-chip__bonus">{{ skill.bonus >= 0 ? '+' : '' }}{{ skill.bonus }}</span>
+              </div>
+            </div>
+          </section>
+
+          <section v-if="npc.features && npc.features.length > 0" class="panel">
+            <h2 class="panel__title">Умения</h2>
+            <div class="entry-list">
+              <div v-for="feat in npc.features" :key="feat.name" class="entry-card entry-card--feature">
+                <div class="entry-card__name">{{ feat.name }}</div>
+                <div class="entry-card__desc">{{ feat.description }}</div>
+              </div>
+            </div>
+          </section>
+
+          <section v-if="npc.actions && npc.actions.length > 0" class="panel">
+            <h2 class="panel__title">Действия</h2>
+            <div class="entry-list">
+              <div v-for="action in npc.actions" :key="action.name" class="entry-card entry-card--action">
+                <div class="entry-card__name">{{ action.name }}</div>
+                <div class="entry-card__desc">{{ action.description }}</div>
               </div>
             </div>
           </section>
@@ -836,6 +908,115 @@ async function submitAddRelation() {
 
 .item-footer__btn--primary {
   min-height: 46px;
+}
+
+.npc-abilities-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+}
+
+.npc-ability-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 8px 4px;
+  background: rgba(var(--ion-color-primary-rgb), 0.07);
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.18);
+  border-radius: 10px;
+}
+
+.npc-ability-cell__code {
+  font-size: 0.58rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ion-color-primary);
+}
+
+.npc-ability-cell__val {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ion-color-light);
+  line-height: 1.2;
+}
+
+.npc-ability-cell__mod {
+  font-size: 0.65rem;
+  color: var(--ion-color-secondary);
+  font-weight: 600;
+}
+
+/* Skills chips */
+.skill-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.skill-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(var(--ion-color-primary-rgb), 0.1);
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.25);
+}
+
+.skill-chip__name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ion-color-light);
+}
+
+.skill-chip__bonus {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ion-color-primary);
+  font-variant-numeric: tabular-nums;
+  min-width: 24px;
+  text-align: center;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(var(--ion-color-primary-rgb), 0.18);
+}
+
+/* Features / Actions entry cards */
+.entry-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.entry-card {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border-left: 3px solid transparent;
+  background: rgba(var(--ion-color-light-rgb), 0.04);
+}
+
+.entry-card--feature {
+  border-left-color: var(--ion-color-secondary);
+}
+
+.entry-card--action {
+  border-left-color: var(--ion-color-primary);
+}
+
+.entry-card__name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ion-color-light);
+  margin-bottom: 4px;
+}
+
+.entry-card__desc {
+  font-size: 13px;
+  line-height: 1.55;
+  color: rgba(var(--ion-color-light-rgb), 0.72);
+  white-space: pre-wrap;
 }
 
 @media (min-width: 1024px) {

@@ -11,11 +11,12 @@ import {
   onIonViewDidEnter,
   onIonViewDidLeave
 } from "@ionic/vue";
-import {bookOutline, documentTextOutline, peopleOutline} from "ionicons/icons";
+import {bookOutline, documentTextOutline, peopleOutline, shieldOutline} from "ionicons/icons";
 import MasterHeader from "@/views/master/MasterHeader.vue";
 import MasterCharacterListView from "@/views/master/tabs/MasterCharacterListView.vue";
 import MasterGuidebookView from "@/views/master/tabs/MasterGuidebookView.vue";
 import MasterFilesView from "@/views/master/tabs/MasterFilesView.vue";
+import CombatTrackerPanel from "@/views/master/tabs/CombatTrackerPanel.vue";
 import {useRoute} from "vue-router";
 import {useRoomStore} from "@/stores/RoomStore";
 import {computed, onMounted, onUnmounted, ref} from "vue";
@@ -25,7 +26,7 @@ const asyncDone = ref<boolean>(false);
 const route = useRoute();
 const roomStore = useRoomStore();
 const tabsRef = ref<InstanceType<typeof IonTabs> | null>(null);
-const selectedTab = ref<"characters" | "guidebook" | "files">("characters");
+const selectedTab = ref<"characters" | "guidebook" | "files" | "combat">("characters");
 const isDesktop = ref<boolean>(window.innerWidth >= 1024);
 
 const DESKTOP_BREAKPOINT_PX = 1024;
@@ -34,8 +35,9 @@ let wsClient: ReturnType<typeof useRoomCharactersWebSocket> | null = null;
 
 const tabs = [
   {key: "characters", icon: peopleOutline, label: "Персонажи"},
+  {key: "combat", icon: shieldOutline, label: "Бой"},
   {key: "guidebook", icon: bookOutline, label: "Справочник"},
-  {key: "files", icon: documentTextOutline, label: "Файлы"}
+  {key: "files", icon: documentTextOutline, label: "Файлы"},
 ] as const;
 
 const selectedTabTitle = computed(() => {
@@ -44,7 +46,7 @@ const selectedTabTitle = computed(() => {
 
 const onTabsChange = (event: CustomEvent<{ tab: string }>) => {
   const tab = event?.detail?.tab;
-  if (tab === "characters" || tab === "guidebook" || tab === "files") {
+  if (tab === "characters" || tab === "guidebook" || tab === "files" || tab === "combat") {
     selectedTab.value = tab;
   }
 };
@@ -53,7 +55,7 @@ const onResize = () => {
   isDesktop.value = window.innerWidth >= DESKTOP_BREAKPOINT_PX;
 };
 
-const selectDesktopTab = (tab: "characters" | "guidebook" | "files") => {
+const selectDesktopTab = (tab: "characters" | "guidebook" | "files" | "combat") => {
   selectedTab.value = tab;
 };
 
@@ -116,6 +118,7 @@ onIonViewDidLeave(() => {
             <MasterCharacterListView v-if="asyncDone && selectedTab === 'characters'"/>
             <MasterGuidebookView v-if="asyncDone && selectedTab === 'guidebook'"/>
             <MasterFilesView v-if="asyncDone && selectedTab === 'files'"/>
+            <CombatTrackerPanel v-if="asyncDone && selectedTab === 'combat'" :room-id="String(route.params.roomId)" @close="selectedTab = 'characters'"/>
           </div>
         </ion-content>
       </section>
@@ -131,6 +134,19 @@ onIonViewDidLeave(() => {
         >
           <div class="tab-content characters">
             <MasterCharacterListView v-if="asyncDone"/>
+          </div>
+        </ion-content>
+      </ion-tab>
+      <ion-tab tab="combat">
+        <ion-content
+          class="ion-padding"
+          :fullscreen="true"
+          color="dark"
+          direction="y"
+          :scroll-x="false"
+        >
+          <div class="tab-content combat">
+            <CombatTrackerPanel v-if="asyncDone" :room-id="String(route.params.roomId)" @close="() => {}"/>
           </div>
         </ion-content>
       </ion-tab>
@@ -164,6 +180,11 @@ onIonViewDidLeave(() => {
         <ion-tab-button tab="characters">
           <div class="tab-icon-wrapper">
             <ion-icon :icon="peopleOutline" />
+          </div>
+        </ion-tab-button>
+        <ion-tab-button tab="combat">
+          <div class="tab-icon-wrapper">
+            <ion-icon :icon="shieldOutline" />
           </div>
         </ion-tab-button>
         <ion-tab-button tab="guidebook">
@@ -330,7 +351,8 @@ onIonViewDidLeave(() => {
 
 .characters,
 .guidebook,
-.files {
+.files,
+.combat {
   margin-top: 50px;
   padding-top: 0;
 }
@@ -338,7 +360,8 @@ onIonViewDidLeave(() => {
 @media (min-width: 1024px) {
   .characters,
   .guidebook,
-  .files {
+  .files,
+  .combat {
     margin-top: 0;
   }
 }
@@ -346,7 +369,8 @@ onIonViewDidLeave(() => {
 @supports (font: -apple-system-body) {
     .characters,
     .guidebook,
-    .files {
+    .files,
+    .combat {
       margin-top: 90px;
     }
 }

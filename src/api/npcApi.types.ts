@@ -26,6 +26,16 @@ export type RaceInfoDto = {
   traits?: RaceTraitDto[];
 };
 
+export type NpcAbilityScore = {
+  code: string;
+  value: number;
+  bonusValue?: number | null;
+};
+
+export type NpcSkillDto = { name: string; bonus: number };
+export type NpcActionDto = { name: string; description: string };
+export type NpcFeatureDto = { name: string; description: string };
+
 export type NpcDto = {
   id: string;
   roomId: string;
@@ -41,6 +51,17 @@ export type NpcDto = {
   armoryClass?: string | null;
   speed?: string | null;
   initiative?: number | null;
+  maxHp?: number | null;
+  hpDiceCount?: number | null;
+  hpDieSize?: number | null;
+  hpDiceBonus?: number | null;
+  level?: number | null;
+  proficiencyBonus?: number | null;
+  challengeRating?: string | null;
+  skills?: NpcSkillDto[] | null;
+  actions?: NpcActionDto[] | null;
+  features?: NpcFeatureDto[] | null;
+  abilities?: NpcAbilityScore[] | null;
   imgUrl?: string | null;
   createdBy: string;
   createdAt: string;
@@ -60,6 +81,22 @@ export type SaveNpcRequest = {
   armoryClass?: string | null;
   speed?: string | null;
   initiative?: number | null;
+  maxHp?: number | null;
+  hpDiceCount?: number | null;
+  hpDieSize?: number | null;
+  hpDiceBonus?: number | null;
+  level?: number | null;
+  proficiencyBonus?: number | null;
+  challengeRating?: string | null;
+  skills?: NpcSkillDto[] | null;
+  actions?: NpcActionDto[] | null;
+  features?: NpcFeatureDto[] | null;
+  strScore?: number | null;
+  dexScore?: number | null;
+  conScore?: number | null;
+  intScore?: number | null;
+  wisScore?: number | null;
+  chaScore?: number | null;
   imgUrl?: string | null;
   createdBy: string;
   tags?: string[] | null;

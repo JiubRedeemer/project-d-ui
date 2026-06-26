@@ -45,9 +45,13 @@ import EditSkillValueModal from "./tabs/common/bonus/EditSkillValueModal.vue";
 import LevelUpViewModal from "@/views/character/tabs/level/LevelUpViewModal.vue";
 import TraitsView from "@/views/character/tabs/traits/TraitsView.vue";
 import {useCharacterWebSocket} from "@/composables/useCharacterWebSocket";
+import {useCombatWebSocket} from "@/composables/useCombatWebSocket";
 import {useMagicStore} from "@/stores/MagicStore";
 import {useNoteStore} from "@/stores/NoteStore";
 import {useWalletStore} from "@/stores/WalletStore";
+import {getActiveCombatSession, nextCombatTurn} from "@/api/combatApi";
+import type {CombatStateDto} from "@/api/combatApi.types";
+import InitiativeModal from "@/views/character/tabs/common/InitiativeModal.vue";
 
 const route = useRoute();
 const characterStore = useCharacterStore()
@@ -115,6 +119,49 @@ const onEarlyVersionStubClick = async () => {
 };
 
 let wsClient: ReturnType<typeof useCharacterWebSocket> | null = null;
+let combatWsClient: ReturnType<typeof useCombatWebSocket> | null = null;
+
+const showInitiativeModal = ref(false);
+const combatSession = ref<CombatStateDto | null>(null);
+const myParticipantId = ref<string | null>(null);
+const myParticipantName = ref<string>('');
+const endingTurn = ref(false);
+
+const isMyTurn = computed(() => {
+  if (!combatSession.value || combatSession.value.state !== 'ACTIVE') return false;
+  const characterId = route.params.characterId as string;
+  return combatSession.value.participants.some(
+    p => p.participantType === 'CHARACTER' && p.referenceId === characterId && p.isCurrentTurn
+  );
+});
+
+async function checkCombat(roomId: string, characterId: string) {
+  try {
+    const session = await getActiveCombatSession(roomId);
+    combatSession.value = session;
+
+    if (!session || session.state !== 'ACTIVE') {
+      showInitiativeModal.value = false;
+      return;
+    }
+
+    // Combat started and all ready — close the modal
+    if (session.allReady) {
+      showInitiativeModal.value = false;
+      return;
+    }
+
+    // Find my participant that still needs to submit initiative
+    const participant = session.participants.find(
+      p => p.participantType === 'CHARACTER' && p.referenceId === characterId && !p.isReady
+    );
+    if (participant) {
+      myParticipantId.value = participant.id;
+      myParticipantName.value = participant.displayName;
+      showInitiativeModal.value = true;
+    }
+  } catch {}
+}
 
 onIonViewDidEnter(async () => {
   const roomId = route.params.roomId as string;
@@ -132,12 +179,19 @@ onIonViewDidEnter(async () => {
     noteStore.triggerRefresh();
   });
 
+  combatWsClient = useCombatWebSocket(roomId, async () => {
+    await checkCombat(roomId, characterId);
+  });
+
+  await checkCombat(roomId, characterId);
   asyncDone.value = true;
 });
 
 onIonViewDidLeave(() => {
   wsClient?.deactivate();
   wsClient = null;
+  combatWsClient?.deactivate();
+  combatWsClient = null;
 });
 
 const onResize = () => {
@@ -245,6 +299,17 @@ const openRestModal = (character: Character) => {
 
 const openLevelUpModal = () => {
   showLevelUpModal.value = true;
+}
+
+async function endTurn() {
+  if (!combatSession.value || endingTurn.value) return;
+  const roomId = route.params.roomId as string;
+  endingTurn.value = true;
+  try {
+    await nextCombatTurn(roomId, combatSession.value.sessionId);
+  } finally {
+    endingTurn.value = false;
+  }
 }
 
 
@@ -541,6 +606,27 @@ const openSubheader = () => {
              :character-id="String(route.params.characterId)"
              :url="String(GATEWAY_INTEGRATION_ROUTES.health)"
              @closeHpModal="closeEditHealthModal"/>
+
+    <InitiativeModal
+      v-if="showInitiativeModal && combatSession && myParticipantId"
+      :is-open="showInitiativeModal"
+      :room-id="String(route.params.roomId)"
+      :session-id="combatSession.sessionId"
+      :participant-id="myParticipantId"
+      :participant-name="myParticipantName"
+      @close="showInitiativeModal = false"
+    />
+
+    <!-- Combat vignette -->
+    <div v-if="combatSession?.state === 'ACTIVE'" class="combat-vignette" aria-hidden="true"/>
+
+    <!-- End Turn FAB -->
+    <Transition name="end-turn-fab">
+      <button v-if="isMyTurn" class="end-turn-fab" :disabled="endingTurn" @click="endTurn">
+        <span class="end-turn-fab__icon">⚔</span>
+        <span class="end-turn-fab__label">{{ endingTurn ? '...' : 'Завершить ход' }}</span>
+      </button>
+    </Transition>
   </ion-page>
 </template>
 
@@ -834,6 +920,71 @@ ion-page {
       margin-top: 200px;
     }
 
+}
+
+/* End Turn FAB */
+.end-turn-fab {
+  position: fixed;
+  bottom: calc(82px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 26px;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, #c0392b 0%, #922b21 100%);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(192, 57, 43, 0.55), 0 0 0 2px rgba(255,255,255,0.08);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  white-space: nowrap;
+}
+.end-turn-fab:active:not(:disabled) {
+  transform: translateX(-50%) scale(0.96);
+  box-shadow: 0 2px 10px rgba(192, 57, 43, 0.45);
+}
+.end-turn-fab:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.end-turn-fab__icon {
+  font-size: 16px;
+}
+
+.end-turn-fab-enter-active,
+.end-turn-fab-leave-active {
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+.end-turn-fab-enter-from,
+.end-turn-fab-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(16px);
+}
+
+/* Combat vignette */
+.combat-vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  border-radius: inherit;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 64%,
+    rgba(170, 0, 0, 0.45) 100%
+  );
+  animation: vignette-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes vignette-pulse {
+  0%, 100% { opacity: 0.35; }
+  50%       { opacity: 0.875; }
 }
 </style>
 

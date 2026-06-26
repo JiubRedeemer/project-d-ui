@@ -71,6 +71,27 @@ const previewImage = ref<string | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
 const typeSelectRef = ref<InstanceType<typeof IonSelect> | null>(null);
 
+const DND_SKILLS = [
+  { name: "Атлетика", code: "ATHL" },
+  { name: "Акробатика", code: "ACRO" },
+  { name: "Ловкость рук", code: "SLEI" },
+  { name: "Скрытность", code: "STEA" },
+  { name: "История", code: "HIST" },
+  { name: "Магия", code: "ARCA" },
+  { name: "Природа", code: "NATR" },
+  { name: "Расследование", code: "INVE" },
+  { name: "Религия", code: "RELI" },
+  { name: "Восприятие", code: "PERC" },
+  { name: "Выживание", code: "SURV" },
+  { name: "Медицина", code: "MEDI" },
+  { name: "Проницательность", code: "INSI" },
+  { name: "Уход за животными", code: "ANIM" },
+  { name: "Выступление", code: "PERF" },
+  { name: "Запугивание", code: "INTI" },
+  { name: "Обман", code: "DECE" },
+  { name: "Убеждение", code: "PERS" },
+];
+
 const allowedFormats = [
   "image/jpeg",
   "image/png",
@@ -94,6 +115,22 @@ const npc = ref<SaveNpcRequest>({
   armoryClass: null,
   speed: null,
   initiative: null,
+  maxHp: null,
+  hpDiceCount: null,
+  hpDieSize: null,
+  hpDiceBonus: null,
+  strScore: null,
+  dexScore: null,
+  conScore: null,
+  intScore: null,
+  wisScore: null,
+  chaScore: null,
+  level: null,
+  proficiencyBonus: null,
+  challengeRating: null,
+  skills: [] as { name: string; bonus: number | null }[],
+  actions: [] as { name: string; description: string }[],
+  features: [] as { name: string; description: string }[],
   imgUrl: null,
   createdBy: "",
 });
@@ -105,6 +142,16 @@ const npcTypeOptions: Array<{ value: NpcTypeEnum; label: string }> = [
   {value: "DEITY", label: "Божество"},
   {value: "UNDEAD", label: "Нежить"},
 ];
+
+const calculatedHp = computed(() => {
+  const diceCount = npc.value.hpDiceCount;
+  const dieSize = npc.value.hpDieSize;
+  if (!diceCount || !dieSize) return null;
+  const conScore = npc.value.conScore ?? 10;
+  const conMod = Math.floor((conScore - 10) / 2);
+  const bonus = npc.value.hpDiceBonus ?? 0;
+  return Math.max(1, Math.round(diceCount * (dieSize + 1) / 2 + conMod * diceCount) + bonus);
+});
 
 const roomClasses = ref<{ value: string; label: string }[]>([]);
 const roomRaces = ref<{ value: string; label: string }[]>([]);
@@ -237,6 +284,22 @@ function fillFromDto(dto: NpcDto) {
     armoryClass: dto.armoryClass ?? null,
     speed: dto.speed ?? null,
     initiative: dto.initiative ?? null,
+    maxHp: dto.maxHp ?? null,
+    hpDiceCount: dto.hpDiceCount ?? null,
+    hpDieSize: dto.hpDieSize ?? null,
+    hpDiceBonus: dto.hpDiceBonus ?? null,
+    strScore: dto.strScore ?? null,
+    dexScore: dto.dexScore ?? null,
+    conScore: dto.conScore ?? null,
+    intScore: dto.intScore ?? null,
+    wisScore: dto.wisScore ?? null,
+    chaScore: dto.chaScore ?? null,
+    level: dto.level ?? null,
+    proficiencyBonus: dto.proficiencyBonus ?? null,
+    challengeRating: dto.challengeRating ?? null,
+    skills: dto.skills ? dto.skills.map(s => ({ name: s.name, bonus: s.bonus ?? null })) : [],
+    actions: dto.actions ? dto.actions.map(a => ({ name: a.name, description: a.description })) : [],
+    features: dto.features ? dto.features.map(f => ({ name: f.name, description: f.description })) : [],
     imgUrl: dto.imgUrl ?? null,
     createdBy: npc.value.createdBy || dto.createdBy || "",
   };
@@ -571,6 +634,171 @@ onMounted(() => {
                     "
                 />
               </div>
+
+              <div class="detail-row">
+                <span class="detail-row__label">Макс. ХП</span>
+                <ion-input
+                    type="number"
+                    inputmode="numeric"
+                    class="detail-row__input"
+                    :value="npc.maxHp ?? ''"
+                    placeholder="авто"
+                    @ionInput="
+                      (e) => {
+                        const v = Number((e.target as HTMLIonInputElement).value);
+                        npc.maxHp = Number.isFinite(v) && v > 0 ? v : null;
+                      }
+                    "
+                />
+              </div>
+
+              <div class="detail-row detail-row--dice">
+                <span class="detail-row__label">Кости ХП</span>
+                <div class="dice-row">
+                  <ion-input
+                      type="number"
+                      inputmode="numeric"
+                      class="detail-row__input dice-count-input"
+                      :value="npc.hpDiceCount ?? ''"
+                      placeholder="кол-во"
+                      @ionInput="(e) => { const v = Number((e.target as HTMLIonInputElement).value); npc.hpDiceCount = Number.isFinite(v) && v > 0 ? v : null; }"
+                  />
+                  <span class="dice-sep">d</span>
+                  <ion-input
+                      type="number"
+                      inputmode="numeric"
+                      class="detail-row__input dice-size-input"
+                      :value="npc.hpDieSize ?? ''"
+                      placeholder="размер"
+                      @ionInput="(e) => { const v = Number((e.target as HTMLIonInputElement).value); npc.hpDieSize = Number.isFinite(v) && v > 0 ? v : null; }"
+                  />
+                  <span class="dice-sep">+</span>
+                  <ion-input
+                      type="number"
+                      inputmode="numeric"
+                      class="detail-row__input dice-bonus-input"
+                      :value="npc.hpDiceBonus ?? ''"
+                      placeholder="0"
+                      @ionInput="(e) => { const v = Number((e.target as HTMLIonInputElement).value); npc.hpDiceBonus = Number.isFinite(v) ? v : null; }"
+                  />
+                  <span v-if="calculatedHp !== null" class="dice-preview">≈ {{ calculatedHp }} ХП</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <h2 class="panel__title">Характеристики</h2>
+            <div class="abilities-grid">
+              <div v-for="ab in [
+                { key: 'strScore', label: 'СИЛ' },
+                { key: 'dexScore', label: 'ЛОВ' },
+                { key: 'conScore', label: 'ТЕЛ' },
+                { key: 'intScore', label: 'ИНТ' },
+                { key: 'wisScore', label: 'МДР' },
+                { key: 'chaScore', label: 'ХАР' },
+              ]" :key="ab.key" class="ability-cell">
+                <span class="ability-cell__label">{{ ab.label }}</span>
+                <ion-input
+                  type="number"
+                  inputmode="numeric"
+                  class="ability-cell__input"
+                  :value="(npc as any)[ab.key] ?? ''"
+                  placeholder="—"
+                  @ionInput="(e: any) => {
+                    const v = Number(e.target.value);
+                    (npc as any)[ab.key] = Number.isFinite(v) && v > 0 ? v : null;
+                  }"
+                />
+                <span class="ability-cell__mod" v-if="(npc as any)[ab.key]">
+                  {{ (npc as any)[ab.key] >= 10 ? '+' : '' }}{{ Math.floor(((npc as any)[ab.key] - 10) / 2) }}
+                </span>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <h2 class="panel__title">Боевые параметры</h2>
+            <div class="detail-grid">
+              <div class="detail-row">
+                <span class="detail-row__label">Уровень</span>
+                <ion-input type="number" inputmode="numeric" class="detail-row__input"
+                  :value="npc.level ?? ''" placeholder="—"
+                  @ionInput="(e: any) => { const v = Number(e.target.value); npc.level = Number.isFinite(v) && v > 0 ? v : null; }"/>
+              </div>
+              <div class="detail-row">
+                <span class="detail-row__label">Бонус мастерства</span>
+                <ion-input type="number" inputmode="numeric" class="detail-row__input"
+                  :value="npc.proficiencyBonus ?? ''" placeholder="—"
+                  @ionInput="(e: any) => { const v = Number(e.target.value); npc.proficiencyBonus = Number.isFinite(v) && v > 0 ? v : null; }"/>
+              </div>
+              <div class="detail-row">
+                <span class="detail-row__label">Опасность (CR)</span>
+                <ion-input type="text" class="detail-row__input"
+                  :value="npc.challengeRating ?? ''" placeholder="—"
+                  @ionInput="(e: any) => { npc.challengeRating = e.target.value?.trim() || null; }"/>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <h2 class="panel__title">Навыки</h2>
+            <div class="list-editor">
+              <div v-for="(skill, i) in npc.skills" :key="i" class="list-editor__row">
+                <ion-select
+                  class="list-editor__select"
+                  :value="skill.name"
+                  placeholder="Навык"
+                  interface="action-sheet"
+                  @ionChange="(e: any) => { skill.name = e.detail.value; }">
+                  <ion-select-option
+                    v-for="s in DND_SKILLS.filter(s => s.name === skill.name || !npc.skills.some(sk => sk.name === s.name))"
+                    :key="s.code" :value="s.name">{{ s.name }}</ion-select-option>
+                </ion-select>
+                <ion-input type="number" inputmode="numeric" class="list-editor__input list-editor__input--bonus"
+                  :value="skill.bonus ?? ''" placeholder="бонус"
+                  @ionInput="(e: any) => { const v = Number(e.target.value); skill.bonus = Number.isFinite(v) ? v : null; }"/>
+                <button class="list-editor__remove" @click="npc.skills.splice(i, 1)">✕</button>
+              </div>
+              <button class="list-editor__add" @click="npc.skills.push({ name: '', bonus: null })">+ Добавить навык</button>
+            </div>
+          </section>
+
+          <section class="panel">
+            <h2 class="panel__title">Умения</h2>
+            <div class="list-editor">
+              <div v-for="(feat, i) in npc.features" :key="i" class="list-editor__entry">
+                <div class="list-editor__entry-header">
+                  <ion-input class="list-editor__input list-editor__input--name"
+                    :value="feat.name" placeholder="Название умения"
+                    @ionInput="(e: any) => { feat.name = e.target.value; }"/>
+                  <button class="list-editor__remove" @click="npc.features.splice(i, 1)">✕</button>
+                </div>
+                <ion-textarea class="list-editor__textarea"
+                  :value="feat.description" placeholder="Описание..."
+                  :rows="3" auto-grow
+                  @ionInput="(e: any) => { feat.description = e.target.value; }"/>
+              </div>
+              <button class="list-editor__add" @click="npc.features.push({ name: '', description: '' })">+ Добавить умение</button>
+            </div>
+          </section>
+
+          <section class="panel">
+            <h2 class="panel__title">Действия</h2>
+            <div class="list-editor">
+              <div v-for="(action, i) in npc.actions" :key="i" class="list-editor__entry">
+                <div class="list-editor__entry-header">
+                  <ion-input class="list-editor__input list-editor__input--name"
+                    :value="action.name" placeholder="Название действия"
+                    @ionInput="(e: any) => { action.name = e.target.value; }"/>
+                  <button class="list-editor__remove" @click="npc.actions.splice(i, 1)">✕</button>
+                </div>
+                <ion-textarea class="list-editor__textarea"
+                  :value="action.description" placeholder="Описание..."
+                  :rows="3" auto-grow
+                  @ionInput="(e: any) => { action.description = e.target.value; }"/>
+              </div>
+              <button class="list-editor__add" @click="npc.actions.push({ name: '', description: '' })">+ Добавить действие</button>
             </div>
           </section>
 
@@ -824,14 +1052,14 @@ onMounted(() => {
 }
 
 .details-grid {
-  --detail-control-width: 132px;
+  --detail-control-width: 250px;
   display: flex;
   flex-direction: column;
 }
 
 .detail-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) var(--detail-control-width);
+  grid-template-columns: minmax(0, 100px) var(--detail-control-width);
   align-items: center;
   column-gap: 12px;
   min-height: 48px;
@@ -844,10 +1072,13 @@ onMounted(() => {
 }
 
 .detail-row__label {
-  min-width: 0;
   font-size: 14px;
   line-height: 1.35;
   color: rgba(var(--ion-color-light-rgb), 0.62);
+}
+
+.dice-row{
+  min-width: 200px;
 }
 
 .detail-row__input,
@@ -957,4 +1188,169 @@ onMounted(() => {
     flex: 1;
   }
 }
+
+.dice-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+}
+.dice-count-input, .dice-size-input, .dice-bonus-input {
+  flex: 1;
+}
+.dice-sep {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ion-color-primary);
+  flex-shrink: 0;
+}
+.dice-preview {
+  font-size: 0.75rem;
+  color: var(--ion-color-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.abilities-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.ability-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.15);
+  border-radius: 10px;
+  padding: 8px 6px;
+}
+
+.ability-cell__label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--ion-color-primary);
+}
+
+.ability-cell__input {
+  --background: transparent;
+  --color: var(--ion-color-light);
+  --placeholder-color: rgba(255,255,255,0.3);
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 700;
+  width: 100%;
+}
+
+.ability-cell__mod {
+  font-size: 0.72rem;
+  color: var(--ion-color-secondary);
+  font-weight: 600;
+}
+
+/* List editor (skills, actions, features) */
+.list-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.list-editor__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.list-editor__entry {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px;
+}
+
+.list-editor__entry-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.list-editor__input {
+  --background: rgba(255,255,255,0.06);
+  --border-radius: 8px;
+  --padding-start: 10px;
+  --padding-end: 10px;
+  --color: var(--ion-color-light);
+  --placeholder-color: rgba(255,255,255,0.3);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  font-size: 0.88rem;
+  height: 36px;
+}
+
+.list-editor__input--name { flex: 1; }
+.list-editor__input--bonus { width: 80px; flex-shrink: 0; }
+
+.list-editor__select {
+  flex: 1;
+  --background: rgba(255,255,255,0.06);
+  --border-radius: 8px;
+  --padding-start: 10px;
+  --padding-end: 10px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.06);
+  min-height: 40px;
+}
+
+.list-editor__textarea {
+  --background: rgba(255,255,255,0.04);
+  --border-radius: 8px;
+  --padding-start: 10px;
+  --padding-end: 10px;
+  --color: var(--ion-color-light);
+  --placeholder-color: rgba(255,255,255,0.3);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  width: 100%;
+}
+
+.list-editor__remove {
+  background: transparent;
+  border: 1px solid rgba(var(--ion-color-danger-rgb), 0.3);
+  color: var(--ion-color-danger);
+  border-radius: 7px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.12s;
+}
+.list-editor__remove:hover { background: rgba(var(--ion-color-danger-rgb), 0.1); }
+
+.list-editor__add {
+  background: transparent;
+  border: 1px dashed rgba(var(--ion-color-primary-rgb), 0.35);
+  color: var(--ion-color-primary);
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s;
+  text-align: left;
+}
+.list-editor__add:hover { background: rgba(var(--ion-color-primary-rgb), 0.06); }
+
+
 </style>
