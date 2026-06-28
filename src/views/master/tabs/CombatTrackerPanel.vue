@@ -14,6 +14,7 @@ import {
   shieldOutline,
   personOutline,
   skullOutline,
+  flashOutline,
 } from 'ionicons/icons';
 import { useRoute } from 'vue-router';
 import { useRoomStore } from '@/stores/RoomStore';
@@ -36,6 +37,8 @@ import {
 import { useCombatWebSocket } from '@/composables/useCombatWebSocket';
 import { useRoomCharactersWebSocket } from '@/composables/useCharacterWebSocket';
 import { getNpcsByRoomIdForRoom } from '@/api/npcApi';
+import { getStatesForRoom, saveCharacterState, deleteCharacterState } from '@/api/statesApi';
+import type { StateDto } from '@/api/statesApi.types';
 import { getCharacterAvatarUrl, CHARACTER_AVATAR_PLACEHOLDER } from '@/utils/characterAvatar';
 import { FILE_STORAGE_INTEGRATION_ROUTES } from '@/config/integrationRoutes';
 
@@ -295,7 +298,12 @@ let charWsClient: ReturnType<typeof useRoomCharactersWebSocket> | null = null;
 onMounted(async () => {
   await loadCombat();
   try {
-    npcs.value = await getNpcsByRoomIdForRoom(props.roomId) ?? [];
+    const [fetchedNpcs, fetchedStates] = await Promise.all([
+      getNpcsByRoomIdForRoom(props.roomId),
+      getStatesForRoom(props.roomId),
+    ]);
+    npcs.value = fetchedNpcs ?? [];
+    roomStates.value = fetchedStates ?? [];
   } catch {}
   wsClient = useCombatWebSocket(props.roomId, onWsEvent);
   charWsClient = useRoomCharactersWebSocket(props.roomId, () => onWsEvent());
@@ -387,6 +395,60 @@ const canAddNpc = computed(() => {
 const expandedAbilities = ref<Record<string, boolean>>({});
 function toggleAbilities(id: string) {
   expandedAbilities.value[id] = !expandedAbilities.value[id];
+}
+
+// ─── States management ───
+const roomStates = ref<StateDto[]>([]);
+const expandedStates = ref<Record<string, boolean>>({});
+const pendingStateCode = ref<Record<string, string>>({});
+
+function stateLabel(code: string): string {
+  return roomStates.value.find(s => s.code === code)?.name ?? code;
+}
+function stateDesc(code: string): string | null {
+  return roomStates.value.find(s => s.code === code)?.description ?? null;
+}
+function availableStatesToAdd(p: CombatParticipantDto): StateDto[] {
+  const active = new Set(p.states ?? []);
+  return roomStates.value.filter(s => s.code && !active.has(s.code));
+}
+function toggleStates(id: string) {
+  expandedStates.value[id] = !expandedStates.value[id];
+}
+
+async function doAddState(p: CombatParticipantDto) {
+  if (p.participantType !== 'CHARACTER' || !p.referenceId) return;
+  const code = pendingStateCode.value[p.id];
+  if (!code) return;
+  pendingStateCode.value[p.id] = '';
+  try {
+    const saved = await saveCharacterState(props.roomId, p.referenceId, {
+      characterId: p.referenceId,
+      stateCode: code,
+    });
+    // Optimistic: patch roomStore so label is available immediately
+    const ch = roomStore.characters.find(c => c.id === p.referenceId);
+    if (ch) {
+      if (!ch.states) ch.states = [];
+      ch.states.push(saved);
+    }
+    // WS will sync the combat state
+  } catch (e) {
+    console.error('[CombatTracker] addState error', e);
+  }
+}
+
+async function doRemoveState(p: CombatParticipantDto, code: string) {
+  if (p.participantType !== 'CHARACTER' || !p.referenceId) return;
+  const ch = roomStore.characters.find(c => c.id === p.referenceId);
+  const stateEntry = ch?.states?.find(s => s.stateCode === code);
+  if (!stateEntry?.id) return;
+  try {
+    await deleteCharacterState(props.roomId, p.referenceId, stateEntry.id);
+    if (ch) ch.states = ch.states.filter(s => s.id !== stateEntry.id);
+  } catch (e) {
+    console.error('[CombatTracker] removeState error', e);
+  }
 }
 
 function participantInitial(name: string): string {
@@ -751,8 +813,47 @@ function participantAvatarUrl(p: CombatParticipantDto): string {
             </div>
 
             <!-- States -->
-            <div v-if="p.states && p.states.length > 0" class="states-row">
-              <span v-for="s in p.states" :key="s" class="state-chip">{{ s }}</span>
+            <div class="states-section">
+              <div class="states-row">
+                <span
+                  v-for="s in (p.states ?? [])"
+                  :key="s"
+                  class="state-chip"
+                  :title="stateDesc(s) ?? undefined"
+                >
+                  {{ stateLabel(s) }}
+                  <button
+                    v-if="p.participantType === 'CHARACTER'"
+                    class="state-chip__remove"
+                    @click.stop="doRemoveState(p, s)"
+                    :aria-label="`Снять ${stateLabel(s)}`"
+                  >✕</button>
+                </span>
+                <button
+                  v-if="p.participantType === 'CHARACTER'"
+                  class="states-add-btn"
+                  :class="{ 'states-add-btn--active': expandedStates[p.id] }"
+                  :aria-label="expandedStates[p.id] ? 'Скрыть' : 'Добавить состояние'"
+                  @click="toggleStates(p.id)"
+                >
+                  <ion-icon :icon="flashOutline"/>
+                </button>
+              </div>
+              <div v-if="expandedStates[p.id] && p.participantType === 'CHARACTER'" class="states-picker">
+                <select
+                  class="states-picker__select"
+                  v-model="pendingStateCode[p.id]"
+                  @change="doAddState(p)"
+                >
+                  <option value="">— добавить состояние —</option>
+                  <option v-for="s in availableStatesToAdd(p)" :key="s.code" :value="s.code">
+                    {{ s.name ?? s.code }}
+                  </option>
+                </select>
+                <p v-if="availableStatesToAdd(p).length === 0" class="states-picker__empty">
+                  Все состояния применены
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -1582,15 +1683,82 @@ function participantAvatarUrl(p: CombatParticipantDto): string {
 }
 
 /* States */
-.states-row { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
+.states-section { margin-top: 6px; }
+.states-row { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
 .state-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 0.66rem;
   font-weight: 600;
-  padding: 2px 8px;
+  padding: 2px 6px 2px 8px;
   border-radius: 999px;
   background: rgba(var(--ion-color-warning-rgb), 0.12);
   color: var(--ion-color-warning);
   border: 1px solid rgba(var(--ion-color-warning-rgb), 0.25);
+}
+.state-chip__remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(var(--ion-color-danger-rgb), 0.25);
+  color: var(--ion-color-danger);
+  font-size: 9px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: background 0.12s;
+}
+.state-chip__remove:hover {
+  background: rgba(var(--ion-color-danger-rgb), 0.5);
+}
+.states-add-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px dashed rgba(var(--ion-color-primary-rgb), 0.45);
+  background: transparent;
+  color: rgba(var(--ion-color-primary-rgb), 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.states-add-btn--active,
+.states-add-btn:active {
+  background: rgba(var(--ion-color-primary-rgb), 0.15);
+  border-color: var(--ion-color-primary);
+  color: var(--ion-color-primary);
+}
+.states-picker {
+  margin-top: 6px;
+}
+.states-picker__select {
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(var(--ion-color-medium-rgb), 0.6);
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.3);
+  color: var(--ion-color-light);
+  font-size: 12px;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+.states-picker__select option { background: #1a1d28; color: var(--ion-color-light); }
+.states-picker__empty {
+  font-size: 11px;
+  color: rgba(var(--ion-color-light-rgb), 0.35);
+  margin: 4px 0 0;
+  font-style: italic;
 }
 
 .active-add-npc {
