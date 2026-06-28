@@ -34,6 +34,9 @@ export const useSchedulerStore = defineStore("schedulerStore", {
     lastErrorMessage: "",
     lastErrorCode: "",
   }),
+  persist: {
+    pick: ['gamesByRoom', 'invitationsByGame', 'playerInvitations', 'attendanceByGame'],
+  },
   getters: {
     getGamesForRoom: (state) => (roomId: string): GameResponse[] => state.gamesByRoom[roomId] ?? [],
     getNearestGameForRoom: (state) => (roomId: string): GameResponse | null => {

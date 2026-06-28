@@ -9,6 +9,9 @@ export const useMagicStore = defineStore("magicStore", {
         spellBook: null as SpellBookDto | null,
         editingSpell: null as SpellDto | null,
     }),
+    persist: {
+        pick: ['spellBook'],
+    },
     actions: {
         async updateSpellBookInStore(roomId: string, characterId: string): Promise<void> {
             try {

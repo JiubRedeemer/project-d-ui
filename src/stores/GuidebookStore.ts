@@ -9,5 +9,6 @@ export const useGuidebookStore = defineStore('guidebookStore', {
         roomId: "" as string,
         baseRuleType: "" as string,
         lastUpdatedAt: 0 as number,
-    })
+    }),
+    persist: true,
 })

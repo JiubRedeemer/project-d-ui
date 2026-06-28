@@ -7,6 +7,7 @@ export const useInventoryStore = defineStore('inventoryStore', {
     state: () => ({
         inventory: {} as InventoryResponse
     }),
+    persist: true,
     actions: {
         async updateInventoryInStoreById(roomId: any, characterId: any): Promise<void> {
             try {

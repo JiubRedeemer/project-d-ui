@@ -7,6 +7,7 @@ export const useCharacterStore = defineStore('characterStore', {
     state: () => ({
         character: {} as Character
     }),
+    persist: true,
     actions: {
         async updateCharacterInStoreById(roomId: any, characterId: any): Promise<void> {
             try {

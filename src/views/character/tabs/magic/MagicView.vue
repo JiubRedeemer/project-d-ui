@@ -160,9 +160,33 @@ async function addNewSpellCellLevel() {
     }
 }
 
+/** Применяет патч к ячейке в сторе и возвращает снимок для отката. */
+function patchCellInStore(level: number, patch: Partial<SpellCellDto>): SpellCellDto | null {
+    const book = magicStore.spellBook;
+    const cell = getCellForLevel(level);
+    if (!book || !cell) return null;
+    const snapshot = { ...cell };
+    magicStore.setSpellBook({
+        ...book,
+        spellCells: { ...(book.spellCells ?? {}), [String(level)]: { ...cell, ...patch } },
+    });
+    return snapshot;
+}
+
+/** Откатывает ячейку в сторе до снимка. */
+function rollbackCell(level: number, snapshot: SpellCellDto) {
+    const book = magicStore.spellBook;
+    if (!book) return;
+    magicStore.setSpellBook({
+        ...book,
+        spellCells: { ...(book.spellCells ?? {}), [String(level)]: snapshot },
+    });
+}
+
 async function incrementSpellCell(level: number) {
     const cell = getCellForLevel(level);
     if (!cell?.id) {
+        // Создание классовой ячейки — нет существующей записи для отката, делаем как раньше
         if (level !== classSpellCellLevel) return;
         const book = magicStore.spellBook;
         if (!book?.id) return;
@@ -175,10 +199,7 @@ async function incrementSpellCell(level: number) {
             });
             magicStore.setSpellBook({
                 ...book,
-                spellCells: {
-                    ...(book.spellCells ?? {}),
-                    [String(level)]: created,
-                },
+                spellCells: { ...(book.spellCells ?? {}), [String(level)]: created },
             });
         } catch (e) {
             console.error("Failed to create class spell cell:", e);
@@ -187,6 +208,8 @@ async function incrementSpellCell(level: number) {
     }
     const nextMax = (cell.maxCount ?? 0) + 1;
     const nextCurrent = (cell.currentCount ?? 0) + 1;
+    // Optimistic
+    const snapshot = patchCellInStore(level, { maxCount: nextMax, currentCount: nextCurrent });
     try {
         const updated = await updateSpellCell(cell.id, {
             ...cell,
@@ -194,17 +217,16 @@ async function incrementSpellCell(level: number) {
             currentCount: nextCurrent,
             refillRestType: cell.refillRestType ?? DEFAULT_REFILL_REST_TYPE,
         });
+        // Sync server response into store
         if (magicStore.spellBook) {
             magicStore.setSpellBook({
                 ...magicStore.spellBook,
-                spellCells: {
-                    ...(magicStore.spellBook.spellCells ?? {}),
-                    [String(level)]: updated,
-                },
+                spellCells: { ...(magicStore.spellBook.spellCells ?? {}), [String(level)]: updated },
             });
         }
-    } catch (e) {
-        console.error("Failed to increment spell cell:", e);
+    } catch (e: unknown) {
+        const err = e as { response?: unknown };
+        if (err.response && snapshot) rollbackCell(level, snapshot);
     }
 }
 
@@ -214,6 +236,8 @@ async function refillOneSpellCell(level: number) {
     const currentMax = cell.maxCount ?? 0;
     const currentCurrent = cell.currentCount ?? 0;
     if (currentMax <= 0 || currentCurrent >= currentMax) return;
+    // Optimistic
+    const snapshot = patchCellInStore(level, { currentCount: currentCurrent + 1 });
     try {
         const updated = await updateSpellCell(cell.id, {
             ...cell,
@@ -223,14 +247,12 @@ async function refillOneSpellCell(level: number) {
         if (magicStore.spellBook) {
             magicStore.setSpellBook({
                 ...magicStore.spellBook,
-                spellCells: {
-                    ...(magicStore.spellBook.spellCells ?? {}),
-                    [String(level)]: updated,
-                },
+                spellCells: { ...(magicStore.spellBook.spellCells ?? {}), [String(level)]: updated },
             });
         }
-    } catch (e) {
-        console.error("Failed to refill spell cell:", e);
+    } catch (e: unknown) {
+        const err = e as { response?: unknown };
+        if (err.response && snapshot) rollbackCell(level, snapshot);
     }
 }
 
@@ -239,21 +261,36 @@ async function decrementSpellCell(level: number) {
     if (!cell?.id) return;
     const currentMax = cell.maxCount ?? 0;
     const currentCurrent = cell.currentCount ?? 0;
-    try {
-        if (currentMax <= 1) {
+
+    if (currentMax <= 1) {
+        // Optimistic: убираем ячейку из стора
+        const book = magicStore.spellBook;
+        const cellSnapshot = { ...cell };
+        if (book) {
+            const nextCells = { ...(book.spellCells ?? {}) };
+            delete nextCells[String(level)];
+            magicStore.setSpellBook({ ...book, spellCells: nextCells });
+        }
+        try {
             await deleteSpellCell(cell.id);
-            if (magicStore.spellBook) {
-                const nextCells = { ...(magicStore.spellBook.spellCells ?? {}) };
-                delete nextCells[String(level)];
+        } catch (e: unknown) {
+            const err = e as { response?: unknown };
+            // Rollback — вернуть ячейку
+            if (err.response && book) {
                 magicStore.setSpellBook({
-                    ...magicStore.spellBook,
-                    spellCells: nextCells,
+                    ...book,
+                    spellCells: { ...(book.spellCells ?? {}), [String(level)]: cellSnapshot },
                 });
             }
-            return;
         }
-        const nextMax = currentMax - 1;
-        const nextCurrent = Math.min(currentCurrent, nextMax);
+        return;
+    }
+
+    const nextMax = currentMax - 1;
+    const nextCurrent = Math.min(currentCurrent, nextMax);
+    // Optimistic
+    const snapshot = patchCellInStore(level, { maxCount: nextMax, currentCount: nextCurrent });
+    try {
         const updated = await updateSpellCell(cell.id, {
             ...cell,
             maxCount: nextMax,
@@ -263,14 +300,12 @@ async function decrementSpellCell(level: number) {
         if (magicStore.spellBook) {
             magicStore.setSpellBook({
                 ...magicStore.spellBook,
-                spellCells: {
-                    ...(magicStore.spellBook.spellCells ?? {}),
-                    [String(level)]: updated,
-                },
+                spellCells: { ...(magicStore.spellBook.spellCells ?? {}), [String(level)]: updated },
             });
         }
-    } catch (e) {
-        console.error("Failed to decrement spell cell:", e);
+    } catch (e: unknown) {
+        const err = e as { response?: unknown };
+        if (err.response && snapshot) rollbackCell(level, snapshot);
     }
 }
 
@@ -285,50 +320,42 @@ function canUseSpell(item: SpellBookItemDto): boolean {
 async function useSpell(item: SpellBookItemDto) {
     const level = Number(item.spell?.level ?? 0);
     if (!Number.isFinite(level)) return;
-    if (level <= 0) {
-        return;
-    }
+    if (level <= 0) return;
+
     const cell = spellCellsByLevel.value[String(level)];
     if (!cell?.id) {
-        const toast = await toastController.create({
-            message: "Нет ячеек для этого уровня",
-            duration: 1500,
-            position: "top",
-        });
+        const toast = await toastController.create({ message: "Нет ячеек для этого уровня", duration: 1500, position: "top" });
         await toast.present();
         return;
     }
     if ((cell.currentCount ?? 0) <= 0) {
-        const toast = await toastController.create({
-            message: "Ячейки этого уровня закончились",
-            duration: 1500,
-            position: "top",
-        });
+        const toast = await toastController.create({ message: "Ячейки этого уровня закончились", duration: 1500, position: "top" });
         await toast.present();
         return;
     }
+
+    // Optimistic: уменьшаем currentCount и запускаем анимацию
+    const spentCrystalIndex = cell.currentCount ?? 0;
+    triggerCrystalExplosion(level, spentCrystalIndex);
+    const snapshot = patchCellInStore(level, { currentCount: (cell.currentCount ?? 0) - 1 });
+
     try {
-        const spentCrystalIndex = cell.currentCount ?? 0;
-        triggerCrystalExplosion(level, spentCrystalIndex);
         const updated = await useSpellCell(cell.id);
+        // Синхронизируем ответ сервера
         if (magicStore.spellBook) {
             magicStore.setSpellBook({
                 ...magicStore.spellBook,
-                spellCells: {
-                    ...(magicStore.spellBook.spellCells ?? {}),
-                    [String(level)]: updated,
-                },
+                spellCells: { ...(magicStore.spellBook.spellCells ?? {}), [String(level)]: updated },
             });
         }
-    } catch (e) {
-        console.error("Failed to use spell cell:", e);
-        const toast = await toastController.create({
-            message: "Ошибка использования ячейки",
-            duration: 1500,
-            position: "top",
-            color: "danger",
-        });
-        await toast.present();
+    } catch (e: unknown) {
+        const err = e as { response?: unknown };
+        if (err.response && snapshot) {
+            rollbackCell(level, snapshot);
+            const toast = await toastController.create({ message: "Ошибка использования ячейки", duration: 1500, position: "top", color: "danger" });
+            await toast.present();
+        }
+        // Network error: optimistic change stays, request already queued
     }
 }
 

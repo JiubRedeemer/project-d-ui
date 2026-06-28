@@ -21,6 +21,9 @@ export const useNpcRelationsStore = defineStore("npcRelationsStore", {
     byType: { ...EMPTY_BY_TYPE },
     loading: false,
   }),
+  persist: {
+    pick: ['byType'],
+  },
   actions: {
     async loadAll(roomId: string, characterId: string) {
       this.loading = true;

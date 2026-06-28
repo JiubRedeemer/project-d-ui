@@ -14,13 +14,16 @@ export interface CharacterUpdatedEvent {
 /**
  * Subscribe to character_updated events for a specific character.
  * Calls onUpdate whenever the server pushes an update.
- * Automatically disconnects on component unmount.
+ * Calls onReconnect on every reconnect after the first successful connect.
  */
 export function useCharacterWebSocket(
     roomId: string,
     characterId: string,
-    onUpdate: (event: CharacterUpdatedEvent) => void
+    onUpdate: (event: CharacterUpdatedEvent) => void,
+    onReconnect?: () => void
 ): Client {
+    let connectCount = 0;
+
     const client = new Client({
         brokerURL: toWsUrl(GATEWAY_INTEGRATION_ROUTES.baseURL),
         connectHeaders: {
@@ -28,6 +31,10 @@ export function useCharacterWebSocket(
         },
         reconnectDelay: 5000,
         onConnect: () => {
+            connectCount++;
+            if (connectCount > 1) {
+                onReconnect?.();
+            }
             client.subscribe(
                 `/topic/rooms/${roomId}/characters/${characterId}`,
                 (message) => {
@@ -51,11 +58,15 @@ export function useCharacterWebSocket(
 /**
  * Subscribe to character_updated events for all characters in a room.
  * Used by the master character list to react to any character change.
+ * Calls onReconnect on every reconnect after the first successful connect.
  */
 export function useRoomCharactersWebSocket(
     roomId: string,
-    onUpdate: (event: CharacterUpdatedEvent) => void
+    onUpdate: (event: CharacterUpdatedEvent) => void,
+    onReconnect?: () => void
 ): Client {
+    let connectCount = 0;
+
     const client = new Client({
         brokerURL: toWsUrl(GATEWAY_INTEGRATION_ROUTES.baseURL),
         connectHeaders: {
@@ -63,6 +74,10 @@ export function useRoomCharactersWebSocket(
         },
         reconnectDelay: 5000,
         onConnect: () => {
+            connectCount++;
+            if (connectCount > 1) {
+                onReconnect?.();
+            }
             client.subscribe(
                 `/topic/rooms/${roomId}/characters`,
                 (message) => {

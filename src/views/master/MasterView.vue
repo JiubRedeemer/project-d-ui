@@ -21,6 +21,7 @@ import {useRoute} from "vue-router";
 import {useRoomStore} from "@/stores/RoomStore";
 import {computed, onMounted, onUnmounted, ref} from "vue";
 import {useRoomCharactersWebSocket} from "@/composables/useCharacterWebSocket";
+import {QUEUE_FLUSHED_EVENT} from "@/composables/useOfflineSync";
 
 const asyncDone = ref<boolean>(false);
 const route = useRoute();
@@ -61,11 +62,19 @@ const selectDesktopTab = (tab: "characters" | "guidebook" | "files" | "combat") 
 
 onMounted(() => {
   window.addEventListener("resize", onResize);
+  window.addEventListener(QUEUE_FLUSHED_EVENT, onQueueFlushed);
 });
 
 onUnmounted(() => {
   window.removeEventListener("resize", onResize);
+  window.removeEventListener(QUEUE_FLUSHED_EVENT, onQueueFlushed);
 });
+
+function onQueueFlushed() {
+  const roomId = route.params.roomId as string;
+  roomStore.getRoomInfo(roomId);
+  roomStore.getCharacters(roomId);
+}
 
 onIonViewDidEnter(async () => {
   onResize();
@@ -73,9 +82,16 @@ onIonViewDidEnter(async () => {
   roomStore.getRoomInfo(roomId);
   asyncDone.value = true;
   await roomStore.getCharacters(roomId);
-  wsClient = useRoomCharactersWebSocket(roomId, (event) => {
-    roomStore.updateSingleCharacter(roomId, event.characterId);
-  });
+  wsClient = useRoomCharactersWebSocket(
+    roomId,
+    (event) => {
+      roomStore.updateSingleCharacter(roomId, event.characterId);
+    },
+    () => {
+      roomStore.getRoomInfo(roomId);
+      roomStore.getCharacters(roomId);
+    }
+  );
 });
 
 onIonViewDidLeave(() => {

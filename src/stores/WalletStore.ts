@@ -9,6 +9,9 @@ export const useWalletStore = defineStore('walletStore', {
         moneyExpanded: Boolean(false),
         userMoney: {} as MoneyDto
     }),
+    persist: {
+        pick: ['userMoney'],
+    },
     actions: {
         async updateWallet(roomId: string, characterId: string): Promise<void> {
             try {

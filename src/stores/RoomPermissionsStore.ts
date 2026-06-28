@@ -31,6 +31,9 @@ export const useRoomPermissionsStore = defineStore("roomPermissionsStore", {
     rolesByRoom: {} as Record<string, string[]>,
     loadingByRoom: {} as Record<string, boolean>,
   }),
+  persist: {
+    pick: ['rolesByRoom'],
+  },
   getters: {
     getRoles: (state) => (roomId: string): string[] => state.rolesByRoom[roomId] ?? [],
     getPermissions: (state) => (roomId: string): PermissionFlags =>

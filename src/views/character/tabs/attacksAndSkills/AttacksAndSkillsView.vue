@@ -81,34 +81,35 @@ const getSkillImageUrl = (imgUrl: string | undefined) => {
 };
 
 const useSkill = async (skill: InventoryItemSkill | CharacterSkill) => {
-  if (skill.currentCharges > 0) {
-    let res;
-    if (skill.inventoryItemId) {
-      res = await axios.post(
-          `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.inventory}/${route.params.characterId}${GATEWAY_INTEGRATION_ROUTES.items}/${skill.inventoryItemId}${GATEWAY_INTEGRATION_ROUTES.skills}/${skill.id}${GATEWAY_INTEGRATION_ROUTES.use}`,
-          {},
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-            }
-          }
+  if (skill.currentCharges <= 0) return;
+
+  // Optimistic update
+  const prevCharges = skill.currentCharges;
+  skill.currentCharges = skill.currentCharges - 1;
+
+  const headers = { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("accessToken")}` };
+  try {
+    if ((skill as InventoryItemSkill).inventoryItemId) {
+      const s = skill as InventoryItemSkill;
+      await axios.post(
+        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.inventory}/${route.params.characterId}${GATEWAY_INTEGRATION_ROUTES.items}/${s.inventoryItemId}${GATEWAY_INTEGRATION_ROUTES.skills}/${skill.id}${GATEWAY_INTEGRATION_ROUTES.use}`,
+        {},
+        { headers }
       );
     } else {
-      res = await axios.patch(
-          `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${route.params.characterId}${GATEWAY_INTEGRATION_ROUTES.characterSkills}/${skill.id}${GATEWAY_INTEGRATION_ROUTES.use}`,
-          {},
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-            }
-          }
+      await axios.patch(
+        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${route.params.characterId}${GATEWAY_INTEGRATION_ROUTES.characterSkills}/${skill.id}${GATEWAY_INTEGRATION_ROUTES.use}`,
+        {},
+        { headers }
       );
     }
-    if (res.status === 200) {
-      skill.currentCharges = skill.currentCharges - 1;
+  } catch (e: unknown) {
+    const err = e as { response?: unknown };
+    if (err.response) {
+      // Server rejected — rollback
+      skill.currentCharges = prevCharges;
     }
+    // Network error: optimistic change stays, request already queued
   }
 }
 

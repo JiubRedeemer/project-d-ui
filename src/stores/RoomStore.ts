@@ -10,6 +10,7 @@ export const useRoomStore = defineStore('roomStore', {
         room: {} as RoomMasterResponse,
         characters: [] as Character[]
     }),
+    persist: true,
     actions: {
         async getRoomInfo(roomId: any): Promise<RoomMasterResponse> {
             this.room = await getRoomInfo(roomId);

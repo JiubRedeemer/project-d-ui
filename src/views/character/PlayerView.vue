@@ -50,6 +50,7 @@ import TraitsView from "@/views/character/tabs/traits/TraitsView.vue";
 import CompanionsView from "@/views/character/tabs/companions/CompanionsView.vue";
 import {useCharacterWebSocket} from "@/composables/useCharacterWebSocket";
 import {useCombatWebSocket} from "@/composables/useCombatWebSocket";
+import {QUEUE_FLUSHED_EVENT} from "@/composables/useOfflineSync";
 import {useMagicStore} from "@/stores/MagicStore";
 import {useNoteStore} from "@/stores/NoteStore";
 import {useWalletStore} from "@/stores/WalletStore";
@@ -196,13 +197,15 @@ onIonViewDidEnter(async () => {
   await inventoryStore.updateInventoryInStoreById(roomId, characterId);
   await characterSkillsStore.updateCharacterSkills(roomId, characterId);
 
-  wsClient = useCharacterWebSocket(roomId, characterId, () => {
+  const refreshAll = () => {
     characterStore.updateCharacterInStoreById(roomId, characterId);
     inventoryStore.updateInventoryInStoreById(roomId, characterId);
     walletStore.updateWallet(roomId, characterId);
     magicStore.updateSpellBookInStore(roomId, characterId);
     noteStore.triggerRefresh();
-  });
+  };
+
+  wsClient = useCharacterWebSocket(roomId, characterId, refreshAll, refreshAll);
 
   combatWsClient = useCombatWebSocket(roomId, async () => {
     await checkCombat(roomId, characterId);
@@ -237,11 +240,23 @@ const onTabsChange = (event: CustomEvent<{ tab: string }>) => {
 onMounted(() => {
   window.addEventListener("resize", onResize);
   void detectIpCountryCode();
+  window.addEventListener(QUEUE_FLUSHED_EVENT, onQueueFlushed);
 });
 
 onUnmounted(() => {
   window.removeEventListener("resize", onResize);
+  window.removeEventListener(QUEUE_FLUSHED_EVENT, onQueueFlushed);
 });
+
+function onQueueFlushed() {
+  const roomId = route.params.roomId as string;
+  characterStore.updateCharacterInStoreById(roomId, characterId);
+  inventoryStore.updateInventoryInStoreById(roomId, characterId);
+  walletStore.updateWallet(roomId, characterId);
+  magicStore.updateSpellBookInStore(roomId, characterId);
+  characterSkillsStore.updateCharacterSkills(roomId, characterId);
+  noteStore.triggerRefresh();
+}
 
 async function detectIpCountryCode(): Promise<void> {
   const STORAGE_KEY = "ipCountryCode";

@@ -53,8 +53,11 @@ import '@ionic/vue/css/palettes/dark.always.css';
 /* Theme variables */
 import './theme/variables.css';
 import {createPinia} from "pinia";
+import piniaPluginPersistedstate from "pinia-plugin-persistedstate";
+import {initOfflineSync} from "@/composables/useOfflineSync";
 
 syncAuthTokensFromCookies();
+initOfflineSync();
 
 axios.interceptors.request.use((config) => {
     const accessToken = getAccessToken();
@@ -80,10 +83,13 @@ axios.interceptors.request.use((config) => {
     return config;
 });
 
+const pinia = createPinia();
+pinia.use(piniaPluginPersistedstate);
+
 const app = createApp(App)
     .use(IonicVue, {mode: 'md'})
     .use(router)
-    .use(createPinia())
+    .use(pinia)
     .use(VueCookies);
 
 router.isReady().then(() => {

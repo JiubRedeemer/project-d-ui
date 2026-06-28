@@ -7,6 +7,7 @@ export const useCharacterSkillsStore = defineStore('characterSkills', {
     state: () => ({
         characterSkills: {} as CharacterSkill[]
     }),
+    persist: true,
     actions: {
         async updateCharacterSkills(roomId: any, characterId: any): Promise<void> {
             try {

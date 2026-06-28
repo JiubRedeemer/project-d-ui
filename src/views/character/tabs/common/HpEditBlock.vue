@@ -181,56 +181,56 @@ const backspace = () => {
 
 const updateCurrentHealth = async (type: string, value: number) => {
   const health = characterStore.character?.health;
-  const wasAtZero = health ? health.currentHp <= 0 : false;
+  if (!health) return;
+
+  // Snapshot for rollback on server error
+  const snapshot = { ...health };
+  const wasAtZero = health.currentHp <= 0;
+
+  // --- Optimistic store update ---
+  if (type === "HEAL") {
+    health.currentHp = Math.min(health.currentHp + value, health.maxHp + health.bonusValue);
+    if (wasAtZero && health.currentHp > 0) {
+      health.deathSaveSuccesses = 0;
+      health.deathSaveFailures = 0;
+    }
+  } else if (type === "DAMAGE") {
+    if (health.tempHp >= value) {
+      health.tempHp -= value;
+    } else {
+      const remaining = value - health.tempHp;
+      health.currentHp = Math.max(0, health.currentHp - remaining);
+      health.tempHp = 0;
+    }
+    if (wasAtZero && health.currentHp <= 0) {
+      health.deathSaveFailures = Math.min((health.deathSaveFailures ?? 0) + 1, 3);
+    }
+  } else if (type === "TEMP") {
+    health.tempHp += value;
+  }
+
+  const needsDeathSaveReset  = type === "HEAL" && wasAtZero && health.currentHp > 0;
+  const needsDeathSaveFailure = type === "DAMAGE" && wasAtZero && health.currentHp <= 0;
+
+  // --- API call (may be queued if offline) ---
+  const baseUrl = `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${route.params.characterId}`;
+  const headers = { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("accessToken")}` };
 
   try {
-    await axios.patch(
-        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${route.params.characterId}${GATEWAY_INTEGRATION_ROUTES.health}${GATEWAY_INTEGRATION_ROUTES.updateCurrent}`,
-        { type, value },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("accessToken")}`
-          }
-        }
-    );
+    await axios.patch(`${baseUrl}${GATEWAY_INTEGRATION_ROUTES.health}${GATEWAY_INTEGRATION_ROUTES.updateCurrent}`, { type, value }, { headers });
 
-    if (characterStore.character) {
-      if (type === "HEAL") {
-        characterStore.character.health.currentHp = Math.min(characterStore.character.health.currentHp + value, characterStore.character.health.maxHp + characterStore.character.health.bonusValue);
-        // reset death saves when healed from 0
-        if (wasAtZero && characterStore.character.health.currentHp > 0) {
-          characterStore.character.health.deathSaveSuccesses = 0;
-          characterStore.character.health.deathSaveFailures = 0;
-          await axios.patch(
-            `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${route.params.characterId}/health/death-saves`,
-            { type: 'RESET' },
-            { headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("accessToken")}` } }
-          );
-        }
-      } else if (type === "DAMAGE") {
-        if (characterStore.character.health.tempHp >= value) {
-          characterStore.character.health.tempHp -= value;
-        } else {
-          const remainingDamage = value - characterStore.character.health.tempHp;
-          characterStore.character.health.currentHp = Math.max(0, characterStore.character.health.currentHp - remainingDamage);
-          characterStore.character.health.tempHp = 0;
-        }
-        // damage while at 0 HP = 1 extra failure
-        if (wasAtZero && characterStore.character.health.currentHp <= 0) {
-          characterStore.character.health.deathSaveFailures = Math.min((characterStore.character.health.deathSaveFailures ?? 0) + 1, 3);
-          await axios.patch(
-            `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${route.params.characterId}/health/death-saves`,
-            { type: 'FAILURE' },
-            { headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("accessToken")}` } }
-          );
-        }
-      } else if (type === "TEMP") {
-        characterStore.character.health.tempHp += value;
-      }
+    if (needsDeathSaveReset) {
+      await axios.patch(`${baseUrl}/health/death-saves`, { type: 'RESET' }, { headers });
+    } else if (needsDeathSaveFailure) {
+      await axios.patch(`${baseUrl}/health/death-saves`, { type: 'FAILURE' }, { headers });
     }
-  } catch (error) {
-    console.error("Ошибка при обновлении данных:", error);
+  } catch (e: unknown) {
+    const err = e as { response?: unknown };
+    if (err.response) {
+      // Server rejected — rollback optimistic change
+      Object.assign(health, snapshot);
+    }
+    // Network error: optimistic change stays, request already queued
   }
 };
 </script>
