@@ -16,7 +16,7 @@ import PlayerViewHeader from "@/views/character/PlayerViewHeader.vue";
 import AbilitiesView from "@/views/character/tabs/abilities/AbilitiesView.vue";
 import PersonalityView from "@/views/character/tabs/bio/BioView.vue";
 import PlayerViewSubheader from "@/views/character/PlayerViewSubheader.vue";
-import {computed, onMounted, onUnmounted, ref} from "vue";
+import {computed, onMounted, onUnmounted, ref, nextTick} from "vue";
 import EditAbilityValueModal from "@/views/character/tabs/common/bonus/EditAbilityValueModal.vue";
 import {useRoute} from "vue-router";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
@@ -32,8 +32,10 @@ import inventoryTabIcon from "../../static/icons/InventoryTab.svg"
 import notesTabIcon from "../../static/icons/NotesTab.svg"
 import magicTabIcon from "../../static/icons/Magic.svg"
 import traitsTabIcon from "../../static/icons/TraitsTab.svg"
-import { pawOutline } from 'ionicons/icons'
+import { pawOutline, appsOutline } from 'ionicons/icons'
 import InventoryView from "@/views/character/tabs/inventory/InventoryView.vue";
+import TabBarCustomizeSheet from "@/components/TabBarCustomizeSheet.vue";
+import { useTabBarConfig, type TabKey } from "@/composables/useTabBarConfig";
 import {useCharacterStore} from "@/stores/CharacterStore";
 import {useSubheaderOpenedStore} from "@/stores/SubheaderStore";
 import {useInventoryStore} from "@/stores/InventoryStore";
@@ -92,6 +94,17 @@ const ipCountryCode = ref<string | null>(null);
 const isNonRussianIp = computed(() => ipCountryCode.value != null && ipCountryCode.value !== "RU");
 const earlyVersionText = computed(() => (isNonRussianIp.value ? EARLY_VERSION_NON_RU_TEXT : EARLY_VERSION_DEFAULT_TEXT));
 
+const TAB_META: Record<TabKey, { label: string; icon: string }> = {
+  abilities:  { label: 'Характеристики',   icon: abilitiesTabIcon },
+  attacks:    { label: 'Атаки и навыки',   icon: attacksTabIcon },
+  bio:        { label: 'Биография',        icon: bioTabIcon },
+  traits:     { label: 'Черты',            icon: traitsTabIcon },
+  inventory:  { label: 'Инвентарь',        icon: inventoryTabIcon },
+  notes:      { label: 'Заметки',          icon: notesTabIcon },
+  magic:      { label: 'Магия',            icon: magicTabIcon },
+  companions: { label: 'Спутники',         icon: pawOutline },
+}
+
 const tabs = [
   {key: "abilities", icon: abilitiesTabIcon, label: "Характеристики"},
   {key: "attacks", icon: attacksTabIcon, label: "Атаки и навыки"},
@@ -103,9 +116,20 @@ const tabs = [
   {key: "companions", icon: pawOutline, label: "Спутники"},
 ] as const;
 
-const selectedTabTitle = computed(() => {
-  return tabs.find((tab) => tab.key === selectedTab.value)?.label ?? "";
-});
+const characterId = route.params.characterId as string
+const tabBarConfig = useTabBarConfig(characterId)
+const showCustomizeSheet = ref(false)
+const ionTabsRef = ref<InstanceType<typeof IonTabs> | null>(null)
+
+async function navigateToTab(tab: TabKey) {
+  showCustomizeSheet.value = false
+  selectedTab.value = tab
+  await nextTick()
+  const tabsEl = (ionTabsRef.value as any)?.$el as HTMLIonTabsElement | undefined
+  await tabsEl?.select(tab)
+}
+
+const selectedTabTitle = computed(() => TAB_META[selectedTab.value]?.label ?? '');
 
 const onEarlyVersionStubClick = async () => {
   earlyVersionClickCount.value += 1;
@@ -132,7 +156,6 @@ const endingTurn = ref(false);
 
 const isMyTurn = computed(() => {
   if (!combatSession.value || combatSession.value.state !== 'ACTIVE') return false;
-  const characterId = route.params.characterId as string;
   return combatSession.value.participants.some(
     p => p.participantType === 'CHARACTER' && p.referenceId === characterId && p.isCurrentTurn
   );
@@ -168,7 +191,6 @@ async function checkCombat(roomId: string, characterId: string) {
 
 onIonViewDidEnter(async () => {
   const roomId = route.params.roomId as string;
-  const characterId = route.params.characterId as string;
 
   await characterStore.updateCharacterInStoreById(roomId, characterId);
   await inventoryStore.updateInventoryInStoreById(roomId, characterId);
@@ -206,9 +228,9 @@ const selectDesktopTab = (tab: PlayerTabKey) => {
 };
 
 const onTabsChange = (event: CustomEvent<{ tab: string }>) => {
-  const tab = event?.detail?.tab;
-  if (tab === "abilities" || tab === "attacks" || tab === "bio" || tab === "traits" || tab === "inventory" || tab === "notes" || tab === "magic" || tab === "companions") {
-    selectedTab.value = tab;
+  const tab = event?.detail?.tab as TabKey
+  if ((tabBarConfig.ALL_TABS as readonly string[]).includes(tab)) {
+    selectedTab.value = tab
   }
 };
 
@@ -425,7 +447,7 @@ const openSubheader = () => {
         </ion-content>
       </section>
     </div>
-    <IonTabs v-else @ionTabsDidChange="onTabsChange">
+    <IonTabs ref="ionTabsRef" v-else @ionTabsDidChange="onTabsChange">
       <ion-tab tab="abilities">
         <ion-content class="ion-padding"
                      :fullscreen="true"
@@ -528,46 +550,22 @@ const openSubheader = () => {
         </ion-content>
       </ion-tab>
       <ion-tab-bar slot="bottom" color="dark" class="tab-bar" :translucent="true">
-        <ion-tab-button tab="abilities">
+        <ion-tab-button
+          v-for="tabKey in tabBarConfig.visibleTabs.value"
+          :key="tabKey"
+          :tab="tabKey"
+        >
           <div class="tab-icon-wrapper">
-            <ion-icon :icon="abilitiesTabIcon"/>
+            <ion-icon
+              :icon="TAB_META[tabKey].icon"
+              :style="tabKey === 'companions' ? '--ionicon-stroke-width: 12px;' : ''"
+              :class="tabKey === 'companions' ? 'companions-icon' : ''"
+            />
           </div>
         </ion-tab-button>
-        <ion-tab-button tab="attacks">
-          <div class="tab-icon-wrapper">
-            <ion-icon :icon="attacksTabIcon"/>
-          </div>
-        </ion-tab-button>
-        <ion-tab-button tab="bio">
-          <div class="tab-icon-wrapper">
-            <ion-icon :icon="bioTabIcon"/>
-          </div>
-        </ion-tab-button>
-        <ion-tab-button tab="traits">
-          <div class="tab-icon-wrapper">
-            <ion-icon :icon="traitsTabIcon"/>
-          </div>
-        </ion-tab-button>
-        <ion-tab-button tab="inventory">
-          <div class="tab-icon-wrapper">
-            <ion-icon :icon="inventoryTabIcon"/>
-          </div>
-        </ion-tab-button>
-        <ion-tab-button tab="notes">
-          <div class="tab-icon-wrapper">
-            <ion-icon :icon="notesTabIcon"/>
-          </div>
-        </ion-tab-button>
-        <ion-tab-button tab="magic">
-          <div class="tab-icon-wrapper">
-            <ion-icon :icon="magicTabIcon"/>
-          </div>
-        </ion-tab-button>
-        <ion-tab-button tab="companions">
-          <div class="tab-icon-wrapper">
-            <ion-icon :icon="pawOutline" style="--ionicon-stroke-width: 12px;"/>
-          </div>
-        </ion-tab-button>
+        <button class="tab-gear-btn" :aria-label="'Все разделы'" @click="showCustomizeSheet = true">
+          <ion-icon :icon="appsOutline"/>
+        </button>
       </ion-tab-bar>
 
       <!-- Заглушка для ранней версии функционала -->
@@ -639,6 +637,19 @@ const openSubheader = () => {
       :participant-id="myParticipantId"
       :participant-name="myParticipantName"
       @close="showInitiativeModal = false"
+    />
+
+    <!-- Tab bar customization sheet -->
+    <TabBarCustomizeSheet
+      :is-open="showCustomizeSheet"
+      :order="tabBarConfig.order.value"
+      :hidden="tabBarConfig.hidden.value"
+      :all-tabs="tabBarConfig.ALL_TABS"
+      :tab-meta="TAB_META"
+      :current-tab="selectedTab"
+      @close="showCustomizeSheet = false"
+      @toggle-hidden="tabBarConfig.toggleHidden"
+      @navigate="navigateToTab"
     />
 
     <!-- Combat vignette -->
@@ -855,10 +866,32 @@ ion-page {
 }
 
 /* pawOutline визуально жирнее кастомных SVG — делаем тоньше */
-.tab-bar ion-tab-button[tab="companions"] ion-icon {
+.tab-bar ion-tab-button .companions-icon {
   width: 22px;
   height: 22px;
-  --ionicon-stroke-width: 2px;
+}
+
+/* Gear button for tab bar customization */
+.tab-gear-btn {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  cursor: pointer;
+  margin-right: 4px;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.tab-gear-btn:active {
+  color: rgba(255, 255, 255, 0.7);
+  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .abilities.openSubheader,
