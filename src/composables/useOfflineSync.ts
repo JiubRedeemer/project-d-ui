@@ -21,7 +21,11 @@ async function refreshCount(): Promise<void> {
 
 async function flushQueue(): Promise<void> {
     const items = await getAllMutations();
-    if (items.length === 0) return;
+    if (items.length === 0) {
+        // Счётчик мог разойтись с реальностью — синхронизируем
+        pendingMutationCount.value = 0;
+        return;
+    }
 
     let flushedAny = false;
     for (const item of items) {
@@ -31,23 +35,28 @@ async function flushQueue(): Promise<void> {
                 url: item.url,
                 data: item.data,
                 headers: item.headers,
-            });
+                // Запросы из флаша не должны попадать обратно в очередь
+                _offlineQueued: true,
+            } as Parameters<typeof axios.request>[0] & { _offlineQueued: boolean });
             await removeMutation(item.id);
             pendingMutationCount.value = Math.max(0, pendingMutationCount.value - 1);
             flushedAny = true;
         } catch (e: unknown) {
             const err = e as { response?: { status?: number } };
             if (!err.response) {
-                // Still offline — stop trying
+                // Всё ещё нет сети — останавливаемся, не трогаем очередь
                 break;
             }
-            // 4xx/5xx — drop the mutation to avoid endless retry
+            // 4xx/5xx — сервер не принял, дропаем чтобы не повторять бесконечно
             console.warn('[OfflineQueue] Dropping failed mutation:', item.url, err.response?.status);
             await removeMutation(item.id);
             pendingMutationCount.value = Math.max(0, pendingMutationCount.value - 1);
             flushedAny = true;
         }
     }
+
+    // Синхронизируем счётчик с реальным состоянием IndexedDB
+    pendingMutationCount.value = await countMutations();
 
     if (flushedAny) {
         window.dispatchEvent(new CustomEvent(QUEUE_FLUSHED_EVENT));
@@ -58,12 +67,17 @@ async function flushQueue(): Promise<void> {
  * Call once in main.ts. Sets up global online/offline listeners and the axios
  * response interceptor that queues failed mutations.
  */
-export function initOfflineSync(): void {
+export async function initOfflineSync(): Promise<void> {
     if (initialized) return;
     initialized = true;
 
     isOnline.value = navigator.onLine;
-    refreshCount();
+    await refreshCount();
+
+    // Если при старте приложения есть очередь и есть сеть — сразу флашим
+    if (navigator.onLine && pendingMutationCount.value > 0) {
+        flushQueue();
+    }
 
     window.addEventListener('online', async () => {
         isOnline.value = true;
@@ -72,6 +86,8 @@ export function initOfflineSync(): void {
 
     window.addEventListener('offline', () => {
         isOnline.value = false;
+        // Синхронизируем счётчик — не даём показывать "Синхронизация" вместо "Нет сети"
+        refreshCount();
     });
 
     // Intercept failed non-GET requests and queue them for later retry.
