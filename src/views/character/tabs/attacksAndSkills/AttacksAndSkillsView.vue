@@ -1183,7 +1183,7 @@ async function deleteCharacterSkill(id: string) {
 
 .add-new-button {
   position: fixed;
-  bottom: 0;
+  bottom: 60px;
   left: 0;
   right: 0;
   width: 100%;
@@ -1207,4 +1207,11 @@ async function deleteCharacterSkill(id: string) {
   word-break: break-word;
   min-width: 0;
 }
+
+@media (min-width: 1024px) {
+  .add-new-button {
+    bottom: 10px;
+  }
+}
+
 </style>

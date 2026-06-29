@@ -1716,7 +1716,7 @@ const onNotesViewOutsideClick = (e: MouseEvent) => {
 
 .add-new-button {
   position: fixed;
-  bottom: 0;
+  bottom: 60px;
   left: 0;
   right: 0;
   background: transparent;
@@ -1731,7 +1731,7 @@ const onNotesViewOutsideClick = (e: MouseEvent) => {
 
 .files-open-button {
   position: fixed;
-  bottom: 0;
+  bottom: 60px;
   right: 0;
   background: transparent;
   display: flex;
@@ -1745,5 +1745,15 @@ const onNotesViewOutsideClick = (e: MouseEvent) => {
 .add-new-button ion-button,
 .files-open-button ion-button {
   pointer-events: auto;
+}
+
+@media (min-width: 1024px) {
+  .add-new-button {
+    bottom: 10px;
+  }
+  .files-open-button{
+    bottom: 10px;
+    right: 50px;
+  }
 }
 </style>

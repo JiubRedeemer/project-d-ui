@@ -17,6 +17,7 @@ const route = useRoute();
 function openCreateTraitModal() { showCreateTraitModal.value = true; }
 function closeCreateTraitModal() { showCreateTraitModal.value = false; }
 
+
 function getPassiveByWis() {
   const wis = Math.floor((characterStore.character.abilities.filter(a => a.code === "WIS")[0].value + characterStore.character.abilities.filter(a => a.code === "WIS")[0].bonusValue - 10) / 2);
   return 10 + wis;
@@ -775,7 +776,7 @@ async function deleteTrait(traitId: string) {
 
 .add-new-button {
   position: fixed;
-  bottom: 0;
+  bottom: 60px;
   left: 0;
   right: 0;
   width: 100%;
@@ -785,5 +786,11 @@ async function deleteTrait(traitId: string) {
   align-items: center;
   padding: 8px 0;
   padding-bottom: max(8px, env(safe-area-inset-bottom, 0));
+}
+
+@media (min-width: 1024px) {
+  .add-new-button {
+    bottom: 10px;
+  }
 }
 </style>

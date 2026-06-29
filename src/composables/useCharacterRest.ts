@@ -16,6 +16,46 @@ export function useCharacterRest() {
   const inventoryStore = useInventoryStore();
   const isResting = ref(false);
 
+  /**
+   * Применяет заряды навыков клиентски сразу, не дожидаясь подтверждения сервера.
+   * Это устраняет гонку между POST /rest и следующим GET /character-skills,
+   * а также некорректный возврат старых данных из SW-кэша.
+   *
+   * LONG_REST пополняет все навыки, SHORT_REST — только с chargesRefill === 'SHORT_REST'.
+   */
+  function applyRestLocally(longRest: boolean) {
+    const refillAll = longRest;
+
+    // CharacterSkill charges
+    const skills = characterSkillsStore.characterSkills;
+    if (Array.isArray(skills)) {
+      for (const skill of skills) {
+        if (skill.charges == null || skill.currentCharges == null) continue;
+        const isLongRestSkill = skill.chargesRefill === 'LONG_REST';
+        const isShortRestSkill = skill.chargesRefill === 'SHORT_REST';
+        if (refillAll ? (isLongRestSkill || isShortRestSkill) : isShortRestSkill) {
+          skill.currentCharges = skill.charges;
+        }
+      }
+    }
+
+    // InventoryItemSkill charges
+    const items = inventoryStore.inventory?.items;
+    if (Array.isArray(items)) {
+      for (const item of items) {
+        for (const invSkill of item.skills ?? []) {
+          if (!invSkill.skill?.charges) continue;
+          const refill = invSkill.skill.chargesRefill;
+          const isLongRestSkill = refill === 'LONG_REST';
+          const isShortRestSkill = refill === 'SHORT_REST';
+          if (refillAll ? (isLongRestSkill || isShortRestSkill) : isShortRestSkill) {
+            invSkill.currentCharges = invSkill.skill.charges;
+          }
+        }
+      }
+    }
+  }
+
   async function performRest(longRest: boolean) {
     if (isResting.value || !characterStore.character) return;
 
@@ -38,6 +78,9 @@ export function useCharacterRest() {
         console.error("Ошибка при получении данных:", error);
       }
 
+      // Оптимистично пополняем заряды до GET-а, чтобы избежать гонки с сервером
+      applyRestLocally(longRest);
+
       try {
         const updatedSpellBook = await refillRestByCharacter(
             String(route.params.roomId),
@@ -53,6 +96,7 @@ export function useCharacterRest() {
         );
       }
 
+      // GET-ы для подтверждения актуального состояния с сервера
       await Promise.all([
         characterStore.updateCharacterInStoreById(route.params.roomId, route.params.characterId),
         characterSkillsStore.updateCharacterSkills(route.params.roomId, route.params.characterId),

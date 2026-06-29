@@ -564,37 +564,48 @@ const openSubheader = () => {
           </div>
         </ion-content>
       </ion-tab>
-      <ion-tab-bar slot="bottom" color="dark" class="tab-bar" :translucent="true">
-        <ion-tab-button
-          v-for="tabKey in tabBarConfig.visibleTabs.value"
-          :key="tabKey"
-          :tab="tabKey"
-        >
-          <div class="tab-icon-wrapper">
-            <ion-icon
-              :icon="TAB_META[tabKey].icon"
-              :style="tabKey === 'companions' ? '--ionicon-stroke-width: 12px;' : ''"
-              :class="tabKey === 'companions' ? 'companions-icon' : ''"
-            />
-          </div>
-        </ion-tab-button>
-        <button class="tab-gear-btn" :aria-label="'Все разделы'" @click="showCustomizeSheet = true">
-          <ion-icon :icon="appsOutline"/>
-        </button>
-      </ion-tab-bar>
-
-      <!-- Заглушка для ранней версии функционала -->
-      <div
-        class="early-version-stub"
-        role="button"
-        tabindex="0"
-        :aria-label="earlyVersionText"
-        @click="onEarlyVersionStubClick"
-        @keydown.enter.prevent="onEarlyVersionStubClick"
-      >
-        <span class="early-version-stub__text">{{ earlyVersionText }}</span>
-      </div>
     </IonTabs>
+
+    <!-- Кастомный таб-бар вне IonTabs — не сбрасывается при ре-рендере -->
+    <div v-if="!isDesktop" class="tab-bar" role="tablist">
+      <button
+        v-for="tabKey in tabBarConfig.ALL_TABS"
+        :key="tabKey"
+        class="tab-bar__btn"
+        :class="{
+          'tab-bar__btn--hidden': !tabBarConfig.visibleTabs.value.includes(tabKey),
+          'tab-selected': selectedTab === tabKey,
+        }"
+        :aria-label="TAB_META[tabKey].label"
+        :aria-selected="selectedTab === tabKey"
+        role="tab"
+        @click="navigateToTab(tabKey)"
+      >
+        <div class="tab-icon-wrapper">
+          <ion-icon
+            :icon="TAB_META[tabKey].icon"
+            :style="tabKey === 'companions' ? '--ionicon-stroke-width: 12px;' : ''"
+            :class="tabKey === 'companions' ? 'companions-icon' : ''"
+          />
+        </div>
+      </button>
+      <button class="tab-gear-btn" aria-label="Все разделы" @click="showCustomizeSheet = true">
+        <ion-icon :icon="appsOutline"/>
+      </button>
+    </div>
+
+    <!-- Заглушка для ранней версии функционала -->
+    <div
+      v-if="!isDesktop"
+      class="early-version-stub"
+      role="button"
+      tabindex="0"
+      :aria-label="earlyVersionText"
+      @click="onEarlyVersionStubClick"
+      @keydown.enter.prevent="onEarlyVersionStubClick"
+    >
+      <span class="early-version-stub__text">{{ earlyVersionText }}</span>
+    </div>
 
 
     <!-- Модалка -->
@@ -771,6 +782,7 @@ ion-header.character-header {
   font-weight: 700;
 }
 
+
 .desktop-content-inner {
   margin-top: -60px;
   transition: margin-top 0.3s ease;
@@ -788,8 +800,7 @@ ion-page {
   position: fixed;
   left: 50%;
   transform: translateX(-50%);
-  /* IonTabBar с margin 10px обычно занимает ~56px сверху; фиксируем метку чуть выше */
-  bottom: -94px;
+  bottom: -7px;
   z-index: 50;
   pointer-events: auto;
   font-size: 8px;
@@ -810,58 +821,40 @@ ion-page {
   overflow: hidden;         /* Hides the text that extends beyond the container */
 }
 
-.tab-bar, .tab-bar ion-tab-button {
-  background: var(--ion-color-medium);
-}
-
-/* Обертка для иконки */
-.tab-bar ion-tab-button .tab-icon-wrapper {
-  border: 1px solid var(--ion-color-primary);
-}
-
-/* Подсветка выбранной вкладки (Ionic проставляет класс tab-selected) */
-.tab-bar ion-tab-button.tab-selected .tab-icon-wrapper {
-  background: var(--ion-color-primary);
-  border-color: var(--ion-color-primary);
-  /* SVG иконок залиты var(--ion-color-light); переопределяем, чтобы заливка стала тёмной */
-  --ion-color-light: var(--ion-color-dark);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ion-color-primary) 35%, transparent),
-  0 8px 16px rgba(0, 0, 0, 0.35);
-  transform: translateY(-2px);
-}
-
-.tab-bar ion-tab-button .tab-icon-wrapper {
-  transition: transform 140ms ease, box-shadow 140ms ease, background-color 140ms ease, border-color 140ms ease;
-}
-
-.tab-bar ion-tab-button ion-icon {
-  transition: color 140ms ease;
-}
-
-
+/* ── Кастомный таб-бар ── */
 .tab-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 200;
   background: var(--ion-color-medium);
-  position: relative;
-  z-index: 20;
   border-radius: 20px;
   margin: 10px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 5px 0;
+  bottom: calc(env(safe-area-inset-bottom, 0px));
 }
 
-/* Каждая кнопка таба занимает равную ширину */
-.tab-bar ion-tab-button {
+.tab-bar__btn {
   flex: 1;
-  display: grid;
+  display: flex;
   justify-content: center;
   align-items: center;
-  --background: transparent;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.tab-bar__btn--hidden {
+  display: none;
 }
 
 /* Обертка для иконки */
-.tab-bar ion-tab-button .tab-icon-wrapper {
+.tab-bar__btn .tab-icon-wrapper {
   width: 40px;
   height: 40px;
   border: 1px solid var(--ion-color-primary);
@@ -871,17 +864,29 @@ ion-page {
   align-items: center;
   justify-content: center;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  transition: transform 140ms ease, box-shadow 140ms ease, background-color 140ms ease, border-color 140ms ease;
 }
 
-/* Размер иконки внутри круга */
-.tab-bar ion-tab-button ion-icon {
+/* Активная вкладка */
+.tab-bar__btn.tab-selected .tab-icon-wrapper {
+  background: var(--ion-color-primary);
+  border-color: var(--ion-color-primary);
+  --ion-color-light: var(--ion-color-dark);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ion-color-primary) 35%, transparent),
+              0 8px 16px rgba(0, 0, 0, 0.35);
+  transform: translateY(-2px);
+}
+
+/* Иконки */
+.tab-bar__btn ion-icon {
   width: 28px;
   height: 28px;
   color: white;
+  transition: color 140ms ease;
 }
 
-/* pawOutline визуально жирнее кастомных SVG — делаем тоньше */
-.tab-bar ion-tab-button .companions-icon {
+/* pawOutline тоньше */
+.tab-bar__btn .companions-icon {
   width: 22px;
   height: 22px;
 }
@@ -929,6 +934,7 @@ ion-page {
 .magic,
 .companions {
   margin-top: 95px;
+  padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
   transition: margin-top 0.3s ease;
 }
 
@@ -1009,7 +1015,7 @@ ion-page {
   bottom: calc(82px + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%);
-  z-index: 200;
+  z-index: 300;
   display: flex;
   align-items: center;
   gap: 8px;

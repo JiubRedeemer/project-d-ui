@@ -392,6 +392,7 @@ function openSearchView() {
     );
 }
 
+
 const selectedSpellId = ref<string | null>(null);
 const showSpellModal = ref(false);
 
@@ -1075,7 +1076,7 @@ onIonViewDidEnter(loadMagicData);
 
 .add-new-button {
   position: fixed;
-  bottom: 0;
+  bottom: 60px;
   left: 0;
   right: 0;
   width: 100%;
@@ -1234,12 +1235,10 @@ onIonViewDidEnter(loadMagicData);
   }
 
   .add-new-button {
-    left: auto;
-    right: 22px;
-    bottom: 18px;
-    width: auto;
+    bottom: 14px;
+    width: 100%;
     padding: 0;
-    justify-content: flex-end;
+    justify-content: center;
     pointer-events: none;
   }
 

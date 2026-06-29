@@ -608,7 +608,7 @@ async function takeMoney() {
 <style scoped>
 .add-new-button {
   position: fixed;
-  bottom: 0;
+  bottom: 60px;
   left: 0;
   right: 0;
   width: 100%;
@@ -1128,12 +1128,9 @@ async function takeMoney() {
   }
 
   .add-new-button {
-    left: auto;
-    right: 22px;
     bottom: 18px;
-    width: auto;
-    padding: 0;
-    justify-content: flex-end;
+    width: 100%;
+    justify-content: center;
     pointer-events: none;
   }
 
@@ -1141,6 +1138,12 @@ async function takeMoney() {
     pointer-events: auto;
     margin: 0;
     --box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  }
+}
+
+@media (min-width: 1024px) {
+  .add-new-button {
+    bottom: 14px;
   }
 }
 </style>
