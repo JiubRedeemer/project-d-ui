@@ -1,11 +1,11 @@
 import { ref, computed } from 'vue'
 
-export const ALL_TABS = ['abilities', 'attacks', 'bio', 'traits', 'inventory', 'notes', 'magic', 'companions'] as const
+export const ALL_TABS = ['character', 'attacks', 'inventory', 'notes', 'magic', 'companions'] as const
 export type TabKey = typeof ALL_TABS[number]
 
-export const MAX_VISIBLE = 7
+export const MAX_VISIBLE = 6
 export const MIN_VISIBLE = 3
-const DEFAULT_HIDDEN: TabKey[] = ['notes', 'magic']
+const DEFAULT_HIDDEN: TabKey[] = []
 
 interface TabBarConfig {
   order: TabKey[]
@@ -23,8 +23,9 @@ export function useTabBarConfig(characterId: string) {
     if (raw) saved = JSON.parse(raw)
   } catch { /* ignore */ }
 
-  const order = ref<TabKey[]>(saved?.order?.length === ALL_TABS.length ? saved.order : [...ALL_TABS])
-  const hidden = ref<TabKey[]>(saved?.hidden ?? DEFAULT_HIDDEN)
+  const validSaved = saved?.order?.length === ALL_TABS.length && saved.order.every(t => (ALL_TABS as readonly string[]).includes(t))
+  const order = ref<TabKey[]>(validSaved ? saved!.order : [...ALL_TABS])
+  const hidden = ref<TabKey[]>(validSaved ? (saved!.hidden ?? DEFAULT_HIDDEN) : DEFAULT_HIDDEN)
 
   // Always exactly MAX_VISIBLE tabs shown in the bar (in order)
   const visibleTabs = computed(() => order.value.filter(t => !hidden.value.includes(t)).slice(0, MAX_VISIBLE))

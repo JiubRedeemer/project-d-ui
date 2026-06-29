@@ -81,8 +81,10 @@ const subheaderStore = useSubheaderOpenedStore();
 const characterSkillsStore = useCharacterSkillsStore();
 
 const earlyVersionClickCount = ref(0);
-type PlayerTabKey = "abilities" | "attacks" | "bio" | "traits" | "inventory" | "notes" | "magic" | "companions";
-const selectedTab = ref<PlayerTabKey>("abilities");
+type PlayerTabKey = "character" | "attacks" | "inventory" | "notes" | "magic" | "companions";
+type CharSubTab = "abilities" | "bio" | "traits";
+const selectedTab = ref<PlayerTabKey>("character");
+const characterSubTab = ref<CharSubTab>("abilities");
 const isDesktop = ref<boolean>(window.innerWidth >= 1024);
 const DESKTOP_BREAKPOINT_PX = 1024;
 
@@ -96,25 +98,29 @@ const isNonRussianIp = computed(() => ipCountryCode.value != null && ipCountryCo
 const earlyVersionText = computed(() => (isNonRussianIp.value ? EARLY_VERSION_NON_RU_TEXT : EARLY_VERSION_DEFAULT_TEXT));
 
 const TAB_META: Record<TabKey, { label: string; icon: string }> = {
-  abilities:  { label: 'Характеристики',   icon: abilitiesTabIcon },
+  character:  { label: 'Персонаж',         icon: abilitiesTabIcon },
   attacks:    { label: 'Атаки и навыки',   icon: attacksTabIcon },
-  bio:        { label: 'Биография',        icon: bioTabIcon },
-  traits:     { label: 'Черты',            icon: traitsTabIcon },
   inventory:  { label: 'Инвентарь',        icon: inventoryTabIcon },
   notes:      { label: 'Заметки',          icon: notesTabIcon },
   magic:      { label: 'Магия',            icon: magicTabIcon },
   companions: { label: 'Спутники',         icon: pawOutline },
 }
 
+const CHAR_SUB_META: Record<CharSubTab, { label: string; icon: string }> = {
+  abilities: { label: 'Характеристики', icon: abilitiesTabIcon },
+  bio:       { label: 'Биография',      icon: bioTabIcon },
+  traits:    { label: 'Черты',          icon: traitsTabIcon },
+}
+
+const CHAR_SUB_TABS: CharSubTab[] = ['abilities', 'bio', 'traits']
+
 const tabs = [
-  {key: "abilities", icon: abilitiesTabIcon, label: "Характеристики"},
-  {key: "attacks", icon: attacksTabIcon, label: "Атаки и навыки"},
-  {key: "bio", icon: bioTabIcon, label: "Биография"},
-  {key: "traits", icon: traitsTabIcon, label: "Черты"},
-  {key: "inventory", icon: inventoryTabIcon, label: "Инвентарь"},
-  {key: "notes", icon: notesTabIcon, label: "Заметки"},
-  {key: "magic", icon: magicTabIcon, label: "Магия"},
-  {key: "companions", icon: pawOutline, label: "Спутники"},
+  {key: "character",  icon: abilitiesTabIcon,    label: "Персонаж"},
+  {key: "attacks",    icon: attacksTabIcon,   label: "Атаки и навыки"},
+  {key: "inventory",  icon: inventoryTabIcon, label: "Инвентарь"},
+  {key: "notes",      icon: notesTabIcon,     label: "Заметки"},
+  {key: "magic",      icon: magicTabIcon,     label: "Магия"},
+  {key: "companions", icon: pawOutline,       label: "Спутники"},
 ] as const;
 
 const characterId = route.params.characterId as string
@@ -402,7 +408,11 @@ const openSubheader = () => {
     <ion-header :translucent="false" class="character-header">
       <PlayerViewHeader v-if="asyncDone" @open-levelup-modal="openLevelUpModal"/>
       <div v-if="subheaderStore.subheaderOpened" class="character-header__divider" aria-hidden="true"/>
-      <div class="subheader-block" :class="{ openSubheader: subheaderStore.subheaderOpened }">
+      <div class="subheader-block"
+           :class="{
+             openSubheader: subheaderStore.subheaderOpened,
+             'has-subtabs': !isDesktop && selectedTab === 'character'
+           }">
         <PlayerViewSubheader v-if="asyncDone" @speed-selected="openEditSpeedModal"
                              @armory-class-selected="openEditArmoryClassModal"
                              @initiative-selected="openEditInitiativeModal"
@@ -411,6 +421,18 @@ const openSubheader = () => {
                              @open-subheader="openSubheader"
                              @open-rest-modal="openRestModal"
         />
+        <div v-if="!isDesktop && selectedTab === 'character'" class="char-subtab-bar">
+          <button
+            v-for="sub in CHAR_SUB_TABS"
+            :key="sub"
+            class="char-subtab-btn"
+            :class="{ active: characterSubTab === sub }"
+            @click="characterSubTab = sub"
+          >
+            <ion-icon :icon="CHAR_SUB_META[sub].icon"/>
+            <span>{{ CHAR_SUB_META[sub].label }}</span>
+          </button>
+        </div>
       </div>
     </ion-header>
     <div v-if="isDesktop" class="desktop-layout">
@@ -428,23 +450,34 @@ const openSubheader = () => {
         </button>
       </aside>
       <section class="desktop-content">
-        <div class="desktop-content-header">
-          <h2>{{ selectedTabTitle }}</h2>
-        </div>
-        <ion-content class="ion-padding"
-                     :fullscreen="true"
+        <ion-content :fullscreen="true"
                      color="dark"
                      direction="y"
                      :scroll-x="false">
-          <div class="tab-content desktop-content-inner" :class="{ openSubheader: subheaderStore.subheaderOpened }">
-            <AbilitiesView v-if="asyncDone && selectedTab === 'abilities'" @ability-selected="openEditAbilityModal"
+          <div v-if="selectedTab === 'character'" slot="fixed" class="desktop-char-subtabs">
+            <button
+              v-for="sub in CHAR_SUB_TABS"
+              :key="sub"
+              class="char-subtab-btn"
+              :class="{ active: characterSubTab === sub }"
+              @click="characterSubTab = sub"
+            >
+              <ion-icon :icon="CHAR_SUB_META[sub].icon"/>
+              <span>{{ CHAR_SUB_META[sub].label }}</span>
+            </button>
+          </div>
+          <div v-else class="desktop-content-title">
+            <h2>{{ selectedTabTitle }}</h2>
+          </div>
+          <div class="tab-content desktop-content-inner" :class="{ openSubheader: subheaderStore.subheaderOpened, 'with-subtabs': selectedTab === 'character' }">
+            <AbilitiesView v-if="asyncDone && selectedTab === 'character' && characterSubTab === 'abilities'" @ability-selected="openEditAbilityModal"
                            @skill-selected="openEditSkillModal"/>
             <AttacksAndSkillsView v-if="asyncDone && selectedTab === 'attacks'" @ability-selected="openEditAbilityModal"/>
             <Suspense>
-              <PersonalityView v-if="asyncDone && selectedTab === 'bio'"/>
+              <PersonalityView v-if="asyncDone && selectedTab === 'character' && characterSubTab === 'bio'"/>
             </Suspense>
             <Suspense>
-              <TraitsView v-if="asyncDone && selectedTab === 'traits'"/>
+              <TraitsView v-if="asyncDone && selectedTab === 'character' && characterSubTab === 'traits'"/>
             </Suspense>
             <Suspense>
               <InventoryView v-if="asyncDone && selectedTab === 'inventory'"/>
@@ -463,15 +496,22 @@ const openSubheader = () => {
       </section>
     </div>
     <IonTabs ref="ionTabsRef" v-else @ionTabsDidChange="onTabsChange">
-      <ion-tab tab="abilities">
+      <ion-tab tab="character">
         <ion-content class="ion-padding"
                      :fullscreen="true"
                      color="dark"
                      direction="y"
                      :scroll-x="false">
-          <div class="tab-content abilities" :class="{ openSubheader: subheaderStore.subheaderOpened }">
-            <AbilitiesView v-if="asyncDone" @ability-selected="openEditAbilityModal"
+          <div class="tab-content character" :class="{ openSubheader: subheaderStore.subheaderOpened }">
+            <AbilitiesView v-if="asyncDone && characterSubTab === 'abilities'"
+                           @ability-selected="openEditAbilityModal"
                            @skill-selected="openEditSkillModal"/>
+            <Suspense>
+              <PersonalityView v-if="asyncDone && characterSubTab === 'bio'"/>
+            </Suspense>
+            <Suspense>
+              <TraitsView v-if="asyncDone && characterSubTab === 'traits'"/>
+            </Suspense>
           </div>
         </ion-content>
       </ion-tab>
@@ -483,32 +523,6 @@ const openSubheader = () => {
                      :scroll-x="false">
           <div class="tab-content attacks" :class="{ openSubheader: subheaderStore.subheaderOpened }">
             <AttacksAndSkillsView v-if="asyncDone" @ability-selected="openEditAbilityModal"/>
-          </div>
-        </ion-content>
-      </ion-tab>
-      <ion-tab tab="bio">
-        <ion-content class="ion-padding"
-                     :fullscreen="true"
-                     color="dark"
-                     direction="y"
-                     :scroll-x="false">
-          <div class="tab-content bio" :class="{ openSubheader: subheaderStore.subheaderOpened }">
-            <Suspense>
-              <PersonalityView v-if="asyncDone"/>
-            </Suspense>
-          </div>
-        </ion-content>
-      </ion-tab>
-      <ion-tab tab="traits">
-        <ion-content class="ion-padding"
-                     :fullscreen="true"
-                     color="dark"
-                     direction="y"
-                     :scroll-x="false">
-          <div class="tab-content traits" :class="{ openSubheader: subheaderStore.subheaderOpened }">
-            <Suspense>
-              <TraitsView v-if="asyncDone"/>
-            </Suspense>
           </div>
         </ion-content>
       </ion-tab>
@@ -769,13 +783,26 @@ ion-header.character-header {
   background: linear-gradient(160deg, rgba(var(--ion-color-medium-rgb), 0.5) 0%, rgba(var(--ion-color-dark-rgb), 0.55) 100%);
 }
 
-.desktop-content-header {
-  padding: 16px 20px;
-  background: rgba(var(--ion-color-medium-rgb), 0.55);
+.desktop-char-subtabs {
+  display: flex;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--ion-color-dark);
   border-bottom: 1px solid rgba(var(--ion-color-light-rgb), 0.1);
+  width: 100%;
+  box-sizing: border-box;
+  z-index: 10;
 }
 
-.desktop-content-header h2 {
+.desktop-char-subtabs .char-subtab-btn {
+  flex: 0 0 auto;
+}
+
+.desktop-content-title {
+  padding: 12px 20px 0;
+}
+
+.desktop-content-title h2 {
   margin: 0;
   color: var(--ion-color-light);
   font-size: 20px;
@@ -783,9 +810,65 @@ ion-header.character-header {
 }
 
 
+/* ── Character sub-tab bar ───────────────────────────────────────── */
+
+.char-subtab-bar {
+  display: flex;
+  gap: 6px;
+  padding: 8px 16px;
+  background: rgba(var(--ion-color-dark-rgb), 0.92);
+  border-bottom: 1px solid rgba(var(--ion-color-light-rgb), 0.07);
+}
+
+
+.char-subtab-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: rgba(var(--ion-color-light-rgb), 0.5);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  white-space: nowrap;
+}
+
+.char-subtab-btn ion-icon {
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.char-subtab-btn.active {
+  background: rgba(var(--ion-color-primary-rgb), 0.18);
+  border-color: rgba(var(--ion-color-primary-rgb), 0.35);
+  color: var(--ion-color-primary);
+}
+
+.char-subtab-btn:not(.active):hover {
+  background: rgba(var(--ion-color-light-rgb), 0.06);
+  color: rgba(var(--ion-color-light-rgb), 0.75);
+}
+
+ion-tab[tab="character"] {
+  display: flex;
+  flex-direction: column;
+}
+
+
+
 .desktop-content-inner {
-  margin-top: -60px;
+  padding: 16px;
   transition: margin-top 0.3s ease;
+}
+
+.desktop-content-inner.with-subtabs {
+  padding-top: 72px;
 }
 
 .desktop-content-inner.openSubheader {
@@ -925,6 +1008,10 @@ ion-page {
   margin-top: 200px;
 }
 
+.character.openSubheader {
+  margin-top: calc(200px + 60px);
+}
+
 .abilities,
 .attacks,
 .bio,
@@ -938,13 +1025,19 @@ ion-page {
   transition: margin-top 0.3s ease;
 }
 
+.character {
+  margin-top: calc(95px + 50px);
+  padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  transition: margin-top 0.3s ease;
+}
+
 .subheader-block {
   position: absolute;
   top: 100%;
   left: 0;
   width: 100%;
   background-color: var(--ion-color-dark);
-  overflow: visible;
+  overflow: hidden;
   z-index: 5;
   max-height: 48px;
   transition: max-height 0.48s cubic-bezier(0.33, 1, 0.68, 1);
@@ -952,6 +1045,14 @@ ion-page {
 
 .subheader-block.openSubheader {
   max-height: 260px;
+}
+
+.subheader-block.has-subtabs {
+  max-height: calc(48px + 46px);
+}
+
+.subheader-block.openSubheader.has-subtabs {
+  max-height: calc(260px + 46px);
 }
 
 @media (min-width: 1024px) {
@@ -997,6 +1098,10 @@ ion-page {
       margin-top: 120px;
     }
 
+    .character {
+      margin-top: calc(120px + 46px);
+    }
+
     .abilities.openSubheader,
     .attacks.openSubheader,
     .bio.openSubheader,
@@ -1005,6 +1110,10 @@ ion-page {
     .notes.openSubheader,
     .magic.openSubheader {
       margin-top: 200px;
+    }
+
+    .character.openSubheader {
+      margin-top: calc(200px + 46px);
     }
 
 }
