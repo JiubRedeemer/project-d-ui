@@ -8,15 +8,17 @@ import {
   IonTabBar,
   IonTabButton,
   IonTabs,
+  createGesture,
   onIonViewDidEnter,
   onIonViewDidLeave,
   toastController
 } from "@ionic/vue";
+import type { Gesture } from '@ionic/core';
 import PlayerViewHeader from "@/views/character/PlayerViewHeader.vue";
 import AbilitiesView from "@/views/character/tabs/abilities/AbilitiesView.vue";
 import PersonalityView from "@/views/character/tabs/bio/BioView.vue";
 import PlayerViewSubheader from "@/views/character/PlayerViewSubheader.vue";
-import {computed, onMounted, onUnmounted, ref, nextTick} from "vue";
+import {computed, onMounted, onUnmounted, ref, nextTick, watch} from "vue";
 import EditAbilityValueModal from "@/views/character/tabs/common/bonus/EditAbilityValueModal.vue";
 import {useRoute} from "vue-router";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
@@ -81,10 +83,12 @@ const subheaderStore = useSubheaderOpenedStore();
 const characterSkillsStore = useCharacterSkillsStore();
 
 const earlyVersionClickCount = ref(0);
-type PlayerTabKey = "character" | "attacks" | "inventory" | "notes" | "magic" | "companions";
+type PlayerTabKey = "character" | "combat" | "inventory" | "notes" | "companions";
 type CharSubTab = "abilities" | "bio" | "traits";
+type CombatSubTab = "attacks" | "magic";
 const selectedTab = ref<PlayerTabKey>("character");
 const characterSubTab = ref<CharSubTab>("abilities");
+const combatSubTab = ref<CombatSubTab>("attacks");
 const isDesktop = ref<boolean>(window.innerWidth >= 1024);
 const DESKTOP_BREAKPOINT_PX = 1024;
 
@@ -97,13 +101,12 @@ const ipCountryCode = ref<string | null>(null);
 const isNonRussianIp = computed(() => ipCountryCode.value != null && ipCountryCode.value !== "RU");
 const earlyVersionText = computed(() => (isNonRussianIp.value ? EARLY_VERSION_NON_RU_TEXT : EARLY_VERSION_DEFAULT_TEXT));
 
-const TAB_META: Record<TabKey, { label: string; icon: string }> = {
-  character:  { label: 'Персонаж',         icon: abilitiesTabIcon },
-  attacks:    { label: 'Атаки и навыки',   icon: attacksTabIcon },
-  inventory:  { label: 'Инвентарь',        icon: inventoryTabIcon },
-  notes:      { label: 'Заметки',          icon: notesTabIcon },
-  magic:      { label: 'Магия',            icon: magicTabIcon },
-  companions: { label: 'Спутники',         icon: pawOutline },
+const TAB_META: Record<PlayerTabKey, { label: string; icon: string }> = {
+  character:  { label: 'Персонаж',     icon: abilitiesTabIcon },
+  combat:     { label: 'Бой',          icon: attacksTabIcon },
+  inventory:  { label: 'Инвентарь',   icon: inventoryTabIcon },
+  notes:      { label: 'Заметки',     icon: notesTabIcon },
+  companions: { label: 'Спутники',    icon: pawOutline },
 }
 
 const CHAR_SUB_META: Record<CharSubTab, { label: string; icon: string }> = {
@@ -111,15 +114,19 @@ const CHAR_SUB_META: Record<CharSubTab, { label: string; icon: string }> = {
   bio:       { label: 'Биография',      icon: bioTabIcon },
   traits:    { label: 'Черты',          icon: traitsTabIcon },
 }
-
 const CHAR_SUB_TABS: CharSubTab[] = ['abilities', 'bio', 'traits']
 
+const COMBAT_SUB_META: Record<CombatSubTab, { label: string; icon: string }> = {
+  attacks: { label: 'Атаки и навыки', icon: attacksTabIcon },
+  magic:   { label: 'Магия',          icon: magicTabIcon },
+}
+const COMBAT_SUB_TABS: CombatSubTab[] = ['attacks', 'magic']
+
 const tabs = [
-  {key: "character",  icon: abilitiesTabIcon,    label: "Персонаж"},
-  {key: "attacks",    icon: attacksTabIcon,   label: "Атаки и навыки"},
+  {key: "character",  icon: abilitiesTabIcon, label: "Персонаж"},
+  {key: "combat",     icon: attacksTabIcon,   label: "Бой"},
   {key: "inventory",  icon: inventoryTabIcon, label: "Инвентарь"},
   {key: "notes",      icon: notesTabIcon,     label: "Заметки"},
-  {key: "magic",      icon: magicTabIcon,     label: "Магия"},
   {key: "companions", icon: pawOutline,       label: "Спутники"},
 ] as const;
 
@@ -127,6 +134,89 @@ const characterId = route.params.characterId as string
 const tabBarConfig = useTabBarConfig(characterId)
 const showCustomizeSheet = ref(false)
 const ionTabsRef = ref<InstanceType<typeof IonTabs> | null>(null)
+const charSwipeRef = ref<HTMLElement | null>(null)
+const combatSwipeRef = ref<HTMLElement | null>(null)
+const desktopSwipeRef = ref<HTMLElement | null>(null)
+let charGesture: Gesture | null = null
+let combatGesture: Gesture | null = null
+let desktopGesture: Gesture | null = null
+
+const charTransition = ref('slide-left')
+const combatTransition = ref('slide-left')
+
+function setCharSubTab(sub: CharSubTab, direction?: 'left' | 'right') {
+  const from = CHAR_SUB_TABS.indexOf(characterSubTab.value)
+  const to = CHAR_SUB_TABS.indexOf(sub)
+  charTransition.value = direction ?? (to > from ? 'slide-left' : 'slide-right')
+  characterSubTab.value = sub
+}
+
+function setCombatSubTab(sub: CombatSubTab, direction?: 'left' | 'right') {
+  const from = COMBAT_SUB_TABS.indexOf(combatSubTab.value)
+  const to = COMBAT_SUB_TABS.indexOf(sub)
+  combatTransition.value = direction ?? (to > from ? 'slide-left' : 'slide-right')
+  combatSubTab.value = sub
+}
+
+function attachGestures() {
+  if (charSwipeRef.value && !isDesktop.value) {
+    charGesture?.destroy()
+    charGesture = createGesture({
+      el: charSwipeRef.value,
+      gestureName: 'char-subtab-swipe',
+      direction: 'x',
+      threshold: 10,
+      onEnd(detail) {
+        if (Math.abs(detail.deltaX) < 48 || Math.abs(detail.deltaX) < Math.abs(detail.deltaY) * 1.5) return
+        const idx = CHAR_SUB_TABS.indexOf(characterSubTab.value)
+        const dir = detail.deltaX < 0 ? 'left' : 'right'
+        if (detail.deltaX < 0 && idx < CHAR_SUB_TABS.length - 1) setCharSubTab(CHAR_SUB_TABS[idx + 1], dir)
+        else if (detail.deltaX > 0 && idx > 0) setCharSubTab(CHAR_SUB_TABS[idx - 1], dir)
+      }
+    })
+    charGesture.enable()
+  }
+  if (combatSwipeRef.value && !isDesktop.value) {
+    combatGesture?.destroy()
+    combatGesture = createGesture({
+      el: combatSwipeRef.value,
+      gestureName: 'combat-subtab-swipe',
+      direction: 'x',
+      threshold: 10,
+      onEnd(detail) {
+        if (Math.abs(detail.deltaX) < 48 || Math.abs(detail.deltaX) < Math.abs(detail.deltaY) * 1.5) return
+        const idx = COMBAT_SUB_TABS.indexOf(combatSubTab.value)
+        const dir = detail.deltaX < 0 ? 'left' : 'right'
+        if (detail.deltaX < 0 && idx < COMBAT_SUB_TABS.length - 1) setCombatSubTab(COMBAT_SUB_TABS[idx + 1], dir)
+        else if (detail.deltaX > 0 && idx > 0) setCombatSubTab(COMBAT_SUB_TABS[idx - 1], dir)
+      }
+    })
+    combatGesture.enable()
+  }
+  if (desktopSwipeRef.value && isDesktop.value) {
+    desktopGesture?.destroy()
+    desktopGesture = createGesture({
+      el: desktopSwipeRef.value,
+      gestureName: 'desktop-subtab-swipe',
+      direction: 'x',
+      threshold: 10,
+      onEnd(detail) {
+        if (Math.abs(detail.deltaX) < 48) return
+        const dir = detail.deltaX < 0 ? 'left' : 'right'
+        if (selectedTab.value === 'character') {
+          const idx = CHAR_SUB_TABS.indexOf(characterSubTab.value)
+          if (detail.deltaX < 0 && idx < CHAR_SUB_TABS.length - 1) setCharSubTab(CHAR_SUB_TABS[idx + 1], dir)
+          else if (detail.deltaX > 0 && idx > 0) setCharSubTab(CHAR_SUB_TABS[idx - 1], dir)
+        } else if (selectedTab.value === 'combat') {
+          const idx = COMBAT_SUB_TABS.indexOf(combatSubTab.value)
+          if (detail.deltaX < 0 && idx < COMBAT_SUB_TABS.length - 1) setCombatSubTab(COMBAT_SUB_TABS[idx + 1], dir)
+          else if (detail.deltaX > 0 && idx > 0) setCombatSubTab(COMBAT_SUB_TABS[idx - 1], dir)
+        }
+      }
+    })
+    desktopGesture.enable()
+  }
+}
 
 async function navigateToTab(tab: TabKey) {
   showCustomizeSheet.value = false
@@ -154,6 +244,8 @@ const onEarlyVersionStubClick = async () => {
 
 let wsClient: ReturnType<typeof useCharacterWebSocket> | null = null;
 let combatWsClient: ReturnType<typeof useCombatWebSocket> | null = null;
+let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+let queueFlushedTimer: ReturnType<typeof setTimeout> | null = null;
 
 const showInitiativeModal = ref(false);
 const combatSession = ref<CombatStateDto | null>(null);
@@ -203,15 +295,37 @@ onIonViewDidEnter(async () => {
   await inventoryStore.updateInventoryInStoreById(roomId, characterId);
   await characterSkillsStore.updateCharacterSkills(roomId, characterId);
 
-  const refreshAll = () => {
-    characterStore.updateCharacterInStoreById(roomId, characterId);
-    inventoryStore.updateInventoryInStoreById(roomId, characterId);
-    walletStore.updateWallet(roomId, characterId);
-    magicStore.updateSpellBookInStore(roomId, characterId);
-    noteStore.triggerRefresh();
+  const refreshAll = (event?: { type?: string }) => {
+    if (refreshTimer) clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(() => {
+      refreshTimer = null;
+      const type = event?.type;
+      switch (type) {
+        case 'health_updated':
+          characterStore.updateCharacterInStoreById(roomId, characterId);
+          break;
+        case 'inventory_updated':
+          inventoryStore.updateInventoryInStoreById(roomId, characterId);
+          walletStore.updateWallet(roomId, characterId);
+          break;
+        case 'spellbook_updated':
+          magicStore.updateSpellBookInStore(roomId, characterId);
+          break;
+        case 'notes_updated':
+          noteStore.triggerRefresh();
+          break;
+        default:
+          // character_updated или неизвестный тип — обновляем всё
+          characterStore.updateCharacterInStoreById(roomId, characterId);
+          inventoryStore.updateInventoryInStoreById(roomId, characterId);
+          walletStore.updateWallet(roomId, characterId);
+          magicStore.updateSpellBookInStore(roomId, characterId);
+          noteStore.triggerRefresh();
+      }
+    }, 300);
   };
 
-  wsClient = useCharacterWebSocket(roomId, characterId, refreshAll, refreshAll);
+  wsClient = useCharacterWebSocket(roomId, characterId, refreshAll, () => refreshAll());
 
   combatWsClient = useCombatWebSocket(roomId, async () => {
     await checkCombat(roomId, characterId);
@@ -243,25 +357,41 @@ const onTabsChange = (event: CustomEvent<{ tab: string }>) => {
   }
 };
 
-onMounted(() => {
+onMounted(async () => {
   window.addEventListener("resize", onResize);
   void detectIpCountryCode();
   window.addEventListener(QUEUE_FLUSHED_EVENT, onQueueFlushed);
+  await nextTick();
+  attachGestures();
+});
+
+watch(asyncDone, async (done) => {
+  if (done) { await nextTick(); attachGestures(); }
 });
 
 onUnmounted(() => {
   window.removeEventListener("resize", onResize);
   window.removeEventListener(QUEUE_FLUSHED_EVENT, onQueueFlushed);
+  charGesture?.destroy()
+  combatGesture?.destroy()
+  desktopGesture?.destroy()
+  if (refreshTimer) clearTimeout(refreshTimer);
+  if (queueFlushedTimer) clearTimeout(queueFlushedTimer);
 });
 
 function onQueueFlushed() {
-  const roomId = route.params.roomId as string;
-  characterStore.updateCharacterInStoreById(roomId, characterId);
-  inventoryStore.updateInventoryInStoreById(roomId, characterId);
-  walletStore.updateWallet(roomId, characterId);
-  magicStore.updateSpellBookInStore(roomId, characterId);
-  characterSkillsStore.updateCharacterSkills(roomId, characterId);
-  noteStore.triggerRefresh();
+  // Debounce: очередь может флашить несколько запросов подряд
+  if (queueFlushedTimer) clearTimeout(queueFlushedTimer);
+  queueFlushedTimer = setTimeout(() => {
+    queueFlushedTimer = null;
+    const roomId = route.params.roomId as string;
+    characterStore.updateCharacterInStoreById(roomId, characterId);
+    inventoryStore.updateInventoryInStoreById(roomId, characterId);
+    walletStore.updateWallet(roomId, characterId);
+    magicStore.updateSpellBookInStore(roomId, characterId);
+    characterSkillsStore.updateCharacterSkills(roomId, characterId);
+    noteStore.triggerRefresh();
+  }, 300);
 }
 
 async function detectIpCountryCode(): Promise<void> {
@@ -411,7 +541,7 @@ const openSubheader = () => {
       <div class="subheader-block"
            :class="{
              openSubheader: subheaderStore.subheaderOpened,
-             'has-subtabs': !isDesktop && selectedTab === 'character'
+             'has-subtabs': !isDesktop && (selectedTab === 'character' || selectedTab === 'combat')
            }">
         <PlayerViewSubheader v-if="asyncDone" @speed-selected="openEditSpeedModal"
                              @armory-class-selected="openEditArmoryClassModal"
@@ -427,10 +557,22 @@ const openSubheader = () => {
             :key="sub"
             class="char-subtab-btn"
             :class="{ active: characterSubTab === sub }"
-            @click="characterSubTab = sub"
+            @click="setCharSubTab(sub)"
           >
             <ion-icon :icon="CHAR_SUB_META[sub].icon"/>
             <span>{{ CHAR_SUB_META[sub].label }}</span>
+          </button>
+        </div>
+        <div v-if="!isDesktop && selectedTab === 'combat'" class="char-subtab-bar">
+          <button
+            v-for="sub in COMBAT_SUB_TABS"
+            :key="sub"
+            class="char-subtab-btn"
+            :class="{ active: combatSubTab === sub }"
+            @click="setCombatSubTab(sub)"
+          >
+            <ion-icon :icon="COMBAT_SUB_META[sub].icon"/>
+            <span>{{ COMBAT_SUB_META[sub].label }}</span>
           </button>
         </div>
       </div>
@@ -454,43 +596,52 @@ const openSubheader = () => {
                      color="dark"
                      direction="y"
                      :scroll-x="false">
-          <div v-if="selectedTab === 'character'" slot="fixed" class="desktop-char-subtabs">
-            <button
-              v-for="sub in CHAR_SUB_TABS"
-              :key="sub"
-              class="char-subtab-btn"
-              :class="{ active: characterSubTab === sub }"
-              @click="characterSubTab = sub"
+          <div ref="desktopSwipeRef" class="tab-content desktop-content-inner" :class="{ openSubheader: subheaderStore.subheaderOpened }">
+            <!-- subtab bar sticky для character -->
+            <div v-if="selectedTab === 'character'" class="desktop-subtab-sticky">
+              <button
+                v-for="sub in CHAR_SUB_TABS"
+                :key="sub"
+                class="char-subtab-btn"
+                :class="{ active: characterSubTab === sub }"
+                @click="setCharSubTab(sub)"
+              >
+                <ion-icon :icon="CHAR_SUB_META[sub].icon"/>
+                <span>{{ CHAR_SUB_META[sub].label }}</span>
+              </button>
+            </div>
+            <!-- subtab bar sticky для combat -->
+            <div v-else-if="selectedTab === 'combat'" class="desktop-subtab-sticky">
+              <button
+                v-for="sub in COMBAT_SUB_TABS"
+                :key="sub"
+                class="char-subtab-btn"
+                :class="{ active: combatSubTab === sub }"
+                @click="setCombatSubTab(sub)"
+              >
+                <ion-icon :icon="COMBAT_SUB_META[sub].icon"/>
+                <span>{{ COMBAT_SUB_META[sub].label }}</span>
+              </button>
+            </div>
+            <!-- заголовок для остальных вкладок -->
+            <h2 v-else class="desktop-tab-title">{{ selectedTabTitle }}</h2>
+
+            <!-- контент с анимацией для подвкладок -->
+            <Transition
+              :name="selectedTab === 'character' ? charTransition : selectedTab === 'combat' ? combatTransition : 'slide-left'"
+              mode="out-in"
             >
-              <ion-icon :icon="CHAR_SUB_META[sub].icon"/>
-              <span>{{ CHAR_SUB_META[sub].label }}</span>
-            </button>
-          </div>
-          <div v-else class="desktop-content-title">
-            <h2>{{ selectedTabTitle }}</h2>
-          </div>
-          <div class="tab-content desktop-content-inner" :class="{ openSubheader: subheaderStore.subheaderOpened, 'with-subtabs': selectedTab === 'character' }">
-            <AbilitiesView v-if="asyncDone && selectedTab === 'character' && characterSubTab === 'abilities'" @ability-selected="openEditAbilityModal"
-                           @skill-selected="openEditSkillModal"/>
-            <AttacksAndSkillsView v-if="asyncDone && selectedTab === 'attacks'" @ability-selected="openEditAbilityModal"/>
-            <Suspense>
-              <PersonalityView v-if="asyncDone && selectedTab === 'character' && characterSubTab === 'bio'"/>
-            </Suspense>
-            <Suspense>
-              <TraitsView v-if="asyncDone && selectedTab === 'character' && characterSubTab === 'traits'"/>
-            </Suspense>
-            <Suspense>
-              <InventoryView v-if="asyncDone && selectedTab === 'inventory'"/>
-            </Suspense>
-            <Suspense>
-              <NotesView v-if="asyncDone && selectedTab === 'notes'"/>
-            </Suspense>
-            <Suspense>
-              <MagicView v-if="asyncDone && selectedTab === 'magic'"/>
-            </Suspense>
-            <Suspense>
-              <CompanionsView v-if="asyncDone && selectedTab === 'companions'"/>
-            </Suspense>
+              <div :key="selectedTab === 'character' ? characterSubTab : selectedTab === 'combat' ? combatSubTab : selectedTab" class="subtab-page">
+                <AbilitiesView v-if="asyncDone && selectedTab === 'character' && characterSubTab === 'abilities'" @ability-selected="openEditAbilityModal" @skill-selected="openEditSkillModal"/>
+                <AttacksAndSkillsView v-if="asyncDone && selectedTab === 'combat' && combatSubTab === 'attacks'" @ability-selected="openEditAbilityModal"/>
+                <Suspense><PersonalityView v-if="asyncDone && selectedTab === 'character' && characterSubTab === 'bio'"/></Suspense>
+                <Suspense><TraitsView v-if="asyncDone && selectedTab === 'character' && characterSubTab === 'traits'"/></Suspense>
+                <Suspense><MagicView v-if="asyncDone && selectedTab === 'combat' && combatSubTab === 'magic'"/></Suspense>
+                <Suspense><InventoryView v-if="asyncDone && selectedTab === 'inventory'"/></Suspense>
+                <Suspense><NotesView v-if="asyncDone && selectedTab === 'notes'"/></Suspense>
+                <Suspense><CompanionsView v-if="asyncDone && selectedTab === 'companions'"/></Suspense>
+              </div>
+            </Transition>
           </div>
         </ion-content>
       </section>
@@ -502,27 +653,32 @@ const openSubheader = () => {
                      color="dark"
                      direction="y"
                      :scroll-x="false">
-          <div class="tab-content character" :class="{ openSubheader: subheaderStore.subheaderOpened }">
-            <AbilitiesView v-if="asyncDone && characterSubTab === 'abilities'"
-                           @ability-selected="openEditAbilityModal"
-                           @skill-selected="openEditSkillModal"/>
-            <Suspense>
-              <PersonalityView v-if="asyncDone && characterSubTab === 'bio'"/>
-            </Suspense>
-            <Suspense>
-              <TraitsView v-if="asyncDone && characterSubTab === 'traits'"/>
-            </Suspense>
+          <div ref="charSwipeRef" class="tab-content character subtab-host" :class="{ openSubheader: subheaderStore.subheaderOpened }">
+            <Transition :name="charTransition" mode="out-in">
+              <div :key="characterSubTab" class="subtab-page">
+                <AbilitiesView v-if="asyncDone && characterSubTab === 'abilities'"
+                               @ability-selected="openEditAbilityModal"
+                               @skill-selected="openEditSkillModal"/>
+                <Suspense><PersonalityView v-if="asyncDone && characterSubTab === 'bio'"/></Suspense>
+                <Suspense><TraitsView v-if="asyncDone && characterSubTab === 'traits'"/></Suspense>
+              </div>
+            </Transition>
           </div>
         </ion-content>
       </ion-tab>
-      <ion-tab tab="attacks">
+      <ion-tab tab="combat">
         <ion-content class="ion-padding"
                      :fullscreen="true"
                      color="dark"
                      direction="y"
                      :scroll-x="false">
-          <div class="tab-content attacks" :class="{ openSubheader: subheaderStore.subheaderOpened }">
-            <AttacksAndSkillsView v-if="asyncDone" @ability-selected="openEditAbilityModal"/>
+          <div ref="combatSwipeRef" class="tab-content combat subtab-host" :class="{ openSubheader: subheaderStore.subheaderOpened }">
+            <Transition :name="combatTransition" mode="out-in">
+              <div :key="combatSubTab" class="subtab-page">
+                <AttacksAndSkillsView v-if="asyncDone && combatSubTab === 'attacks'" @ability-selected="openEditAbilityModal"/>
+                <Suspense><MagicView v-if="asyncDone && combatSubTab === 'magic'"/></Suspense>
+              </div>
+            </Transition>
           </div>
         </ion-content>
       </ion-tab>
@@ -548,19 +704,6 @@ const openSubheader = () => {
           <div class="tab-content notes" :class="{ openSubheader: subheaderStore.subheaderOpened }">
             <Suspense>
               <NotesView v-if="asyncDone"/>
-            </Suspense>
-          </div>
-        </ion-content>
-      </ion-tab>
-      <ion-tab tab="magic">
-        <ion-content class="ion-padding"
-                     :fullscreen="true"
-                     color="dark"
-                     direction="y"
-                     :scroll-x="false">
-          <div class="tab-content magic" :class="{ openSubheader: subheaderStore.subheaderOpened }">
-            <Suspense>
-              <MagicView v-if="asyncDone"/>
             </Suspense>
           </div>
         </ion-content>
@@ -783,27 +926,24 @@ ion-header.character-header {
   background: linear-gradient(160deg, rgba(var(--ion-color-medium-rgb), 0.5) 0%, rgba(var(--ion-color-dark-rgb), 0.55) 100%);
 }
 
-.desktop-char-subtabs {
+.desktop-subtab-sticky {
   display: flex;
   gap: 8px;
-  padding: 8px 16px;
+  padding: 10px 0 14px;
+  border-bottom: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
+  margin-bottom: 16px;
+  position: sticky;
+  top: -16px;
   background: var(--ion-color-dark);
-  border-bottom: 1px solid rgba(var(--ion-color-light-rgb), 0.1);
-  width: 100%;
-  box-sizing: border-box;
   z-index: 10;
 }
 
-.desktop-char-subtabs .char-subtab-btn {
+.desktop-subtab-sticky .char-subtab-btn {
   flex: 0 0 auto;
 }
 
-.desktop-content-title {
-  padding: 12px 20px 0;
-}
-
-.desktop-content-title h2 {
-  margin: 0;
+.desktop-tab-title {
+  margin: 0 0 16px;
   color: var(--ion-color-light);
   font-size: 20px;
   font-weight: 700;
@@ -864,20 +1004,34 @@ ion-tab[tab="character"] {
 
 .desktop-content-inner {
   padding: 16px;
-  transition: margin-top 0.3s ease;
-}
-
-.desktop-content-inner.with-subtabs {
-  padding-top: 72px;
-}
-
-.desktop-content-inner.openSubheader {
-  margin-top: -60px;
 }
 
 ion-page {
   position: relative;
 }
+
+/* ── Subtab slide transitions ─────────────────────────────────────── */
+
+.subtab-host {
+  overflow: hidden;
+}
+
+.subtab-page {
+  width: 100%;
+}
+
+.slide-left-enter-active,
+.slide-left-leave-active,
+.slide-right-enter-active,
+.slide-right-leave-active {
+  transition: transform 0.26s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.26s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, opacity;
+}
+
+.slide-left-enter-from  { transform: translateX(40px);  opacity: 0; }
+.slide-left-leave-to    { transform: translateX(-40px); opacity: 0; }
+.slide-right-enter-from { transform: translateX(-40px); opacity: 0; }
+.slide-right-leave-to   { transform: translateX(40px);  opacity: 0; }
 
 .early-version-stub {
   position: fixed;
@@ -997,36 +1151,28 @@ ion-page {
   background: rgba(255, 255, 255, 0.06);
 }
 
-.abilities.openSubheader,
-.attacks.openSubheader,
-.bio.openSubheader,
-.traits.openSubheader,
 .inventory.openSubheader,
 .notes.openSubheader,
-.magic.openSubheader,
 .companions.openSubheader {
   margin-top: 200px;
 }
 
-.character.openSubheader {
-  margin-top: calc(200px + 60px);
+.character.openSubheader,
+.combat.openSubheader {
+  margin-top: calc(200px + 46px);
 }
 
-.abilities,
-.attacks,
-.bio,
-.traits,
 .inventory,
 .notes,
-.magic,
 .companions {
   margin-top: 95px;
   padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
   transition: margin-top 0.3s ease;
 }
 
-.character {
-  margin-top: calc(95px + 50px);
+.character,
+.combat {
+  margin-top: calc(95px + 46px);
   padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
   transition: margin-top 0.3s ease;
 }
@@ -1073,13 +1219,9 @@ ion-page {
     max-height: 260px;
   }
 
-  .abilities,
-  .attacks,
-  .bio,
-  .traits,
   .inventory,
   .notes,
-  .magic {
+  .companions {
     margin-top: 0;
     transition: margin-top 0.3s ease;
   }
@@ -1088,31 +1230,25 @@ ion-page {
 
 @supports (font: -apple-system-body) {
 
-    .abilities,
-    .attacks,
-    .bio,
-    .traits,
     .inventory,
     .notes,
-    .magic {
+    .companions {
       margin-top: 120px;
     }
 
-    .character {
+    .character,
+    .combat {
       margin-top: calc(120px + 46px);
     }
 
-    .abilities.openSubheader,
-    .attacks.openSubheader,
-    .bio.openSubheader,
-    .traits.openSubheader,
     .inventory.openSubheader,
     .notes.openSubheader,
-    .magic.openSubheader {
+    .companions.openSubheader {
       margin-top: 200px;
     }
 
-    .character.openSubheader {
+    .character.openSubheader,
+    .combat.openSubheader {
       margin-top: calc(200px + 46px);
     }
 

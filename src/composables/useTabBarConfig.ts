@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue'
 
-export const ALL_TABS = ['character', 'attacks', 'inventory', 'notes', 'magic', 'companions'] as const
+export const ALL_TABS = ['character', 'combat', 'inventory', 'notes', 'companions'] as const
 export type TabKey = typeof ALL_TABS[number]
 
 export const MAX_VISIBLE = 6

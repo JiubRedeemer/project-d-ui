@@ -5,8 +5,15 @@ function toWsUrl(httpUrl: string): string {
     return httpUrl.replace(/^http(s?):\/\//, (_, s) => `ws${s}://`) + "/ws";
 }
 
+export type CharacterEventType =
+    | 'character_updated'
+    | 'health_updated'
+    | 'inventory_updated'
+    | 'spellbook_updated'
+    | 'notes_updated';
+
 export interface CharacterUpdatedEvent {
-    type: string;
+    type: CharacterEventType;
     roomId: string;
     characterId: string;
 }

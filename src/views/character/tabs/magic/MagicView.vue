@@ -2,7 +2,7 @@
 import {IonButton, IonIcon, onIonViewDidEnter, toastController, useIonRouter} from "@ionic/vue";
 import {add, addOutline, chevronDownOutline, flashOutline, removeOutline} from "ionicons/icons";
 import {useRoute} from "vue-router";
-import {computed, onMounted, ref} from "vue";
+import {computed, onBeforeUnmount, onMounted, ref} from "vue";
 import {createSpellCellForBook, deleteSpellCell, updateSpellCell, useSpellCell} from "@/api/magicApi";
 import type {ChargesRefillEnum, SpellBookItemDto, SpellCellDto, SpellDto} from "@/components/models/response/MagicApi";
 import SpellInfoModal from "@/views/character/tabs/magic/SpellInfoModal.vue";
@@ -13,6 +13,7 @@ const route = useRoute();
 const ionRouter = useIonRouter();
 const magicStore = useMagicStore();
 
+// Direct store access — убираем лишний computed-враппер, который создаёт лишний уровень зависимостей
 const spellBook = computed(() => magicStore.spellBook);
 const loading = ref(true);
 const error = ref<string | null>(null);
@@ -39,7 +40,15 @@ const spellCellsByLevel = computed<Record<string, SpellCellDto>>(() => {
 });
 
 const visibleSpellCellLevels = computed(() =>
-    spellCellLevels.filter((level) => getCellMaxCount(level) > 0)
+    spellCellLevels.filter((level) => (spellCellsByLevel.value[String(level)]?.maxCount ?? 0) > 0)
+);
+
+// Вычисляем maxCount/currentCount один раз на уровень — не в цикле рендера
+const visibleCellRows = computed(() =>
+    visibleSpellCellLevels.value.map((level) => {
+        const cell = spellCellsByLevel.value[String(level)];
+        return { level, maxCount: cell?.maxCount ?? 0, currentCount: cell?.currentCount ?? 0 };
+    })
 );
 const hasAnySpells = computed(() => (spellBook.value?.spells?.length ?? 0) > 0);
 const isSpellCellHintExpanded = ref(false);
@@ -69,12 +78,18 @@ function getSpellName(spell: SpellDto | undefined): string {
 const preparedSpells = computed(() => {
     const items = spellBook.value?.spells ?? [];
     const prepared = items.filter((item) => item.inUse === true);
-    return [...prepared].sort((a, b) => {
-        const levelA = parseInt(String(a.spell?.level ?? "0"), 10);
-        const levelB = parseInt(String(b.spell?.level ?? "0"), 10);
-        if (levelA !== levelB) return levelA - levelB;
-        return getSpellName(a.spell).localeCompare(getSpellName(b.spell), "ru", { sensitivity: "base" });
+    // Кэшируем имена и уровни до sort чтобы не вычислять их O(n log n) раз
+    type Keyed = { item: typeof prepared[0]; level: number; name: string };
+    const keyed: Keyed[] = prepared.map((item) => ({
+        item,
+        level: parseInt(String(item.spell?.level ?? "0"), 10),
+        name: getSpellName(item.spell),
+    }));
+    keyed.sort((a, b) => {
+        if (a.level !== b.level) return a.level - b.level;
+        return a.name.localeCompare(b.name, "ru", { sensitivity: "base" });
     });
+    return keyed.map((k) => k.item);
 });
 
 function getDetailsLine1(spell: SpellDto | undefined): string {
@@ -370,15 +385,15 @@ function isCrystalExploding(level: number, index: number): boolean {
 function triggerCrystalExplosion(level: number, index: number) {
     if (index <= 0) return;
     const key = getCrystalKey(level, index);
-    explodingCrystalKeys.value = { ...explodingCrystalKeys.value, [key]: true };
 
     const oldTimer = crystalExplosionTimers.get(key);
     if (oldTimer) window.clearTimeout(oldTimer);
 
+    // Мутируем напрямую и вручную триггерим реактивность — без spread всего объекта
+    explodingCrystalKeys.value[key] = true;
+
     const timerId = window.setTimeout(() => {
-        const next = { ...explodingCrystalKeys.value };
-        delete next[key];
-        explodingCrystalKeys.value = next;
+        delete explodingCrystalKeys.value[key];
         crystalExplosionTimers.delete(key);
     }, 480);
     crystalExplosionTimers.set(key, timerId);
@@ -450,7 +465,11 @@ const loadMagicData = async () => {
 };
 
 onMounted(loadMagicData);
-onIonViewDidEnter(loadMagicData);
+
+onBeforeUnmount(() => {
+    crystalExplosionTimers.forEach((id) => window.clearTimeout(id));
+    crystalExplosionTimers.clear();
+});
 </script>
 
 <template>
@@ -468,17 +487,17 @@ onIonViewDidEnter(loadMagicData);
         <div class="spell-cells-grid">
           <div
             class="spell-cell-row"
-            v-for="level in visibleSpellCellLevels"
+            v-for="{ level, maxCount, currentCount } in visibleCellRows"
             :key="level"
           >
             <div class="spell-cell-level">{{ getCellLabel(level) }}</div>
             <div class="spell-cell-dots">
               <span
-                v-for="n in getCellMaxCount(level)"
+                v-for="n in maxCount"
                 :key="n"
                 class="spell-cell-dot"
                 :class="{
-                  filled: n <= getCellCurrentCount(level),
+                  filled: n <= currentCount,
                   exploding: isCrystalExploding(level, n),
                 }"
                 @click="refillOneSpellCell(level)"
