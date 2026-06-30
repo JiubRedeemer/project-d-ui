@@ -8,6 +8,8 @@ import {useCharacterStore} from "@/stores/CharacterStore";
 import {InventoryItem, InventoryItemSkill, ItemSkill} from "@/components/models/response/InventoryResponse";
 import {addOutline, chevronDownOutline, chevronUpOutline, contractOutline, handRightOutline, manOutline, reorderThreeOutline, skullOutline} from "ionicons/icons";
 import {IonButton, IonIcon, IonProgressBar, toastController, useIonRouter} from "@ionic/vue";
+import DiceRollSheet from "@/views/character/tabs/attacksAndSkills/DiceRollSheet.vue";
+import {rollFormula, rollAttack, type DiceRollResult} from "@/composables/useDice";
 import axios from "axios";
 import {useRoute} from "vue-router";
 import EditItemSkillValueModal from "@/views/character/tabs/inventory/EditItemSkillValueModal.vue";
@@ -324,6 +326,13 @@ const editingCombatBonusItem = ref<InventoryItem>();
 const pressHintTimeoutId = ref<number | null>(null);
 const longPressTriggered = ref(false);
 
+// Dice roll sheet
+const diceSheetOpen = ref(false);
+const diceSheetTitle = ref("");
+const diceSheetSubtitle = ref("");
+const diceSheetMode = ref<"attack" | "damage">("attack");
+const diceResult = ref<DiceRollResult | null>(null);
+
 const inventoryItemStore = useInventoryItemStore();
 const ionRouter = useIonRouter();
 
@@ -416,8 +425,8 @@ const onCombatPressStart = (item: InventoryItem, type: "attack" | "damage") => {
   longPressTriggered.value = false;
   pressHintTimeoutId.value = window.setTimeout(() => {
     longPressTriggered.value = true;
-    void showCombatHint(item, type);
-  }, 450);
+    openEditCombatBonusModal(item, type);
+  }, 500);
 };
 
 const onCombatPressEnd = () => {
@@ -429,7 +438,20 @@ const onCombatShortClick = (item: InventoryItem, type: "attack" | "damage") => {
     longPressTriggered.value = false;
     return;
   }
-  openEditCombatBonusModal(item, type);
+  // Tap = roll dice
+  if (type === "attack") {
+    diceSheetMode.value = "attack";
+    diceSheetTitle.value = `${item.item.name.rus} — Атака`;
+    diceSheetSubtitle.value = getAttackHintText(item);
+    diceResult.value = rollAttack(calculateAttack(item));
+  } else {
+    const formula = getDamageText(item);
+    diceSheetMode.value = "damage";
+    diceSheetTitle.value = `${item.item.name.rus} — Урон`;
+    diceSheetSubtitle.value = formula || "";
+    diceResult.value = formula ? rollFormula(formula) : rollFormula("1");
+  }
+  diceSheetOpen.value = true;
 };
 
 const currentCombatBonusValue = computed(() => {
@@ -509,6 +531,8 @@ async function deleteCharacterSkill(id: string) {
 
 <template>
   <div class="inventory-body">
+
+    <!-- Оружие -->
     <div class="collapsible-section">
       <div
         class="section-header-row"
@@ -516,102 +540,77 @@ async function deleteCharacterSkill(id: string) {
         @click="!isEquippedSectionExpanded && (isEquippedSectionExpanded = true)"
       >
         <h1 class="sectionHeader">{{ HEADERS.equipped.rus }}</h1>
-        <ion-button
-          size="small"
-          fill="outline"
-          shape="round"
-          color="transparent"
-          class="section-toggle-button"
-          @click.stop="isEquippedSectionExpanded = !isEquippedSectionExpanded"
-        >
-          <ion-icon slot="icon-only" :icon="isEquippedSectionExpanded ? chevronUpOutline : chevronDownOutline" color="primary"></ion-icon>
+        <ion-button size="small" fill="outline" shape="round" color="transparent" class="section-toggle-button"
+          @click.stop="isEquippedSectionExpanded = !isEquippedSectionExpanded">
+          <ion-icon slot="icon-only" :icon="isEquippedSectionExpanded ? chevronUpOutline : chevronDownOutline" color="primary"/>
         </ion-button>
       </div>
       <div v-show="isEquippedSectionExpanded">
-    <div v-if="!hasEquippedWeapons" class="hint-card">
-      <div class="hint-title">Атаки оружием</div>
-      <div class="hint-text">
-        Для отображения атак сначала снарядите оружие в инвентаре кнопкой:
-      </div>
-      <div class="hint-equip-button-wrap">
-        <ion-button size="small" shape="round" class="hint-equip-button" fill="solid" disabled>
-          <ion-icon slot="icon-only" :icon="manOutline"></ion-icon>
-        </ion-button>
-      </div>
-      <div class="hint-tab-location">
-        Где найти инвентарь:
-        <span class="tab-button-inventory" aria-hidden="true">
-          <ion-icon :icon="inventoryTabIcon"></ion-icon>
-        </span>
-      </div>
-    </div>
-    <div class="equipped" v-if="hasEquippedWeapons">
-      <div class="section"
-           v-for="(item, idx) in equippedDrag.ordered" :key="item.id"
-           :data-drag-list="equippedDrag.listId" :data-drag-index="idx"
-           :class="{ 'is-dragging': equippedDrag.dragFromIndex === idx, 'is-drag-over': equippedDrag.dragOverIndex === idx && equippedDrag.dragFromIndex !== idx }">
-        <div class="drag-handle drag-handle--corner"
-             @pointerdown="equippedDrag.onHandlePointerDown($event, idx)"
-             @pointermove="equippedDrag.onHandlePointerMove($event)"
-             @pointerup="equippedDrag.onHandlePointerUp($event)"
-             @pointercancel="equippedDrag.onHandlePointerCancel($event)">
-          <ion-icon :icon="reorderThreeOutline"/>
+        <div v-if="!hasEquippedWeapons" class="hint-card">
+          <div class="hint-title">Атаки оружием</div>
+          <div class="hint-text">Для отображения атак сначала снарядите оружие в инвентаре кнопкой:</div>
+          <div class="hint-equip-button-wrap">
+            <ion-button size="small" shape="round" class="hint-equip-button" fill="solid" disabled>
+              <ion-icon slot="icon-only" :icon="manOutline"/>
+            </ion-button>
+          </div>
+          <div class="hint-tab-location">
+            Где найти инвентарь:
+            <span class="tab-button-inventory" aria-hidden="true"><ion-icon :icon="inventoryTabIcon"/></span>
+          </div>
         </div>
-        <div class="image-block" @click="openInventoryItem(item)">
-          <img width="75px" height="75px" class="item-image" :class="getRarityClass(item.item.rarity)"
-               :src="getItemImageUrl(item.item.imgUrl)" :alt="item.item.name.rus"
-               onerror="this.onerror=null; this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"/>
-        </div>
-        <div class="info-block">
-          <div class="header-block">
-            <div class="item-name">
-              <span>
+        <div class="equipped" v-if="hasEquippedWeapons">
+          <div class="weapon-card"
+               v-for="(item, idx) in equippedDrag.ordered" :key="item.id"
+               :data-drag-list="equippedDrag.listId" :data-drag-index="idx"
+               :class="{ 'is-dragging': equippedDrag.dragFromIndex === idx, 'is-drag-over': equippedDrag.dragOverIndex === idx && equippedDrag.dragFromIndex !== idx }">
+            <div class="weapon-drag-handle"
+                 @pointerdown="equippedDrag.onHandlePointerDown($event, idx)"
+                 @pointermove="equippedDrag.onHandlePointerMove($event)"
+                 @pointerup="equippedDrag.onHandlePointerUp($event)"
+                 @pointercancel="equippedDrag.onHandlePointerCancel($event)">
+              <ion-icon :icon="reorderThreeOutline"/>
+            </div>
+            <img class="weapon-image" :class="getRarityClass(item.item.rarity)"
+                 width="70" height="70"
+                 :src="getItemImageUrl(item.item.imgUrl)" :alt="item.item.name.rus"
+                 onerror="this.onerror=null;this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"
+                 @click="openInventoryItem(item)"/>
+            <div class="weapon-body">
+              <div class="weapon-name">
                 {{ item.item.name.rus }}
-              <span
-                  v-if="characterStore.character.abilities.find(ability => ability.code === 'STR')?.value < Number(item.item.stats.requirement)"
-                  style="color: red;">*</span>
-            </span>
-            </div>
-            <div
-              class="attack"
-              @click="onCombatShortClick(item, 'attack')"
-              @pointerdown="onCombatPressStart(item, 'attack')"
-              @pointerup="onCombatPressEnd()"
-              @pointercancel="onCombatPressEnd()"
-              @pointerleave="onCombatPressEnd()"
-            >
-              <div class="attack-value">{{ calculateAttack(item) }}</div>
-              <div class="attack-icon">
-                <ion-icon :icon="contractOutline" color="primary" slot="icon-only"/>
+                <span v-if="characterStore.character.abilities.find(a => a.code === 'STR')?.value < Number(item.item.stats.requirement)" class="weapon-req-warning">*</span>
               </div>
-            </div>
-          </div>
-          <div class="item-footer-block">
-            <div class="stats-block">
-              <div class="item-stats" v-for="(stat, index) in getItemStats(item)" :key="index">
-                {{ stat }}
+              <div class="weapon-chips" v-if="getItemStats(item).length">
+                <span class="weapon-chip" v-for="(stat, i) in getItemStats(item)" :key="i">{{ stat }}</span>
               </div>
-              <div
-                class="damage"
-                @click="onCombatShortClick(item, 'damage')"
-                @pointerdown="onCombatPressStart(item, 'damage')"
-                @pointerup="onCombatPressEnd()"
-                @pointercancel="onCombatPressEnd()"
-                @pointerleave="onCombatPressEnd()"
-              >
-                <div class="damage-icon">
-                  <ion-icon :icon="skullOutline" color="primary" slot="icon-only"/>
+              <div class="weapon-actions">
+                <div class="weapon-action weapon-action--attack"
+                     @click="onCombatShortClick(item, 'attack')"
+                     @pointerdown="onCombatPressStart(item, 'attack')"
+                     @pointerup="onCombatPressEnd()"
+                     @pointercancel="onCombatPressEnd()"
+                     @pointerleave="onCombatPressEnd()">
+                  <div class="weapon-action__label"><ion-icon :icon="contractOutline"/> Атака</div>
+                  <div class="weapon-action__value">{{ calculateAttack(item) >= 0 ? '+' : '' }}{{ calculateAttack(item) }}</div>
                 </div>
-                <div class="damage-value">{{ getDamageText(item) || '—' }}</div>
+                <div class="weapon-action weapon-action--damage"
+                     @click="onCombatShortClick(item, 'damage')"
+                     @pointerdown="onCombatPressStart(item, 'damage')"
+                     @pointerup="onCombatPressEnd()"
+                     @pointercancel="onCombatPressEnd()"
+                     @pointerleave="onCombatPressEnd()">
+                  <div class="weapon-action__label"><ion-icon :icon="skullOutline"/> Урон</div>
+                  <div class="weapon-action__value weapon-action__value--damage">{{ getDamageText(item) || '—' }}</div>
+                </div>
               </div>
             </div>
-
           </div>
         </div>
       </div>
     </div>
-      </div>
-    </div>
+
+    <!-- Навыки от снаряжения -->
     <div class="collapsible-section">
       <div
         class="section-header-row"
@@ -619,92 +618,63 @@ async function deleteCharacterSkill(id: string) {
         @click="!isItemSkillsSectionExpanded && (isItemSkillsSectionExpanded = true)"
       >
         <h1 class="sectionHeader">{{ HEADERS.item_skills.rus }}</h1>
-        <ion-button
-          size="small"
-          fill="outline"
-          shape="round"
-          color="transparent"
-          class="section-toggle-button"
-          @click.stop="isItemSkillsSectionExpanded = !isItemSkillsSectionExpanded"
-        >
-          <ion-icon slot="icon-only" :icon="isItemSkillsSectionExpanded ? chevronUpOutline : chevronDownOutline" color="primary"></ion-icon>
+        <ion-button size="small" fill="outline" shape="round" color="transparent" class="section-toggle-button"
+          @click.stop="isItemSkillsSectionExpanded = !isItemSkillsSectionExpanded">
+          <ion-icon slot="icon-only" :icon="isItemSkillsSectionExpanded ? chevronUpOutline : chevronDownOutline" color="primary"/>
         </ion-button>
       </div>
       <div v-show="isItemSkillsSectionExpanded">
-    <div v-if="!hasItemSkills" class="hint-card">
-      <div class="hint-title">Навыки от снаряжения</div>
-      <div class="hint-text">
-        Они появятся здесь, когда вы снарядите предметы из инвентаря кнопкой:
-      </div>
-      <div class="hint-equip-button-wrap">
-        <ion-button size="small" shape="round" class="hint-equip-button" fill="solid" disabled>
-          <ion-icon slot="icon-only" :icon="manOutline"></ion-icon>
-        </ion-button>
-      </div>
-      <div class="hint-text hint-text--subtle">
-        Эта кнопка находится на карточке предмета в инвентаре.
-      </div>
-      <div class="hint-tab-location">
-        Где найти инвентарь:
-        <span class="tab-button-inventory" aria-hidden="true">
-          <ion-icon :icon="inventoryTabIcon"></ion-icon>
-        </span>
-      </div>
-    </div>
-    <div class="skills" v-if="hasItemSkills">
-      <div class="section-skill"
-           v-for="(skill, idx) in skillsDrag.ordered" :key="skill.id"
-           :data-drag-list="skillsDrag.listId" :data-drag-index="idx"
-           :class="{ 'is-dragging': skillsDrag.dragFromIndex === idx, 'is-drag-over': skillsDrag.dragOverIndex === idx && skillsDrag.dragFromIndex !== idx }">
-        <div class="drag-handle drag-handle--corner"
-             @pointerdown="skillsDrag.onHandlePointerDown($event, idx)"
-             @pointermove="skillsDrag.onHandlePointerMove($event)"
-             @pointerup="skillsDrag.onHandlePointerUp($event)"
-             @pointercancel="skillsDrag.onHandlePointerCancel($event)">
-          <ion-icon :icon="reorderThreeOutline"/>
-        </div>
-        <div class="image-block">
-          <img width="75px" height="75px" class="item-image"
-               :src="getSkillImageUrl(skill.skill.imgUrl)"
-               :alt="skill.skill.name.rus" onerror="this.onerror=null;
-               this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"/>
-        </div>
-        <div class="info-block">
-          <div class="item-name">
-              <span>
-                {{ skill.skill.name.rus }}
-            </span>
+        <div v-if="!hasItemSkills" class="hint-card">
+          <div class="hint-title">Навыки от снаряжения</div>
+          <div class="hint-text">Они появятся здесь, когда вы снарядите предметы из инвентаря кнопкой:</div>
+          <div class="hint-equip-button-wrap">
+            <ion-button size="small" shape="round" class="hint-equip-button" fill="solid" disabled>
+              <ion-icon slot="icon-only" :icon="manOutline"/>
+            </ion-button>
           </div>
-          <div class="item-footer-block">
-            <div class="stats-block">
-              <div class="item-stats" @click="openEditItemSkillModal(false, skill.skill)">
-                <div class="description">
-                  {{ skill.skill.shortDescription }}
-                </div>
-                <div class="charges" v-if="skill.skill.charges">
-                  <div class="charges-title">Зарядов:</div>
-                  <div class="charges-value">
-                    <ion-progress-bar
-                        :color="skill.currentCharges==1 ? 'warning' : skill.currentCharges==0 ? 'danger' : 'primary'"
-                        :value="skill.currentCharges / skill.skill.charges"></ion-progress-bar>
-                  </div>
-                  <div class="charges-text-value">{{ skill.currentCharges }} / {{ skill.skill.charges }}</div>
-                </div>
+          <div class="hint-text hint-text--subtle">Эта кнопка находится на карточке предмета в инвентаре.</div>
+          <div class="hint-tab-location">
+            Где найти инвентарь:
+            <span class="tab-button-inventory" aria-hidden="true"><ion-icon :icon="inventoryTabIcon"/></span>
+          </div>
+        </div>
+        <div class="skills" v-if="hasItemSkills">
+          <div class="skill-card"
+               v-for="(skill, idx) in skillsDrag.ordered" :key="skill.id"
+               :data-drag-list="skillsDrag.listId" :data-drag-index="idx"
+               :class="{ 'is-dragging': skillsDrag.dragFromIndex === idx, 'is-drag-over': skillsDrag.dragOverIndex === idx && skillsDrag.dragFromIndex !== idx }">
+            <div class="skill-drag-handle"
+                 @pointerdown="skillsDrag.onHandlePointerDown($event, idx)"
+                 @pointermove="skillsDrag.onHandlePointerMove($event)"
+                 @pointerup="skillsDrag.onHandlePointerUp($event)"
+                 @pointercancel="skillsDrag.onHandlePointerCancel($event)">
+              <ion-icon :icon="reorderThreeOutline"/>
+            </div>
+            <img class="skill-image" width="46" height="46"
+                 :src="getSkillImageUrl(skill.skill.imgUrl)" :alt="skill.skill.name.rus"
+                 onerror="this.onerror=null;this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"/>
+            <div class="skill-body" @click="openEditItemSkillModal(false, skill.skill)">
+              <div class="skill-name">{{ skill.skill.name.rus }}</div>
+              <div class="skill-desc" v-if="skill.skill.shortDescription && skill.skill.shortDescription !== skill.skill.name.rus">
+                {{ skill.skill.shortDescription }}
+              </div>
+              <div class="skill-charges" v-if="skill.skill.charges">
+                <ion-progress-bar
+                  :color="skill.currentCharges === 0 ? 'danger' : skill.currentCharges === 1 ? 'warning' : 'primary'"
+                  :value="Math.min(1, skill.currentCharges / skill.skill.charges)"/>
+                <span class="skill-charges-text">{{ skill.currentCharges }} / {{ skill.skill.charges }}</span>
               </div>
             </div>
-            <div class="buttons-block">
-              <div class="use">
-                <ion-button size="default" shape="round" @click="useSkill(skill)">
-                  <ion-icon slot="icon-only" :icon="handRightOutline"></ion-icon>
-                </ion-button>
-              </div>
-            </div>
+            <ion-button class="skill-use-btn" :class="{ 'skill-use-btn--depleted': skill.currentCharges <= 0 }"
+                        size="small" shape="round" @click.stop="useSkill(skill)">
+              <ion-icon slot="icon-only" :icon="handRightOutline"/>
+            </ion-button>
           </div>
         </div>
       </div>
     </div>
-      </div>
-    </div>
+
+    <!-- Навыки персонажа -->
     <div class="collapsible-section">
       <div
         class="section-header-row"
@@ -712,83 +682,59 @@ async function deleteCharacterSkill(id: string) {
         @click="!isCharacterSkillsSectionExpanded && (isCharacterSkillsSectionExpanded = true)"
       >
         <h1 class="sectionHeader">{{ HEADERS.character_skills.rus }}</h1>
-        <ion-button
-          size="small"
-          fill="outline"
-          shape="round"
-          color="transparent"
-          class="section-toggle-button"
-          @click.stop="isCharacterSkillsSectionExpanded = !isCharacterSkillsSectionExpanded"
-        >
-          <ion-icon slot="icon-only" :icon="isCharacterSkillsSectionExpanded ? chevronUpOutline : chevronDownOutline" color="primary"></ion-icon>
+        <ion-button size="small" fill="outline" shape="round" color="transparent" class="section-toggle-button"
+          @click.stop="isCharacterSkillsSectionExpanded = !isCharacterSkillsSectionExpanded">
+          <ion-icon slot="icon-only" :icon="isCharacterSkillsSectionExpanded ? chevronUpOutline : chevronDownOutline" color="primary"/>
         </ion-button>
       </div>
       <div v-show="isCharacterSkillsSectionExpanded">
-    <div v-if="!hasCharacterSkills" class="hint-card hint-card--cta">
-      <div class="hint-title">Навыки персонажа</div>
-      <div class="hint-text">
-        Добавьте новый навык по кнопке "+" внизу экрана.
-      </div>
-      <div class="hint-arrow" aria-hidden="true">↓</div>
-    </div>
-    <div class="skills" v-if="hasCharacterSkills">
-      <div class="section-skill"
-           v-for="(skill, idx) in charSkillsDrag.ordered" :key="skill.id"
-           :data-drag-list="charSkillsDrag.listId" :data-drag-index="idx"
-           :class="{ 'is-dragging': charSkillsDrag.dragFromIndex === idx, 'is-drag-over': charSkillsDrag.dragOverIndex === idx && charSkillsDrag.dragFromIndex !== idx }">
-        <div class="drag-handle drag-handle--corner"
-             @pointerdown="charSkillsDrag.onHandlePointerDown($event, idx)"
-             @pointermove="charSkillsDrag.onHandlePointerMove($event)"
-             @pointerup="charSkillsDrag.onHandlePointerUp($event)"
-             @pointercancel="charSkillsDrag.onHandlePointerCancel($event)">
-          <ion-icon :icon="reorderThreeOutline"/>
+        <div v-if="!hasCharacterSkills" class="hint-card hint-card--cta">
+          <div class="hint-title">Навыки персонажа</div>
+          <div class="hint-text">Добавьте новый навык по кнопке "+" внизу экрана.</div>
+          <div class="hint-arrow" aria-hidden="true">↓</div>
         </div>
-        <div class="image-block">
-          <img width="75px" height="75px" class="item-image"
-               :src="getSkillImageUrl(skill.imgUrl)"
-               :alt="skill.name"/>
-        </div>
-        <div class="info-block">
-          <div class="item-name">
-              <span>
-                {{ skill.name }}
-            </span>
-          </div>
-          <div class="item-footer-block">
-            <div class="stats-block">
-              <div class="item-stats" @click="openEditCharacterSkillModal(false, skill)">
-                <div class="description">
-                  {{ skill.shortDescription }}
-                </div>
-                <div class="charges" v-if="skill.charges">
-                  <div class="charges-title">Зарядов:</div>
-                  <div class="charges-value">
-                    <ion-progress-bar
-                        :color="skill.currentCharges==1 ? 'warning' : skill.currentCharges==0 ? 'danger' : 'primary'"
-                        :value="skill.currentCharges / skill.charges"></ion-progress-bar>
-                  </div>
-                  <div class="charges-text-value">{{ skill.currentCharges }} / {{ skill.charges }}</div>
-                </div>
+        <div class="skills" v-if="hasCharacterSkills">
+          <div class="skill-card"
+               v-for="(skill, idx) in charSkillsDrag.ordered" :key="skill.id"
+               :data-drag-list="charSkillsDrag.listId" :data-drag-index="idx"
+               :class="{ 'is-dragging': charSkillsDrag.dragFromIndex === idx, 'is-drag-over': charSkillsDrag.dragOverIndex === idx && charSkillsDrag.dragFromIndex !== idx }">
+            <div class="skill-drag-handle"
+                 @pointerdown="charSkillsDrag.onHandlePointerDown($event, idx)"
+                 @pointermove="charSkillsDrag.onHandlePointerMove($event)"
+                 @pointerup="charSkillsDrag.onHandlePointerUp($event)"
+                 @pointercancel="charSkillsDrag.onHandlePointerCancel($event)">
+              <ion-icon :icon="reorderThreeOutline"/>
+            </div>
+            <img class="skill-image" width="46" height="46"
+                 :src="getSkillImageUrl(skill.imgUrl)" :alt="skill.name"
+                 onerror="this.onerror=null;this.src='https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png'"/>
+            <div class="skill-body" @click="openEditCharacterSkillModal(false, skill)">
+              <div class="skill-name">{{ skill.name }}</div>
+              <div class="skill-desc" v-if="skill.shortDescription && skill.shortDescription !== skill.name">
+                {{ skill.shortDescription }}
+              </div>
+              <div class="skill-charges" v-if="skill.charges">
+                <ion-progress-bar
+                  :color="skill.currentCharges === 0 ? 'danger' : skill.currentCharges === 1 ? 'warning' : 'primary'"
+                  :value="Math.min(1, skill.currentCharges / skill.charges)"/>
+                <span class="skill-charges-text">{{ skill.currentCharges }} / {{ skill.charges }}</span>
               </div>
             </div>
-            <div class="buttons-block">
-              <div class="use">
-                <ion-button size="default" shape="round" @click="useSkill(skill)">
-                  <ion-icon slot="icon-only" :icon="handRightOutline"></ion-icon>
-                </ion-button>
-              </div>
-            </div>
+            <ion-button class="skill-use-btn" :class="{ 'skill-use-btn--depleted': skill.currentCharges <= 0 }"
+                        size="small" shape="round" @click.stop="useSkill(skill)">
+              <ion-icon slot="icon-only" :icon="handRightOutline"/>
+            </ion-button>
           </div>
         </div>
       </div>
     </div>
-      </div>
-    </div>
-  <div class="security-block" style="height: 50px;"></div>
+
+    <div style="height: 50px;"></div>
   </div>
+
   <div class="add-new-button">
     <ion-button color="secondary" size="large" shape="round" @click="openEditCharacterSkillModal(true, undefined)">
-      <ion-icon slot="icon-only" :icon="addOutline"></ion-icon>
+      <ion-icon slot="icon-only" :icon="addOutline"/>
     </ion-button>
   </div>
 
@@ -805,8 +751,8 @@ async function deleteCharacterSkill(id: string) {
                                 :character-skill="editingCharacterSkill"
                                 :is-read-only="false"
                                 @closeEditCharacterSkillModal="closeEditCharacterSkillModal"
-                                @saveCharacterSkill="(characterSkill : CharacterSkill) => saveCharacterSkill(characterSkill)"
-                                @deleteCharacterSkill="(skillId : string) => deleteCharacterSkill(skillId)"/>
+                                @saveCharacterSkill="(characterSkill: CharacterSkill) => saveCharacterSkill(characterSkill)"
+                                @deleteCharacterSkill="(skillId: string) => deleteCharacterSkill(skillId)"/>
 
   <EditItemCombatBonusModal
       :isOpen="showEditCombatBonusModal"
@@ -815,6 +761,15 @@ async function deleteCharacterSkill(id: string) {
       @close="closeEditCombatBonusModal"
       @save="(value: number) => saveItemCombatBonus(value)"
   />
+
+  <DiceRollSheet
+      :isOpen="diceSheetOpen"
+      :title="diceSheetTitle"
+      :subtitle="diceSheetSubtitle"
+      :result="diceResult"
+      :mode="diceSheetMode"
+      @close="diceSheetOpen = false"
+  />
 </template>
 
 <style scoped>
@@ -822,11 +777,38 @@ async function deleteCharacterSkill(id: string) {
   padding-bottom: max(60px, calc(52px + env(safe-area-inset-bottom, 0)));
 }
 
-.equipped,
-.skills {
-  margin-bottom: 8px;
+/* ── Collapsible sections ── */
+.collapsible-section { margin-bottom: 4px; }
+
+.section-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+}
+.section-header-row .sectionHeader { flex: 1; margin: 0; min-width: 0; }
+.section-header-row--collapsed { margin-bottom: 2px; }
+
+.section-toggle-button {
+  --padding-start: 6px;
+  --padding-end: 6px;
+  --border-width: 1px;
+  min-height: 30px;
+  flex-shrink: 0;
+}
+.section-toggle-button ion-icon { width: 16px; height: 16px; }
+
+.sectionHeader {
+  color: var(--ion-color-light);
+  font-size: 22px;
+  font-weight: normal;
+  margin-top: 10px;
 }
 
+.equipped, .skills { margin-bottom: 8px; }
+
+/* ── Hint cards ── */
 .hint-card {
   margin: 8px 0 12px;
   padding: 14px 14px 12px;
@@ -838,349 +820,287 @@ async function deleteCharacterSkill(id: string) {
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
   text-align: center;
 }
-
-.hint-card--cta {
-  animation: hintPulse 2.2s ease-in-out infinite;
-}
-
-.hint-title {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--ion-color-light);
-}
-
-.hint-text {
-  margin-top: 6px;
-  font-size: 13px;
-  line-height: 1.35;
-  color: var(--ion-color-light);
-  opacity: 0.96;
-}
-
-.hint-text--subtle {
-  margin-top: 4px;
-  font-size: 12px;
-  opacity: 0.8;
-}
-
-.hint-equip-button-wrap {
-  margin-top: 8px;
-  display: flex;
-  justify-content: center;
-}
-
-.hint-equip-button {
-  --opacity: 1;
-  --border-radius: 999px;
-}
-
-.hint-equip-button[disabled] {
-  opacity: 1;
-}
-
+.hint-card--cta { animation: hintPulse 2.2s ease-in-out infinite; }
+.hint-title { font-size: 15px; font-weight: 700; color: var(--ion-color-light); }
+.hint-text { margin-top: 6px; font-size: 13px; line-height: 1.35; color: var(--ion-color-light); opacity: 0.96; }
+.hint-text--subtle { margin-top: 4px; font-size: 12px; opacity: 0.8; }
+.hint-equip-button-wrap { margin-top: 8px; display: flex; justify-content: center; }
+.hint-equip-button { --opacity: 1; --border-radius: 999px; }
+.hint-equip-button[disabled] { opacity: 1; }
 .hint-tab-location {
-  margin-top: 6px;
-  font-size: 12px;
-  color: var(--ion-color-light);
-  opacity: 0.88;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
+  margin-top: 6px; font-size: 12px; color: var(--ion-color-light); opacity: 0.88;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
 }
-
 .tab-button-inventory {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  width: 30px; height: 30px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
   background: rgba(var(--ion-color-dark-rgb), 0.28);
   border: 1px solid rgba(var(--ion-color-light-rgb), 0.18);
 }
-
-.tab-button-inventory ion-icon {
-  width: 18px;
-  height: 18px;
-}
-
+.tab-button-inventory ion-icon { width: 18px; height: 18px; }
 .hint-arrow {
-  margin-top: 8px;
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 1;
+  margin-top: 8px; font-size: 22px; font-weight: 700; line-height: 1;
   color: rgba(var(--ion-color-primary-rgb), 0.95);
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
   animation: hintArrowBounce 1.2s ease-in-out infinite;
 }
-
 @keyframes hintArrowBounce {
-  0%, 100% {
-    transform: translateY(0);
-    opacity: 0.85;
-  }
-  50% {
-    transform: translateY(6px);
-    opacity: 1;
-  }
+  0%, 100% { transform: translateY(0); opacity: 0.85; }
+  50% { transform: translateY(6px); opacity: 1; }
 }
-
 @keyframes hintPulse {
-  0%, 100% {
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
-    border-color: rgba(var(--ion-color-primary-rgb), 0.28);
-  }
-  50% {
-    box-shadow: 0 10px 24px rgba(var(--ion-color-primary-rgb), 0.28);
-    border-color: rgba(var(--ion-color-primary-rgb), 0.5);
-  }
+  0%, 100% { box-shadow: 0 8px 20px rgba(0,0,0,.22); border-color: rgba(var(--ion-color-primary-rgb), 0.28); }
+  50% { box-shadow: 0 10px 24px rgba(var(--ion-color-primary-rgb), 0.28); border-color: rgba(var(--ion-color-primary-rgb), 0.5); }
 }
 
-.stats-block {
+/* ══════════════════════════════
+   WEAPON CARD
+   ══════════════════════════════ */
+.weapon-card {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 10px;
+  background: var(--ion-color-medium);
+  border-radius: 20px;
+  padding: 10px 12px 10px 12px;
+  margin-bottom: 10px;
+  position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: opacity 0.15s ease, box-shadow 0.15s ease;
+}
+.weapon-card.is-dragging { opacity: 0.35; box-shadow: none; }
+.weapon-card.is-drag-over { box-shadow: 0 0 0 2px var(--ion-color-primary), 0 8px 20px rgba(0,0,0,.35); }
+
+.weapon-drag-handle {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: rgba(var(--ion-color-light-rgb), 0.35);
+  font-size: 22px;
+  cursor: grab;
+  touch-action: none;
+  transition: color 0.15s ease;
+  z-index: 1;
+}
+.weapon-drag-handle:hover { color: rgba(var(--ion-color-light-rgb), 0.7); }
+
+.weapon-image {
+  width: 70px;
+  height: 70px;
+  border-radius: 16px;
+  border: 2px solid transparent;
+  flex-shrink: 0;
+  object-fit: cover;
+  cursor: pointer;
+  align-self: center;
+}
+
+.weapon-body {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-width: 0;
+  gap: 6px;
 }
 
-.header-block {
+.weapon-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ion-color-light);
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.weapon-req-warning { color: var(--ion-color-danger); margin-left: 2px; }
+
+.weapon-chips {
   display: flex;
-  justify-content: space-between;
-  padding-right: 5px;
-  padding-bottom: 0;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.weapon-chip {
+  font-size: 10px;
+  line-height: 1;
+  padding: 3px 7px;
+  border-radius: 99px;
+  background: rgba(var(--ion-color-primary-rgb), 0.18);
+  color: rgba(var(--ion-color-light-rgb), 0.8);
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.3);
+  white-space: nowrap;
 }
 
-.charges {
+.weapon-actions {
   display: flex;
   flex-direction: row;
-  gap: 5px;
+  gap: 8px;
 }
 
-.charges-value {
-  min-width: 100px;
-  width: 120px;
+.weapon-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+.weapon-action:active { filter: brightness(1.2); }
+
+.weapon-action--attack {
+  background: rgba(var(--ion-color-secondary-rgb), 0.25);
+  border: 1px solid rgba(var(--ion-color-secondary-rgb), 0.5);
+}
+.weapon-action--damage {
+  background: rgba(var(--ion-color-danger-rgb), 0.18);
+  border: 1px solid rgba(var(--ion-color-danger-rgb), 0.4);
 }
 
-:deep(ion-progress-bar) {
-  height: 12px;
-  border-radius: 6px;
-}
-
-.collapsible-section {
-  margin-bottom: 4px;
-}
-
-.section-header-row {
+.weapon-action__label {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.section-header-row .sectionHeader {
-  flex: 1;
-  margin-top: 0;
-  margin-bottom: 0;
-  min-width: 0;
-}
-
-.section-header-row--collapsed {
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(var(--ion-color-light-rgb), 0.6);
   margin-bottom: 2px;
 }
+.weapon-action--attack .weapon-action__label { color: var(--ion-color-primary); }
+.weapon-action--damage .weapon-action__label { color: var(--ion-color-danger-tint); }
+.weapon-action__label ion-icon { font-size: 12px; flex-shrink: 0; }
 
-.section-toggle-button {
-  --padding-start: 6px;
-  --padding-end: 6px;
-  --border-width: 1px;
-  min-height: 30px;
-  flex-shrink: 0;
-}
-
-.section-toggle-button ion-icon {
-  width: 16px;
-  height: 16px;
-}
-
-.sectionHeader {
+.weapon-action__value {
+  font-size: 20px;
+  font-weight: 700;
   color: var(--ion-color-light);
-  font-size: 22px;
-  font-weight: normal;
-  margin-top: 10px;
+  line-height: 1;
+  word-break: break-word;
+  text-align: center;
+}
+.weapon-action__value--damage {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(var(--ion-color-light-rgb), 0.9);
 }
 
-.section {
-  background-color: var(--ion-color-medium);
-  border-radius: 25px;
-  padding: 5px;
-  margin-bottom: 10px;
+/* Rarity borders */
+.rarity-common    { border-color: #7a7a7a; }
+.rarity-uncommon  { border-color: #4caf50; }
+.rarity-rare      { border-color: #2196f3; }
+.rarity-very-rare { border-color: #9c27b0; }
+.rarity-legendary { border-color: #ff9800; }
+
+/* ══════════════════════════════
+   SKILL CARD
+   ══════════════════════════════ */
+.skill-card {
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: flex-start;
-  gap: 10px;
-  width: 100%;
-  position: relative;
+  gap: 8px;
+  background: var(--ion-color-medium);
+  border-radius: 16px;
+  padding: 8px 10px 8px 8px;
+  margin-bottom: 8px;
   user-select: none;
   -webkit-user-select: none;
   transition: opacity 0.15s ease, box-shadow 0.15s ease;
 }
+.skill-card.is-dragging { opacity: 0.35; box-shadow: none; }
+.skill-card.is-drag-over { box-shadow: 0 0 0 2px var(--ion-color-primary), 0 6px 16px rgba(0,0,0,.35); }
 
-.section-skill {
-  background-color: var(--ion-color-medium);
-  border-radius: 25px;
-  padding: 5px;
-  margin-bottom: 10px;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 10px;
-  width: 100%;
-  position: relative;
-  user-select: none;
-  -webkit-user-select: none;
-  transition: opacity 0.15s ease, box-shadow 0.15s ease;
-}
-
-.section.is-dragging,
-.section-skill.is-dragging { opacity: 0.35; box-shadow: none; }
-
-.section.is-drag-over,
-.section-skill.is-drag-over { box-shadow: 0 0 0 2px var(--ion-color-primary), 0 8px 20px rgba(0,0,0,.35); }
-
-.drag-handle {
+.skill-drag-handle {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
+  width: 20px;
   flex-shrink: 0;
-  color: rgba(var(--ion-color-light-rgb), 0.35);
+  color: rgba(var(--ion-color-light-rgb), 0.3);
   font-size: 20px;
   cursor: grab;
   touch-action: none;
   transition: color 0.15s ease;
 }
-.drag-handle:hover { color: rgba(var(--ion-color-light-rgb), 0.7); }
+.skill-drag-handle:hover { color: rgba(var(--ion-color-light-rgb), 0.65); }
 
-.drag-handle--corner {
-  position: absolute;
-  top: 6px;
-  right: 8px;
-  width: 28px;
-  height: 28px;
-  font-size: 22px;
-}
-
-.info-block {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  margin-right: 0;
-  gap: 5px;
-}
-
-.item-footer-block {
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-}
-
-.use {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-}
-
-.buttons-block {
-  margin-left: auto;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: center;
-  gap: 5px;
-}
-
-.item-name {
-  font-size: 16px;
-  font-weight: bold;
-}
-
-.item-stats {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  font-size: 11px;
-  min-height: 15px;
-}
-
-.image-block {
-  width: 75px;
-  height: 75px;
-}
-
-.item-image {
-  width: 75px;
-  height: 75px;
-  border-radius: 20px;
-  border: 2px solid transparent;
-}
-
-.rarity-common {
-  border-color: gray;
-}
-
-.rarity-uncommon {
-  border-color: green;
-}
-
-.rarity-rare {
-  border-color: blue;
-}
-
-.rarity-very-rare {
-  border-color: purple;
-}
-
-.rarity-legendary {
-  border-color: orange;
-}
-
-.damage, .attack {
-  display: flex;
-  justify-content: flex-start;
-  align-items: center;
-  flex-direction: row;
+.skill-image {
+  width: 46px;
+  height: 46px;
   border-radius: 10px;
-  height: 20px;
-  width: auto;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.skill-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  gap: 3px;
   cursor: pointer;
 }
 
-.damage-value, .attack-value {
+.skill-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ion-color-light);
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.skill-desc {
   font-size: 11px;
-  height: 15px;
-  width: auto;
+  color: rgba(var(--ion-color-light-rgb), 0.65);
+  line-height: 1.3;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.skill-charges {
   display: flex;
-  justify-content: flex-start;
   align-items: center;
-  padding-left: 5px;
-}
-
-.damage-value {
-  color: var(--ion-color-primary);
-}
-
-.damage {
+  gap: 6px;
   margin-top: 2px;
 }
 
-.attack-value {
-  font-size: 16px;
+:deep(ion-progress-bar) {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
 }
 
+.skill-charges-text {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(var(--ion-color-light-rgb), 0.7);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.skill-use-btn {
+  flex-shrink: 0;
+  --padding-start: 0;
+  --padding-end: 0;
+  width: 36px;
+  height: 36px;
+}
+.skill-use-btn--depleted { opacity: 0.35; }
+
+/* ── FAB ── */
 .add-new-button {
   position: fixed;
   bottom: 60px;
@@ -1189,29 +1109,13 @@ async function deleteCharacterSkill(id: string) {
   width: 100%;
   background: transparent;
   display: flex;
-  flex-direction: row;
   justify-content: center;
   align-items: center;
   padding: 8px 0;
   padding-bottom: max(8px, env(safe-area-inset-bottom, 0));
 }
 
-.attack-icon,
-.damage-icon {
-  font-size: 22px;
-  display: flex;
-  align-items: center;
-}
-
-.description {
-  word-break: break-word;
-  min-width: 0;
-}
-
 @media (min-width: 1024px) {
-  .add-new-button {
-    bottom: 10px;
-  }
+  .add-new-button { bottom: 10px; }
 }
-
 </style>

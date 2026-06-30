@@ -1,10 +1,15 @@
 <script setup lang="ts">
-import {IonButton, IonIcon, onIonViewDidEnter, toastController, useIonRouter} from "@ionic/vue";
-import {add, addOutline, chevronDownOutline, flashOutline, removeOutline} from "ionicons/icons";
+import {IonButton, IonIcon, IonInput, onIonViewDidEnter, toastController, useIonRouter} from "@ionic/vue";
+import AddResourceModal from "@/views/character/tabs/magic/AddResourceModal.vue";
+import {add, addOutline, chevronDownOutline, closeOutline, flashOutline, removeOutline} from "ionicons/icons";
 import {useRoute} from "vue-router";
 import {computed, onBeforeUnmount, onMounted, ref} from "vue";
-import {createSpellCellForBook, deleteSpellCell, updateSpellCell, useSpellCell} from "@/api/magicApi";
-import type {ChargesRefillEnum, SpellBookItemDto, SpellCellDto, SpellDto} from "@/components/models/response/MagicApi";
+import {
+    createSpellCellForBook, deleteSpellCell, updateSpellCell, useSpellCell,
+    createCharacterResource, updateCharacterResource, useCharacterResource,
+    refillCharacterResource, deleteCharacterResource,
+} from "@/api/magicApi";
+import type {ChargesRefillEnum, CharacterResourceDto, SpellBookItemDto, SpellCellDto, SpellDto} from "@/components/models/response/MagicApi";
 import SpellInfoModal from "@/views/character/tabs/magic/SpellInfoModal.vue";
 import {FILE_STORAGE_INTEGRATION_ROUTES, SPELL_IMAGE_PLACEHOLDER,} from "@/config/integrationRoutes";
 import {useMagicStore} from "@/stores/MagicStore";
@@ -450,15 +455,130 @@ async function ensureDefaultSpellCell() {
     }
 }
 
+// ——— Custom Resources ———
+
+const customResources = computed<CharacterResourceDto[]>(() => spellBook.value?.customResources ?? []);
+
+function patchResourceInStore(id: string, patch: Partial<CharacterResourceDto>) {
+    const book = magicStore.spellBook;
+    if (!book) return null;
+    const resources = book.customResources ?? [];
+    const idx = resources.findIndex(r => r.id === id);
+    if (idx === -1) return null;
+    const snapshot = { ...resources[idx] };
+    const updated = [...resources];
+    updated[idx] = { ...snapshot, ...patch };
+    magicStore.setSpellBook({ ...book, customResources: updated });
+    return snapshot;
+}
+
+async function useResource(resource: CharacterResourceDto) {
+    if (!resource.id || !spellBookId.value) return;
+    if ((resource.currentCount ?? 0) <= 0) return;
+    const snapshot = patchResourceInStore(resource.id, { currentCount: (resource.currentCount ?? 0) - 1 });
+    try {
+        const updated = await useCharacterResource(spellBookId.value, resource.id);
+        patchResourceInStore(resource.id, updated);
+    } catch (e: unknown) {
+        const err = e as { response?: unknown };
+        if (err.response && snapshot) patchResourceInStore(resource.id, snapshot);
+    }
+}
+
+async function refillResource(resource: CharacterResourceDto) {
+    if (!resource.id || !spellBookId.value) return;
+    const max = resource.maxCount ?? 0;
+    const current = resource.currentCount ?? 0;
+    if (current >= max) return;
+    const snapshot = patchResourceInStore(resource.id, { currentCount: current + 1 });
+    try {
+        const updated = await refillCharacterResource(spellBookId.value, resource.id);
+        patchResourceInStore(resource.id, updated);
+    } catch (e: unknown) {
+        const err = e as { response?: unknown };
+        if (err.response && snapshot) patchResourceInStore(resource.id, snapshot);
+    }
+}
+
+async function incrementResource(resource: CharacterResourceDto) {
+    if (!resource.id || !spellBookId.value) return;
+    const nextMax = (resource.maxCount ?? 0) + 1;
+    const snapshot = patchResourceInStore(resource.id, { maxCount: nextMax, currentCount: (resource.currentCount ?? 0) + 1 });
+    try {
+        const updated = await updateCharacterResource(spellBookId.value, resource.id, { ...resource, maxCount: nextMax, currentCount: (resource.currentCount ?? 0) + 1 });
+        patchResourceInStore(resource.id, updated);
+    } catch (e: unknown) {
+        const err = e as { response?: unknown };
+        if (err.response && snapshot) patchResourceInStore(resource.id, snapshot);
+    }
+}
+
+async function decrementResource(resource: CharacterResourceDto) {
+    if (!resource.id || !spellBookId.value) return;
+    const currentMax = resource.maxCount ?? 0;
+    if (currentMax <= 1) {
+        // Удаляем ресурс
+        const book = magicStore.spellBook;
+        if (!book) return;
+        const snapshot = book.customResources ? [...book.customResources] : [];
+        magicStore.setSpellBook({ ...book, customResources: snapshot.filter(r => r.id !== resource.id) });
+        try {
+            await deleteCharacterResource(spellBookId.value, resource.id);
+        } catch {
+            magicStore.setSpellBook({ ...book, customResources: snapshot });
+        }
+        return;
+    }
+    const nextMax = currentMax - 1;
+    const nextCurrent = Math.min(resource.currentCount ?? 0, nextMax);
+    const snapshot = patchResourceInStore(resource.id, { maxCount: nextMax, currentCount: nextCurrent });
+    try {
+        const updated = await updateCharacterResource(spellBookId.value, resource.id, { ...resource, maxCount: nextMax, currentCount: nextCurrent });
+        patchResourceInStore(resource.id, updated);
+    } catch (e: unknown) {
+        const err = e as { response?: unknown };
+        if (err.response && snapshot) patchResourceInStore(resource.id, snapshot);
+    }
+}
+
+const addResourceModalOpen = ref(false);
+
+function addResource() {
+    addResourceModalOpen.value = true;
+}
+
+async function handleResourceSubmit(payload: { name: string; maxCount: number; refillRestType: ChargesRefillEnum }) {
+    if (!spellBookId.value) return;
+    const book = magicStore.spellBook;
+    if (!book) return;
+    addResourceModalOpen.value = false;
+    try {
+        const created = await createCharacterResource(spellBookId.value, {
+            name: payload.name,
+            maxCount: payload.maxCount,
+            currentCount: payload.maxCount,
+            refillRestType: payload.refillRestType,
+        });
+        magicStore.setSpellBook({
+            ...book,
+            customResources: [...(book.customResources ?? []), created],
+        });
+    } catch (e) {
+        console.error('Failed to create resource:', e);
+    }
+}
+
 const loadMagicData = async () => {
-    loading.value = true;
+    const hasCachedData = magicStore.spellBook != null;
+    // Если данные уже есть — показываем их сразу, рефрешим в фоне без loading-блокировки
+    if (!hasCachedData) loading.value = true;
     error.value = null;
     try {
         await magicStore.updateSpellBookInStore(roomId.value, characterId.value);
-        await ensureDefaultSpellCell();
+        if (!hasCachedData) await ensureDefaultSpellCell();
     } catch (e) {
         console.error("Failed to load spell book:", e);
-        error.value = "Не удалось загрузить книгу заклинаний";
+        if (!hasCachedData) error.value = "Не удалось загрузить книгу заклинаний";
     } finally {
         loading.value = false;
     }
@@ -477,6 +597,44 @@ onBeforeUnmount(() => {
     <div v-if="loading" class="loading">Загрузка...</div>
     <div v-else-if="error" class="error">{{ error }}</div>
     <template v-else>
+      <!-- Ресурсы персонажа (Ци, Ярость, Канал Божества…) -->
+      <div v-if="customResources.length > 0" class="spell-cells">
+        <div class="spell-cells-header">
+          <div class="spell-cells-title">Ресурсы</div>
+          <ion-button size="small" fill="solid" shape="round" color="secondary" @click="addResource">
+            <ion-icon slot="icon-only" :icon="addOutline"/>
+          </ion-button>
+        </div>
+        <div class="spell-cells-grid">
+          <div class="spell-cell-row" v-for="resource in customResources" :key="resource.id">
+            <div class="spell-cell-level resource-name">
+              {{ resource.name }}
+            </div>
+            <div class="spell-cell-dots">
+              <span
+                v-for="n in resource.maxCount"
+                :key="n"
+                class="spell-cell-dot"
+                :class="{ filled: n <= (resource.currentCount ?? 0) }"
+                @click="n > (resource.currentCount ?? 0) ? refillResource(resource) : useResource(resource)"
+              />
+            </div>
+            <div class="spell-cell-actions">
+              <ion-button size="small" fill="solid" shape="round" color="medium" @click="decrementResource(resource)">
+                <ion-icon slot="icon-only" :icon="removeOutline"/>
+              </ion-button>
+              <ion-button size="small" fill="solid" shape="round" color="secondary" @click="incrementResource(resource)">
+                <ion-icon slot="icon-only" :icon="addOutline"/>
+              </ion-button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <button v-else class="resource-add-compact" @click="addResource">
+        <ion-icon :icon="addOutline" class="resource-add-compact__icon"/>
+        <span class="resource-add-compact__text">Добавить ресурс класса</span>
+      </button>
+
       <div class="spell-cells">
         <div class="spell-cells-header">
           <div class="spell-cells-title">Ячейки заклинаний</div>
@@ -677,6 +835,12 @@ onBeforeUnmount(() => {
         :item="selectedSpellItem ?? null"
         :spell-book-id="spellBookId ?? null"
         @closeSpellInfoModal="closeSpellModal"
+      />
+
+      <AddResourceModal
+        :isOpen="addResourceModalOpen"
+        @close="addResourceModalOpen = false"
+        @submit="handleResourceSubmit"
       />
     </template>
   </div>
@@ -918,6 +1082,58 @@ onBeforeUnmount(() => {
 .spell-cell-empty {
   color: var(--ion-color-light-shade);
   font-size: 10px;
+}
+
+.resource-name {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 80px;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resource-icon {
+  font-size: 14px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.resource-empty-hint {
+  font-size: 12px;
+  color: rgba(var(--ion-color-light-rgb), 0.5);
+  padding: 4px 2px;
+}
+
+.resource-add-compact {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: transparent;
+  border: 1px dashed rgba(var(--ion-color-light-rgb), 0.15);
+  border-radius: 10px;
+  padding: 7px 12px;
+  margin: 0 0 4px;
+  cursor: pointer;
+  width: 100%;
+  transition: border-color 0.15s, background 0.15s;
+}
+.resource-add-compact:active {
+  background: rgba(var(--ion-color-light-rgb), 0.05);
+  border-color: rgba(var(--ion-color-primary-rgb), 0.35);
+}
+
+.resource-add-compact__icon {
+  font-size: 13px;
+  color: rgba(var(--ion-color-primary-rgb), 0.6);
+  flex-shrink: 0;
+}
+
+.resource-add-compact__text {
+  font-size: 12px;
+  color: rgba(var(--ion-color-light-rgb), 0.38);
 }
 
 .spell-list {

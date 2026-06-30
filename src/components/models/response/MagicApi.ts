@@ -72,6 +72,16 @@ export interface SpellBookItemDto {
     spell?: SpellDto;
 }
 
+export interface CharacterResourceDto {
+    id?: string;
+    spellBookId?: string;
+    name: string;
+    icon?: string;
+    maxCount: number;
+    currentCount?: number;
+    refillRestType?: ChargesRefillEnum;
+}
+
 export interface SpellBookDto {
     id?: string;
     characterId?: string;
@@ -81,6 +91,7 @@ export interface SpellBookDto {
     spells?: SpellBookItemDto[];
     /** Map of spell level to spell cell (keys as strings) */
     spellCells?: Record<string, SpellCellDto>;
+    customResources?: CharacterResourceDto[];
 }
 
 export interface ImportResult {

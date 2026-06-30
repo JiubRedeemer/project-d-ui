@@ -31,17 +31,22 @@ export function useDragSort<T>(config: {
     catch { return []; }
   }
 
-  function saveOrder(keys: string[]) {
+  function saveOrder(keys: string[], bump = true) {
     localStorage.setItem(config.key, JSON.stringify(keys));
-    orderVersion.value++;
+    if (bump) orderVersion.value++;
   }
 
   const ordered = computed<T[]>(() => {
     void orderVersion.value;
     const items = config.source();
     if (!items?.length) return [];
-    const saved = loadOrder();
-    if (!saved.length) return items;
+    let saved = loadOrder();
+    if (!saved.length) {
+      // Дефолтная сортировка по id, фиксируем сразу чтобы обновления источника не меняли порядок.
+      // bump=false — не вызываем orderVersion++ внутри computed (side-effect запрещён)
+      saved = [...items].sort((a, b) => config.getKey(a).localeCompare(config.getKey(b))).map(t => config.getKey(t));
+      saveOrder(saved, false);
+    }
     const map = new Map(items.map(t => [config.getKey(t), t]));
     const out: T[] = [];
     for (const k of saved) { const t = map.get(k); if (t) { out.push(t); map.delete(k); } }

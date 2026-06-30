@@ -57,6 +57,7 @@ import {useMagicStore} from "@/stores/MagicStore";
 import {useNoteStore} from "@/stores/NoteStore";
 import {useWalletStore} from "@/stores/WalletStore";
 import {getActiveCombatSession, nextCombatTurn} from "@/api/combatApi";
+import {isResting} from "@/composables/useCharacterRest";
 import type {CombatStateDto} from "@/api/combatApi.types";
 import InitiativeModal from "@/views/character/tabs/common/InitiativeModal.vue";
 
@@ -303,6 +304,11 @@ onIonViewDidEnter(async () => {
       switch (type) {
         case 'health_updated':
           characterStore.updateCharacterInStoreById(roomId, characterId);
+          // Пропускаем обновление зарядов пока идёт отдых — useCharacterRest сам применит applyRestLocally после GET-ов
+          if (!isResting.value) {
+            inventoryStore.updateInventoryInStoreById(roomId, characterId);
+            characterSkillsStore.updateCharacterSkills(roomId, characterId);
+          }
           break;
         case 'inventory_updated':
           inventoryStore.updateInventoryInStoreById(roomId, characterId);
@@ -321,6 +327,7 @@ onIonViewDidEnter(async () => {
           walletStore.updateWallet(roomId, characterId);
           magicStore.updateSpellBookInStore(roomId, characterId);
           noteStore.triggerRefresh();
+          characterSkillsStore.updateCharacterSkills(roomId, characterId);
       }
     }, 300);
   };

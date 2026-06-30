@@ -2,11 +2,14 @@ import {ref} from "vue";
 import {useRoute} from "vue-router";
 import axios from "axios";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
-import {refillRestByCharacter} from "@/api/magicApi";
+
 import {useCharacterStore} from "@/stores/CharacterStore";
 import {useCharacterSkillsStore} from "@/stores/CharacterSkillsStore";
 import {useInventoryStore} from "@/stores/InventoryStore";
 import {useMagicStore} from "@/stores/MagicStore";
+
+// Синглтон: true пока идёт отдых — WS-рефреш пропускает обновления инвентаря/навыков
+export const isResting = ref(false);
 
 export function useCharacterRest() {
   const route = useRoute();
@@ -14,19 +17,11 @@ export function useCharacterRest() {
   const magicStore = useMagicStore();
   const characterSkillsStore = useCharacterSkillsStore();
   const inventoryStore = useInventoryStore();
-  const isResting = ref(false);
 
-  /**
-   * Применяет заряды навыков клиентски сразу, не дожидаясь подтверждения сервера.
-   * Это устраняет гонку между POST /rest и следующим GET /character-skills,
-   * а также некорректный возврат старых данных из SW-кэша.
-   *
-   * LONG_REST пополняет все навыки, SHORT_REST — только с chargesRefill === 'SHORT_REST'.
-   */
+  // Восстанавливает заряды локально ПОСЛЕ GET-ов, чтобы перекрыть устаревший SW-кэш.
   function applyRestLocally(longRest: boolean) {
     const refillAll = longRest;
 
-    // CharacterSkill charges
     const skills = characterSkillsStore.characterSkills;
     if (Array.isArray(skills)) {
       for (const skill of skills) {
@@ -39,7 +34,6 @@ export function useCharacterRest() {
       }
     }
 
-    // InventoryItemSkill charges
     const items = inventoryStore.inventory?.items;
     if (Array.isArray(items)) {
       for (const item of items) {
@@ -51,6 +45,18 @@ export function useCharacterRest() {
           if (refillAll ? (isLongRestSkill || isShortRestSkill) : isShortRestSkill) {
             invSkill.currentCharges = invSkill.skill.charges;
           }
+        }
+      }
+    }
+
+    const resources = magicStore.spellBook?.customResources;
+    if (Array.isArray(resources)) {
+      for (const r of resources) {
+        if (r.maxCount == null) continue;
+        const isLong = r.refillRestType === 'LONG_REST';
+        const isShort = r.refillRestType === 'SHORT_REST';
+        if (refillAll ? (isLong || isShort) : isShort) {
+          r.currentCount = r.maxCount;
         }
       }
     }
@@ -78,30 +84,16 @@ export function useCharacterRest() {
         console.error("Ошибка при получении данных:", error);
       }
 
-      // Оптимистично пополняем заряды до GET-а, чтобы избежать гонки с сервером
-      applyRestLocally(longRest);
-
-      try {
-        const updatedSpellBook = await refillRestByCharacter(
-            String(route.params.roomId),
-            String(route.params.characterId),
-            restType
-        );
-        magicStore.setSpellBook(updatedSpellBook);
-      } catch (error) {
-        console.error("Failed to refill spell cells:", error);
-        await magicStore.updateSpellBookInStore(
-            String(route.params.roomId),
-            String(route.params.characterId)
-        );
-      }
-
-      // GET-ы для подтверждения актуального состояния с сервера
+      // GET-ы с сервера (могут вернуть устаревший SW-кэш)
       await Promise.all([
         characterStore.updateCharacterInStoreById(route.params.roomId, route.params.characterId),
         characterSkillsStore.updateCharacterSkills(route.params.roomId, route.params.characterId),
         inventoryStore.updateInventoryInStoreById(route.params.roomId, route.params.characterId),
+        magicStore.updateSpellBookInStore(String(route.params.roomId), String(route.params.characterId)),
       ]);
+
+      // Применяем после GET-ов — перекрывает любой протухший кэш
+      applyRestLocally(longRest);
     } finally {
       isResting.value = false;
     }

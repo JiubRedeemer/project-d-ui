@@ -2,6 +2,7 @@ import axios from "axios";
 import { GATEWAY_INTEGRATION_ROUTES } from "@/config/integrationRoutes";
 import type {
     ChargesRefillEnum,
+    CharacterResourceDto,
     RefillRestRequest,
     SpellDto,
     SpellBookDto,
@@ -338,4 +339,49 @@ export async function useSpellCell(id: string): Promise<SpellCellDto> {
         { headers: authHeaders() }
     );
     return data;
+}
+
+// ——— Character Resources ———
+
+export async function createCharacterResource(spellBookId: string, dto: CharacterResourceDto): Promise<CharacterResourceDto> {
+    const { data } = await axios.post<CharacterResourceDto>(
+        `${baseUrl()}${GATEWAY_INTEGRATION_ROUTES.spellBooks}/${spellBookId}/resources`,
+        dto,
+        { headers: authHeaders() }
+    );
+    return data;
+}
+
+export async function updateCharacterResource(spellBookId: string, id: string, dto: CharacterResourceDto): Promise<CharacterResourceDto> {
+    const { data } = await axios.put<CharacterResourceDto>(
+        `${baseUrl()}${GATEWAY_INTEGRATION_ROUTES.spellBooks}/${spellBookId}/resources/${id}`,
+        dto,
+        { headers: authHeaders() }
+    );
+    return data;
+}
+
+export async function useCharacterResource(spellBookId: string, id: string): Promise<CharacterResourceDto> {
+    const { data } = await axios.post<CharacterResourceDto>(
+        `${baseUrl()}${GATEWAY_INTEGRATION_ROUTES.spellBooks}/${spellBookId}/resources/${id}/use`,
+        undefined,
+        { headers: authHeaders() }
+    );
+    return data;
+}
+
+export async function refillCharacterResource(spellBookId: string, id: string): Promise<CharacterResourceDto> {
+    const { data } = await axios.post<CharacterResourceDto>(
+        `${baseUrl()}${GATEWAY_INTEGRATION_ROUTES.spellBooks}/${spellBookId}/resources/${id}/refill`,
+        undefined,
+        { headers: authHeaders() }
+    );
+    return data;
+}
+
+export async function deleteCharacterResource(spellBookId: string, id: string): Promise<void> {
+    await axios.delete(
+        `${baseUrl()}${GATEWAY_INTEGRATION_ROUTES.spellBooks}/${spellBookId}/resources/${id}`,
+        { headers: authHeaders() }
+    );
 }
