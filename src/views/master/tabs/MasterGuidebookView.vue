@@ -55,6 +55,7 @@ import type {CharacterNpcRelationDto, NpcDto, NpcNpcRelationDto, NpcTypeEnum, Re
 import {getStatesForRoom} from "@/api/statesApi";
 import type {StateDto} from "@/api/statesApi.types";
 import {sortNpcsByName} from "@/utils/sortNpcsByName";
+import {getTagsForRoom, type ItemTagDto} from "@/api/itemTagApi";
 import {
   FILE_STORAGE_INTEGRATION_ROUTES,
   GATEWAY_INTEGRATION_ROUTES,
@@ -161,6 +162,112 @@ const loading = ref(false);
 const itemsLoadingMore = ref(false);
 const hasMoreItems = ref(true);
 const ITEMS_PAGE_LIMIT = 30;
+const itemTagFilter = ref<Set<string>>(new Set());
+const itemTypeFilter = ref<string>("");
+const itemSubtypeFilter = ref<string>("");
+const itemRarityFilter = ref<string>("");
+const itemCustomizationFilter = ref<"" | "true" | "false">("");
+const itemVisibleFilter = ref<"" | "true" | "false">("");
+const itemHasSkillsFilter = ref<"" | "true" | "false">("");
+const showItemFiltersModal = ref(false);
+const availableItemTags = ref<ItemTagDto[]>([]);
+const shownTagInfo = ref<ItemTagDto | null>(null);
+function toggleTagInfo(tag: ItemTagDto) {
+  shownTagInfo.value = shownTagInfo.value?.id === tag.id ? null : tag;
+}
+
+const RARITY_ORDER = ["COMMON", "UNCOMMON", "RARE", "VERY_RARE", "LEGENDARY"];
+const RARITY_LABELS: Record<string, string> = {
+  COMMON: "Обычная",
+  UNCOMMON: "Необычная",
+  RARE: "Редкая",
+  VERY_RARE: "Очень редкая",
+  LEGENDARY: "Легендарная",
+};
+
+const ALL_ITEM_TYPES: [string, string][] = [
+  ["MAGIC_ITEM", "Магический предмет"],
+  ["WEAPON", "Оружие"],
+  ["ARMOR", "Броня"],
+  ["OTHER", "Прочее"],
+];
+
+const SUBTYPE_TYPE_MAP: Record<string, string> = {
+  SHW: "WEAPON", SRW: "WEAPON", AHW: "WEAPON", ARW: "WEAPON", EHW: "WEAPON", ERW: "WEAPON",
+  HEAVY_ARMOR: "ARMOR", MEDIUM_ARMOR: "ARMOR", LIGHT_ARMOR: "ARMOR", SHIELD: "ARMOR",
+};
+
+const ALL_ITEM_SUBTYPES: [string, string][] = [
+  ["SHW", "Простое рукопашное"],
+  ["SRW", "Простое дальнобойное"],
+  ["AHW", "Воинское рукопашное"],
+  ["ARW", "Воинское дальнобойное"],
+  ["EHW", "Экзотическое рукопашное"],
+  ["ERW", "Экзотическое дальнобойное"],
+  ["HEAVY_ARMOR", "Тяжелый доспех"],
+  ["MEDIUM_ARMOR", "Средний доспех"],
+  ["LIGHT_ARMOR", "Легкий доспех"],
+  ["SHIELD", "Щит"],
+];
+
+const allItemTypes = computed(() => ALL_ITEM_TYPES);
+
+const allItemSubtypes = computed(() =>
+  ALL_ITEM_SUBTYPES.filter(([val]) =>
+    !itemTypeFilter.value || SUBTYPE_TYPE_MAP[val] === itemTypeFilter.value
+  )
+);
+
+const allItemRarities = computed(() => RARITY_ORDER);
+
+const allItemTags = computed(() => availableItemTags.value);
+
+const itemActiveFiltersCount = computed(() => {
+  let c = 0;
+  if (itemTypeFilter.value) c++;
+  if (itemSubtypeFilter.value) c++;
+  if (itemRarityFilter.value) c++;
+  if (itemCustomizationFilter.value !== "") c++;
+  if (itemVisibleFilter.value !== "") c++;
+  if (itemHasSkillsFilter.value !== "") c++;
+  if (itemTagFilter.value.size > 0) c++;
+  return c;
+});
+
+const filteredItems = computed(() => items.value);
+
+function toggleItemTagFilter(tag: string) {
+  const next = new Set(itemTagFilter.value);
+  if (next.has(tag)) next.delete(tag); else next.add(tag);
+  itemTagFilter.value = next;
+}
+
+function resetItemFilters() {
+  itemTypeFilter.value = "";
+  itemSubtypeFilter.value = "";
+  itemRarityFilter.value = "";
+  itemCustomizationFilter.value = "";
+  itemVisibleFilter.value = "";
+  itemHasSkillsFilter.value = "";
+  itemTagFilter.value = new Set();
+}
+
+watch(itemTypeFilter, () => { itemSubtypeFilter.value = ""; searchItems(true); });
+watch(itemSubtypeFilter, () => { searchItems(true); });
+watch(itemRarityFilter, () => { searchItems(true); });
+watch(itemCustomizationFilter, () => { searchItems(true); });
+watch(itemVisibleFilter, () => { searchItems(true); });
+watch(itemHasSkillsFilter, () => { searchItems(true); });
+watch(itemTagFilter, () => { searchItems(true); }, { deep: true });
+
+async function loadItemTags() {
+  try {
+    availableItemTags.value = await getTagsForRoom(String(roomId.value));
+  } catch (e) {
+    console.error("Failed to load item tags", e);
+  }
+}
+
 const selectedItem = ref<Item | null>(null);
 const showItemModal = ref(false);
 const selectedSpell = ref<SpellDto | null>(null);
@@ -731,11 +838,6 @@ watch(
 
 async function searchItems(replaceResults = true) {
   const q = debouncedItemSearchQuery.value.trim();
-  if (q.length < 2) {
-    items.value = [];
-    hasMoreItems.value = true;
-    return;
-  }
   const lastItem = replaceResults ? null : items.value[items.value.length - 1];
   const lastSeenCreatedAt = lastItem?.createdAt?.toString().replace(/(\+\d{2}:\d{2}|Z)$/, "") ?? null;
   const lastSeenId = lastItem?.id ?? null;
@@ -748,14 +850,22 @@ async function searchItems(replaceResults = true) {
   }
 
   try {
+    const requestBody: Record<string, unknown> = {
+      searchQuery: q,
+      limit: ITEMS_PAGE_LIMIT,
+      lastSeenCreatedAt,
+      lastSeenId
+    };
+    if (itemTypeFilter.value) requestBody.type = itemTypeFilter.value;
+    if (itemSubtypeFilter.value) requestBody.subtype = itemSubtypeFilter.value;
+    if (itemRarityFilter.value) requestBody.rarity = itemRarityFilter.value;
+    if (itemTagFilter.value.size > 0) requestBody.tags = [...itemTagFilter.value];
+    if (itemCustomizationFilter.value !== "") requestBody.customization = itemCustomizationFilter.value === "true";
+    if (itemHasSkillsFilter.value !== "") requestBody.hasSkills = itemHasSkillsFilter.value === "true";
+
     const {data} = await axios.post<Item[]>(
         `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${roomId.value}${GATEWAY_INTEGRATION_ROUTES.items}${GATEWAY_INTEGRATION_ROUTES.search}`,
-        {
-          searchQuery: q,
-          limit: ITEMS_PAGE_LIMIT,
-          lastSeenCreatedAt,
-          lastSeenId
-        },
+        requestBody,
         {
           headers: {
             "Content-Type": "application/json",
@@ -875,14 +985,6 @@ watch(
     (q) => {
       if (itemSearchTimeout) clearTimeout(itemSearchTimeout);
       const value = q.trim();
-
-      if (value.length < 2) {
-        debouncedItemSearchQuery.value = "";
-        items.value = [];
-        hasMoreItems.value = true;
-        return;
-      }
-
       itemSearchTimeout = setTimeout(() => {
         debouncedItemSearchQuery.value = value;
         searchItems(true);
@@ -1282,6 +1384,8 @@ async function ensureSectionDataLoaded(section: Section) {
     } else {
       await loadSpells();
     }
+  } else if (section === "items" && items.value.length === 0) {
+    await Promise.all([searchItems(true), loadItemTags()]);
   } else if (section === "npcs" && npcs.value.length === 0) {
     await loadNpcs();
   } else if (section === "states" && states.value.length === 0) {
@@ -1692,29 +1796,180 @@ async function onCatalogApplied(
 
       <!-- Предметы -->
       <div v-show="currentSection === 'items'" class="segment-content">
-        <ion-searchbar
-            v-model="itemSearchQuery"
-            placeholder="Поиск предметов (минимум 2 символа)"
-            debounce="300"
-        />
-        <ion-list v-if="items.length" class="guidebook-list">
-          <ion-item
-              v-for="item in items"
+        <div class="items-search-row">
+          <ion-searchbar
+              v-model="itemSearchQuery"
+              placeholder="Поиск предметов"
+              debounce="300"
+              class="items-searchbar"
+          />
+          <button
+              :class="['items-filter-btn', { 'items-filter-btn--active': itemActiveFiltersCount > 0 }]"
+              @click="showItemFiltersModal = true"
+          >
+            <ion-icon :icon="filterOutline"/>
+            <span v-if="itemActiveFiltersCount > 0" class="items-filter-btn__badge">{{ itemActiveFiltersCount }}</span>
+          </button>
+        </div>
+
+        <!-- Active filter chips -->
+        <div v-if="itemActiveFiltersCount > 0" class="items-active-filters">
+          <span v-if="itemTypeFilter" class="item-active-chip">
+            {{ allItemTypes.find(([k]) => k === itemTypeFilter)?.[1] ?? itemTypeFilter }}
+            <button @click="itemTypeFilter = ''"><ion-icon :icon="closeOutline"/></button>
+          </span>
+          <span v-if="itemSubtypeFilter" class="item-active-chip">
+            {{ allItemSubtypes.find(([k]) => k === itemSubtypeFilter)?.[1] ?? itemSubtypeFilter }}
+            <button @click="itemSubtypeFilter = ''"><ion-icon :icon="closeOutline"/></button>
+          </span>
+          <span v-if="itemRarityFilter" class="item-active-chip">
+            {{ RARITY_LABELS[itemRarityFilter] ?? itemRarityFilter }}
+            <button @click="itemRarityFilter = ''"><ion-icon :icon="closeOutline"/></button>
+          </span>
+          <span v-if="itemCustomizationFilter !== ''" class="item-active-chip">
+            {{ itemCustomizationFilter === 'true' ? 'Настройка: да' : 'Настройка: нет' }}
+            <button @click="itemCustomizationFilter = ''"><ion-icon :icon="closeOutline"/></button>
+          </span>
+          <span v-if="itemVisibleFilter !== ''" class="item-active-chip">
+            {{ itemVisibleFilter === 'true' ? 'Видно игрокам' : 'Скрыто от игроков' }}
+            <button @click="itemVisibleFilter = ''"><ion-icon :icon="closeOutline"/></button>
+          </span>
+          <span v-if="itemHasSkillsFilter !== ''" class="item-active-chip">
+            {{ itemHasSkillsFilter === 'true' ? 'Есть навыки' : 'Нет навыков' }}
+            <button @click="itemHasSkillsFilter = ''"><ion-icon :icon="closeOutline"/></button>
+          </span>
+          <span v-for="tag in [...itemTagFilter]" :key="tag" class="item-active-chip">
+            #{{ tag }}
+            <button @click="toggleItemTagFilter(tag)"><ion-icon :icon="closeOutline"/></button>
+          </span>
+          <button class="item-active-chip item-active-chip--reset" @click="resetItemFilters">Сбросить</button>
+        </div>
+
+        <!-- Filters modal -->
+        <Teleport to="body">
+          <div v-if="showItemFiltersModal" class="item-filters-overlay" @click.self="showItemFiltersModal = false">
+            <div class="item-filters-modal">
+              <div class="item-filters-modal__header">
+                <span>Фильтры</span>
+                <button class="item-filters-modal__close" @click="showItemFiltersModal = false">
+                  <ion-icon :icon="closeOutline"/>
+                </button>
+              </div>
+              <div class="item-filters-modal__body">
+
+                <div v-if="allItemTypes.length" class="item-filters-section">
+                  <div class="item-filters-label">Тип</div>
+                  <div class="item-filters-chips">
+                    <button
+                        v-for="[val, label] in allItemTypes" :key="val"
+                        :class="['item-filters-chip', { 'item-filters-chip--active': itemTypeFilter === val }]"
+                        @click="itemTypeFilter = itemTypeFilter === val ? '' : val"
+                    >{{ label }}</button>
+                  </div>
+                </div>
+
+                <div v-if="allItemSubtypes.length" class="item-filters-section">
+                  <div class="item-filters-label">Подтип</div>
+                  <div class="item-filters-chips">
+                    <button
+                        v-for="[val, label] in allItemSubtypes" :key="val"
+                        :class="['item-filters-chip', { 'item-filters-chip--active': itemSubtypeFilter === val }]"
+                        @click="itemSubtypeFilter = itemSubtypeFilter === val ? '' : val"
+                    >{{ label }}</button>
+                  </div>
+                </div>
+
+                <div v-if="allItemRarities.length" class="item-filters-section">
+                  <div class="item-filters-label">Редкость</div>
+                  <div class="item-filters-chips">
+                    <button
+                        v-for="r in allItemRarities" :key="r"
+                        :class="['item-filters-chip', `item-filters-chip--rarity-${r.toLowerCase()}`, { 'item-filters-chip--active': itemRarityFilter === r }]"
+                        @click="itemRarityFilter = itemRarityFilter === r ? '' : r"
+                    >{{ RARITY_LABELS[r] }}</button>
+                  </div>
+                </div>
+
+                <div v-if="allItemTags.length" class="item-filters-section">
+                  <div class="item-filters-label">Теги</div>
+                  <div class="item-filters-chips">
+                    <span v-for="tag in allItemTags" :key="tag.id" class="item-tag-chip-wrapper">
+                      <button
+                          :class="['item-filters-chip', { 'item-filters-chip--active': itemTagFilter.has(tag.name) }]"
+                          @click="toggleItemTagFilter(tag.name)"
+                      >#{{ tag.name }}</button>
+                      <button
+                          v-if="tag.description"
+                          :class="['item-tag-info-btn', { 'item-tag-info-btn--active': shownTagInfo?.id === tag.id }]"
+                          @click.stop="toggleTagInfo(tag)"
+                      >?</button>
+                    </span>
+                  </div>
+                  <div v-if="shownTagInfo && shownTagInfo.description" class="item-tag-description">
+                    <span class="item-tag-description__name">{{ shownTagInfo.name }}</span>
+                    {{ shownTagInfo.description }}
+                  </div>
+                </div>
+
+                <div class="item-filters-section">
+                  <div class="item-filters-label">Настройка</div>
+                  <div class="item-filters-chips">
+                    <button :class="['item-filters-chip', { 'item-filters-chip--active': itemCustomizationFilter === 'true' }]" @click="itemCustomizationFilter = itemCustomizationFilter === 'true' ? '' : 'true'">Требуется</button>
+                    <button :class="['item-filters-chip', { 'item-filters-chip--active': itemCustomizationFilter === 'false' }]" @click="itemCustomizationFilter = itemCustomizationFilter === 'false' ? '' : 'false'">Не требуется</button>
+                  </div>
+                </div>
+
+                <div class="item-filters-section">
+                  <div class="item-filters-label">Видимость для игроков</div>
+                  <div class="item-filters-chips">
+                    <button :class="['item-filters-chip', { 'item-filters-chip--active': itemVisibleFilter === 'true' }]" @click="itemVisibleFilter = itemVisibleFilter === 'true' ? '' : 'true'">Видно</button>
+                    <button :class="['item-filters-chip', { 'item-filters-chip--active': itemVisibleFilter === 'false' }]" @click="itemVisibleFilter = itemVisibleFilter === 'false' ? '' : 'false'">Скрыто</button>
+                  </div>
+                </div>
+
+                <div class="item-filters-section">
+                  <div class="item-filters-label">Навыки</div>
+                  <div class="item-filters-chips">
+                    <button :class="['item-filters-chip', { 'item-filters-chip--active': itemHasSkillsFilter === 'true' }]" @click="itemHasSkillsFilter = itemHasSkillsFilter === 'true' ? '' : 'true'">Есть навыки</button>
+                    <button :class="['item-filters-chip', { 'item-filters-chip--active': itemHasSkillsFilter === 'false' }]" @click="itemHasSkillsFilter = itemHasSkillsFilter === 'false' ? '' : 'false'">Нет навыков</button>
+                  </div>
+                </div>
+
+              </div>
+              <div class="item-filters-modal__footer">
+                <button class="item-filters-reset" @click="resetItemFilters">Сбросить</button>
+                <button class="item-filters-apply" @click="showItemFiltersModal = false">Применить</button>
+              </div>
+            </div>
+          </div>
+        </Teleport>
+
+        <div v-if="filteredItems.length" class="items-list">
+          <button
+              v-for="item in filteredItems"
               :key="item.id"
-              :button="true"
-              color="dark"
+              type="button"
+              class="item-card"
               @click="openItemModal(item)"
           >
-            <ion-avatar slot="start">
-              <img :src="getItemImageUrl(item.imgUrl)" alt=""/>
-            </ion-avatar>
-            <ion-icon :icon="chevronForwardOutline" slot="end"/>
-            <ion-label>
-              <h3>{{ getItemName(item) }}</h3>
-              <p>{{ item.typeName }} <span v-if="item.subtypeName">— {{ item.subtypeName }}</span></p>
-            </ion-label>
-          </ion-item>
-        </ion-list>
+            <div class="item-card__media">
+              <img :src="getItemImageUrl(item.imgUrl)" :alt="getItemName(item)" class="item-card__img"/>
+            </div>
+            <div class="item-card__body">
+              <div class="item-card__name">{{ getItemName(item) }}</div>
+              <div class="item-card__meta">
+                {{ item.typeName }}<span v-if="item.subtypeName"> · {{ item.subtypeName }}</span>
+              </div>
+              <span v-if="item.stats?.armorClass" class="item-card__pill">КБ {{ item.stats.armorClass }}</span>
+              <span v-else-if="item.stats?.damage?.value" class="item-card__pill">{{ item.stats.damage.value + ' (' + item.stats.damage.damageTypeName + ')'}}</span>
+              <div v-if="item.stats?.tags?.length" class="item-card__tags">
+                <span v-for="tag in item.stats.tags" :key="tag" class="item-card__tag"
+                      :title="availableItemTags.find(t => t.name === tag)?.description">#{{ tag }}</span>
+              </div>
+            </div>
+            <ion-icon class="item-card__chevron" :icon="chevronForwardOutline"/>
+          </button>
+        </div>
         <ion-button
             v-if="items.length && hasMoreItems && !loading"
             expand="block"
@@ -1726,14 +1981,11 @@ async function onCatalogApplied(
         >
           {{ itemsLoadingMore ? "Загрузка..." : "Загрузить ещё" }}
         </ion-button>
-        <div v-else-if="itemSearchQuery.trim().length >= 2 && loading" class="loading-placeholder">
+        <div v-else-if="loading" class="loading-placeholder">
           Загрузка...
         </div>
-        <div v-else-if="itemSearchQuery.trim().length >= 2 && !items.length" class="empty-placeholder">
+        <div v-else-if="!filteredItems.length" class="empty-placeholder">
           Ничего не найдено
-        </div>
-        <div v-else class="empty-placeholder">
-          Введите минимум 2 символа для поиска предметов
         </div>
         <div class="add-new-button">
           <ion-button
@@ -2162,6 +2414,7 @@ async function onCatalogApplied(
     <MasterGuidebookItemModal
         :item="selectedItem"
         :is-open="showItemModal"
+        :available-tags="availableItemTags"
         @close="closeItemModal"
     />
     <MasterGuidebookSpellModal
@@ -3361,5 +3614,441 @@ ion-searchbar {
   color: var(--ion-color-primary);
   background: rgba(var(--ion-color-primary-rgb), 0.1);
 }
+
+/* ── Items list ────────────────────────────────────────────── */
+.items-searchbar {
+  --background: rgba(var(--ion-color-light-rgb), 0.06);
+  --border-radius: 14px;
+  --box-shadow: none;
+  padding: 0 0 8px;
+}
+
+.items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.item-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: linear-gradient(155deg, rgba(var(--ion-color-medium-rgb), 0.95) 0%, rgba(var(--ion-color-dark-rgb), 0.92) 100%);
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.07);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.12s ease;
+}
+
+.item-card:hover {
+  border-color: rgba(var(--ion-color-primary-rgb), 0.35);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.32);
+}
+
+.item-card:active {
+  transform: scale(0.99);
+}
+
+.item-card__media {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ion-color-dark);
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.12);
+}
+
+.item-card__img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.item-card__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.item-card__name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ion-color-light);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.item-card__meta {
+  font-size: 12px;
+  color: rgba(var(--ion-color-light-rgb), 0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.item-card__pill {
+  display: inline-block;
+  margin-top: 2px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ion-color-primary);
+  background: rgba(var(--ion-color-primary-rgb), 0.14);
+  font-variant-numeric: tabular-nums;
+}
+
+.item-card__chevron {
+  flex-shrink: 0;
+  font-size: 18px;
+  color: rgba(var(--ion-color-light-rgb), 0.3);
+}
+
+.item-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.item-card__tag {
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(var(--ion-color-primary-rgb), 0.85);
+  background: rgba(var(--ion-color-primary-rgb), 0.1);
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.22);
+}
+
+/* ── Items search row + filter button ─────────────────── */
+.items-search-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.items-search-row .items-searchbar {
+  flex: 1;
+  padding: 0 0 8px;
+}
+
+.items-filter-btn {
+  flex-shrink: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.14);
+  background: rgba(var(--ion-color-light-rgb), 0.06);
+  color: rgba(var(--ion-color-light-rgb), 0.6);
+  font-size: 18px;
+  cursor: pointer;
+  margin-bottom: 8px;
+  transition: background 0.14s, border-color 0.14s, color 0.14s;
+}
+
+.items-filter-btn:hover {
+  background: rgba(var(--ion-color-primary-rgb), 0.1);
+  border-color: rgba(var(--ion-color-primary-rgb), 0.35);
+  color: var(--ion-color-primary);
+}
+
+.items-filter-btn--active {
+  background: rgba(var(--ion-color-primary-rgb), 0.16);
+  border-color: var(--ion-color-primary);
+  color: var(--ion-color-primary);
+}
+
+.items-filter-btn__badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--ion-color-primary);
+  color: var(--ion-color-primary-contrast);
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* ── Active filter chips row ──────────────────────────── */
+.items-active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.item-active-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ion-color-primary);
+  background: rgba(var(--ion-color-primary-rgb), 0.14);
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.35);
+}
+
+.item-active-chip button {
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 0;
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+.item-active-chip button:hover { opacity: 1; }
+
+.item-active-chip--reset {
+  color: rgba(var(--ion-color-light-rgb), 0.55);
+  background: rgba(var(--ion-color-light-rgb), 0.06);
+  border-color: rgba(var(--ion-color-light-rgb), 0.14);
+  cursor: pointer;
+  padding: 4px 12px;
+}
+
+.item-active-chip--reset:hover {
+  color: var(--ion-color-danger);
+  border-color: var(--ion-color-danger);
+  background: rgba(var(--ion-color-danger-rgb), 0.08);
+}
+
+/* ── Item filters modal ───────────────────────────────── */
+.item-filters-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.item-filters-modal {
+  width: 100%;
+  max-width: 680px;
+  max-height: 80vh;
+  background: var(--ion-color-dark);
+  border-radius: 20px 20px 0 0;
+  border-top: 1px solid rgba(var(--ion-color-light-rgb), 0.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.item-filters-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ion-color-light);
+  border-bottom: 1px solid rgba(var(--ion-color-light-rgb), 0.07);
+  flex-shrink: 0;
+}
+
+.item-filters-modal__close {
+  background: transparent;
+  border: none;
+  color: rgba(var(--ion-color-light-rgb), 0.5);
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 8px;
+  transition: color 0.12s, background 0.12s;
+}
+
+.item-filters-modal__close:hover {
+  color: var(--ion-color-light);
+  background: rgba(var(--ion-color-light-rgb), 0.07);
+}
+
+.item-filters-modal__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.item-filters-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.item-filters-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(var(--ion-color-light-rgb), 0.4);
+}
+
+.item-filters-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.item-filters-chip {
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(var(--ion-color-light-rgb), 0.75);
+  background: rgba(var(--ion-color-light-rgb), 0.06);
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.12);
+  cursor: pointer;
+  transition: background 0.13s, border-color 0.13s, color 0.13s;
+}
+
+.item-filters-chip:hover {
+  background: rgba(var(--ion-color-primary-rgb), 0.1);
+  border-color: rgba(var(--ion-color-primary-rgb), 0.35);
+  color: var(--ion-color-primary);
+}
+
+.item-filters-chip--active {
+  background: rgba(var(--ion-color-primary-rgb), 0.18);
+  border-color: var(--ion-color-primary);
+  color: var(--ion-color-primary);
+  font-weight: 600;
+}
+
+/* Rarity colour variants */
+.item-filters-chip--rarity-common       { border-color: rgba(150,150,150,0.3); }
+.item-filters-chip--rarity-uncommon     { border-color: rgba(60,180,80,0.35); }
+.item-filters-chip--rarity-rare         { border-color: rgba(60,100,220,0.4); }
+.item-filters-chip--rarity-very_rare    { border-color: rgba(140,60,200,0.4); }
+.item-filters-chip--rarity-legendary    { border-color: rgba(220,140,30,0.5); }
+.item-filters-chip--rarity-uncommon.item-filters-chip--active  { color: #4db870; background: rgba(60,180,80,0.15); border-color: #4db870; }
+.item-filters-chip--rarity-rare.item-filters-chip--active      { color: #6699ff; background: rgba(60,100,220,0.15); border-color: #6699ff; }
+.item-filters-chip--rarity-very_rare.item-filters-chip--active { color: #bb77ee; background: rgba(140,60,200,0.15); border-color: #bb77ee; }
+.item-filters-chip--rarity-legendary.item-filters-chip--active { color: #f0a030; background: rgba(220,140,30,0.15); border-color: #f0a030; }
+
+.item-tag-chip-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.item-tag-info-btn {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid rgba(var(--ion-color-medium-rgb), 0.4);
+  background: transparent;
+  color: var(--ion-color-primary);
+  font-size: 10px;
+  font-weight: bold;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+
+.item-tag-info-btn:hover,
+.item-tag-info-btn--active {
+  background: rgba(var(--ion-color-primary-rgb), 0.15);
+  color: var(--ion-color-primary);
+  border-color: var(--ion-color-primary);
+}
+
+.item-tag-description {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(var(--ion-color-primary-rgb), 0.06);
+  border-left: 3px solid var(--ion-color-primary);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ion-color-secondary);
+}
+
+.item-tag-description__name {
+  font-weight: 600;
+  color: var(--ion-color-primary);
+  margin-right: 4px;
+}
+
+.item-filters-modal__footer {
+  display: flex;
+  gap: 10px;
+  padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid rgba(var(--ion-color-light-rgb), 0.07);
+  flex-shrink: 0;
+}
+
+.item-filters-reset {
+  flex: 1;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.14);
+  background: transparent;
+  color: rgba(var(--ion-color-light-rgb), 0.6);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.13s, color 0.13s;
+}
+
+.item-filters-reset:hover {
+  background: rgba(var(--ion-color-danger-rgb), 0.08);
+  color: var(--ion-color-danger);
+  border-color: var(--ion-color-danger);
+}
+
+.item-filters-apply {
+  flex: 2;
+  padding: 12px;
+  border-radius: 12px;
+  border: none;
+  background: var(--ion-color-primary);
+  color: var(--ion-color-primary-contrast);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.13s;
+}
+
+.item-filters-apply:hover { opacity: 0.88; }
 
 </style>

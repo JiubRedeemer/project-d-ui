@@ -6,13 +6,29 @@ import {useRoute} from "vue-router";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {computed, onMounted, ref, watch} from "vue";
 import {onIonViewDidEnter, IonIcon} from "@ionic/vue";
-import {reorderThreeOutline} from "ionicons/icons";
+import {reorderThreeOutline, shieldOutline} from "ionicons/icons";
 import {Ability, Character} from "@/components/models/response/Character";
 import {useCharacterStore} from "@/stores/CharacterStore";
+import {useInventoryStore} from "@/stores/InventoryStore";
 import {useDragSort} from "@/composables/useDragSort";
 
 const route = useRoute();
 const characterStore = useCharacterStore();
+const inventoryStore = useInventoryStore();
+
+const armorStealthDisadvantage = computed(() => {
+  const items = inventoryStore.inventory?.items ?? [];
+  return items.some(
+    inv => inv.inUse && inv.item?.type === 'ARMOR' && inv.item?.stats?.stealthDisadvantage === 'DISADVANTAGE'
+  );
+});
+
+function effectiveStealthAdvantage(skill: any): number {
+  if (armorStealthDisadvantage.value) {
+    return skill.advantageValue === 1 ? 0 : -1;
+  }
+  return skill.advantageValue ?? 0;
+}
 
 const abilities = ref<AbilityResponse[]>([]);
 let ruleBookAbilityCodeMap: Map<string, AbilityResponse>;
@@ -413,8 +429,9 @@ function formatModifier(value: number): string {
         <div
             class="skill-row"
             :class="{
-              'skill-row--adv': skill.advantageValue === 1,
-              'skill-row--dis': skill.advantageValue === -1
+              'skill-row--adv': skill.code === 'STEA' ? (!armorStealthDisadvantage && skill.advantageValue === 1) : skill.advantageValue === 1,
+              'skill-row--dis': skill.code === 'STEA' ? effectiveStealthAdvantage(skill) === -1 : skill.advantageValue === -1,
+              'skill-row--armor-dis': skill.code === 'STEA' && armorStealthDisadvantage && effectiveStealthAdvantage(skill) === -1
             }"
             v-for="(skill, index) in ability[1].skills"
             :key="index"
@@ -424,12 +441,18 @@ function formatModifier(value: number): string {
                      @click="changeChecked(skill)"/>
           </span>
           <span class="skill-row__name" @click="selectSkill(skill)">{{ skill.name }}</span>
+          <ion-icon
+              v-if="skill.code === 'STEA' && armorStealthDisadvantage"
+              :icon="shieldOutline"
+              class="skill-row__armor-icon"
+              title="Помеха к скрытности от доспеха"
+          />
           <button
               type="button"
               class="roll-pill roll-pill--sm"
-              :class="getRollModifierClass(skill.advantageValue)"
-              :title="`${getAdvantageLabel(skill.advantageValue)} — нажмите, чтобы сменить`"
-              :aria-label="rollModifierAriaLabel(skill.advantageValue, calculateSkillValue(ability[1].value + ability[1].bonusValue, skill))"
+              :class="skill.code === 'STEA' ? getRollModifierClass(effectiveStealthAdvantage(skill)) : getRollModifierClass(skill.advantageValue)"
+              :title="`${getAdvantageLabel(skill.code === 'STEA' ? effectiveStealthAdvantage(skill) : skill.advantageValue)} — нажмите, чтобы сменить`"
+              :aria-label="rollModifierAriaLabel(skill.code === 'STEA' ? effectiveStealthAdvantage(skill) : skill.advantageValue, calculateSkillValue(ability[1].value + ability[1].bonusValue, skill))"
               @click.stop="changeAdvantage(skill)"
           >
             {{ formatModifier(calculateSkillValue(ability[1].value + ability[1].bonusValue, skill)) }}
@@ -668,6 +691,18 @@ function formatModifier(value: number): string {
 
 .skill-row--dis {
   border-color: rgba(var(--ion-color-danger-rgb), 0.45);
+}
+
+.skill-row--armor-dis {
+  border-color: rgba(var(--ion-color-danger-rgb), 0.6);
+  background: rgba(var(--ion-color-danger-rgb), 0.07);
+}
+
+.skill-row__armor-icon {
+  flex-shrink: 0;
+  font-size: 14px;
+  color: var(--ion-color-danger);
+  opacity: 0.9;
 }
 
 .skill-row__toggle {

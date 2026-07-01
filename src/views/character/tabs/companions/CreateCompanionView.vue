@@ -9,7 +9,7 @@ import {
   IonSpinner,
   IonToolbar,
 } from '@ionic/vue'
-import { addOutline, trashOutline, cameraOutline, pawOutline, sparklesOutline } from 'ionicons/icons'
+import { addOutline, trashOutline, cameraOutline, pawOutline, sparklesOutline, flameOutline } from 'ionicons/icons'
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
@@ -137,7 +137,7 @@ onMounted(async () => {
       try {
         const npc = await getNpcByIdForRoom(roomId, sourceNpcId)
         companion.value = {
-          companionType: (route.query.type as 'PET' | 'SUMMONED') ?? 'PET',
+          companionType: (route.query.type as 'PET' | 'SUMMONED' | 'FORM') ?? 'PET',
           name: npc.name ?? '',
           description: npc.description ?? '',
           maxHp: npc.maxHp ?? undefined,
@@ -220,7 +220,11 @@ async function submit() {
         <ion-buttons slot="start">
           <ion-back-button default-href="/"/>
         </ion-buttons>
-        <span class="toolbar__title">{{ isEdit ? 'Редактировать спутника' : 'Новый спутник' }}</span>
+        <span class="toolbar__title">
+          {{ isEdit
+            ? (companion.companionType === 'FORM' ? 'Редактировать форму' : 'Редактировать спутника')
+            : (companion.companionType === 'FORM' ? 'Новая форма' : 'Новый спутник') }}
+        </span>
       </ion-toolbar>
     </ion-header>
 
@@ -255,7 +259,7 @@ async function submit() {
               />
             </div>
 
-            <div class="field-group" style="margin-top: 10px">
+            <div v-if="companion.companionType !== 'FORM'" class="field-group" style="margin-top: 10px">
               <label class="field-label">Тип</label>
               <div class="type-toggle">
                 <button
@@ -276,6 +280,12 @@ async function submit() {
                   <ion-icon :icon="sparklesOutline"/>
                   Призванный
                 </button>
+              </div>
+            </div>
+            <div v-else class="field-group" style="margin-top: 10px">
+              <div class="form-type-badge">
+                <ion-icon :icon="flameOutline"/>
+                Форма превращения
               </div>
             </div>
 
@@ -1091,5 +1101,18 @@ async function submit() {
     transform: translateX(-50%);
     border-radius: 16px 16px 0 0;
   }
+}
+
+.form-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: rgba(var(--ion-color-secondary-rgb), 0.12);
+  border: 1px solid rgba(var(--ion-color-secondary-rgb), 0.35);
+  color: var(--ion-color-secondary);
+  font-size: 13px;
+  font-weight: 700;
 }
 </style>

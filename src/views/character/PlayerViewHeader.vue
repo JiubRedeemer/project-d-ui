@@ -3,12 +3,20 @@
 import {IonBackButton, IonToolbar} from "@ionic/vue";
 import LogOutButton from "@/views/common/LogOutButton.vue";
 import {useCharacterStore} from "@/stores/CharacterStore";
+import {useTransformStore} from "@/stores/TransformStore";
 import {computed} from "vue";
 
 const characterStore = useCharacterStore()
+const transformStore = useTransformStore()
 const emit = defineEmits<{
   (e: "open-levelup-modal"): void;
 }>();
+
+const activeForm = computed(() =>
+  characterStore.character?.id
+    ? transformStore.activeForm(characterStore.character.id)
+    : null
+)
 
 const openLevelupModal = () => {
   emit("open-levelup-modal");
@@ -46,9 +54,14 @@ const nameTextScale = computed(() => {
       <div class="player-identity" v-if="characterStore.character">
         <div class="player-identity__name" :style="{ transform: `scale(${nameTextScale})` }">{{ characterStore.character.name }}</div>
         <div class="player-identity__meta">
-          <span>{{ characterStore.character.raceInfo?.name }}</span>
-          <span class="player-identity__sep" aria-hidden="true"/>
-          <span>{{ characterStore.character.clazzInfo?.name }}</span>
+          <template v-if="activeForm">
+            <span class="transform-badge">⬡ {{ activeForm.name }}</span>
+          </template>
+          <template v-else>
+            <span>{{ characterStore.character.raceInfo?.name }}</span>
+            <span class="player-identity__sep" aria-hidden="true"/>
+            <span>{{ characterStore.character.clazzInfo?.name }}</span>
+          </template>
         </div>
       </div>
 
@@ -204,5 +217,18 @@ const nameTextScale = computed(() => {
 
 .player-header :deep(.header-action-btn ion-icon) {
   font-size: 32px;
+}
+
+.transform-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ion-color-secondary);
+  letter-spacing: 0.02em;
+  animation: transform-pulse 2s ease-in-out infinite alternate;
+}
+
+@keyframes transform-pulse {
+  from { opacity: 0.75; }
+  to   { opacity: 1; }
 }
 </style>

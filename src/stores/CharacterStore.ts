@@ -21,6 +21,9 @@ export const useCharacterStore = defineStore('characterStore', {
                     }
                 );
                 this.character = characterResponse.data;
+                // Re-apply active transform after server refresh
+                const { useTransformStore } = await import('@/stores/TransformStore')
+                useTransformStore().reapplyIfActive(String(characterId))
             } catch (error) {
                 console.error("Ошибка при получении данных:", error);
             }

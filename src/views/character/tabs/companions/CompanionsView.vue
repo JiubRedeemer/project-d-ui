@@ -14,8 +14,10 @@ import {
   createOutline,
   chevronDownOutline,
   chevronUpOutline,
+  flameOutline,
+  refreshOutline,
 } from 'ionicons/icons'
-import { onMounted, ref, watch } from 'vue'
+import { onMounted, ref, watch, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useCompanionsRefresh } from '@/composables/useCompanionsRefresh'
 import {
@@ -25,6 +27,8 @@ import {
 } from '@/api/companionApi'
 import { FILE_STORAGE_INTEGRATION_ROUTES } from '@/config/integrationRoutes'
 import type { CompanionDto } from '@/api/companionApi.types'
+import { useTransformStore } from '@/stores/TransformStore'
+import { useCharacterStore } from '@/stores/CharacterStore'
 
 const route = useRoute()
 const router = useIonRouter()
@@ -32,6 +36,12 @@ const companions = ref<CompanionDto[]>([])
 const loading = ref(false)
 const expanded = ref<Record<string, boolean>>({})
 const hpManage = ref<Record<string, string>>({})
+const transformStore = useTransformStore()
+const characterStore = useCharacterStore()
+
+const characterId = computed(() => route.params.characterId as string)
+const isTransformed = computed(() => transformStore.isTransformed(characterId.value))
+const currentForm = computed(() => transformStore.activeForm(characterId.value))
 
 async function load() {
   const roomId = route.params.roomId as string
@@ -63,6 +73,32 @@ const SECTIONS = [
 
 function sectionItems(type: 'PET' | 'SUMMONED') {
   return companions.value.filter(c => c.companionType === type)
+}
+
+const forms = computed(() => companions.value.filter(c => c.companionType === 'FORM'))
+
+function goCreateForm() {
+  router.push({
+    name: 'CreateCompanion',
+    params: { roomId: route.params.roomId, characterId: route.params.characterId },
+    query: { type: 'FORM' },
+  })
+}
+
+function goEditForm(c: CompanionDto) {
+  router.push({
+    name: 'CreateCompanion',
+    params: { roomId: route.params.roomId, characterId: route.params.characterId },
+    query: { id: c.id, type: 'FORM' },
+  })
+}
+
+function transformInto(form: CompanionDto) {
+  transformStore.transform(characterId.value, form)
+}
+
+function revertTransform() {
+  transformStore.revert(characterId.value)
 }
 
 function toggleExpand(id: string) {
@@ -162,6 +198,108 @@ function hasDetails(c: CompanionDto) {
     </div>
 
     <template v-else>
+
+      <!-- ══ Превращения ══ -->
+      <div class="section">
+        <div class="section__header">
+          <ion-icon :icon="flameOutline" class="section__icon section__icon--form"/>
+          <span class="section__title">Формы</span>
+          <ion-button fill="clear" size="small" @click="goCreateForm()">
+            <ion-icon :icon="addOutline" slot="icon-only"/>
+          </ion-button>
+        </div>
+
+        <!-- Баннер активной трансформации -->
+        <div v-if="isTransformed && currentForm" class="transform-banner">
+          <div class="transform-banner__left">
+            <img v-if="getImageUrl(currentForm.imgUrl)" :src="getImageUrl(currentForm.imgUrl)!" class="transform-banner__avatar"/>
+            <ion-icon v-else :icon="flameOutline" class="transform-banner__icon"/>
+            <div class="transform-banner__info">
+              <div class="transform-banner__label">Вы превращены в</div>
+              <div class="transform-banner__name">{{ currentForm.name }}</div>
+            </div>
+          </div>
+          <button class="transform-banner__revert" @click="revertTransform()">
+            <ion-icon :icon="refreshOutline"/>
+            Вернуть облик
+          </button>
+        </div>
+
+        <p v-if="forms.length === 0" class="section__empty">Нет доступных форм</p>
+
+        <div v-for="c in forms" :key="c.id" class="card card--form" :class="{ 'card--active-form': isTransformed && currentForm?.id === c.id }">
+          <div class="card__hero">
+            <div class="card__avatar">
+              <img v-if="getImageUrl(c.imgUrl)" :src="getImageUrl(c.imgUrl)!" :alt="c.name" class="card__avatar-img"/>
+              <ion-icon v-else :icon="flameOutline" class="card__avatar-placeholder section__icon--form"/>
+            </div>
+
+            <div class="card__main">
+              <div class="card__name-row">
+                <span class="card__name">{{ c.name }}</span>
+                <div class="card__actions">
+                  <ion-button fill="clear" size="small" @click="goEditForm(c)">
+                    <ion-icon :icon="createOutline" slot="icon-only"/>
+                  </ion-button>
+                  <ion-button fill="clear" size="small" color="danger" @click="onDelete(c)">
+                    <ion-icon :icon="trashOutline" slot="icon-only"/>
+                  </ion-button>
+                </div>
+              </div>
+
+              <div class="card__stats" style="margin-top: 4px">
+                <div v-if="c.armoryClass" class="card__stat">
+                  <span class="card__stat-label">КД</span>
+                  <span class="card__stat-pill">{{ c.armoryClass }}</span>
+                </div>
+                <div v-if="c.speed" class="card__stat">
+                  <span class="card__stat-label">Скор.</span>
+                  <span class="card__stat-pill">{{ c.speed }}</span>
+                </div>
+                <div v-if="c.maxHp" class="card__stat">
+                  <span class="card__stat-label">ПЗ</span>
+                  <span class="card__stat-pill">{{ c.maxHp }}</span>
+                </div>
+              </div>
+
+              <button
+                v-if="!isTransformed || currentForm?.id !== c.id"
+                class="transform-btn"
+                @click="transformInto(c)"
+              >
+                <ion-icon :icon="flameOutline"/>
+                Превратиться
+              </button>
+              <button
+                v-else
+                class="transform-btn transform-btn--active"
+                @click="revertTransform()"
+              >
+                <ion-icon :icon="refreshOutline"/>
+                Вернуть облик
+              </button>
+            </div>
+          </div>
+
+          <div v-if="c.abilities && c.abilities.length > 0" class="card__abilities-compact" style="margin-top: 8px">
+            <div v-for="ab in ABILITY_KEYS" :key="ab.code" class="card__ab">
+              <span class="card__ab-code">{{ ab.label }}</span>
+              <span class="card__ab-val">{{ c.abilities!.find(a => a.code === ab.code)?.value ?? '—' }}</span>
+              <span class="card__ab-mod">{{ abilityMod(c.abilities!.find(a => a.code === ab.code)?.value) }}</span>
+            </div>
+          </div>
+
+          <div v-if="c.actions && c.actions.length > 0" class="card__actions-list" style="margin-top: 8px">
+            <div v-for="a in c.actions" :key="a.name" class="card__action-entry">
+              <span class="card__action-name">{{ a.name }}</span>
+              <span v-if="a.description" class="card__action-desc">{{ a.description }}</span>
+            </div>
+          </div>
+          <p v-else-if="c.description" class="card__desc">{{ c.description }}</p>
+        </div>
+      </div>
+      <!-- ══════════════════ -->
+
       <div v-for="section in SECTIONS" :key="section.type" class="section">
         <div class="section__header">
           <ion-icon :icon="section.icon" class="section__icon" :class="section.iconClass"/>
@@ -321,6 +459,7 @@ function hasDetails(c: CompanionDto) {
 
 .section__icon--pet { color: #e67e22; }
 .section__icon--summoned { color: #9b59b6; }
+.section__icon--form { color: var(--ion-color-secondary); }
 
 .section__title {
   flex: 1;
@@ -743,6 +882,122 @@ function hasDetails(c: CompanionDto) {
 
 .entry-card--feature { border-left-color: var(--ion-color-secondary); }
 .entry-card--action  { border-left-color: var(--ion-color-primary); }
+
+/* ── Form cards ── */
+.card--form {
+  border-color: rgba(var(--ion-color-secondary-rgb), 0.18);
+}
+
+.card--active-form {
+  border-color: rgba(var(--ion-color-secondary-rgb), 0.55);
+  background: linear-gradient(135deg, rgba(var(--ion-color-secondary-rgb), 0.08), var(--ion-color-medium));
+}
+
+/* Transform button */
+.transform-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 7px 14px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(var(--ion-color-secondary-rgb), 0.4);
+  background: rgba(var(--ion-color-secondary-rgb), 0.1);
+  color: var(--ion-color-secondary);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.transform-btn:active { opacity: 0.75; }
+
+.transform-btn--active {
+  border-color: rgba(var(--ion-color-danger-rgb), 0.4);
+  background: rgba(var(--ion-color-danger-rgb), 0.08);
+  color: var(--ion-color-danger);
+}
+
+/* Transform banner */
+.transform-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(var(--ion-color-secondary-rgb), 0.12), rgba(var(--ion-color-secondary-rgb), 0.05));
+  border: 1.5px solid rgba(var(--ion-color-secondary-rgb), 0.4);
+  animation: banner-glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes banner-glow {
+  from { border-color: rgba(var(--ion-color-secondary-rgb), 0.3); }
+  to   { border-color: rgba(var(--ion-color-secondary-rgb), 0.65); }
+}
+
+.transform-banner__left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.transform-banner__avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1px solid rgba(var(--ion-color-secondary-rgb), 0.35);
+  flex-shrink: 0;
+}
+
+.transform-banner__icon {
+  width: 40px;
+  height: 40px;
+  font-size: 22px;
+  color: var(--ion-color-secondary);
+  flex-shrink: 0;
+}
+
+.transform-banner__info {
+  min-width: 0;
+}
+
+.transform-banner__label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(var(--ion-color-secondary-rgb), 0.7);
+}
+
+.transform-banner__name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ion-color-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.transform-banner__revert {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(var(--ion-color-danger-rgb), 0.35);
+  background: rgba(var(--ion-color-danger-rgb), 0.08);
+  color: var(--ion-color-danger);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.transform-banner__revert:active { opacity: 0.75; }
 
 .entry-card__name {
   font-size: 13px;

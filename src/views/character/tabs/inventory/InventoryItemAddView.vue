@@ -25,6 +25,7 @@ import {useCreateInventoryItemStore} from "@/stores/CreateInventoryItemStore";
 import axios from "axios";
 import {v4 as uuidv4} from 'uuid';
 import {type ItemSkill, Price} from "@/components/models/response/InventoryResponse";
+import {createTagForRoom, getTagsForRoom, type ItemTagDto} from "@/api/itemTagApi";
 import {useRoute, useRouter} from "vue-router";
 import EditItemSkillValueModal from "@/views/character/tabs/inventory/EditItemSkillValueModal.vue";
 import {useInventoryStore} from "@/stores/InventoryStore";
@@ -66,6 +67,64 @@ const noDexBonusLimit = ref<boolean>(false);
 const noStrengthRequirement = ref<boolean>(false);
 const ambientColor = ref<string | null>(null);
 
+// Tag management
+const availableTags = ref<ItemTagDto[]>([]);
+const selectedTagIds = ref<string[]>([]);
+const tagSearchQuery = ref<string>("");
+const isCreatingTag = ref(false);
+
+async function loadAvailableTags() {
+  try {
+    availableTags.value = await getTagsForRoom(String(route.params.roomId));
+  } catch (e) {
+    console.error("Failed to load tags", e);
+  }
+}
+
+const filteredAvailableTags = computed(() => {
+  const q = tagSearchQuery.value.trim().toLowerCase();
+  if (!q) return availableTags.value;
+  return availableTags.value.filter(t => t.name.toLowerCase().includes(q));
+});
+
+const showCreateTagOption = computed(() => {
+  const q = tagSearchQuery.value.trim();
+  return q.length > 0 && !availableTags.value.some(t => t.name.toLowerCase() === q.toLowerCase());
+});
+
+const selectedTags = computed(() =>
+  availableTags.value.filter(t => selectedTagIds.value.includes(t.id))
+);
+
+function toggleTag(tag: ItemTagDto) {
+  const idx = selectedTagIds.value.indexOf(tag.id);
+  if (idx >= 0) {
+    selectedTagIds.value.splice(idx, 1);
+  } else {
+    selectedTagIds.value.push(tag.id);
+  }
+}
+
+function removeSelectedTag(tagId: string) {
+  selectedTagIds.value = selectedTagIds.value.filter(id => id !== tagId);
+}
+
+async function createAndSelectTag() {
+  const name = tagSearchQuery.value.trim();
+  if (!name || isCreatingTag.value) return;
+  isCreatingTag.value = true;
+  try {
+    const newTag = await createTagForRoom(String(route.params.roomId), name);
+    availableTags.value.push(newTag);
+    selectedTagIds.value.push(newTag.id);
+    tagSearchQuery.value = "";
+  } catch (e) {
+    console.error("Failed to create tag", e);
+  } finally {
+    isCreatingTag.value = false;
+  }
+}
+
 const SKILL_IMAGE_PLACEHOLDER =
     "https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png";
 
@@ -99,7 +158,8 @@ const openEditItemSkillModal = (isEditing: boolean, itemSkill: ItemSkill | undef
   showEditItemSkillModal.value = true;
 };
 
-onBeforeMount(() => {
+onBeforeMount(async () => {
+  await loadAvailableTags();
   if (!createInventoryItemStore.item.type) {
     createInventoryItemStore.item.id = itemId;
     createInventoryItemStore.item.typeName = "Доспех";
@@ -109,6 +169,7 @@ onBeforeMount(() => {
       armorClassMaxDexterityBonus: "",
       requirement: "",
       tags: [],
+      tagIds: [],
       defaultPrice: [{value: 0, coinType: "GOLDEN"}],
     };
     createInventoryItemStore.item.stats.weight = 0;
@@ -119,6 +180,7 @@ onBeforeMount(() => {
     createInventoryItemStore.item.description = "";
     createInventoryItemStore.item.rarity = "COMMON";
     createItemSkills.value = [];
+    selectedTagIds.value = [];
   } else {
     viewType.value = createInventoryItemStore.item.type;
     const existingDamageType = createInventoryItemStore.item.stats.damage?.damageType;
@@ -143,6 +205,16 @@ onBeforeMount(() => {
     noDexBonusLimit.value = createInventoryItemStore.item.stats.armorClassMaxDexterityBonus === "-1";
     noStrengthRequirement.value = createInventoryItemStore.item.stats.requirement === "-1";
     createItemSkills.value = cloneSkills(createInventoryItemStore.item.skills);
+    // Initialize selectedTagIds from existing tagIds or resolve from tag names
+    if (createInventoryItemStore.item.stats.tagIds?.length) {
+      selectedTagIds.value = [...createInventoryItemStore.item.stats.tagIds];
+    } else if (createInventoryItemStore.item.stats.tags?.length) {
+      selectedTagIds.value = availableTags.value
+        .filter(t => createInventoryItemStore.item.stats.tags!.includes(t.name))
+        .map(t => t.id);
+    } else {
+      selectedTagIds.value = [];
+    }
   }
 });
 
@@ -453,19 +525,6 @@ const handleWeightKeydown = (event: KeyboardEvent) => {
   }
 };
 
-const newTag = ref<string>("");
-
-function addTag() {
-  const tag = newTag.value.trim();
-  if (tag && !createInventoryItemStore?.item?.stats?.tags?.includes(tag)) {
-    createInventoryItemStore?.item?.stats?.tags?.push(tag);
-    newTag.value = "";
-  }
-}
-
-function removeTag(tag: string) {
-  createInventoryItemStore.item.stats.tags = createInventoryItemStore?.item?.stats?.tags?.filter(t => t !== tag);
-}
 
 async function getMyId() {
   const myIdResponse = await axios.get(
@@ -513,6 +572,9 @@ async function saveItem() {
     coinType: defaultPriceCoinType.value,
     value: defaultPriceValue.value
   }];
+  // Set tagIds for the backend; clear tags (names) to avoid confusion
+  createInventoryItemStore.item.stats.tagIds = [...selectedTagIds.value];
+  createInventoryItemStore.item.stats.tags = undefined;
   console.log(createItemSkills);
   createInventoryItemStore.item.skills = createItemSkills.value;
   console.log(createInventoryItemStore.item.skills);
@@ -929,39 +991,6 @@ function cancelEdit() {
               </ion-select>
             </div>
 
-            <div class="stat stat--price">
-              <span class="stat__label">Цена</span>
-              <span
-                  class="stat-value stat-value--wide stat-value--price"
-                  :class="{ 'invalid-field': invalidFields.includes('defaultPriceValue') || invalidFields.includes('defaultPriceCoinType') }"
-              >
-                <ion-input
-                    v-model="defaultPriceValue"
-                    type="number"
-                    inputmode="numeric"
-                    class="inline-stat-input"
-                    @ionInput="invalidFields = invalidFields.filter(field => field !== 'defaultPriceValue')"
-                />
-                <div class="coin-select-wrap coin-select-wrap--header">
-                  <ion-icon
-                      class="coin-select-wrap__icon"
-                      :src="selectedCoinIcon"
-                      aria-hidden="true"
-                  />
-                  <ion-select
-                      v-model="defaultPriceCoinType"
-                      interface="action-sheet"
-                      aria-label="Монета"
-                      class="coin-select-wrap__select"
-                      @ionChange="invalidFields = invalidFields.filter(field => field !== 'defaultPriceCoinType')"
-                  >
-                    <ion-select-option value="GOLDEN">Золотые монеты</ion-select-option>
-                    <ion-select-option value="SILVER">Серебряные монеты</ion-select-option>
-                    <ion-select-option value="COPPER">Медные монеты</ion-select-option>
-                  </ion-select>
-                </div>
-              </span>
-            </div>
           </div>
         </div>
 
@@ -988,6 +1017,38 @@ function cancelEdit() {
           <section class="panel">
             <h2 class="panel__title">Характеристики</h2>
             <div class="details-grid">
+              <div class="detail-row">
+                <span class="detail-row__label">Цена</span>
+                <div
+                    class="price-input-group"
+                    :class="{ 'invalid-field': invalidFields.includes('defaultPriceValue') || invalidFields.includes('defaultPriceCoinType') }"
+                >
+                  <ion-input
+                      v-model="defaultPriceValue"
+                      type="number"
+                      inputmode="numeric"
+                      :min="0"
+                      class="detail-row__input detail-row__input--price"
+                      placeholder="0"
+                      @ionInput="if (defaultPriceValue < 0) defaultPriceValue = 0; invalidFields = invalidFields.filter(f => f !== 'defaultPriceValue')"
+                  />
+                  <div class="coin-select-wrap">
+                    <ion-icon class="coin-select-wrap__icon" :src="selectedCoinIcon" aria-hidden="true"/>
+                    <ion-select
+                        v-model="defaultPriceCoinType"
+                        interface="action-sheet"
+                        aria-label="Монета"
+                        class="coin-select-wrap__select"
+                        @ionChange="invalidFields = invalidFields.filter(f => f !== 'defaultPriceCoinType')"
+                    >
+                      <ion-select-option value="GOLDEN">Золотые монеты</ion-select-option>
+                      <ion-select-option value="SILVER">Серебряные монеты</ion-select-option>
+                      <ion-select-option value="COPPER">Медные монеты</ion-select-option>
+                    </ion-select>
+                  </div>
+                </div>
+              </div>
+
               <div class="detail-row">
                 <span class="detail-row__label">{{ TEXTS.weight.rus }}</span>
                 <span
@@ -1023,13 +1084,13 @@ function cancelEdit() {
                   </label>
                 </div>
                 <ion-input
-                    v-model="createInventoryItemStore.item.stats.armorClassMaxDexterityBonus"
+                    :value="noDexBonusLimit ? '' : createInventoryItemStore.item.stats.armorClassMaxDexterityBonus"
                     type="number"
                     inputmode="numeric"
                     class="detail-row__input"
                     :disabled="noDexBonusLimit"
                     :class="{ 'invalid-field': invalidFields.includes('armorClassMaxDexterityBonus') }"
-                    @ionInput="invalidFields = invalidFields.filter(field => field !== 'armorClassMaxDexterityBonus')"
+                    @ionInput="createInventoryItemStore.item.stats.armorClassMaxDexterityBonus = $event.detail.value; invalidFields = invalidFields.filter(field => field !== 'armorClassMaxDexterityBonus')"
                 />
               </div>
 
@@ -1042,14 +1103,28 @@ function cancelEdit() {
                   </label>
                 </div>
                 <ion-input
-                    v-model="createInventoryItemStore.item.stats.requirement"
+                    :value="noStrengthRequirement ? '' : createInventoryItemStore.item.stats.requirement"
                     type="number"
                     inputmode="numeric"
                     class="detail-row__input"
                     :disabled="noStrengthRequirement"
                     :class="{ 'invalid-field': invalidFields.includes('requirement') }"
-                    @ionInput="invalidFields = invalidFields.filter(field => field !== 'requirement')"
+                    @ionInput="createInventoryItemStore.item.stats.requirement = $event.detail.value; invalidFields = invalidFields.filter(field => field !== 'requirement')"
                 />
+              </div>
+
+              <div v-if="viewType === 'ARMOR'" class="detail-row">
+                <span class="detail-row__label">Скрытность</span>
+                <ion-select
+                    v-model="createInventoryItemStore.item.stats.stealthDisadvantage"
+                    interface="action-sheet"
+                    class="detail-row__select"
+                    placeholder="Не указано"
+                >
+                  <ion-select-option :value="null">Не указано</ion-select-option>
+                  <ion-select-option value="DISADVANTAGE">Помеха</ion-select-option>
+                  <ion-select-option value="NORMAL">Без помехи</ion-select-option>
+                </ion-select>
               </div>
 
               <div v-if="viewType === 'WEAPON'" class="detail-row detail-row--with-extra">
@@ -1120,29 +1195,50 @@ function cancelEdit() {
 
             <div class="tags-block">
               <div class="tags-block__label">{{ HEADERS.tags.rus }}</div>
-              <div class="tags">
+              <!-- Selected tags as removable chips -->
+              <div class="tags" v-if="selectedTags.length">
                 <button
-                    v-for="(tag, idx) in createInventoryItemStore.item.stats.tags"
-                    :key="idx"
+                    v-for="tag in selectedTags"
+                    :key="tag.id"
                     type="button"
                     class="tag tag--removable"
-                    @click="removeTag(tag)"
+                    :title="tag.description"
+                    @click="removeSelectedTag(tag.id)"
                 >
-                  {{ tag }}
+                  {{ tag.name }}
                   <span class="tag__remove" aria-hidden="true">×</span>
                 </button>
               </div>
+              <!-- Tag search + dropdown -->
               <div class="tag-input-row">
                 <ion-input
-                    v-model="newTag"
+                    v-model="tagSearchQuery"
                     type="text"
-                    :placeholder="TEXTS.enterTag.rus"
+                    placeholder="Поиск тегов..."
                     class="tag-input"
-                    @keydown.enter.prevent="addTag"
+                    @keydown.enter.prevent="showCreateTagOption ? createAndSelectTag() : undefined"
                 />
-                <ion-button size="small" shape="round" @click="addTag">
-                  <ion-icon slot="icon-only" :icon="addOutline"/>
-                </ion-button>
+              </div>
+              <div v-if="tagSearchQuery.trim() || filteredAvailableTags.length" class="tag-dropdown">
+                <button
+                    v-for="tag in filteredAvailableTags"
+                    :key="tag.id"
+                    type="button"
+                    :class="['tag-dropdown__item', { 'tag-dropdown__item--selected': selectedTagIds.includes(tag.id) }]"
+                    @click="toggleTag(tag)"
+                >
+                  <span class="tag-dropdown__name">{{ tag.name }}</span>
+                  <span v-if="tag.description" class="tag-dropdown__desc">{{ tag.description }}</span>
+                </button>
+                <button
+                    v-if="showCreateTagOption"
+                    type="button"
+                    class="tag-dropdown__item tag-dropdown__item--create"
+                    :disabled="isCreatingTag"
+                    @click="createAndSelectTag"
+                >
+                  + Создать тег «{{ tagSearchQuery.trim() }}»
+                </button>
               </div>
             </div>
           </section>
@@ -1414,13 +1510,6 @@ function cancelEdit() {
   letter-spacing: -0.02em;
 }
 
-.stat-value--price {
-  gap: 2px;
-  max-width: 76px;
-  min-width: 58px;
-  padding: 0 4px 0 6px;
-  cursor: default;
-}
 
 .inline-stat-input {
   --padding-start: 0;
@@ -1714,6 +1803,56 @@ function cancelEdit() {
   --highlight-color-focused: var(--ion-color-primary);
   border-radius: 12px;
   min-height: 40px;
+}
+
+.tag-dropdown {
+  margin-top: 6px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.18);
+  overflow: hidden;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.tag-dropdown__item {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 8px 12px;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(var(--ion-color-light-rgb), 0.06);
+  cursor: pointer;
+  color: var(--ion-color-light);
+}
+
+.tag-dropdown__item:last-child {
+  border-bottom: none;
+}
+
+.tag-dropdown__item--selected {
+  background: rgba(var(--ion-color-primary-rgb), 0.18);
+}
+
+.tag-dropdown__item--create {
+  color: var(--ion-color-primary);
+  font-weight: 600;
+}
+
+.tag-dropdown__name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.tag-dropdown__desc {
+  font-size: 11px;
+  color: rgba(var(--ion-color-light-rgb), 0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
 }
 
 .description-input {

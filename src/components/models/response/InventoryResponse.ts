@@ -21,7 +21,11 @@ export interface Stats {
     armorClassMaxDexterityBonus?: string;
     requirement?: string;
     damage?: Damage;
+    /** Tag names for display (populated on read) */
     tags?: string[];
+    /** Tag UUIDs for create/edit relations (sent on write) */
+    tagIds?: string[];
+    stealthDisadvantage?: 'DISADVANTAGE' | 'NORMAL' | null;
 }
 
 /**

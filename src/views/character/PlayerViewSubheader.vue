@@ -11,10 +11,18 @@ import {HEADERS} from "@/config/localisations";
 import {useCharacterStore} from "@/stores/CharacterStore";
 import {useSubheaderOpenedStore} from "@/stores/SubheaderStore";
 import {useInventoryStore} from "@/stores/InventoryStore";
+import {useTransformStore} from "@/stores/TransformStore";
 
 const characterStore = useCharacterStore()
 const subheaderStore = useSubheaderOpenedStore();
 const inventoryStore = useInventoryStore();
+const transformStore = useTransformStore();
+
+const activeForm = computed(() =>
+  characterStore.character?.id
+    ? transformStore.activeForm(characterStore.character.id)
+    : null
+)
 
 function getArmoryClassBonusSum(itemStats: EquippedItemsStatsResponse | null): number {
   if (!itemStats) return 0;
@@ -113,6 +121,10 @@ const getDexArmoryClass = () : number => {
 }
 
 const armoryClassValue = computed(() => {
+  if (activeForm.value?.armoryClass != null) {
+    const parsed = parseInt(String(activeForm.value.armoryClass), 10)
+    if (!isNaN(parsed)) return parsed
+  }
   if (getBaseArmoryClass() == null) return 0;
   return getBaseArmoryClass()
       + getDexArmoryClass()
@@ -121,6 +133,10 @@ const armoryClassValue = computed(() => {
 });
 
 const speedValue = computed(() => {
+  if (activeForm.value?.speed != null) {
+    const parsed = parseInt(String(activeForm.value.speed), 10)
+    if (!isNaN(parsed)) return parsed
+  }
   if (characterStore.character == null) return 0;
   return characterStore.character.speed
       + characterStore.character.bonusSpeed

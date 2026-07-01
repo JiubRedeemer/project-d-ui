@@ -13,6 +13,7 @@ import {
 } from "@ionic/vue";
 import {computed, ref, watch} from "vue";
 import type {Item, ItemSkill} from "@/components/models/response/InventoryResponse";
+import type {ItemTagDto} from "@/api/itemTagApi";
 import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {HEADERS, TEXTS} from "@/config/localisations";
 import {add, chevronForwardOutline, remove} from "ionicons/icons";
@@ -30,9 +31,15 @@ const props = withDefaults(
       isOpen: boolean;
       characterId: string;
       roomId: string;
+      availableTags?: ItemTagDto[];
     }>(),
-    {item: null, isOpen: false, characterId: "", roomId: ""},
+    {item: null, isOpen: false, characterId: "", roomId: "", availableTags: () => []},
 );
+
+const shownTagInfo = ref<string | null>(null);
+function toggleTagInfo(tag: string) {
+  shownTagInfo.value = shownTagInfo.value === tag ? null : tag;
+}
 
 const emit = defineEmits<{
   (e: "close"): void;
@@ -318,7 +325,18 @@ function getRefillLabel(refill: ItemSkill["chargesRefill"]): string {
             </div>
 
             <div v-if="item.stats?.tags?.length" class="tags">
-              <span v-for="(tag, idx) in item.stats.tags" :key="idx" class="tag">{{ tag }}</span>
+              <span v-for="(tag, idx) in item.stats.tags" :key="idx" class="tag-wrapper">
+                <span class="tag">{{ tag }}</span>
+                <button
+                    v-if="availableTags.find(t => t.name === tag)?.description"
+                    :class="['tag-info-btn', { 'tag-info-btn--active': shownTagInfo === tag }]"
+                    @click.stop="toggleTagInfo(tag)"
+                >?</button>
+              </span>
+              <div v-if="shownTagInfo" class="tag-description">
+                <span class="tag-description__name">{{ shownTagInfo }}</span>
+                {{ availableTags.find(t => t.name === shownTagInfo)?.description }}
+              </div>
             </div>
           </section>
 
@@ -637,6 +655,8 @@ function getRefillLabel(refill: ItemSkill["chargesRefill"]): string {
   border-top: 1px solid rgba(var(--ion-color-light-rgb), 0.06);
 }
 
+.tag-wrapper { display: inline-flex; align-items: center; gap: 3px; }
+
 .tag {
   padding: 5px 10px;
   border-radius: 999px;
@@ -646,6 +666,26 @@ function getRefillLabel(refill: ItemSkill["chargesRefill"]): string {
   background: rgba(var(--ion-color-primary-rgb), 0.12);
   border: 1px solid rgba(var(--ion-color-primary-rgb), 0.22);
 }
+
+.tag-info-btn {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 1px solid rgba(var(--ion-color-primary), 0.4);
+  background: transparent; color: var(--ion-color-primary);
+  font-size: 10px; font-weight: bold; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0; flex-shrink: 0;
+}
+.tag-info-btn--active, .tag-info-btn:hover {
+  background: rgba(var(--ion-color-primary-rgb), 0.15);
+  color: var(--ion-color-primary); border-color: var(--ion-color-primary);
+}
+.tag-description {
+  width: 100%; margin-top: 6px; padding: 10px 12px;
+  border-radius: 8px; background: rgba(var(--ion-color-primary-rgb), 0.06);
+  border-left: 3px solid var(--ion-color-primary);
+  font-size: 12px; line-height: 1.5; color: var(--ion-color-secondary);
+}
+.tag-description__name { font-weight: 600; color: var(--ion-color-primary); margin-right: 4px; }
 
 .description-html :deep(p) {
   margin: 0 0 0.75em;

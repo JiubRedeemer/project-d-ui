@@ -1,4 +1,4 @@
-export type CompanionType = 'PET' | 'SUMMONED'
+export type CompanionType = 'PET' | 'SUMMONED' | 'FORM'
 
 export interface CompanionSkillDto {
   name: string
@@ -50,7 +50,7 @@ export interface SaveCompanionRequest {
   characterId?: string
   name?: string
   description?: string
-  companionType?: CompanionType
+  companionType?: CompanionType  // 'PET' | 'SUMMONED' | 'FORM'
   maxHp?: number
   currentHp?: number
   hpDiceCount?: number

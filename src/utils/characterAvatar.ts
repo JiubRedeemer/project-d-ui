@@ -6,11 +6,22 @@ export const CHARACTER_AVATAR_PLACEHOLDER =
 
 /**
  * Возвращает URL изображения для персонажа:
- * 1. Аватарка персонажа (characterBio.avatar), если есть
- * 2. Изображение расы (raceInfo.imgUrl), если нет аватарки
- * 3. Заглушка по умолчанию
+ * 1. Аватарка активной формы (если персонаж превращён)
+ * 2. Аватарка персонажа (characterBio.avatar), если есть
+ * 3. Изображение расы (raceInfo.imgUrl), если нет аватарки
+ * 4. Заглушка по умолчанию
  */
 export function getCharacterAvatarUrl(character: Character): string {
+  // Check active transform — import lazily to avoid circular deps
+  try {
+    const { useTransformStore, getFormAvatarUrl } = require('@/stores/TransformStore')
+    const transformStore = useTransformStore()
+    const form = transformStore.activeForm(character.id)
+    if (form) {
+      const formUrl = getFormAvatarUrl(form)
+      if (formUrl) return formUrl
+    }
+  } catch { /* store not yet initialised */ }
   const rawAvatar = character.characterBio?.avatar;
   const avatarPath =
     typeof rawAvatar === "string"
