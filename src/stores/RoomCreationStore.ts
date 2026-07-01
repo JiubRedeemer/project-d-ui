@@ -25,6 +25,7 @@ export const useRoomCreationStore = defineStore('createRoomCreationStore', {
             rules: string,
             baseRules: string,
             filePath: string,
+            isPublic: boolean,
         },
     }),
     actions: {
@@ -82,6 +83,7 @@ export const useRoomCreationStore = defineStore('createRoomCreationStore', {
                     rules: this.roomInfo.rules,
                     baseRules: this.roomInfo.baseRules,
                     filePath: this.roomInfo.filePath,
+                    isPublic: this.roomInfo.isPublic ?? false,
                 }, {
                     headers: {
                         "Content-Type": "application/json",

@@ -34,6 +34,12 @@ export const GATEWAY_INTEGRATION_ROUTES = {
     invites: "/invites/rooms",
     acceptInvite: "/invites/rooms/accept",
     declineInvite: "/invites/rooms/decline",
+
+    publicRooms: "/rooms/public",
+    joinRequests: "/join-requests/incoming",
+    joinRequestsCount: "/join-requests/incoming/count",
+    joinRequestAccept: "/join-requests",
+    joinRequestDecline: "/join-requests",
     roles: "/roles",
 
     rooms: "/rooms",

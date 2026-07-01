@@ -36,7 +36,7 @@ let characterAbilityCodeMap: Map<string, Ability>;
 const resultAbilities = ref<Record<string, AbilityDto>>();
 
 const abilitiesDrag = useDragSort<[string, AbilityDto]>({
-  key: `abilities_${route.params.characterId}`,
+  key: `abilities_v2_${route.params.characterId}`,
   source: () => {
     if (!resultAbilities.value || !ruleBookAbilityCodeMap) return [];
     return Array.from(ruleBookAbilityCodeMap.keys())
@@ -44,6 +44,7 @@ const abilitiesDrag = useDragSort<[string, AbilityDto]>({
         .map(code => [code, resultAbilities.value![code]] as [string, AbilityDto]);
   },
   getKey: ([code]) => code,
+  defaultOrder: ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'],
 });
 
 const emits = defineEmits(["ability-selected", "skill-selected"]);

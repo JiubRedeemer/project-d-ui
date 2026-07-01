@@ -18,11 +18,15 @@ const setupNotificationCount = async () => {
     },
   });
 
-  const res = await http.get(GATEWAY_INTEGRATION_ROUTES.api + GATEWAY_INTEGRATION_ROUTES.roomInviteCount);
+  const [invitesRes, joinRes] = await Promise.allSettled([
+    http.get(GATEWAY_INTEGRATION_ROUTES.api + GATEWAY_INTEGRATION_ROUTES.roomInviteCount),
+    http.get(GATEWAY_INTEGRATION_ROUTES.api + GATEWAY_INTEGRATION_ROUTES.joinRequestsCount),
+  ]);
 
-  if (res.status == 200) {
-    notifications.value.count = res.data.count
-  }
+  let total = 0;
+  if (invitesRes.status === "fulfilled" && invitesRes.value.status === 200) total += invitesRes.value.data.count ?? 0;
+  if (joinRes.status === "fulfilled" && joinRes.value.status === 200) total += joinRes.value.data.count ?? 0;
+  notifications.value.count = total;
 }
 
 onBeforeMount(() => {

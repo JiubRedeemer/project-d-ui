@@ -1244,6 +1244,10 @@ const onNotesViewOutsideClick = (e: MouseEvent) => {
   margin-bottom: 0;
 }
 
+.notes-card__preview :deep(p:empty) {
+  display: none;
+}
+
 .notes-card__body {
   margin-top: 10px;
   padding-top: 8px;

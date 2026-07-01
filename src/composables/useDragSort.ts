@@ -21,6 +21,7 @@ export function useDragSort<T>(config: {
   key: string;
   source: () => T[];
   getKey: (item: T) => string;
+  defaultOrder?: string[];
   onCommit?: (ordered: T[]) => void;
 }): DragSortInstance<T> {
   const listId = `dl-${++instanceCounter}`;
@@ -42,9 +43,18 @@ export function useDragSort<T>(config: {
     if (!items?.length) return [];
     let saved = loadOrder();
     if (!saved.length) {
-      // Дефолтная сортировка по id, фиксируем сразу чтобы обновления источника не меняли порядок.
-      // bump=false — не вызываем orderVersion++ внутри computed (side-effect запрещён)
-      saved = [...items].sort((a, b) => config.getKey(a).localeCompare(config.getKey(b))).map(t => config.getKey(t));
+      if (config.defaultOrder?.length) {
+        const orderMap = new Map(config.defaultOrder.map((k, i) => [k, i]));
+        saved = [...items]
+            .sort((a, b) => {
+              const ai = orderMap.get(config.getKey(a)) ?? 9999;
+              const bi = orderMap.get(config.getKey(b)) ?? 9999;
+              return ai !== bi ? ai - bi : config.getKey(a).localeCompare(config.getKey(b));
+            })
+            .map(t => config.getKey(t));
+      } else {
+        saved = [...items].sort((a, b) => config.getKey(a).localeCompare(config.getKey(b))).map(t => config.getKey(t));
+      }
       saveOrder(saved, false);
     }
     const map = new Map(items.map(t => [config.getKey(t), t]));

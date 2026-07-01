@@ -660,7 +660,7 @@ async function deleteCharacterSkill(id: string) {
               </div>
               <div class="skill-charges" v-if="skill.skill.charges">
                 <ion-progress-bar
-                  :color="skill.currentCharges === 0 ? 'danger' : skill.currentCharges === 1 ? 'warning' : 'primary'"
+                  :color="skill.currentCharges === 0 ? 'danger' : skill.currentCharges === 1 && skill.skill.charges > 1 ? 'warning' : 'primary'"
                   :value="Math.min(1, skill.currentCharges / skill.skill.charges)"/>
                 <span class="skill-charges-text">{{ skill.currentCharges }} / {{ skill.skill.charges }}</span>
               </div>
@@ -715,7 +715,7 @@ async function deleteCharacterSkill(id: string) {
               </div>
               <div class="skill-charges" v-if="skill.charges">
                 <ion-progress-bar
-                  :color="skill.currentCharges === 0 ? 'danger' : skill.currentCharges === 1 ? 'warning' : 'primary'"
+                  :color="skill.currentCharges === 0 ? 'danger' : skill.currentCharges === 1 && skill.charges > 1 ? 'warning' : 'primary'"
                   :value="Math.min(1, skill.currentCharges / skill.charges)"/>
                 <span class="skill-charges-text">{{ skill.currentCharges }} / {{ skill.charges }}</span>
               </div>

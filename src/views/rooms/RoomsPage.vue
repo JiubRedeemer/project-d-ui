@@ -16,7 +16,7 @@ import {
   onIonViewDidEnter,
   useIonRouter
 } from "@ionic/vue";
-import {add, chevronForwardOutline, informationCircleOutline} from "ionicons/icons";
+import {add, chevronForwardOutline, informationCircleOutline, searchOutline} from "ionicons/icons";
 import {HEADERS, TEXTS} from "@/config/localisations";
 import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
 import PwaInstallHintModal from "@/components/PwaInstallHintModal.vue";
@@ -240,6 +240,12 @@ const dismissPwaHintAndClose = () => {
       <ion-fab slot="fixed" vertical="bottom" horizontal="end">
         <ion-fab-button class="rooms-fab" @click="goToCreateRoom()">
           <ion-icon :icon="add" color="light"></ion-icon>
+        </ion-fab-button>
+      </ion-fab>
+
+      <ion-fab slot="fixed" vertical="bottom" horizontal="start">
+        <ion-fab-button class="rooms-fab rooms-fab--discover" @click="ionRouter.navigate('/rooms/discover', 'forward', 'push')">
+          <ion-icon :icon="searchOutline" color="light"></ion-icon>
         </ion-fab-button>
       </ion-fab>
 

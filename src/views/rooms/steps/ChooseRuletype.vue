@@ -6,9 +6,11 @@ import {
   IonIcon,
   IonInput,
   IonItem,
+  IonLabel,
   IonPage,
   IonSelect,
   IonSelectOption,
+  IonToggle,
   toastController,
   useIonRouter
 } from "@ionic/vue";
@@ -25,6 +27,7 @@ const roomCreationStore = useRoomCreationStore();
 
 const roomName = ref("");
 const roomDescription = ref("");
+const roomIsPublic = ref(false);
 const roomRules = ref("DND5E");
 const roomRootRules = ref("DND5E");
 const roomImage = ref<File | null>(null);
@@ -93,6 +96,7 @@ const nextStep = async () => {
   roomCreationStore.roomInfo.rules = roomRules.value;
   roomCreationStore.roomInfo.baseRules = roomRootRules.value;
   roomCreationStore.roomInfo.filePath = filePath.value;
+  roomCreationStore.roomInfo.isPublic = roomIsPublic.value;
   if (roomCreationStore.roomInfo.rules == 'HOMEBREW') {
     ionRouter.navigate("/rooms/create/races", 'forward', 'push');
   } else {
@@ -124,6 +128,10 @@ const nextStep = async () => {
         <ion-item color="dark" class="input-block">
           <ion-input :label="TEXTS.roomDescription.rus" label-placement="floating" fill="outline" color="primary"
                      :placeholder="TEXTS.enterRoomDescription.rus" v-model="roomDescription"></ion-input>
+        </ion-item>
+        <ion-item color="dark" class="input-block">
+          <ion-label>Публичная комната</ion-label>
+          <ion-toggle v-model="roomIsPublic" slot="end" color="primary" />
         </ion-item>
         <ion-item color="dark" class="input-block">
           <ion-select

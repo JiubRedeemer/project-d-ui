@@ -8,6 +8,7 @@ import {
   IonLabel,
   IonList,
   IonPage,
+  IonListHeader,
   onIonViewDidEnter
 } from "@ionic/vue";
 import {checkmarkCircleOutline, closeCircleOutline} from "ionicons/icons";
@@ -106,9 +107,53 @@ const declineInvite = async (inviteId: string) => {
   }
 };
 
-// Выполнение запроса при монтировании компонента
+// ── Заявки на вступление (для мастеров) ──────────────────────────────────────
+
+interface JoinRequest {
+  id: string;
+  room: { id: string; name: string };
+  requester: { id: string; username: string };
+  status: string;
+  createDatetime: string;
+}
+
+const joinRequests = ref<JoinRequest[]>([]);
+
+const http = () => axios.create({
+  baseURL: GATEWAY_INTEGRATION_ROUTES.baseURL,
+  headers: { "Content-Type": "application/json", Authorization: "Bearer " + localStorage.getItem("accessToken") },
+});
+
+const loadJoinRequests = async () => {
+  try {
+    const res = await http().get(GATEWAY_INTEGRATION_ROUTES.api + GATEWAY_INTEGRATION_ROUTES.joinRequests);
+    if (res.status === 200) joinRequests.value = res.data;
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+const acceptJoinRequest = async (requestId: string) => {
+  try {
+    await http().post(`${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.joinRequestAccept}/${requestId}/accept`);
+    joinRequests.value = joinRequests.value.filter(r => r.id !== requestId);
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+const declineJoinRequest = async (requestId: string) => {
+  try {
+    await http().post(`${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.joinRequestDecline}/${requestId}/decline`);
+    joinRequests.value = joinRequests.value.filter(r => r.id !== requestId);
+  } catch (e) {
+    console.error(e);
+  }
+};
+
 onIonViewDidEnter(() => {
   setupRooms();
+  loadJoinRequests();
 });
 </script>
 
@@ -133,9 +178,31 @@ onIonViewDidEnter(() => {
         </ion-item>
       </ion-list>
 
-      <div class="invite-room-list-placeholder-wrapper" v-show="invites.length === 0">
+      <div class="invite-room-list-placeholder-wrapper" v-show="invites.length === 0 && joinRequests.length === 0">
         <div class="invite-room-list-placeholder">{{ TEXTS.emptyInviteList.rus }}</div>
       </div>
+
+      <template v-if="joinRequests.length > 0">
+        <ion-list class="invite-room-list">
+          <ion-list-header class="section-header">
+            <ion-label>Заявки на вступление</ion-label>
+          </ion-list-header>
+          <ion-item v-for="req in joinRequests" :key="req.id" color="dark">
+            <ion-buttons slot="end">
+              <ion-button size="large" @click="declineJoinRequest(req.id)">
+                <ion-icon color="danger" :icon="closeCircleOutline" slot="icon-only" />
+              </ion-button>
+              <ion-button size="large" @click="acceptJoinRequest(req.id)">
+                <ion-icon color="success" :icon="checkmarkCircleOutline" slot="icon-only" />
+              </ion-button>
+            </ion-buttons>
+            <ion-label>
+              <h1 class="invite-room-name">{{ req.room.name }}</h1>
+              <p class="invite-room-description">{{ req.requester.username }} хочет вступить</p>
+            </ion-label>
+          </ion-item>
+        </ion-list>
+      </template>
     </ion-content>
   </ion-page>
 </template>
