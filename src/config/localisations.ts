@@ -372,6 +372,7 @@ export const HEADERS = {
     other: {rus: 'Прочее', eng: 'Other'},
     max_dex_bonus: {rus: 'Максимальный бонус от ловкости', eng: 'Maximum Dexterity Bonus'},
     force_requirements: {rus: 'Требование к силе', eng: 'Force requirement'},
+    stealth_disadvantage: {rus: 'Скрытность', eng: 'Stealth'},
     need_customization: {rus: 'Требуется настройка', eng: 'Need customization'},
     description: {rus: 'Описание', eng: 'Description'},
     default_price: {rus: 'Средняя цена у торговцев', eng: 'Default price'},

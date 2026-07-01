@@ -185,6 +185,10 @@ function closeModal() { emit("close"); }
                 <span class="detail-row__label">{{ HEADERS.force_requirements.rus }}</span>
                 <span class="detail-row__value detail-row__value--pill">{{ item.stats?.requirement }}</span>
               </div>
+              <div v-if="isArmor" class="detail-row">
+                <span class="detail-row__label">{{ HEADERS.stealth_disadvantage.rus }}</span>
+                <span class="detail-row__value detail-row__value--pill">{{ item.stats?.stealthDisadvantage == 'DISADVANTAGE' ? 'Помеха' : 'Нет помехи' }}</span>
+              </div>
               <div class="detail-row">
                 <span class="detail-row__label">Настройка</span>
                 <span class="detail-row__value detail-row__value--toggle">
