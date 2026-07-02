@@ -556,5 +556,51 @@ watch(activeStates, (states) => { emits("has-states", states.length > 0); }, { i
   .subheader-root.is-open .stat-card__label {
     font-size: 10px;
   }
+
+  /* Desktop: always show full layout in one row, no toggle needed */
+  .subheader-toggle { display: none; }
+
+  .subheader-root { padding-bottom: 5px; }
+  .subheader-root.has-states:not(.is-open) { padding-bottom: 0; }
+
+  .subheader-shell {
+    gap: 8px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-rows: auto;
+    grid-template-areas: "ac speed init hp rest";
+  }
+
+  .stat-card--speed { grid-area: speed; }
+  .stat-card--init  { grid-area: init; }
+  .rest-action      { grid-area: rest; }
+
+  .stat-card--collapsible,
+  .rest-action {
+    max-height: 80px;
+    min-height: 42px;
+    opacity: 1;
+    padding-block: 4px;
+    padding-inline: 6px;
+    border-width: 1px;
+    pointer-events: auto;
+  }
+
+  .stat-card {
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    min-height: 42px;
+    padding: 4px 6px;
+    border-radius: 10px;
+  }
+
+  .stat-card--ac { margin-right: 0; }
+  .stat-card--hp { margin-left: 0; }
+
+  .stat-card__value { font-size: 14px; }
+  .stat-card__label { margin-left: 0; font-size: 9px; text-align: center; max-width: none; }
+
+  .states-bar      { display: none; }
+  .states-expanded { display: flex; padding-top: 6px; }
 }
 </style>

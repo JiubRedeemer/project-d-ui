@@ -939,11 +939,9 @@ ion-header.character-header {
 .desktop-subtab-sticky {
   display: flex;
   gap: 8px;
-  padding: 10px 0 14px;
-  border-bottom: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
-  margin-bottom: 16px;
+  margin-bottom: 5px;
   position: sticky;
-  top: -16px;
+  top: 0;
   background: var(--ion-color-dark);
   z-index: 10;
 }
@@ -1238,15 +1236,7 @@ ion-page {
     left: auto;
     width: 100%;
     overflow: visible;
-    max-height: 48px;
-  }
-
-  .subheader-block.openSubheader {
-    max-height: 260px;
-  }
-
-  .subheader-block.openSubheader.has-states {
-    max-height: 300px;
+    max-height: none;
   }
 
   .inventory,

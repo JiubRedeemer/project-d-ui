@@ -6,11 +6,10 @@ import {useRoute} from "vue-router";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {computed, onMounted, ref, watch} from "vue";
 import {onIonViewDidEnter, IonIcon} from "@ionic/vue";
-import {reorderThreeOutline, shieldOutline} from "ionicons/icons";
+import {shieldOutline} from "ionicons/icons";
 import {Ability, Character} from "@/components/models/response/Character";
 import {useCharacterStore} from "@/stores/CharacterStore";
 import {useInventoryStore} from "@/stores/InventoryStore";
-import {useDragSort} from "@/composables/useDragSort";
 
 const route = useRoute();
 const characterStore = useCharacterStore();
@@ -35,16 +34,18 @@ let ruleBookAbilityCodeMap: Map<string, AbilityResponse>;
 let characterAbilityCodeMap: Map<string, Ability>;
 const resultAbilities = ref<Record<string, AbilityDto>>();
 
-const abilitiesDrag = useDragSort<[string, AbilityDto]>({
-  key: `abilities_v2_${route.params.characterId}`,
-  source: () => {
-    if (!resultAbilities.value || !ruleBookAbilityCodeMap) return [];
-    return Array.from(ruleBookAbilityCodeMap.keys())
-        .filter(code => resultAbilities.value && code in resultAbilities.value)
-        .map(code => [code, resultAbilities.value![code]] as [string, AbilityDto]);
-  },
-  getKey: ([code]) => code,
-  defaultOrder: ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'],
+const DEFAULT_ABILITY_ORDER = ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'];
+
+const orderedAbilities = computed<[string, AbilityDto][]>(() => {
+  if (!resultAbilities.value || !ruleBookAbilityCodeMap) return [];
+  return Array.from(ruleBookAbilityCodeMap.keys())
+    .filter(code => resultAbilities.value && code in resultAbilities.value)
+    .sort((a, b) => {
+      const ai = DEFAULT_ABILITY_ORDER.indexOf(a);
+      const bi = DEFAULT_ABILITY_ORDER.indexOf(b);
+      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+    })
+    .map(code => [code, resultAbilities.value![code]] as [string, AbilityDto]);
 });
 
 const emits = defineEmits(["ability-selected", "skill-selected"]);
@@ -359,16 +360,7 @@ function formatModifier(value: number): string {
 
     <div class="abilities-grid">
     <div class="ability-card"
-         v-for="(ability, idx) in abilitiesDrag.ordered" :key="ability[0]"
-         :data-drag-list="abilitiesDrag.listId" :data-drag-index="idx"
-         :class="{ 'is-dragging': abilitiesDrag.dragFromIndex === idx, 'is-drag-over': abilitiesDrag.dragOverIndex === idx && abilitiesDrag.dragFromIndex !== idx }">
-      <div class="ability-card__drag-handle"
-           @pointerdown="abilitiesDrag.onHandlePointerDown($event, idx)"
-           @pointermove="abilitiesDrag.onHandlePointerMove($event)"
-           @pointerup="abilitiesDrag.onHandlePointerUp($event)"
-           @pointercancel="abilitiesDrag.onHandlePointerCancel($event)">
-        <ion-icon :icon="reorderThreeOutline"/>
-      </div>
+         v-for="ability in orderedAbilities" :key="ability[0]">
       <button type="button" class="ability-card__head" @click="selectAbility(ability[1])">
         <span class="ability-card__name">{{ ability[1].name }}</span>
         <span class="ability-card__mod">{{ formatModifier(abilityModifier(ability[1])) }}</span>
@@ -493,8 +485,8 @@ function formatModifier(value: number): string {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 12px;
-  padding: 12px 16px;
+  margin-bottom: 5px;
+  padding: 5px 15px;
   border-radius: 14px;
   border: 1px solid rgba(var(--ion-color-primary-rgb), 0.28);
   background: linear-gradient(150deg, rgba(var(--ion-color-primary-rgb), 0.14) 0%, rgba(var(--ion-color-medium-rgb), 0.6) 100%);
@@ -521,7 +513,7 @@ function formatModifier(value: number): string {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 14px;
+  padding: 10px;
   border-radius: 18px;
   border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
   background: linear-gradient(155deg, rgba(var(--ion-color-medium-rgb), 0.95) 0%, rgba(var(--ion-color-dark-rgb), 0.92) 100%);
@@ -535,21 +527,6 @@ function formatModifier(value: number): string {
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.38);
 }
 
-.ability-card.is-dragging { opacity: 0.35; box-shadow: none; }
-.ability-card.is-drag-over { box-shadow: 0 0 0 2px var(--ion-color-primary), 0 12px 28px rgba(0,0,0,.4); }
-
-.ability-card__drag-handle {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  font-size: 20px;
-  color: rgba(var(--ion-color-light-rgb), 0.3);
-  cursor: grab;
-  touch-action: none;
-  margin-bottom: -4px;
-  transition: color 0.15s ease;
-}
-.ability-card__drag-handle:hover { color: rgba(var(--ion-color-light-rgb), 0.65); }
 
 .ability-card__head {
   display: flex;
