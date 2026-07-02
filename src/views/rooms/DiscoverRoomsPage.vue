@@ -4,7 +4,7 @@ import {
   IonSearchbar, IonList, IonItem, IonLabel, IonButton, IonSpinner, IonNote,
   IonAvatar, IonIcon, onIonViewDidEnter, useIonRouter
 } from "@ionic/vue";
-import { peopleOutline, checkmarkCircleOutline } from "ionicons/icons";
+import { calendarOutline, peopleOutline, checkmarkCircleOutline } from "ionicons/icons";
 import { ref } from "vue";
 import axios from "axios";
 import { FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES } from "@/config/integrationRoutes";
@@ -15,6 +15,7 @@ interface PublicRoom {
   description: string | null;
   filePath: string | null;
   memberCount: number;
+  nextSessionAt: string | null;
 }
 
 const ionRouter = useIonRouter();
@@ -112,6 +113,10 @@ onIonViewDidEnter(() => loadRooms());
             <p class="room-members">
               <ion-icon :icon="peopleOutline" class="members-icon" />
               {{ room.memberCount }} участников
+            </p>
+            <p v-if="room.nextSessionAt" class="room-session">
+              <ion-icon :icon="calendarOutline" class="members-icon" />
+              {{ new Date(room.nextSessionAt).toLocaleString('ru-RU', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) }}
             </p>
           </ion-label>
 
@@ -218,6 +223,15 @@ onIonViewDidEnter(() => loadRooms());
 
 .members-icon {
   font-size: 13px;
+}
+
+.room-session {
+  font-size: 12px;
+  color: var(--ion-color-primary);
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .action-col {

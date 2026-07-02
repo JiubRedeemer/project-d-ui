@@ -39,10 +39,14 @@ const inventoryStore = useInventoryStore();
 const createInventoryItemStore = useCreateInventoryItemStore();
 
 const availableTags = ref<ItemTagDto[]>([]);
+const myUserId = ref<string | null>(null);
 const shownTagInfo = ref<string | null>(null);
 function toggleTagInfo(tag: string) {
   shownTagInfo.value = shownTagInfo.value === tag ? null : tag;
 }
+
+const isMyItem = computed(() => Boolean(item.value?.creatorId && item.value.creatorId === myUserId.value));
+const isCatalogItem = computed(() => !item.value?.creatorId);
 
 const showEditItemSkillModal = ref(false);
 const isEditingItemSkill = ref(false);
@@ -124,6 +128,11 @@ onIonViewDidEnter(async () => {
   }
   if (!inventoryItemStore.inventoryItem.itemId) {
     inventoryItemStore.updateInventoryItemInStoreById(route.params.roomId, route.params.characterId, route.params.itemId);
+  }
+  if (!myUserId.value) {
+    axios.get(`${GATEWAY_INTEGRATION_ROUTES.baseURL}/users/myId`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` }
+    }).then(r => { myUserId.value = r.data; }).catch(() => {});
   }
 });
 
@@ -220,7 +229,16 @@ async function deleteItemFromInventory() {
 }
 
 async function editItem() {
-  createInventoryItemStore.item = inventoryItemStore.inventoryItem.item;
+  createInventoryItemStore.clearAll();
+  createInventoryItemStore.item = { ...inventoryItemStore.inventoryItem.item };
+  createInventoryItemStore.inventoryItemId = inventoryItemStore.inventoryItem.id;
+  createInventoryItemStore.item.roomId = route.params.roomId;
+  ionRouter.navigate(`/rooms/${route.params.roomId}/characters/${route.params.characterId}/inventory/add`, "forward", "push");
+}
+
+async function copyAndEditItem() {
+  createInventoryItemStore.clearAll();
+  createInventoryItemStore.item = { ...inventoryItemStore.inventoryItem.item, id: undefined as any };
   createInventoryItemStore.inventoryItemId = inventoryItemStore.inventoryItem.id;
   createInventoryItemStore.item.roomId = route.params.roomId;
   ionRouter.navigate(`/rooms/${route.params.roomId}/characters/${route.params.characterId}/inventory/add`, "forward", "push");
@@ -396,6 +414,7 @@ function getRefillLabel(refill: ItemSkill["chargesRefill"]): string {
 
     <div v-if="item" class="item-footer">
       <ion-button
+          v-if="isMyItem"
           class="item-footer__btn item-footer__btn--primary"
           expand="block"
           fill="solid"
@@ -405,6 +424,18 @@ function getRefillLabel(refill: ItemSkill["chargesRefill"]): string {
       >
         <ion-icon slot="start" :icon="createOutline"/>
         Изменить
+      </ion-button>
+      <ion-button
+          v-if="isCatalogItem"
+          class="item-footer__btn item-footer__btn--primary"
+          expand="block"
+          fill="solid"
+          shape="round"
+          color="primary"
+          @click="copyAndEditItem"
+      >
+        <ion-icon slot="start" :icon="createOutline"/>
+        Скопировать и изменить
       </ion-button>
       <ion-button
           class="item-footer__btn item-footer__btn--danger"

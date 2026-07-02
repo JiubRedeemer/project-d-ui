@@ -1,14 +1,18 @@
 <script setup lang="ts">
 
-import {IonBackButton, IonButtons, IonTitle, IonToolbar, onIonViewDidEnter} from "@ionic/vue";
+import {IonBackButton, IonButton, IonButtons, IonIcon, IonTitle, IonToolbar, onIonViewDidEnter} from "@ionic/vue";
+import {calendarOutline} from "ionicons/icons";
 import LogOutButton from "@/views/common/LogOutButton.vue";
+import RoomScheduleModal from "@/views/master/modals/RoomScheduleModal.vue";
 import {useRoomStore} from "@/stores/RoomStore";
 import {useRoute} from "vue-router";
-import {onMounted} from "vue";
+import {computed, onMounted, ref} from "vue";
 
 const route = useRoute();
+const roomStore = useRoomStore();
+const showScheduleModal = ref(false);
 
-const roomStore = useRoomStore()
+const roomId = computed(() => route.params.roomId as string);
 
 onIonViewDidEnter(() => {
   roomStore.getRoomInfo(route.params.roomId)
@@ -36,9 +40,19 @@ onMounted(() => {
     </ion-title>
 
     <ion-buttons slot="end">
+      <ion-button fill="clear" @click="showScheduleModal = true">
+        <ion-icon slot="icon-only" :icon="calendarOutline"/>
+      </ion-button>
       <LogOutButton/>
     </ion-buttons>
   </ion-toolbar>
+
+  <RoomScheduleModal
+    :is-open="showScheduleModal"
+    :room-id="roomId"
+    @close="showScheduleModal = false"
+    @saved="showScheduleModal = false"
+  />
 </template>
 
 <style scoped>

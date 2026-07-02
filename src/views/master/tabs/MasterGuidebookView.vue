@@ -901,6 +901,33 @@ function closeItemModal() {
   selectedItem.value = null;
 }
 
+async function deleteItemFromModal() {
+  const item = selectedItem.value;
+  if (!item) return;
+  try {
+    await axios.delete(
+      `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${roomId.value}${GATEWAY_INTEGRATION_ROUTES.items}/${item.id}`,
+      { headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` } }
+    );
+    items.value = items.value.filter(i => i.id !== item.id);
+    closeItemModal();
+  } catch (e) {
+    console.error("Ошибка при удалении предмета:", e);
+  }
+}
+
+function editItemFromModal() {
+  const item = selectedItem.value;
+  if (!item) return;
+  showItemModal.value = false;
+  createInventoryItemStore.clearAll();
+  createInventoryItemStore.item = { ...item };
+  if (item.creatorId) {
+    createInventoryItemStore.keepExistingId = true;
+  }
+  ionRouter.navigate('/rooms/' + roomId.value + '/master/create/item', "forward", "push");
+}
+
 function openSpellModal(spell: SpellDto) {
   selectedSpell.value = spell;
   showSpellModal.value = true;
@@ -2416,6 +2443,8 @@ async function onCatalogApplied(
         :is-open="showItemModal"
         :available-tags="availableItemTags"
         @close="closeItemModal"
+        @edit="editItemFromModal"
+        @delete="deleteItemFromModal"
     />
     <MasterGuidebookSpellModal
         :spell="selectedSpell"

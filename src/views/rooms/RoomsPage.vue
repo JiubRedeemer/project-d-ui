@@ -16,7 +16,7 @@ import {
   onIonViewDidEnter,
   useIonRouter
 } from "@ionic/vue";
-import {add, chevronForwardOutline, informationCircleOutline, searchOutline} from "ionicons/icons";
+import {add, calendarOutline, chevronForwardOutline, informationCircleOutline, searchOutline} from "ionicons/icons";
 import {HEADERS, TEXTS} from "@/config/localisations";
 import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
 import PwaInstallHintModal from "@/components/PwaInstallHintModal.vue";
@@ -29,7 +29,7 @@ import {
   shouldShowPwaHintOnEnter,
 } from "@/utils/pwaInstall";
 
-type Room = { id: string; name: string; description: string; filePath: string; lastActivityDate: string };
+type Room = { id: string; name: string; description: string; filePath: string; lastActivityDate: string; nextSessionAt: string | null };
 
 const ionRouter = useIonRouter();
 const rooms = ref<Room[]>([]);
@@ -57,7 +57,12 @@ const http = () => axios.create({
 const setupRooms = async () => {
   const res = await http().get(GATEWAY_INTEGRATION_ROUTES.api + GATEWAY_INTEGRATION_ROUTES.rooms);
   if (res.status == 200) {
-    rooms.value = res.data;
+    rooms.value = (res.data as Room[]).sort((a, b) => {
+      if (a.nextSessionAt && b.nextSessionAt) return a.nextSessionAt.localeCompare(b.nextSessionAt);
+      if (a.nextSessionAt) return -1;
+      if (b.nextSessionAt) return 1;
+      return 0;
+    });
   }
 };
 
@@ -222,6 +227,10 @@ const dismissPwaHintAndClose = () => {
               <ion-label>
                 <h2 class="room-name">{{ room.name }}</h2>
                 <p class="room-description">{{ room.description }}</p>
+                <p v-if="room.nextSessionAt" class="room-session">
+                  <ion-icon :icon="calendarOutline" class="session-icon"/>
+                  {{ new Date(room.nextSessionAt).toLocaleString('ru-RU', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) }}
+                </p>
               </ion-label>
             </ion-item>
           </ion-list>
@@ -435,6 +444,19 @@ const dismissPwaHintAndClose = () => {
   font-size: 13px;
   line-height: 1.4;
   color: rgba(var(--ion-color-light-rgb), 0.76);
+}
+
+.room-session {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--ion-color-primary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.session-icon {
+  font-size: 13px;
 }
 
 .room-list-placeholder-wrapper {

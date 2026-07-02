@@ -94,11 +94,11 @@ function goEditForm(c: CompanionDto) {
 }
 
 function transformInto(form: CompanionDto) {
-  transformStore.transform(characterId.value, form)
+  transformStore.transform(characterId.value, form, route.params.roomId as string)
 }
 
 function revertTransform() {
-  transformStore.revert(characterId.value)
+  transformStore.revert(characterId.value, route.params.roomId as string)
 }
 
 function toggleExpand(id: string) {

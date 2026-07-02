@@ -10,7 +10,7 @@ import {
   IonIcon,
   IonToggle,
 } from "@ionic/vue";
-import {closeOutline} from "ionicons/icons";
+import {closeOutline, createOutline, trashOutline} from "ionicons/icons";
 import type {Item} from "@/components/models/response/InventoryResponse";
 import type {ItemTagDto} from "@/api/itemTagApi";
 import {FILE_STORAGE_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
@@ -27,7 +27,7 @@ const props = withDefaults(defineProps<{
   availableTags?: ItemTagDto[];
 }>(), { availableTags: () => [] });
 
-const emit = defineEmits<{ (e: "close"): void }>();
+const emit = defineEmits<{ (e: "close"): void; (e: "edit"): void; (e: "delete"): void }>();
 
 const shownTagInfo = ref<string | null>(null);
 function toggleTagInfo(tag: string) {
@@ -107,6 +107,8 @@ const renderMarkdown = (text: string | undefined): string =>
   text ? marked.parse(text.replace(/\r\n/g, "\n"), {gfm: true, breaks: true}) as string : "";
 
 function closeModal() { emit("close"); }
+function editItem() { emit("edit"); }
+function deleteItem() { emit("delete"); }
 </script>
 
 <template>
@@ -114,6 +116,9 @@ function closeModal() { emit("close"); }
     <ion-header>
       <ion-toolbar color="dark" class="item-toolbar">
         <ion-buttons slot="end">
+          <ion-button fill="clear" @click="editItem">
+            <ion-icon :icon="createOutline" slot="icon-only"/>
+          </ion-button>
           <ion-button fill="clear" @click="closeModal">
             <ion-icon :icon="closeOutline" slot="icon-only"/>
           </ion-button>
@@ -220,6 +225,12 @@ function closeModal() { emit("close"); }
           </section>
         </div>
       </div>
+      <div v-if="item.creatorId" class="item-delete-section">
+        <ion-button expand="block" fill="clear" color="danger" @click="deleteItem">
+          <ion-icon slot="start" :icon="trashOutline"/>
+          Удалить предмет
+        </ion-button>
+      </div>
     </ion-content>
   </ion-modal>
 </template>
@@ -227,6 +238,10 @@ function closeModal() { emit("close"); }
 <style scoped>
 .item-toolbar {
   --min-height: 44px;
+}
+
+.item-delete-section {
+  padding: 8px 16px 16px;
 }
 
 .item-ion-content {

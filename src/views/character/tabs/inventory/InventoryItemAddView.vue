@@ -201,7 +201,9 @@ onBeforeMount(async () => {
     itemRarity.value = createInventoryItemStore.item.rarity ? createInventoryItemStore.item.rarity : 'COMMON';
     oldItemId.value = createInventoryItemStore.inventoryItemId
     oldItemCount.value = createInventoryItemStore.item.count;
-    createInventoryItemStore.item.id = itemId;
+    if (!createInventoryItemStore.keepExistingId) {
+      createInventoryItemStore.item.id = itemId;
+    }
     noDexBonusLimit.value = createInventoryItemStore.item.stats.armorClassMaxDexterityBonus === "-1";
     noStrengthRequirement.value = createInventoryItemStore.item.stats.requirement === "-1";
     createItemSkills.value = cloneSkills(createInventoryItemStore.item.skills);
@@ -250,8 +252,6 @@ watch(selectedType, (newValue) => {
   createInventoryItemStore.item.typeName = newValue;
   createInventoryItemStore.item.type = mapTypeToValue(newValue);
   viewType.value = mapTypeToValue(newValue);
-  createInventoryItemStore.item.name.rus = "";
-  createInventoryItemStore.item.name.eng = "";
   createInventoryItemStore.item.description = "";
   invalidFields.value = []; // Reset invalid fields on type change
 });

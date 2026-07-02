@@ -81,6 +81,7 @@ const showRestModal = ref(false);
 const showLevelUpModal = ref(false);
 const selectedCharacter = ref<Character>();
 const subheaderStore = useSubheaderOpenedStore();
+const subheaderHasStates = ref(false);
 const characterSkillsStore = useCharacterSkillsStore();
 
 const earlyVersionClickCount = ref(0);
@@ -548,7 +549,8 @@ const openSubheader = () => {
       <div class="subheader-block"
            :class="{
              openSubheader: subheaderStore.subheaderOpened,
-             'has-subtabs': !isDesktop && (selectedTab === 'character' || selectedTab === 'combat')
+             'has-subtabs': !isDesktop && (selectedTab === 'character' || selectedTab === 'combat'),
+             'has-states': subheaderHasStates,
            }">
         <PlayerViewSubheader v-if="asyncDone" @speed-selected="openEditSpeedModal"
                              @armory-class-selected="openEditArmoryClassModal"
@@ -557,6 +559,7 @@ const openSubheader = () => {
                              @close-subheader="closeSubheader"
                              @open-subheader="openSubheader"
                              @open-rest-modal="openRestModal"
+                             @has-states="(v: boolean) => subheaderHasStates = v"
         />
         <div v-if="!isDesktop && selectedTab === 'character'" class="char-subtab-bar">
           <button
@@ -962,7 +965,7 @@ ion-header.character-header {
 .char-subtab-bar {
   display: flex;
   gap: 6px;
-  padding: 8px 16px;
+  padding: 5px 16px;
   background: rgba(var(--ion-color-dark-rgb), 0.92);
   border-bottom: 1px solid rgba(var(--ion-color-light-rgb), 0.07);
 }
@@ -974,7 +977,7 @@ ion-header.character-header {
   align-items: center;
   justify-content: center;
   gap: 5px;
-  padding: 8px 10px;
+  padding: 5px 10px;
   border-radius: 10px;
   border: 1px solid transparent;
   background: transparent;
@@ -1161,25 +1164,25 @@ ion-page {
 .inventory.openSubheader,
 .notes.openSubheader,
 .companions.openSubheader {
-  margin-top: 200px;
+  margin-top: 220px;
 }
 
 .character.openSubheader,
 .combat.openSubheader {
-  margin-top: calc(200px + 46px);
+  margin-top: calc(220px + 46px);
 }
 
 .inventory,
 .notes,
 .companions {
-  margin-top: 95px;
+  margin-top: 120px;
   padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
   transition: margin-top 0.3s ease;
 }
 
 .character,
 .combat {
-  margin-top: calc(95px + 46px);
+  margin-top: calc(95px + 50px);
   padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
   transition: margin-top 0.3s ease;
 }
@@ -1200,12 +1203,28 @@ ion-page {
   max-height: 260px;
 }
 
+.subheader-block.openSubheader.has-states {
+  max-height: 300px;
+}
+
 .subheader-block.has-subtabs {
   max-height: calc(48px + 46px);
 }
 
+.subheader-block.has-states {
+  max-height: 60px; /* 5px top + 32px card + 14px states-bar = 51px, +6px gap */
+}
+
+.subheader-block.has-states.has-subtabs {
+  max-height: calc(57px + 46px);
+}
+
 .subheader-block.openSubheader.has-subtabs {
   max-height: calc(260px + 46px);
+}
+
+.subheader-block.openSubheader.has-states.has-subtabs {
+  max-height: calc(300px + 46px);
 }
 
 @media (min-width: 1024px) {
@@ -1224,6 +1243,10 @@ ion-page {
 
   .subheader-block.openSubheader {
     max-height: 260px;
+  }
+
+  .subheader-block.openSubheader.has-states {
+    max-height: 300px;
   }
 
   .inventory,

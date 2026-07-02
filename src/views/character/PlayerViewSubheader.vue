@@ -1,6 +1,6 @@
 <script setup lang="ts">
 
-import {computed} from "vue";
+import {computed, onMounted, ref, watch} from "vue";
 import {IonIcon} from "@ionic/vue";
 import {chevronDownOutline, heartOutline, locateOutline} from "ionicons/icons";
 import armorIcon from "../../static/icons/Armor.svg"
@@ -12,11 +12,29 @@ import {useCharacterStore} from "@/stores/CharacterStore";
 import {useSubheaderOpenedStore} from "@/stores/SubheaderStore";
 import {useInventoryStore} from "@/stores/InventoryStore";
 import {useTransformStore} from "@/stores/TransformStore";
+import {useRoute} from "vue-router";
+import {getStatesForRoom} from "@/api/statesApi";
+import type {StateDto} from "@/api/statesApi.types";
 
 const characterStore = useCharacterStore()
 const subheaderStore = useSubheaderOpenedStore();
 const inventoryStore = useInventoryStore();
 const transformStore = useTransformStore();
+const route = useRoute();
+
+const roomStates = ref<StateDto[]>([]);
+const activeStates = computed(() => characterStore.character?.states ?? []);
+
+onMounted(async () => {
+  const roomId = route.params.roomId as string;
+  if (!roomId) return;
+  try { roomStates.value = await getStatesForRoom(roomId); } catch { /* non-critical */ }
+});
+
+function stateLabel(code: string | null | undefined): string {
+  if (!code) return '?';
+  return roomStates.value.find(s => s.code === code)?.name ?? code;
+}
 
 const activeForm = computed(() =>
   characterStore.character?.id
@@ -52,6 +70,7 @@ const emits = defineEmits([
   "initiative-selected",
   "health-selected",
   "open-rest-modal",
+  "has-states",
 ]);
 
 const selectSpeed = (character: Character) => {
@@ -157,10 +176,12 @@ const maxHp = computed(() =>
 const tempHp = computed(() => characterStore.character?.health?.tempHp ?? 0);
 
 const isOpen = computed(() => subheaderStore.subheaderOpened);
+
+watch(activeStates, (states) => { emits("has-states", states.length > 0); }, { immediate: true });
 </script>
 
 <template>
-  <div class="subheader-root" :class="{ 'is-open': isOpen }">
+  <div class="subheader-root" :class="{ 'is-open': isOpen, 'has-states': activeStates.length > 0 }">
     <div class="subheader-shell">
       <button
           type="button"
@@ -223,6 +244,18 @@ const isOpen = computed(() => subheaderStore.subheaderOpened);
         <span class="rest-action__label">Отдых</span>
       </button>
     </div>
+
+    <div v-if="activeStates.length && !isOpen" class="states-bar">
+      <span v-for="s in activeStates" :key="s.id ?? s.stateCode" class="states-bar__chip">
+        {{ stateLabel(s.stateCode) }}
+      </span>
+    </div>
+
+    <div v-if="activeStates.length && isOpen" class="states-expanded">
+      <span v-for="s in activeStates" :key="s.id ?? s.stateCode" class="states-bar__chip">
+        {{ stateLabel(s.stateCode) }}
+      </span>
+    </div>
   </div>
 </template>
 
@@ -237,6 +270,36 @@ const isOpen = computed(() => subheaderStore.subheaderOpened);
 
 .subheader-root.is-open {
   padding-bottom: 35px;
+}
+
+/* Когда есть состояния в свёрнутом виде — убираем нижний паддинг, он занят полоской */
+.subheader-root.has-states:not(.is-open) {
+  padding-bottom: 0;
+}
+
+.states-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 16px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+.states-bar::-webkit-scrollbar { display: none; }
+
+.states-bar__chip {
+  flex-shrink: 0;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ion-color-danger);
+  opacity: 0.9;
+  border-color: red;
+  border: 1px solid var(--ion-color-danger);
+  border-radius: 10px;
+  padding: 1px 2px;
 }
 
 .subheader-shell {
@@ -258,6 +321,17 @@ const isOpen = computed(() => subheaderStore.subheaderOpened);
     "ac speed init hp"
     "rest rest rest rest";
 }
+
+.states-expanded {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 4px;
+  padding: 6px 0 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+.states-expanded::-webkit-scrollbar { display: none; }
 
 .stat-card,
 .rest-action,

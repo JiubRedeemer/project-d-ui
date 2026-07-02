@@ -1,7 +1,43 @@
 import { defineStore } from 'pinia'
 import type { CompanionDto } from '@/api/companionApi.types'
 import { useCharacterStore } from '@/stores/CharacterStore'
-import { FILE_STORAGE_INTEGRATION_ROUTES } from '@/config/integrationRoutes'
+import { FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES } from '@/config/integrationRoutes'
+import axios from 'axios'
+
+function authHeaders() {
+  return { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('accessToken')}` }
+}
+
+function characterBaseUrl(roomId: string, characterId: string) {
+  return `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${characterId}`
+}
+
+async function syncHpToBackend(roomId: string, characterId: string, oldHp: number, newCurrentHp: number, newMaxHp: number) {
+  const base = characterBaseUrl(roomId, characterId)
+  const headers = authHeaders()
+  try {
+    await axios.patch(`${base}${GATEWAY_INTEGRATION_ROUTES.health}${GATEWAY_INTEGRATION_ROUTES.max}`, { bonusValue: newMaxHp }, { headers })
+    const delta = newCurrentHp - oldHp
+    if (delta !== 0) {
+      const type = delta > 0 ? 'HEAL' : 'DAMAGE'
+      await axios.patch(`${base}${GATEWAY_INTEGRATION_ROUTES.health}${GATEWAY_INTEGRATION_ROUTES.updateCurrent}`, { type, value: Math.abs(delta) }, { headers })
+    }
+  } catch (e) {
+    console.warn('[TransformStore] failed to sync HP to backend', e)
+  }
+}
+
+async function syncAcBonusToBackend(roomId: string, characterId: string, bonusValue: number) {
+  try {
+    await axios.patch(
+      `${characterBaseUrl(roomId, characterId)}${GATEWAY_INTEGRATION_ROUTES.armoryClass}${GATEWAY_INTEGRATION_ROUTES.bonus}`,
+      { bonusValue },
+      { headers: authHeaders() }
+    )
+  } catch (e) {
+    console.warn('[TransformStore] failed to sync AC to backend', e)
+  }
+}
 
 interface AbilityBackup {
   code: string
@@ -34,12 +70,12 @@ export const useTransformStore = defineStore('transformStore', {
   },
 
   actions: {
-    transform(characterId: string, form: CompanionDto) {
+    transform(characterId: string, form: CompanionDto, roomId?: string) {
       const characterStore = useCharacterStore()
       const char = characterStore.character
 
       if (this.transforms[characterId]) {
-        this.revert(characterId)
+        this.revert(characterId, roomId)
       }
 
       const entry: TransformEntry = {
@@ -59,15 +95,28 @@ export const useTransformStore = defineStore('transformStore', {
       }
       this.transforms[characterId] = entry
 
+      const oldHp = entry.backupCurrentHp
       this._applyFormToStore(characterId, form)
+
+      if (roomId && form.maxHp != null) {
+        const newCurrentHp = char.health?.currentHp ?? 0
+        const newMaxHp = char.health?.maxHp ?? 0
+        syncHpToBackend(roomId, characterId, oldHp, newCurrentHp, newMaxHp)
+        if (form.armoryClass != null) {
+          // Form AC becomes base AC; zero out the bonus so effective AC = form.armoryClass
+          syncAcBonusToBackend(roomId, characterId, 0)
+        }
+      }
     },
 
-    revert(characterId: string) {
+    revert(characterId: string, roomId?: string) {
       const entry = this.transforms[characterId]
       if (!entry) return
 
       const characterStore = useCharacterStore()
       const char = characterStore.character
+
+      const currentHpBeforeRevert = char.health?.currentHp ?? 0
 
       if (char.abilities) {
         for (const ab of char.abilities) {
@@ -88,16 +137,21 @@ export const useTransformStore = defineStore('transformStore', {
         char.health.bonusValue = entry.backupBonusHp
       }
 
+      if (roomId) {
+        syncHpToBackend(roomId, characterId, currentHpBeforeRevert, entry.backupCurrentHp, entry.backupMaxHp)
+        syncAcBonusToBackend(roomId, characterId, entry.backupBonusArmoryClass)
+      }
+
       delete this.transforms[characterId]
     },
 
     reapplyIfActive(characterId: string) {
       const entry = this.transforms[characterId]
       if (!entry) return
-      this._applyFormToStore(characterId, entry.form)
+      this._applyFormToStore(characterId, entry.form, false)
     },
 
-    _applyFormToStore(characterId: string, form: CompanionDto) {
+    _applyFormToStore(characterId: string, form: CompanionDto, setCurrentHp = true) {
       const characterStore = useCharacterStore()
       const char = characterStore.character
 
@@ -129,8 +183,10 @@ export const useTransformStore = defineStore('transformStore', {
 
       if (form.maxHp != null && char.health) {
         char.health.maxHp = form.maxHp
-        char.health.currentHp = form.currentHp ?? form.maxHp
         char.health.bonusValue = 0
+        if (setCurrentHp) {
+          char.health.currentHp = form.currentHp ?? form.maxHp
+        }
       }
     },
   },

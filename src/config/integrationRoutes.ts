@@ -36,6 +36,7 @@ export const GATEWAY_INTEGRATION_ROUTES = {
     declineInvite: "/invites/rooms/decline",
 
     publicRooms: "/rooms/public",
+    schedule: "/schedule",
     joinRequests: "/join-requests/incoming",
     joinRequestsCount: "/join-requests/incoming/count",
     joinRequestAccept: "/join-requests",
