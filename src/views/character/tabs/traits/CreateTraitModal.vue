@@ -57,37 +57,27 @@ async function saveTrait() {
 
   const roomId = String(route.params.roomId);
   const characterId = String(route.params.characterId);
+  const description = (traitDescription.value ?? "").trim();
+
+  // Optimistic: add immediately and close modal
+  const tempId = `temp_${Date.now()}`;
+  if (!characterStore.character.traits) characterStore.character.traits = [];
+  characterStore.character.traits.push({ id: tempId, name, description });
+
+  resetForm();
+  emit("saved");
+  emit("close");
 
   try {
     await axios.put(
       `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${roomId}${GATEWAY_INTEGRATION_ROUTES.characters}/${characterId}/traits`,
-      {
-        name,
-        description: (traitDescription.value ?? "").trim(),
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-        },
-      }
+      { name, description },
+      { headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("accessToken")}` } }
     );
-
     await characterStore.updateCharacterInStoreById(roomId, characterId);
-
-    const toast = await toastController.create({
-      message: "Владение создано",
-      duration: 1500,
-      position: "top",
-      color: "success",
-    });
-    await toast.present();
-
-    resetForm();
-    emit("saved");
-    emit("close");
   } catch (error) {
     console.error("Ошибка при создании владения:", error);
+    characterStore.character.traits = characterStore.character.traits.filter(t => t.id !== tempId);
     const toast = await toastController.create({
       message: "Ошибка при создании владения",
       duration: 2000,

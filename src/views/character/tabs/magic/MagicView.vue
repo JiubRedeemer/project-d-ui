@@ -13,10 +13,40 @@ import type {ChargesRefillEnum, CharacterResourceDto, SpellBookItemDto, SpellCel
 import SpellInfoModal from "@/views/character/tabs/magic/SpellInfoModal.vue";
 import {FILE_STORAGE_INTEGRATION_ROUTES, SPELL_IMAGE_PLACEHOLDER,} from "@/config/integrationRoutes";
 import {useMagicStore} from "@/stores/MagicStore";
+import {useCharacterStore} from "@/stores/CharacterStore";
 
 const route = useRoute();
 const ionRouter = useIonRouter();
 const magicStore = useMagicStore();
+const characterStore = useCharacterStore();
+
+const SPELLCASTING_ABILITY: Record<string, string> = {
+    WIZARD: 'INT', ARTIFICER: 'INT',
+    CLERIC: 'WIS', DRUID: 'WIS', RANGER: 'WIS',
+    SORCERER: 'CHA', BARD: 'CHA', WARLOCK: 'CHA', PALADIN: 'CHA',
+};
+
+const spellSaveDc = computed(() => {
+    const char = characterStore.character;
+    if (!char) return null;
+    const abilityCode = SPELLCASTING_ABILITY[char.clazzCode?.toUpperCase()];
+    if (!abilityCode) return null;
+    const ability = char.abilities?.find(a => a.code === abilityCode);
+    if (!ability) return null;
+    const mod = Math.floor(((ability.value ?? 0) + ability.bonusValue - 10) / 2);
+    return 8 + (char.proficiencyBonus ?? 0) + mod;
+});
+
+const spellAttackBonus = computed(() => {
+    const char = characterStore.character;
+    if (!char) return null;
+    const abilityCode = SPELLCASTING_ABILITY[char.clazzCode?.toUpperCase()];
+    if (!abilityCode) return null;
+    const ability = char.abilities?.find(a => a.code === abilityCode);
+    if (!ability) return null;
+    const mod = Math.floor(((ability.value ?? 0) + ability.bonusValue - 10) / 2);
+    return (char.proficiencyBonus ?? 0) + mod;
+});
 
 // Direct store access — убираем лишний computed-враппер, который создаёт лишний уровень зависимостей
 const spellBook = computed(() => magicStore.spellBook);
@@ -635,6 +665,17 @@ onBeforeUnmount(() => {
         <span class="resource-add-compact__text">Добавить ресурс класса</span>
       </button>
 
+      <div v-if="spellSaveDc !== null" class="spell-stats-row">
+        <div class="spell-stat-tile">
+          <span class="spell-stat-tile__value">{{ spellSaveDc }}</span>
+          <span class="spell-stat-tile__label">Сл спасброска</span>
+        </div>
+        <div class="spell-stat-tile">
+          <span class="spell-stat-tile__value">{{ spellAttackBonus !== null && spellAttackBonus >= 0 ? '+' : '' }}{{ spellAttackBonus }}</span>
+          <span class="spell-stat-tile__label">Бонус атаки</span>
+        </div>
+      </div>
+
       <div class="spell-cells">
         <div class="spell-cells-header">
           <div class="spell-cells-title">Ячейки заклинаний</div>
@@ -882,6 +923,41 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   gap: 8px;
   margin-bottom: 6px;
+}
+
+.spell-stats-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.spell-stat-tile {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 8px;
+  border-radius: 14px;
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.2);
+  background: rgba(var(--ion-color-medium-rgb), 0.5);
+}
+
+.spell-stat-tile__value {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--ion-color-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.spell-stat-tile__label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(var(--ion-color-light-rgb), 0.45);
+  text-align: center;
 }
 
 .spell-cells-title {
