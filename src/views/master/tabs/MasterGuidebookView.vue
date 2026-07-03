@@ -335,6 +335,7 @@ const npcFilterType = ref<NpcTypeEnum | "">("");
 const npcFilterClass = ref<string>("");
 const npcFilterRace = ref<string>("");
 const npcFilterCharacterId = ref<string>("");
+const npcFilterUnique = ref<boolean | null>(null);
 const npcSearch = ref<string>("");
 const npcTagFilter = ref<Set<string>>(new Set());
 const npcTagInput = ref<string>("");
@@ -586,6 +587,7 @@ const filteredNpcs = computed(() => {
   if (npcFilterType.value) result = result.filter((n) => n.type === npcFilterType.value);
   if (npcFilterClass.value) result = result.filter((n) => n.clazzCode === npcFilterClass.value);
   if (npcFilterRace.value) result = result.filter((n) => n.raceCode === npcFilterRace.value);
+  if (npcFilterUnique.value !== null) result = result.filter((n) => (n.unique ?? false) === npcFilterUnique.value);
   if (npcFilterCharacterId.value) {
     const charId = npcFilterCharacterId.value;
     const npcIdsWithChar = new Set(
@@ -614,6 +616,7 @@ const npcActiveFiltersCount = computed(() => {
   if (npcFilterClass.value) count++;
   if (npcFilterRace.value) count++;
   if (npcFilterCharacterId.value) count++;
+  if (npcFilterUnique.value !== null) count++;
   if (npcTagFilter.value.size > 0) count++;
   return count;
 });
@@ -623,6 +626,7 @@ function resetNpcFilters() {
   npcFilterClass.value = "";
   npcFilterRace.value = "";
   npcFilterCharacterId.value = "";
+  npcFilterUnique.value = null;
   npcTagFilter.value = new Set();
 }
 
@@ -2175,6 +2179,10 @@ async function onCatalogApplied(
             {{ roomCharacters.find(c => c.id === npcFilterCharacterId)?.name ?? 'Персонаж' }}
             <button @click="npcFilterCharacterId = ''"><ion-icon :icon="closeOutline"/></button>
           </span>
+          <span v-if="npcFilterUnique !== null" class="npc-active-chip">
+            {{ npcFilterUnique ? 'Уникальный' : 'Не уникальный' }}
+            <button @click="npcFilterUnique = null"><ion-icon :icon="closeOutline"/></button>
+          </span>
           <span v-for="tag in [...npcTagFilter]" :key="tag" class="npc-active-chip npc-active-chip--tag">
             #{{ tag }}
             <button @click="toggleTagFilter(tag)"><ion-icon :icon="closeOutline"/></button>
@@ -2194,6 +2202,20 @@ async function onCatalogApplied(
               </div>
 
               <div class="npc-filters-modal__body">
+                <div class="npc-filters-section">
+                  <div class="npc-filters-label">Уникальность</div>
+                  <div class="npc-filters-chips">
+                    <button
+                        :class="['npc-filters-chip', { 'npc-filters-chip--active': npcFilterUnique === true }]"
+                        @click="npcFilterUnique = npcFilterUnique === true ? null : true"
+                    >Уникальный</button>
+                    <button
+                        :class="['npc-filters-chip', { 'npc-filters-chip--active': npcFilterUnique === false }]"
+                        @click="npcFilterUnique = npcFilterUnique === false ? null : false"
+                    >Не уникальный</button>
+                  </div>
+                </div>
+
                 <div class="npc-filters-section">
                   <div class="npc-filters-label">Тип</div>
                   <div class="npc-filters-chips">

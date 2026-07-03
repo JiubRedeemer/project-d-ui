@@ -14,6 +14,7 @@ import SpellInfoModal from "@/views/character/tabs/magic/SpellInfoModal.vue";
 import {FILE_STORAGE_INTEGRATION_ROUTES, SPELL_IMAGE_PLACEHOLDER,} from "@/config/integrationRoutes";
 import {useMagicStore} from "@/stores/MagicStore";
 import {useCharacterStore} from "@/stores/CharacterStore";
+import {getClassByCodeForRoom} from "@/api/rulebookApi";
 
 const route = useRoute();
 const ionRouter = useIonRouter();
@@ -26,10 +27,17 @@ const SPELLCASTING_ABILITY: Record<string, string> = {
     SORCERER: 'CHA', BARD: 'CHA', WARLOCK: 'CHA', PALADIN: 'CHA',
 };
 
+const classGroupCode = ref<string | null>(null);
+
+function spellcastingAbilityCode(): string | null {
+    const key = (classGroupCode.value ?? characterStore.character?.clazzCode)?.toUpperCase();
+    return key ? (SPELLCASTING_ABILITY[key] ?? null) : null;
+}
+
 const spellSaveDc = computed(() => {
     const char = characterStore.character;
     if (!char) return null;
-    const abilityCode = SPELLCASTING_ABILITY[char.clazzCode?.toUpperCase()];
+    const abilityCode = spellcastingAbilityCode();
     if (!abilityCode) return null;
     const ability = char.abilities?.find(a => a.code === abilityCode);
     if (!ability) return null;
@@ -40,7 +48,7 @@ const spellSaveDc = computed(() => {
 const spellAttackBonus = computed(() => {
     const char = characterStore.character;
     if (!char) return null;
-    const abilityCode = SPELLCASTING_ABILITY[char.clazzCode?.toUpperCase()];
+    const abilityCode = spellcastingAbilityCode();
     if (!abilityCode) return null;
     const ability = char.abilities?.find(a => a.code === abilityCode);
     if (!ability) return null;
@@ -604,6 +612,15 @@ const loadMagicData = async () => {
     if (!hasCachedData) loading.value = true;
     error.value = null;
     try {
+        const clazzCode = characterStore.character?.clazzCode;
+        if (clazzCode) {
+            try {
+                const clazzDto = await getClassByCodeForRoom(roomId.value, clazzCode);
+                classGroupCode.value = clazzDto.groupCode || clazzDto.code;
+            } catch {
+                classGroupCode.value = clazzCode;
+            }
+        }
         await magicStore.updateSpellBookInStore(roomId.value, characterId.value);
         if (!hasCachedData) await ensureDefaultSpellCell();
     } catch (e) {

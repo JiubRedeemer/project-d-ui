@@ -42,6 +42,7 @@ const relationType = computed<RelationTypeEnum | null>(() => {
 const npcs = ref<NpcDto[]>([]);
 const loading = ref(false);
 const searchQuery = ref("");
+const filterUnique = ref<boolean | null>(null);
 
 const NPC_TYPE_LABELS: Record<NpcTypeEnum, string> = {
   RATIONAL: "Разумное",
@@ -58,12 +59,8 @@ const getNpcTypeLabel = (type: NpcTypeEnum | undefined | null) =>
 const filteredNpcs = computed(() => {
   let list = npcs.value;
   const q = searchQuery.value.trim().toLowerCase();
-  if (q) {
-    list = list.filter((s) => {
-      const name = s.name
-      return name.toLowerCase().includes(q);
-    });
-  }
+  if (q) list = list.filter((s) => s.name.toLowerCase().includes(q));
+  if (filterUnique.value !== null) list = list.filter((s) => (s.unique ?? false) === filterUnique.value);
   return sortNpcsByName(list);
 });
 
@@ -147,6 +144,18 @@ onIonViewDidEnter(() => {
             shape="transparent"
         />
       </ion-toolbar>
+      <ion-toolbar color="dark" class="filter-chips-toolbar">
+        <div class="filter-chips">
+          <button
+              :class="['filter-chip', { 'filter-chip--active': filterUnique === true }]"
+              @click="filterUnique = filterUnique === true ? null : true"
+          >Уникальный</button>
+          <button
+              :class="['filter-chip', { 'filter-chip--active': filterUnique === false }]"
+              @click="filterUnique = filterUnique === false ? null : false"
+          >Не уникальный</button>
+        </div>
+      </ion-toolbar>
     </ion-header>
     <ion-content color="dark">
       <div v-if="loading" class="loading">Загрузка...</div>
@@ -212,6 +221,36 @@ ion-avatar {
 ion-searchbar {
   --border-radius: 20px;
   --background: transparent;
+}
+
+.filter-chips-toolbar {
+  --min-height: 40px;
+}
+
+.filter-chips {
+  display: flex;
+  gap: 8px;
+  padding: 4px 12px 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.filter-chip {
+  flex-shrink: 0;
+  padding: 4px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.35);
+  background: transparent;
+  color: var(--ion-color-medium);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.filter-chip--active {
+  background: rgba(var(--ion-color-primary-rgb), 0.18);
+  border-color: var(--ion-color-primary);
+  color: var(--ion-color-primary);
 }
 
 .add-section {
