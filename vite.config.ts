@@ -77,8 +77,8 @@ export default defineConfig({
         'pwa-512x512-maskable.png',
       ],
       manifest: {
-        name: 'ProjectD',
-        short_name: 'ProjectD',
+        name: 'Mythrill',
+        short_name: 'Mythrill',
         description: 'Dnd app',
         display: 'standalone',
         background_color: '#ffffff',
