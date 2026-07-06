@@ -168,6 +168,15 @@ function attachGestures() {
       gestureName: 'char-subtab-swipe',
       direction: 'x',
       threshold: 10,
+      canStart(detail) {
+        let el = detail.event.target as HTMLElement | null;
+        while (el) {
+          const style = window.getComputedStyle(el);
+          if (style.overflowX === 'auto' || style.overflowX === 'scroll') return false;
+          el = el.parentElement;
+        }
+        return true;
+      },
       onEnd(detail) {
         if (Math.abs(detail.deltaX) < 48 || Math.abs(detail.deltaX) < Math.abs(detail.deltaY) * 1.5) return
         const idx = CHAR_SUB_TABS.indexOf(characterSubTab.value)
@@ -185,6 +194,15 @@ function attachGestures() {
       gestureName: 'combat-subtab-swipe',
       direction: 'x',
       threshold: 10,
+      canStart(detail) {
+        let el = detail.event.target as HTMLElement | null;
+        while (el) {
+          const style = window.getComputedStyle(el);
+          if (style.overflowX === 'auto' || style.overflowX === 'scroll') return false;
+          el = el.parentElement;
+        }
+        return true;
+      },
       onEnd(detail) {
         if (Math.abs(detail.deltaX) < 48 || Math.abs(detail.deltaX) < Math.abs(detail.deltaY) * 1.5) return
         const idx = COMBAT_SUB_TABS.indexOf(combatSubTab.value)
@@ -202,6 +220,15 @@ function attachGestures() {
       gestureName: 'desktop-subtab-swipe',
       direction: 'x',
       threshold: 10,
+      canStart(detail) {
+        let el = detail.event.target as HTMLElement | null;
+        while (el) {
+          const style = window.getComputedStyle(el);
+          if (style.overflowX === 'auto' || style.overflowX === 'scroll') return false;
+          el = el.parentElement;
+        }
+        return true;
+      },
       onEnd(detail) {
         if (Math.abs(detail.deltaX) < 48) return
         const dir = detail.deltaX < 0 ? 'left' : 'right'

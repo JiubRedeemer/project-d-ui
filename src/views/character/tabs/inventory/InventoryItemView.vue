@@ -21,6 +21,7 @@ import {marked} from "marked";
 import axios from "axios";
 import {useRoute, useRouter} from "vue-router";
 import {useInventoryStore} from "@/stores/InventoryStore";
+import {useCharacterStore} from "@/stores/CharacterStore";
 import {useCreateInventoryItemStore} from "@/stores/CreateInventoryItemStore";
 import {chevronForwardOutline, createOutline, trashOutline} from "ionicons/icons";
 import type {ItemSkill} from "@/components/models/response/InventoryResponse";
@@ -37,6 +38,7 @@ const router = useRouter();
 const inventoryItemStore = useInventoryItemStore();
 const inventoryStore = useInventoryStore();
 const createInventoryItemStore = useCreateInventoryItemStore();
+const characterStore = useCharacterStore();
 
 const availableTags = ref<ItemTagDto[]>([]);
 const myUserId = ref<string | null>(null);
@@ -83,11 +85,14 @@ const hasArmorStatRequirement = computed(() => {
   return !Number.isNaN(numericRequirement) && numericRequirement > 0;
 });
 
-const showRequirementsWarning = computed(() =>
-    isArmor.value
-    && hasArmorStatRequirement.value
-    && !inventoryItem.value.requirementsOk
-);
+const showRequirementsWarning = computed(() => {
+  if (!isArmor.value || !hasArmorStatRequirement.value) return false;
+  const requirement = Number(item.value?.stats?.requirement?.trim());
+  if (Number.isNaN(requirement) || requirement <= 0) return false;
+  const strAbility = characterStore.character?.abilities?.find((a: { code: string }) => a.code === "STR");
+  if (strAbility != null) return strAbility.value < requirement;
+  return !inventoryItem.value.requirementsOk;
+});
 
 const inventorySkillsByItemSkillId = computed(() => {
   const map = new Map<string, number>();

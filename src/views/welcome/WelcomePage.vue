@@ -3,6 +3,7 @@ import {IonButton, IonContent, IonInput, IonPage, IonSpinner, toastController, u
 import {TEXTS} from "@/config/localisations";
 import WelcomeLanding from "@/views/welcome/WelcomeLanding.vue";
 import {computed, onBeforeMount, ref} from "vue";
+import {useRoute} from "vue-router";
 import axios, {isAxiosError} from "axios";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {persistAuthTokens} from "@/utils/authTokens";
@@ -23,6 +24,7 @@ const MIN_PASSWORD_LENGTH = 8;
 const FLIP_HALF_MS = 220;
 
 const ionRouter = useIonRouter();
+const route = useRoute();
 
 // UI state
 const stage = ref<Stage>("welcome");
@@ -30,6 +32,9 @@ const isFlipping = ref(false);
 const flipTurns = ref(0);
 const stageInput = ref("");
 const errors = ref<string[]>([]);
+
+// Invite-token flow
+const roomInviteToken = ref<string | null>(null);
 
 // Flow data state
 const loginEmail = ref("");
@@ -118,8 +123,17 @@ const setupRooms = async () => {
   }
 }
 
-onBeforeMount(() => {
-  setupRooms()
+onBeforeMount(async () => {
+  const token = route.query.roomInviteToken as string | undefined;
+  if (token) {
+    roomInviteToken.value = token;
+    await setupRooms();
+    if (stage.value === "welcome") {
+      await startRegisterFlow();
+    }
+  } else {
+    await setupRooms();
+  }
 })
 
 function createHttpClient(extraHeaders: Record<string, string> = {}) {
@@ -205,7 +219,7 @@ async function goBackStage() {
       await flipTo("registerUsername");
       return;
     case "registerUsername":
-      await flipTo("registerCode");
+      await flipTo(roomInviteToken.value ? "registerEmail" : "registerCode");
       return;
     case "registerCode":
       await flipTo("registerEmail");
@@ -323,6 +337,11 @@ async function login() {
 }
 
 async function sendRegistrationVerificationCode() {
+  if (roomInviteToken.value) {
+    stageInput.value = registerUsername.value;
+    await flipTo("registerUsername");
+    return;
+  }
   sendRegisterCodeLoading.value = true;
   try {
     const http = createHttpClient();
@@ -351,10 +370,11 @@ async function register() {
     const http = createHttpClient();
     const res = await http.post(GATEWAY_INTEGRATION_ROUTES.registration, {
       email: registerEmail.value.trim(),
-      verificationCode: registerCode.value.trim(),
+      verificationCode: roomInviteToken.value ? undefined : registerCode.value.trim(),
       username: registerUsername.value.trim(),
       password: registerPassword.value,
       matchingPassword: registerConfirm.value,
+      roomInviteToken: roomInviteToken.value ?? undefined,
     });
 
     if (res.status >= 200 && res.status < 300) {

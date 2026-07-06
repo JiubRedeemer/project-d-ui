@@ -4,6 +4,13 @@
     --sar: env(safe-area-inset-right, 0px);
     --sab: env(safe-area-inset-bottom, 0px);
     --sal: env(safe-area-inset-left, 0px);
+    --app-height: 100dvh;
+}
+
+/* Fix PWA viewport height — браузер отдаёт неверный 100vh при рестарте,
+   JS в index.html пересчитывает --app-height через visualViewport */
+ion-app {
+    height: var(--app-height) !important;
 }
 
 :root {

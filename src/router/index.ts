@@ -53,6 +53,11 @@ const routes: Array<RouteRecordRaw> = [
         name: 'welcomePage'
     },
     {
+        path: '/register',
+        component: WelcomePage,
+        name: 'registerPage'
+    },
+    {
         path: '/welcome/forgot-password',
         component: ForgotPasswordPage,
         name: 'forgotPasswordPage'

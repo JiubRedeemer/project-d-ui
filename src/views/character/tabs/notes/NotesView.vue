@@ -14,7 +14,7 @@ import {
   onIonViewDidEnter,
   useIonRouter
 } from "@ionic/vue";
-import {addOutline, attachOutline, chevronDownOutline, createOutline, saveOutline, trashOutline} from "ionicons/icons";
+import {addOutline, documentOutline, chevronDownOutline, createOutline, saveOutline, trashOutline} from "ionicons/icons";
 
 import {marked} from "marked";
 import {useDragSort} from "@/composables/useDragSort";
@@ -509,7 +509,7 @@ const onNotesViewOutsideClick = (e: MouseEvent) => {
         </div>
         <div class="notes-hint-item">
           <ion-button size="small" shape="round" color="secondary" class="notes-hint-icon-button" disabled>
-            <ion-icon slot="icon-only" :icon="attachOutline"/>
+            <ion-icon slot="icon-only" :icon="documentOutline"/>
           </ion-button>
           <span>Открыть файлы комнаты</span>
         </div>
@@ -921,7 +921,7 @@ const onNotesViewOutsideClick = (e: MouseEvent) => {
     </ion-button>
     <div class="files-open-button">
       <ion-button size="large" shape="round" color="secondary" @click="openFilesView">
-        <ion-icon slot="icon-only" :icon="attachOutline"/>
+        <ion-icon slot="icon-only" :icon="documentOutline"/>
       </ion-button>
     </div>
   </div>
@@ -1749,6 +1749,10 @@ const onNotesViewOutsideClick = (e: MouseEvent) => {
 .add-new-button ion-button,
 .files-open-button ion-button {
   pointer-events: auto;
+}
+
+.files-open-button ion-icon {
+  --ionicon-stroke-width: 24px;
 }
 
 @media (min-width: 1024px) {
