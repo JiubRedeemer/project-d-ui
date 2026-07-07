@@ -23,7 +23,7 @@ import {useRoute, useRouter} from "vue-router";
 import {useInventoryStore} from "@/stores/InventoryStore";
 import {useCharacterStore} from "@/stores/CharacterStore";
 import {useCreateInventoryItemStore} from "@/stores/CreateInventoryItemStore";
-import {chevronForwardOutline, createOutline, trashOutline} from "ionicons/icons";
+import {chevronForwardOutline, createOutline, eyeOutline, trashOutline} from "ionicons/icons";
 import type {ItemSkill} from "@/components/models/response/InventoryResponse";
 import {getTagsForRoom, type ItemTagDto} from "@/api/itemTagApi";
 import EditItemSkillValueModal from "@/views/character/tabs/inventory/EditItemSkillValueModal.vue";
@@ -42,6 +42,8 @@ const characterStore = useCharacterStore();
 
 const availableTags = ref<ItemTagDto[]>([]);
 const myUserId = ref<string | null>(null);
+const userRoles = ref<string[]>([]);
+const identifyLoading = ref(false);
 const shownTagInfo = ref<string | null>(null);
 function toggleTagInfo(tag: string) {
   shownTagInfo.value = shownTagInfo.value === tag ? null : tag;
@@ -49,6 +51,8 @@ function toggleTagInfo(tag: string) {
 
 const isMyItem = computed(() => Boolean(item.value?.creatorId && item.value.creatorId === myUserId.value));
 const isCatalogItem = computed(() => !item.value?.creatorId);
+const isMaster = computed(() => userRoles.value.includes("MASTER"));
+const isUnidentified = computed(() => inventoryItem.value?.identified === false);
 
 const showEditItemSkillModal = ref(false);
 const isEditingItemSkill = ref(false);
@@ -138,6 +142,11 @@ onIonViewDidEnter(async () => {
     axios.get(`${GATEWAY_INTEGRATION_ROUTES.baseURL}/users/myId`, {
       headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` }
     }).then(r => { myUserId.value = r.data; }).catch(() => {});
+  }
+  if (userRoles.value.length === 0) {
+    axios.get(`${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}/roles`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` }
+    }).then(r => { userRoles.value = r.data; }).catch(() => {});
   }
 });
 
@@ -249,6 +258,24 @@ async function copyAndEditItem() {
   ionRouter.navigate(`/rooms/${route.params.roomId}/characters/${route.params.characterId}/inventory/add`, "forward", "push");
 }
 
+async function identifyItem() {
+  if (identifyLoading.value) return;
+  identifyLoading.value = true;
+  try {
+    const response = await axios.patch(
+        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.inventory}/${route.params.characterId}/items/${inventoryItemStore.inventoryItem.id.trim()}/identify`,
+        {},
+        { headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` } }
+    );
+    inventoryStore.inventory = response.data;
+    inventoryItemStore.updateInventoryItemInStoreById(route.params.roomId, route.params.characterId, route.params.itemId);
+  } catch (error) {
+    console.error("Ошибка при опознании предмета:", error);
+  } finally {
+    identifyLoading.value = false;
+  }
+}
+
 function getSkillCharges(skill: ItemSkill): number {
   return inventorySkillsByItemSkillId.value.get(skill.id) ?? skill.charges;
 }
@@ -282,6 +309,7 @@ function getRefillLabel(refill: ItemSkill["chargesRefill"]): string {
             <img :src="itemImageUrl" :alt="item.name?.rus" class="avatar-img"/>
             <div class="avatar-badges">
               <span v-if="inventoryItem.inUse" class="avatar-badge avatar-badge--equipped">Снаряжено</span>
+              <span v-if="isUnidentified" class="avatar-badge avatar-badge--unidentified">Неопознан</span>
               <span v-if="inventoryItem.count > 1" class="avatar-badge">×{{ inventoryItem.count }}</span>
             </div>
           </div>
@@ -443,6 +471,19 @@ function getRefillLabel(refill: ItemSkill["chargesRefill"]): string {
         Скопировать и изменить
       </ion-button>
       <ion-button
+          v-if="isMaster && isUnidentified"
+          class="item-footer__btn item-footer__btn--primary"
+          expand="block"
+          fill="solid"
+          shape="round"
+          color="success"
+          :disabled="identifyLoading"
+          @click="identifyItem"
+      >
+        <ion-icon slot="start" :icon="eyeOutline"/>
+        Опознать
+      </ion-button>
+      <ion-button
           class="item-footer__btn item-footer__btn--danger"
           expand="block"
           fill="clear"
@@ -566,6 +607,12 @@ function getRefillLabel(refill: ItemSkill["chargesRefill"]): string {
 .avatar-badge--equipped {
   color: var(--ion-color-primary-contrast);
   background: rgba(var(--ion-color-primary-rgb), 0.92);
+  border-color: transparent;
+}
+
+.avatar-badge--unidentified {
+  color: var(--ion-color-warning-contrast);
+  background: rgba(var(--ion-color-warning-rgb), 0.92);
   border-color: transparent;
 }
 

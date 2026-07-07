@@ -102,6 +102,7 @@ const SHOWCASE_SCREENS = [
 
 const rootEl = ref<HTMLElement | null>(null);
 const heroIn = ref(false);
+const showLegal = ref(false);
 const revealed = reactive<Record<string, boolean>>({});
 let observer: IntersectionObserver | null = null;
 
@@ -373,10 +374,32 @@ onBeforeUnmount(() => {
       <span>© 2026 Mythrill</span>
       <div class="myth-footer__links">
         <span>Условия</span>
-        <span>Конфиденциальность</span>
-        <span>Контакты</span>
+        <span class="myth-footer__legal-btn" @click="showLegal = true">Правовая информация</span>
+        <span class="myth-footer__contacts">
+          <span class="myth-footer__contacts-label">Контакты:</span>
+          <a href="mailto:support@mythrill.ru" class="myth-footer__link">support@mythrill.ru</a>
+          <a
+            href="https://t.me/jiubredeemer_job"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="myth-footer__link"
+          >
+            @jiubredeemer_job
+          </a>
+        </span>
       </div>
     </div>
+
+    <Teleport to="body">
+      <div v-if="showLegal" class="legal-overlay" @click.self="showLegal = false">
+        <div class="legal-modal">
+          <button class="legal-modal__close" @click="showLegal = false" aria-label="Закрыть">✕</button>
+          <h2 class="legal-modal__title">Правовая информация</h2>
+          <p class="legal-modal__text">Материалы представлены для ознакомления. Права на материалы Wizards of the Coast принадлежат Wizards of the Coast.</p>
+          <p class="legal-modal__text">Данная работа включает материалы из System Reference Document 5.2.1 («SRD 5.2.1») и System Reference Document 5.1 («SRD 5.1») от Wizards of the Coast LLC, доступных по адресам <a href="https://www.dndbeyond.com/srd" target="_blank" rel="noopener noreferrer" class="legal-modal__link">https://www.dndbeyond.com/srd</a> и <a href="https://dnd.wizards.com/resources/systems-reference-document" target="_blank" rel="noopener noreferrer" class="legal-modal__link">https://dnd.wizards.com/resources/systems-reference-document</a>. Материалы SRD 5.2.1 и SRD 5.1 лицензированы по лицензии Creative Commons Attribution 4.0 International, доступной по адресу: <a href="https://creativecommons.org/licenses/by/4.0/legalcode" target="_blank" rel="noopener noreferrer" class="legal-modal__link">https://creativecommons.org/licenses/by/4.0/legalcode</a>.</p>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -1221,6 +1244,107 @@ onBeforeUnmount(() => {
 
 .myth-footer__links {
   display: flex;
+  flex-wrap: wrap;
   gap: 24px;
+}
+
+.myth-footer__contacts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.myth-footer__contacts-label {
+  color: var(--myth-text-muted);
+}
+
+.myth-footer__link {
+  color: var(--myth-text-muted);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.myth-footer__link:hover {
+  color: var(--myth-gold-light);
+}
+
+.myth-footer__legal-btn {
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.myth-footer__legal-btn:hover {
+  color: var(--myth-gold-light);
+}
+
+.legal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  backdrop-filter: blur(4px);
+}
+
+.legal-modal {
+  position: relative;
+  background: #1a1a2e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 32px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.legal-modal__close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 18px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 4px;
+  transition: color 0.2s;
+}
+
+.legal-modal__close:hover {
+  color: #fff;
+}
+
+.legal-modal__title {
+  margin: 0 0 20px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.legal-modal__text {
+  font-size: 14px;
+  line-height: 1.65;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0 0 16px;
+}
+
+.legal-modal__text:last-child {
+  margin-bottom: 0;
+}
+
+.legal-modal__link {
+  color: var(--myth-gold-light, #c9a84c);
+  word-break: break-all;
+  text-decoration: none;
+}
+
+.legal-modal__link:hover {
+  text-decoration: underline;
 }
 </style>

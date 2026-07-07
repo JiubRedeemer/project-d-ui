@@ -282,6 +282,9 @@ function getRefillLabel(refill: ItemSkill["chargesRefill"]): string {
 
         <div class="item-identity">
           <h1 class="item-identity__name">{{ item.name?.rus }}</h1>
+          <div v-if="item.hiddenStats && item.unidentifiedName?.rus" class="item-identity__unidentified-hint">
+            До опознания: {{ item.unidentifiedName.rus }}
+          </div>
         </div>
 
         <div class="item-details">
@@ -573,6 +576,14 @@ function getRefillLabel(refill: ItemSkill["chargesRefill"]): string {
   font-weight: 700;
   line-height: 1.15;
   color: var(--ion-color-light);
+}
+
+.item-identity__unidentified-hint {
+  margin-top: 4px;
+  padding: 0 4px;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--ion-color-warning);
 }
 
 .item-details {

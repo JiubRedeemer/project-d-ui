@@ -41,6 +41,9 @@ import MasterGuidebookSpellsView from "@/views/master/tabs/guidebook/MasterGuide
 import MasterGuidebookNpcsView from "@/views/master/tabs/guidebook/MasterGuidebookNpcsView.vue";
 import MasterGuidebookStatesView from "@/views/master/tabs/guidebook/MasterGuidebookStatesView.vue";
 import ProfilePage from "@/views/profile/ProfilePage.vue";
+import {applySeo} from "@/config/seo";
+import PaywallView from "@/views/subscription/PaywallView.vue";
+import CrystalsView from "@/views/subscription/CrystalsView.vue";
 
 const routes: Array<RouteRecordRaw> = [
     {
@@ -66,6 +69,16 @@ const routes: Array<RouteRecordRaw> = [
         path: '/profile',
         component: ProfilePage,
         name: 'profilePage'
+    },
+    {
+        path: '/subscription',
+        component: PaywallView,
+        name: 'paywallView'
+    },
+    {
+        path: '/crystals',
+        component: CrystalsView,
+        name: 'crystalsView'
     },
     {
         path: '/rooms',
@@ -282,6 +295,10 @@ const routes: Array<RouteRecordRaw> = [
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
     routes
+})
+
+router.afterEach((to) => {
+    applySeo(to.name as string | undefined, to.path);
 })
 
 export default router

@@ -19,7 +19,7 @@ import MasterFilesView from "@/views/master/tabs/MasterFilesView.vue";
 import CombatTrackerPanel from "@/views/master/tabs/CombatTrackerPanel.vue";
 import {useRoute} from "vue-router";
 import {useRoomStore} from "@/stores/RoomStore";
-import {computed, onMounted, onUnmounted, ref} from "vue";
+import {computed, onMounted, onUnmounted, ref, type ComponentPublicInstance} from "vue";
 import {useRoomCharactersWebSocket} from "@/composables/useCharacterWebSocket";
 import {QUEUE_FLUSHED_EVENT} from "@/composables/useOfflineSync";
 
@@ -33,6 +33,7 @@ const isDesktop = ref<boolean>(window.innerWidth >= 1024);
 const DESKTOP_BREAKPOINT_PX = 1024;
 
 let wsClient: ReturnType<typeof useRoomCharactersWebSocket> | null = null;
+const charListRef = ref<InstanceType<typeof MasterCharacterListView> | null>(null);
 
 const tabs = [
   {key: "characters", icon: peopleOutline, label: "Персонажи"},
@@ -86,6 +87,9 @@ onIonViewDidEnter(async () => {
     roomId,
     (event) => {
       roomStore.updateSingleCharacter(roomId, event.characterId);
+      if (event.type === 'spellbook_updated' || event.type === 'inventory_updated') {
+        charListRef.value?.refreshIfExpanded(event.characterId);
+      }
     },
     () => {
       roomStore.getRoomInfo(roomId);
@@ -131,7 +135,7 @@ onIonViewDidLeave(() => {
           :scroll-x="false"
         >
           <div class="tab-content desktop-content-inner">
-            <MasterCharacterListView v-if="asyncDone && selectedTab === 'characters'"/>
+            <MasterCharacterListView ref="charListRef" v-if="asyncDone && selectedTab === 'characters'"/>
             <MasterGuidebookView v-if="asyncDone && selectedTab === 'guidebook'"/>
             <MasterFilesView v-if="asyncDone && selectedTab === 'files'"/>
             <CombatTrackerPanel v-if="asyncDone && selectedTab === 'combat'" :room-id="String(route.params.roomId)" @close="selectedTab = 'characters'"/>
@@ -149,7 +153,7 @@ onIonViewDidLeave(() => {
           :scroll-x="false"
         >
           <div class="tab-content characters">
-            <MasterCharacterListView v-if="asyncDone"/>
+            <MasterCharacterListView ref="charListRef" v-if="asyncDone"/>
           </div>
         </ion-content>
       </ion-tab>

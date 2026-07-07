@@ -1,0 +1,9 @@
+User-agent: *
+Disallow: /rooms
+Disallow: /profile
+Disallow: /invites
+Disallow: /createEntity
+Disallow: /guidebook
+Disallow: /welcome/forgot-password
+
+Sitemap: https://mythrill.ru/sitemap.xml

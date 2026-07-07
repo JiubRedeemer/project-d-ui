@@ -31,6 +31,7 @@ import axios from "axios";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {useRoute} from "vue-router";
 import {Character} from "@/components/models/response/Character";
+import {useSubscriptionStore} from "@/stores/SubscriptionStore";
 import CachedFileImage from "@/components/CachedFileImage.vue";
 import {getCharacterAvatarUrl, CHARACTER_AVATAR_PLACEHOLDER} from "@/utils/characterAvatar";
 
@@ -107,8 +108,15 @@ onIonViewWillEnter(() => {
   getRoleInRoom()
 })
 
+const subscriptionStore = useSubscriptionStore();
+
 const createCharacter = () => {
-  ionRouter.navigate('/rooms/' + route.params.roomId + '/create-character', 'forward', 'push')
+  const myChars = characters.value.filter((c) => isCharacterOwned(c)).length;
+  if (!subscriptionStore.canCreateCharacter(myChars)) {
+    ionRouter.navigate('/subscription', 'forward', 'push');
+    return;
+  }
+  ionRouter.navigate('/rooms/' + route.params.roomId + '/create-character', 'forward', 'push');
 }
 
 const goToCharacter = (characterId: string) => {

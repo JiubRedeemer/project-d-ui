@@ -22,6 +22,7 @@ import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
 import PwaInstallHintModal from "@/components/PwaInstallHintModal.vue";
 import {onBeforeUnmount, onMounted, ref} from "vue";
 import axios from "axios";
+import {useSubscriptionStore} from "@/stores/SubscriptionStore";
 import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {
   bindBeforeInstallPromptListener,
@@ -73,8 +74,11 @@ onIonViewDidEnter(() => {
   }
 });
 
+const subscriptionStore = useSubscriptionStore();
+
 onMounted(() => {
   setupRooms();
+  subscriptionStore.load();
   unbindBeforeInstallPrompt = bindBeforeInstallPromptListener();
 });
 
@@ -90,6 +94,10 @@ const goToRoom = (roomId: string) => {
 };
 
 const goToCreateRoom = () => {
+  if (!subscriptionStore.canCreateRoom()) {
+    ionRouter.navigate('/subscription', 'forward', 'push');
+    return;
+  }
   ionRouter.navigate('/rooms/create/ruleType', 'forward', 'push');
 };
 

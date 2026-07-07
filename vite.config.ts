@@ -79,7 +79,10 @@ export default defineConfig({
       manifest: {
         name: 'Mythrill',
         short_name: 'Mythrill',
-        description: 'Dnd app',
+        description: 'Цифровой лист персонажа, боевой трекер и справочник мастера для настольных РПГ',
+        lang: 'ru',
+        start_url: '/welcome',
+        scope: '/',
         display: 'standalone',
         background_color: '#ffffff',
         theme_color: '#ffffff',

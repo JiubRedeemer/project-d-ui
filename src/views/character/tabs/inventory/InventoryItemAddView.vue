@@ -18,7 +18,7 @@ import {
 } from "@ionic/vue";
 import {HEADERS, TEXTS} from "@/config/localisations";
 import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
-import {add, addOutline, closeCircleOutline, pencilOutline, saveOutline, trashOutline} from "ionicons/icons";
+import {add, addOutline, closeCircleOutline, eyeOutline, pencilOutline, saveOutline, trashOutline} from "ionicons/icons";
 import {computed, onBeforeMount, ref, watch} from "vue";
 import {extractDominantColorFromUrl} from "@/utils/imageAmbient";
 import {useCreateInventoryItemStore} from "@/stores/CreateInventoryItemStore";
@@ -36,6 +36,12 @@ import copperCoinIcon from "@/static/icons/CopperCoin.svg";
 const router = useRouter();
 const route = useRoute();
 const hasCharacterContext = computed(() => Boolean(route.params.characterId));
+const canCreateUnidentifiedModel = computed(() =>
+    Boolean(createInventoryItemStore.item.creatorId) &&
+    hiddenStats.value &&
+    !createInventoryItemStore.item.unidentifiedItemId
+);
+const isUnidentifiedModel = computed(() => Boolean(createInventoryItemStore.item.unidentifiedItemId));
 const previewImage = ref<string | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
 const createInventoryItemStore = useCreateInventoryItemStore();
@@ -53,10 +59,49 @@ const editedValues = ref<number | undefined>(0);
 const viewType = ref<string>("ARMOR");
 const visibleForPlayers = ref<boolean>(true);
 const customization = ref<boolean>(false);
+const hiddenStats = ref<boolean>(false);
+const unidentifiedFormItem = ref({
+  name: { rus: '', eng: '' } as { rus: string; eng: string },
+  description: '' as string,
+  type: 'OTHER' as string,
+  typeName: 'Прочее' as string,
+  subtype: null as string | null,
+  subtypeName: '' as string,
+  rarity: 'COMMON' as string,
+  imgUrl: '' as string,
+  stats: {
+    weight: undefined as number | undefined,
+    armorClass: '' as string,
+    armorClassMaxDexterityBonus: '' as string,
+    requirement: '' as string,
+    stealthDisadvantage: null as string | null,
+    damage: { value: '' as string, damageType: 'CRUSHING' as string },
+    priceValue: undefined as number | undefined,
+    priceCoinType: 'GOLDEN' as string,
+  }
+})
+const unidentifiedPreviewImage = ref<string | null>(null);
+const unidentifiedFileInput = ref<HTMLInputElement | null>(null);
+const unidentifiedAvatarImage = ref<File | null>(null);
+const pendingUnidentifiedId = ref<string | undefined>(undefined);
+
+function getOrCreateUnidentifiedId(): string {
+  if (!pendingUnidentifiedId.value) {
+    pendingUnidentifiedId.value = createInventoryItemStore.item.unidentifiedItemId ?? uuidv4();
+  }
+  return pendingUnidentifiedId.value;
+}
+const unidentifiedNoDexBonusLimit = ref(false)
+const unidentifiedNoStrengthRequirement = ref(false)
+const unidentifiedCustomization = ref(false)
+const unidentifiedSelectedTagIds = ref<string[]>([])
+const unidentifiedTagSearchQuery = ref<string>("")
+const unidentifiedItemSkills = ref<ItemSkill[]>([])
+const skillModalTarget = ref<'main' | 'unidentified'>('main')
 const invalidFields = ref<string[]>([]); // Track invalid fields
 const damageType = ref<string | undefined>("CRUSHING");
 const damageValue = ref<string | undefined>("");
-const defaultPriceValue = ref<number>(0);
+const defaultPriceValue = ref<number | undefined>(undefined);
 const defaultPriceCoinType = ref<string>("GOLDEN");
 const defaultPrice = ref<Price | undefined>({value: 0, coinType: "GOLDEN"});
 const showEditItemSkillModal = ref(false); // Управляем видимостью модалки
@@ -125,6 +170,51 @@ async function createAndSelectTag() {
   }
 }
 
+// Метки для неопознанной модели (своё независимое состояние)
+const filteredUnidentifiedTags = computed(() => {
+  const q = unidentifiedTagSearchQuery.value.trim().toLowerCase();
+  if (!q) return availableTags.value;
+  return availableTags.value.filter(t => t.name.toLowerCase().includes(q));
+});
+
+const showCreateUnidentifiedTagOption = computed(() => {
+  const q = unidentifiedTagSearchQuery.value.trim();
+  return q.length > 0 && !availableTags.value.some(t => t.name.toLowerCase() === q.toLowerCase());
+});
+
+const unidentifiedSelectedTags = computed(() =>
+  availableTags.value.filter(t => unidentifiedSelectedTagIds.value.includes(t.id))
+);
+
+function toggleUnidentifiedTag(tag: ItemTagDto) {
+  const idx = unidentifiedSelectedTagIds.value.indexOf(tag.id);
+  if (idx >= 0) {
+    unidentifiedSelectedTagIds.value.splice(idx, 1);
+  } else {
+    unidentifiedSelectedTagIds.value.push(tag.id);
+  }
+}
+
+function removeUnidentifiedSelectedTag(tagId: string) {
+  unidentifiedSelectedTagIds.value = unidentifiedSelectedTagIds.value.filter(id => id !== tagId);
+}
+
+async function createAndSelectUnidentifiedTag() {
+  const name = unidentifiedTagSearchQuery.value.trim();
+  if (!name || isCreatingTag.value) return;
+  isCreatingTag.value = true;
+  try {
+    const newTag = await createTagForRoom(String(route.params.roomId), name);
+    availableTags.value.push(newTag);
+    unidentifiedSelectedTagIds.value.push(newTag.id);
+    unidentifiedTagSearchQuery.value = "";
+  } catch (e) {
+    console.error("Failed to create tag", e);
+  } finally {
+    isCreatingTag.value = false;
+  }
+}
+
 const SKILL_IMAGE_PLACEHOLDER =
     "https://img.icons8.com/external-febrian-hidayat-gradient-febrian-hidayat/64/external-Dice-board-games-febrian-hidayat-gradient-febrian-hidayat-2.png";
 
@@ -148,7 +238,8 @@ const closeEditItemSkillModal = () => {
   showEditItemSkillModal.value = false; // Закрываем модалку
 };
 
-const openEditItemSkillModal = (isEditing: boolean, itemSkill: ItemSkill | undefined) => {
+const openEditItemSkillModal = (isEditing: boolean, itemSkill: ItemSkill | undefined, target: 'main' | 'unidentified' = 'main') => {
+  skillModalTarget.value = target;
   isEditingItemSkill.value = isEditing;
   if (!isEditing) {
     editingItemSkill.value = itemSkill;
@@ -165,14 +256,12 @@ onBeforeMount(async () => {
     createInventoryItemStore.item.typeName = "Доспех";
     createInventoryItemStore.item.type = "ARMOR";
     createInventoryItemStore.item.stats = {
-      weight: 0,
       armorClassMaxDexterityBonus: "",
       requirement: "",
       tags: [],
       tagIds: [],
       defaultPrice: [{value: 0, coinType: "GOLDEN"}],
     };
-    createInventoryItemStore.item.stats.weight = 0;
     createInventoryItemStore.item.name = {
       rus: '',
       eng: ''
@@ -197,7 +286,7 @@ onBeforeMount(async () => {
     const firstDefaultPrice = createInventoryItemStore.item.stats?.defaultPrice?.[0];
     defaultPrice.value = firstDefaultPrice ?? {value: 0, coinType: "GOLDEN"};
     defaultPriceCoinType.value = firstDefaultPrice?.coinType ?? "GOLDEN";
-    defaultPriceValue.value = firstDefaultPrice?.value ?? 0;
+    defaultPriceValue.value = firstDefaultPrice?.value;
     itemRarity.value = createInventoryItemStore.item.rarity ? createInventoryItemStore.item.rarity : 'COMMON';
     oldItemId.value = createInventoryItemStore.inventoryItemId
     oldItemCount.value = createInventoryItemStore.item.count;
@@ -206,6 +295,47 @@ onBeforeMount(async () => {
     }
     noDexBonusLimit.value = createInventoryItemStore.item.stats.armorClassMaxDexterityBonus === "-1";
     noStrengthRequirement.value = createInventoryItemStore.item.stats.requirement === "-1";
+    hiddenStats.value = createInventoryItemStore.item.hiddenStats ?? false;
+    if (hiddenStats.value && createInventoryItemStore.item.unidentifiedItemId) {
+      try {
+        const resp = await axios.get(
+          `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}/items/by-id/${createInventoryItemStore.item.unidentifiedItemId}`,
+          { headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` } }
+        );
+        const d = resp.data;
+        unidentifiedFormItem.value.name = d.name ?? { rus: '', eng: '' };
+        unidentifiedFormItem.value.description = d.description ?? '';
+        unidentifiedFormItem.value.imgUrl = d.imgUrl ?? '';
+        unidentifiedFormItem.value.type = d.type ?? 'OTHER';
+        unidentifiedFormItem.value.typeName = d.typeName ?? 'Прочее';
+        unidentifiedFormItem.value.subtype = d.subtype ?? null;
+        unidentifiedFormItem.value.subtypeName = d.subtypeName ?? '';
+        unidentifiedFormItem.value.rarity = d.rarity ?? 'COMMON';
+        const s = d.stats ?? {};
+        unidentifiedFormItem.value.stats.weight = s.weight;
+        unidentifiedFormItem.value.stats.armorClass = s.armorClass ?? '';
+        unidentifiedFormItem.value.stats.armorClassMaxDexterityBonus = s.armorClassMaxDexterityBonus ?? '';
+        unidentifiedFormItem.value.stats.requirement = s.requirement ?? '';
+        unidentifiedFormItem.value.stats.stealthDisadvantage = s.stealthDisadvantage ?? null;
+        unidentifiedFormItem.value.stats.damage = { value: s.damage?.value ?? '', damageType: s.damage?.damageType ?? 'CRUSHING' };
+        const p = s.defaultPrice?.[0];
+        unidentifiedFormItem.value.stats.priceValue = p?.value;
+        unidentifiedFormItem.value.stats.priceCoinType = p?.coinType ?? 'GOLDEN';
+        unidentifiedNoDexBonusLimit.value = s.armorClassMaxDexterityBonus === '-1';
+        unidentifiedNoStrengthRequirement.value = s.requirement === '-1';
+        unidentifiedCustomization.value = d.customization ?? false;
+        unidentifiedItemSkills.value = cloneSkills(d.skills);
+        if (s.tagIds?.length) {
+          unidentifiedSelectedTagIds.value = [...s.tagIds];
+        } else if (s.tags?.length) {
+          unidentifiedSelectedTagIds.value = availableTags.value
+            .filter(t => s.tags.includes(t.name))
+            .map(t => t.id);
+        } else {
+          unidentifiedSelectedTagIds.value = [];
+        }
+      } catch { /* ignore */ }
+    }
     createItemSkills.value = cloneSkills(createInventoryItemStore.item.skills);
     // Initialize selectedTagIds from existing tagIds or resolve from tag names
     if (createInventoryItemStore.item.stats.tagIds?.length) {
@@ -408,17 +538,17 @@ const handleFileUpload = async (event: Event) => {
       previewImage.value = reader.result as string;
     };
     reader.readAsDataURL(file);
-    filePath.value = await uploadToMinio(avatarImage.value);
+    filePath.value = await uploadToMinio(avatarImage.value, createInventoryItemStore.item.id);
     createInventoryItemStore.item.imgUrl = filePath.value;
   } else {
     alert("Формат файла не поддерживается. Разрешены: JPG, PNG, GIF, BMP, WEBP, TIFF, SVG.");
   }
 };
 
-const uploadToMinio = async (file: File): Promise<string> => {
+const uploadToMinio = async (file: File, filename: string): Promise<string> => {
   const formData = new FormData();
   formData.append("file", file);
-  formData.append("userFilename", createInventoryItemStore.item.id);
+  formData.append("userFilename", filename);
   const res = await axios.put(
       `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.items_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.upload}`,
       formData,
@@ -430,6 +560,37 @@ const uploadToMinio = async (file: File): Promise<string> => {
   );
   return res.data;
 };
+
+const triggerUnidentifiedFileInput = () => {
+  unidentifiedFileInput.value?.click();
+};
+
+const handleUnidentifiedFileUpload = async (event: Event) => {
+  const file = (event.target as HTMLInputElement).files?.[0] || null;
+  if (file && allowedFormats.includes(file.type)) {
+    unidentifiedAvatarImage.value = file;
+    const reader = new FileReader();
+    reader.onload = () => {
+      unidentifiedPreviewImage.value = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+    const uploadedPath = await uploadToMinio(unidentifiedAvatarImage.value, getOrCreateUnidentifiedId());
+    unidentifiedFormItem.value.imgUrl = uploadedPath;
+  } else {
+    alert("Формат файла не поддерживается. Разрешены: JPG, PNG, GIF, BMP, WEBP, TIFF, SVG.");
+  }
+};
+
+const currentUnidentifiedImageUrl = computed(() => {
+  if (unidentifiedPreviewImage.value) {
+    return unidentifiedPreviewImage.value;
+  }
+  const imgUrl = unidentifiedFormItem.value.imgUrl;
+  if (!imgUrl?.trim()) {
+    return null;
+  }
+  return `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.items_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.download}/${imgUrl}`;
+});
 
 const sanitizeWeightInput = (rawValue: string): string => {
   if (!rawValue) {
@@ -539,6 +700,14 @@ async function getMyId() {
   return myIdResponse;
 }
 
+function createUnidentifiedModel() {
+  const parentId = createInventoryItemStore.item.id;
+  createInventoryItemStore.clearAll();
+  createInventoryItemStore.item.unidentifiedItemId = parentId;
+  createInventoryItemStore.item.roomId = String(route.params.roomId);
+  router.push(`/rooms/${route.params.roomId}/characters/${route.params.characterId ?? '_'}/inventory/add`);
+}
+
 async function saveItem() {
   try {
     const myIdResponse = await getMyId();
@@ -568,9 +737,10 @@ async function saveItem() {
   createInventoryItemStore.item.rarity = itemRarity.value;
   createInventoryItemStore.item.visibleForPlayers = visibleForPlayers.value;
   createInventoryItemStore.item.customization = customization.value;
+  createInventoryItemStore.item.hiddenStats = hiddenStats.value;
   createInventoryItemStore.item.stats.defaultPrice = [{
     coinType: defaultPriceCoinType.value,
-    value: defaultPriceValue.value
+    value: defaultPriceValue.value ?? 0
   }];
   // Set tagIds for the backend; clear tags (names) to avoid confusion
   createInventoryItemStore.item.stats.tagIds = [...selectedTagIds.value];
@@ -579,10 +749,63 @@ async function saveItem() {
   createInventoryItemStore.item.skills = createItemSkills.value;
   console.log(createInventoryItemStore.item.skills);
 
-  if (validateItem(viewType.value)) {
-    console.log(createInventoryItemStore.item);
-    invalidFields.value = []; // Clear invalid fields on successful save
+  if (hiddenStats.value && !isUnidentifiedModel.value && !unidentifiedFormItem.value.name.rus.trim()) {
+    const toast = await toastController.create({
+      message: 'Укажите название видимого (неопознанного) предмета',
+      duration: 1500,
+      position: 'top'
+    });
+    await toast.present();
+    return;
+  }
 
+  if (validateItem(viewType.value)) {
+    invalidFields.value = [];
+
+    // Создаём/обновляем неопознанную модель если включены скрытые характеристики
+    if (hiddenStats.value && unidentifiedFormItem.value.name.rus.trim()) {
+      try {
+        const unidentifiedId = getOrCreateUnidentifiedId();
+        const u = unidentifiedFormItem.value;
+        const uStats: Record<string, unknown> = {
+          defaultPrice: [{ value: u.stats.priceValue ?? 0, coinType: u.stats.priceCoinType }],
+          weight: u.stats.weight,
+          tagIds: [...unidentifiedSelectedTagIds.value],
+        };
+        if (u.type === 'ARMOR') {
+          uStats.armorClass = u.stats.armorClass;
+          uStats.armorClassMaxDexterityBonus = unidentifiedNoDexBonusLimit.value ? '-1' : u.stats.armorClassMaxDexterityBonus;
+          uStats.requirement = unidentifiedNoStrengthRequirement.value ? '-1' : u.stats.requirement;
+          uStats.stealthDisadvantage = u.stats.stealthDisadvantage;
+        } else if (u.type === 'WEAPON') {
+          uStats.damage = { value: u.stats.damage.value, damageType: u.stats.damage.damageType };
+        }
+        await axios.put(
+          `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.items}`,
+          {
+            id: unidentifiedId,
+            name: u.name,
+            description: u.description,
+            type: u.type,
+            typeName: u.typeName,
+            subtype: u.subtype,
+            subtypeName: u.subtypeName || undefined,
+            rarity: u.rarity,
+            roomId: route.params.roomId,
+            imgUrl: u.imgUrl || undefined,
+            stats: uStats,
+            skills: unidentifiedItemSkills.value,
+            visibleForPlayers: false,
+            customization: unidentifiedCustomization.value,
+            hiddenStats: false,
+          },
+          { headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("accessToken")}` } }
+        );
+        createInventoryItemStore.item.unidentifiedItemId = unidentifiedId;
+      } catch (e) {
+        console.error("Ошибка создания неопознанной модели:", e);
+      }
+    }
 
     try {
       await axios.put(
@@ -795,11 +1018,19 @@ function validateItem(type: string): boolean {
 }
 
 function addItemSkill(itemSkill: ItemSkill) {
-  createItemSkills.value.push(itemSkill);
+  if (skillModalTarget.value === 'unidentified') {
+    unidentifiedItemSkills.value.push(itemSkill);
+  } else {
+    createItemSkills.value.push(itemSkill);
+  }
 }
 
 function removeSkill(itemSkill: ItemSkill) {
   createItemSkills.value = createItemSkills.value.filter((skill) => skill !== itemSkill);
+}
+
+function removeUnidentifiedSkill(itemSkill: ItemSkill) {
+  unidentifiedItemSkills.value = unidentifiedItemSkills.value.filter((skill) => skill !== itemSkill);
 }
 
 const getSkillImageUrl = (imgUrl: string | undefined) =>
@@ -833,6 +1064,38 @@ watch(currentImageUrl, (src) => {
 const hasSubtypes = computed(() =>
     ["ARMOR", "WEAPON"].includes(createInventoryItemStore.item?.type ?? "")
 );
+
+function onUnidentifiedTypeChange(event: CustomEvent) {
+  const typeName = event.detail.value as string;
+  unidentifiedFormItem.value.typeName = typeName;
+  unidentifiedFormItem.value.type = mapTypeToValue(typeName);
+  if (['ARMOR', 'WEAPON'].includes(unidentifiedFormItem.value.type)) {
+    const firstOption = getSubtypesByType(unidentifiedFormItem.value.type)[0]?.label ?? '';
+    unidentifiedFormItem.value.subtypeName = firstOption;
+    unidentifiedFormItem.value.subtype = mapSubTypeToValue(firstOption);
+  } else {
+    unidentifiedFormItem.value.subtypeName = '';
+    unidentifiedFormItem.value.subtype = null;
+  }
+}
+
+function onUnidentifiedSubtypeChange(event: CustomEvent) {
+  const subtypeName = event.detail.value as string;
+  unidentifiedFormItem.value.subtypeName = subtypeName;
+  unidentifiedFormItem.value.subtype = mapSubTypeToValue(subtypeName);
+}
+
+function clampUnidentifiedPrice() {
+  if (unidentifiedFormItem.value.stats.priceValue != null && unidentifiedFormItem.value.stats.priceValue < 0) {
+    unidentifiedFormItem.value.stats.priceValue = 0;
+  }
+}
+
+function clampUnidentifiedWeight() {
+  if (unidentifiedFormItem.value.stats.weight != null && unidentifiedFormItem.value.stats.weight < 0) {
+    unidentifiedFormItem.value.stats.weight = 0;
+  }
+}
 
 const rarityClass = computed(() => {
   switch (itemRarity.value) {
@@ -994,6 +1257,11 @@ function cancelEdit() {
           </div>
         </div>
 
+        <div v-if="isUnidentifiedModel" class="unidentified-banner">
+          <ion-icon :icon="eyeOutline" class="unidentified-banner__icon"/>
+          Неопознанная модель предмета
+        </div>
+
         <div class="item-identity">
           <ion-input
               v-model="createInventoryItemStore.item.name.rus"
@@ -1014,8 +1282,335 @@ function cancelEdit() {
         </div>
 
         <div class="item-details">
+          <div :class="hiddenStats && !isUnidentifiedModel ? 'panels-split' : ''">
+          <section v-if="hiddenStats && !isUnidentifiedModel" class="panel panel--unidentified">
+            <h2 class="panel__title">Видимый предмет <span class="panel__title-hint">(до опознания)</span></h2>
+
+            <div class="unidentified-header">
+              <button
+                  type="button"
+                  class="avatar avatar--sm"
+                  @click="triggerUnidentifiedFileInput"
+              >
+                <img
+                    v-if="unidentifiedPreviewImage"
+                    :src="unidentifiedPreviewImage"
+                    class="avatar-img"
+                    alt=""
+                />
+                <img
+                    v-else-if="unidentifiedFormItem.imgUrl"
+                    :src="currentUnidentifiedImageUrl ?? undefined"
+                    class="avatar-img"
+                    alt=""
+                />
+                <div v-else class="avatar-placeholder">
+                  <ion-icon :icon="add" class="avatar-placeholder__icon"/>
+                  <span class="avatar-placeholder__text">Фото</span>
+                </div>
+                <input
+                    ref="unidentifiedFileInput"
+                    type="file"
+                    accept="image/*"
+                    class="avatar-file-input"
+                    @change="handleUnidentifiedFileUpload"
+                />
+              </button>
+
+              <div class="item-identity item-identity--compact">
+                <ion-input
+                    v-model="unidentifiedFormItem.name.rus"
+                    type="text"
+                    class="identity-input identity-input--name"
+                    placeholder="Загадочный предмет"
+                />
+                <ion-input
+                    v-model="unidentifiedFormItem.name.eng"
+                    type="text"
+                    class="identity-input identity-input--eng"
+                    placeholder="Mysterious item"
+                />
+              </div>
+            </div>
+
+            <div class="details-grid">
+              <div class="detail-row">
+                <span class="detail-row__label">Тип</span>
+                <ion-select
+                    v-model="unidentifiedFormItem.typeName"
+                    interface="action-sheet"
+                    class="detail-row__select"
+                    @ionChange="onUnidentifiedTypeChange($event)"
+                >
+                  <ion-select-option :value="HEADERS.armor.rus">{{ HEADERS.armor.rus }}</ion-select-option>
+                  <ion-select-option :value="HEADERS.weapon.rus">{{ HEADERS.weapon.rus }}</ion-select-option>
+                  <ion-select-option :value="HEADERS.magic_items.rus">{{ HEADERS.magic_items.rus }}</ion-select-option>
+                  <ion-select-option :value="HEADERS.other.rus">{{ HEADERS.other.rus }}</ion-select-option>
+                </ion-select>
+              </div>
+
+              <div v-if="unidentifiedFormItem.type === 'ARMOR' || unidentifiedFormItem.type === 'WEAPON'" class="detail-row">
+                <span class="detail-row__label">Подтип</span>
+                <ion-select
+                    v-model="unidentifiedFormItem.subtypeName"
+                    interface="action-sheet"
+                    class="detail-row__select"
+                    @ionChange="onUnidentifiedSubtypeChange($event)"
+                >
+                  <ion-select-option
+                      v-for="option in getSubtypesByType(unidentifiedFormItem.type)"
+                      :key="option.value"
+                      :value="option.label"
+                  >{{ option.label }}</ion-select-option>
+                </ion-select>
+              </div>
+
+              <div class="detail-row">
+                <span class="detail-row__label">Редкость</span>
+                <ion-select
+                    v-model="unidentifiedFormItem.rarity"
+                    interface="action-sheet"
+                    class="detail-row__select"
+                >
+                  <ion-select-option value="COMMON">Обычный</ion-select-option>
+                  <ion-select-option value="UNCOMMON">Необычный</ion-select-option>
+                  <ion-select-option value="RARE">Редкий</ion-select-option>
+                  <ion-select-option value="VERY_RARE">Очень редкий</ion-select-option>
+                  <ion-select-option value="LEGENDARY">Легендарный</ion-select-option>
+                </ion-select>
+              </div>
+
+              <div class="detail-row">
+                <span class="detail-row__label">Цена</span>
+                <div class="price-input-group">
+                  <ion-input
+                      v-model="unidentifiedFormItem.stats.priceValue"
+                      type="number"
+                      inputmode="numeric"
+                      :min="0"
+                      class="detail-row__input detail-row__input--price"
+                      placeholder="0"
+                      @ionInput="clampUnidentifiedPrice"
+                  />
+                  <div class="coin-select-wrap">
+                    <ion-icon class="coin-select-wrap__icon" :src="getCoinIcon(unidentifiedFormItem.stats.priceCoinType)" aria-hidden="true"/>
+                    <ion-select
+                        v-model="unidentifiedFormItem.stats.priceCoinType"
+                        interface="action-sheet"
+                        aria-label="Монета"
+                        class="coin-select-wrap__select"
+                    >
+                      <ion-select-option value="GOLDEN">Золотые монеты</ion-select-option>
+                      <ion-select-option value="SILVER">Серебряные монеты</ion-select-option>
+                      <ion-select-option value="COPPER">Медные монеты</ion-select-option>
+                    </ion-select>
+                  </div>
+                </div>
+              </div>
+
+              <div class="detail-row">
+                <span class="detail-row__label">{{ TEXTS.weight.rus }}</span>
+                <ion-input
+                    v-model="unidentifiedFormItem.stats.weight"
+                    type="number"
+                    inputmode="decimal"
+                    :min="0"
+                    class="detail-row__input"
+                    placeholder="0"
+                    @ionInput="clampUnidentifiedWeight"
+                />
+              </div>
+
+              <!-- ARMOR specific -->
+              <div v-if="unidentifiedFormItem.type === 'ARMOR'" class="detail-row">
+                <span class="detail-row__label">{{ HEADERS.armoryClass.rus }}</span>
+                <ion-input v-model="unidentifiedFormItem.stats.armorClass" type="number" inputmode="numeric" class="detail-row__input" />
+              </div>
+              <div v-if="unidentifiedFormItem.type === 'ARMOR'" class="detail-row detail-row--with-extra">
+                <div class="detail-row__left">
+                  <span class="detail-row__label">{{ HEADERS.max_dex_bonus.rus }}</span>
+                  <label class="detail-row__checkbox">
+                    <ion-checkbox v-model="unidentifiedNoDexBonusLimit"/>
+                    <span>Нет ограничений</span>
+                  </label>
+                </div>
+                <ion-input
+                    :value="unidentifiedNoDexBonusLimit ? '' : unidentifiedFormItem.stats.armorClassMaxDexterityBonus"
+                    type="number"
+                    inputmode="numeric"
+                    class="detail-row__input"
+                    :disabled="unidentifiedNoDexBonusLimit"
+                    @ionInput="unidentifiedFormItem.stats.armorClassMaxDexterityBonus = $event.detail.value"
+                />
+              </div>
+              <div v-if="unidentifiedFormItem.type === 'ARMOR'" class="detail-row detail-row--with-extra">
+                <div class="detail-row__left">
+                  <span class="detail-row__label">{{ HEADERS.force_requirements.rus }}</span>
+                  <label class="detail-row__checkbox">
+                    <ion-checkbox v-model="unidentifiedNoStrengthRequirement"/>
+                    <span>Нет требований</span>
+                  </label>
+                </div>
+                <ion-input
+                    :value="unidentifiedNoStrengthRequirement ? '' : unidentifiedFormItem.stats.requirement"
+                    type="number"
+                    inputmode="numeric"
+                    class="detail-row__input"
+                    :disabled="unidentifiedNoStrengthRequirement"
+                    @ionInput="unidentifiedFormItem.stats.requirement = $event.detail.value"
+                />
+              </div>
+              <div v-if="unidentifiedFormItem.type === 'ARMOR'" class="detail-row">
+                <span class="detail-row__label">Скрытность</span>
+                <ion-select v-model="unidentifiedFormItem.stats.stealthDisadvantage" interface="action-sheet" class="detail-row__select" placeholder="Не указано">
+                  <ion-select-option :value="null">Не указано</ion-select-option>
+                  <ion-select-option value="DISADVANTAGE">Помеха</ion-select-option>
+                  <ion-select-option value="NORMAL">Без помехи</ion-select-option>
+                </ion-select>
+              </div>
+
+              <!-- WEAPON specific -->
+              <div v-if="unidentifiedFormItem.type === 'WEAPON'" class="detail-row detail-row--with-extra">
+                <div class="detail-row__left">
+                  <span class="detail-row__label">{{ HEADERS.damage.rus }}</span>
+                  <p class="damage-hint">Примеры: <b>1d6 + STR</b>, <b>2d8 + 1</b></p>
+                </div>
+                <ion-input v-model="unidentifiedFormItem.stats.damage.value" type="text" class="detail-row__input" placeholder="1d6 + STR" />
+              </div>
+              <div v-if="unidentifiedFormItem.type === 'WEAPON'" class="detail-row">
+                <span class="detail-row__label">{{ HEADERS.damageType.rus }}</span>
+                <ion-select v-model="unidentifiedFormItem.stats.damage.damageType" interface="action-sheet" class="detail-row__select">
+                  <ion-select-option value="STABBING">Колющий</ion-select-option>
+                  <ion-select-option value="CHOPPING">Рубящий</ion-select-option>
+                  <ion-select-option value="CRUSHING">Дробящий</ion-select-option>
+                  <ion-select-option value="ACID">Кислотный</ion-select-option>
+                  <ion-select-option value="COLD">Холодом</ion-select-option>
+                  <ion-select-option value="FIRE">Огненный</ion-select-option>
+                  <ion-select-option value="FORCE">Силовой</ion-select-option>
+                  <ion-select-option value="LIGHTNING">Молнией</ion-select-option>
+                  <ion-select-option value="NECROTIC">Некротический</ion-select-option>
+                  <ion-select-option value="POISON">Ядовитый</ion-select-option>
+                  <ion-select-option value="PSYCHIC">Психический</ion-select-option>
+                  <ion-select-option value="RADIANT">Сияющий</ion-select-option>
+                  <ion-select-option value="THUNDER">Громовой</ion-select-option>
+                </ion-select>
+              </div>
+
+              <div class="detail-row">
+                <span class="detail-row__label">{{ HEADERS.need_customization.rus }}</span>
+                <div class="detail-row__control-slot">
+                  <ion-toggle v-model="unidentifiedCustomization"/>
+                </div>
+              </div>
+            </div>
+
+            <div class="tags-block">
+              <div class="tags-block__label">{{ HEADERS.tags.rus }}</div>
+              <div class="tags" v-if="unidentifiedSelectedTags.length">
+                <button
+                    v-for="tag in unidentifiedSelectedTags"
+                    :key="tag.id"
+                    type="button"
+                    class="tag tag--removable"
+                    :title="tag.description"
+                    @click="removeUnidentifiedSelectedTag(tag.id)"
+                >
+                  {{ tag.name }}
+                  <span class="tag__remove" aria-hidden="true">×</span>
+                </button>
+              </div>
+              <div class="tag-input-row">
+                <ion-input
+                    v-model="unidentifiedTagSearchQuery"
+                    type="text"
+                    placeholder="Поиск тегов..."
+                    class="tag-input"
+                    @keydown.enter.prevent="showCreateUnidentifiedTagOption ? createAndSelectUnidentifiedTag() : undefined"
+                />
+              </div>
+              <div v-if="unidentifiedTagSearchQuery.trim() || filteredUnidentifiedTags.length" class="tag-dropdown">
+                <button
+                    v-for="tag in filteredUnidentifiedTags"
+                    :key="tag.id"
+                    type="button"
+                    :class="['tag-dropdown__item', { 'tag-dropdown__item--selected': unidentifiedSelectedTagIds.includes(tag.id) }]"
+                    @click="toggleUnidentifiedTag(tag)"
+                >
+                  <span class="tag-dropdown__name">{{ tag.name }}</span>
+                  <span v-if="tag.description" class="tag-dropdown__desc">{{ tag.description }}</span>
+                </button>
+                <button
+                    v-if="showCreateUnidentifiedTagOption"
+                    type="button"
+                    class="tag-dropdown__item tag-dropdown__item--create"
+                    :disabled="isCreatingTag"
+                    @click="createAndSelectUnidentifiedTag"
+                >
+                  + Создать тег «{{ unidentifiedTagSearchQuery.trim() }}»
+                </button>
+              </div>
+            </div>
+
+            <div class="tags-block">
+              <div class="tags-block__label">Навыки предмета</div>
+              <div v-if="unidentifiedItemSkills.length" class="skills-list">
+                <div
+                    v-for="skill in unidentifiedItemSkills"
+                    :key="skill.id"
+                    class="skill-card"
+                >
+                  <div class="skill-card__media">
+                    <img
+                        class="skill-card__img"
+                        :src="getSkillImageUrl(skill.imgUrl)"
+                        :alt="skill.name.rus"
+                        @error="($event.target as HTMLImageElement).src = SKILL_IMAGE_PLACEHOLDER"
+                    />
+                  </div>
+                  <div class="skill-card__body">
+                    <div class="skill-card__name">{{ skill.name.rus }}</div>
+                    <div v-if="skill.shortDescription" class="skill-card__desc">{{ skill.shortDescription }}</div>
+                    <div class="skill-card__meta">
+                      Зарядов: {{ skill.charges }} · {{ getRefillLabel(skill.chargesRefill) }}
+                    </div>
+                  </div>
+                  <div class="skill-card__actions">
+                    <ion-button size="small" shape="round" fill="clear" @click="openEditItemSkillModal(false, skill, 'unidentified')">
+                      <ion-icon slot="icon-only" :icon="pencilOutline"/>
+                    </ion-button>
+                    <ion-button size="small" shape="round" fill="clear" color="danger" @click="removeUnidentifiedSkill(skill)">
+                      <ion-icon slot="icon-only" :icon="trashOutline"/>
+                    </ion-button>
+                  </div>
+                </div>
+              </div>
+              <ion-button
+                  class="add-skill-btn"
+                  expand="block"
+                  fill="outline"
+                  shape="round"
+                  @click="openEditItemSkillModal(true, undefined, 'unidentified')"
+              >
+                <ion-icon slot="start" :icon="addOutline"/>
+                Добавить навык
+              </ion-button>
+            </div>
+
+            <ion-textarea
+                v-model="unidentifiedFormItem.description"
+                class="description-input description-input--sm"
+                placeholder="Описание до опознания..."
+                :rows="4"
+                auto-grow
+            />
+          </section>
+
+          <div class="panels-col">
           <section class="panel">
-            <h2 class="panel__title">Характеристики</h2>
+            <h2 class="panel__title">
+              <template v-if="hiddenStats && !isUnidentifiedModel">После опознания</template>
+              <template v-else>Характеристики</template>
+            </h2>
             <div class="details-grid">
               <div class="detail-row">
                 <span class="detail-row__label">Цена</span>
@@ -1030,7 +1625,7 @@ function cancelEdit() {
                       :min="0"
                       class="detail-row__input detail-row__input--price"
                       placeholder="0"
-                      @ionInput="if (defaultPriceValue < 0) defaultPriceValue = 0; invalidFields = invalidFields.filter(f => f !== 'defaultPriceValue')"
+                      @ionInput="if (defaultPriceValue != null && defaultPriceValue < 0) defaultPriceValue = 0; invalidFields = invalidFields.filter(f => f !== 'defaultPriceValue')"
                   />
                   <div class="coin-select-wrap">
                     <ion-icon class="coin-select-wrap__icon" :src="selectedCoinIcon" aria-hidden="true"/>
@@ -1060,7 +1655,7 @@ function cancelEdit() {
                     @keydown="handleWeightKeydown($event)"
                     @keydown.enter.prevent="saveWeightField($event)"
                     :class="{ 'invalid-field': invalidFields.includes('weight') }"
-                >{{ createInventoryItemStore.item?.stats?.weight }}</span>
+                >{{ createInventoryItemStore.item?.stats?.weight ?? '' }}</span>
               </div>
 
               <div v-if="viewType === 'ARMOR'" class="detail-row">
@@ -1253,6 +1848,53 @@ function cancelEdit() {
             />
           </section>
 
+          <section class="panel panel--skills">
+            <h2 class="panel__title">Навыки предмета</h2>
+            <div v-if="createItemSkills.length" class="skills-list">
+              <div
+                  v-for="skill in createItemSkills"
+                  :key="skill.id"
+                  class="skill-card"
+              >
+                <div class="skill-card__media">
+                  <img
+                      class="skill-card__img"
+                      :src="getSkillImageUrl(skill.imgUrl)"
+                      :alt="skill.name.rus"
+                      @error="($event.target as HTMLImageElement).src = SKILL_IMAGE_PLACEHOLDER"
+                  />
+                </div>
+                <div class="skill-card__body">
+                  <div class="skill-card__name">{{ skill.name.rus }}</div>
+                  <div v-if="skill.shortDescription" class="skill-card__desc">{{ skill.shortDescription }}</div>
+                  <div class="skill-card__meta">
+                    Зарядов: {{ skill.charges }} · {{ getRefillLabel(skill.chargesRefill) }}
+                  </div>
+                </div>
+                <div class="skill-card__actions">
+                  <ion-button size="small" shape="round" fill="clear" @click="openEditItemSkillModal(false, skill)">
+                    <ion-icon slot="icon-only" :icon="pencilOutline"/>
+                  </ion-button>
+                  <ion-button size="small" shape="round" fill="clear" color="danger" @click="removeSkill(skill)">
+                    <ion-icon slot="icon-only" :icon="trashOutline"/>
+                  </ion-button>
+                </div>
+              </div>
+            </div>
+            <ion-button
+                class="add-skill-btn"
+                expand="block"
+                fill="outline"
+                shape="round"
+                @click="openEditItemSkillModal(true, undefined)"
+            >
+              <ion-icon slot="start" :icon="addOutline"/>
+              Добавить навык
+            </ion-button>
+          </section>
+          </div>
+          </div>
+
           <section class="panel panel--settings">
             <div class="detail-row">
               <span class="detail-row__label">{{ HEADERS.gm_access.rus }}</span>
@@ -1260,53 +1902,14 @@ function cancelEdit() {
                 <ion-toggle v-model="visibleForPlayers"/>
               </span>
             </div>
+            <div v-if="!isUnidentifiedModel" class="detail-row">
+              <span class="detail-row__label">С скрытыми характеристиками</span>
+              <span class="detail-row__value detail-row__value--toggle">
+                <ion-toggle v-model="hiddenStats"/>
+              </span>
+            </div>
           </section>
         </div>
-
-        <section class="panel panel--skills">
-          <h2 class="panel__title">Навыки предмета</h2>
-          <div v-if="createItemSkills.length" class="skills-list">
-            <div
-                v-for="skill in createItemSkills"
-                :key="skill.id"
-                class="skill-card"
-            >
-              <div class="skill-card__media">
-                <img
-                    class="skill-card__img"
-                    :src="getSkillImageUrl(skill.imgUrl)"
-                    :alt="skill.name.rus"
-                    @error="($event.target as HTMLImageElement).src = SKILL_IMAGE_PLACEHOLDER"
-                />
-              </div>
-              <div class="skill-card__body">
-                <div class="skill-card__name">{{ skill.name.rus }}</div>
-                <div v-if="skill.shortDescription" class="skill-card__desc">{{ skill.shortDescription }}</div>
-                <div class="skill-card__meta">
-                  Зарядов: {{ skill.charges }} · {{ getRefillLabel(skill.chargesRefill) }}
-                </div>
-              </div>
-              <div class="skill-card__actions">
-                <ion-button size="small" shape="round" fill="clear" @click="openEditItemSkillModal(false, skill)">
-                  <ion-icon slot="icon-only" :icon="pencilOutline"/>
-                </ion-button>
-                <ion-button size="small" shape="round" fill="clear" color="danger" @click="removeSkill(skill)">
-                  <ion-icon slot="icon-only" :icon="trashOutline"/>
-                </ion-button>
-              </div>
-            </div>
-          </div>
-          <ion-button
-              class="add-skill-btn"
-              expand="block"
-              fill="outline"
-              shape="round"
-              @click="openEditItemSkillModal(true, undefined)"
-          >
-            <ion-icon slot="start" :icon="addOutline"/>
-            Добавить навык
-          </ion-button>
-        </section>
       </div>
     </ion-content>
 
@@ -1320,6 +1923,18 @@ function cancelEdit() {
       >
         <ion-icon slot="start" :icon="closeCircleOutline"/>
         Отменить
+      </ion-button>
+      <ion-button
+          v-if="canCreateUnidentifiedModel"
+          class="item-footer__btn item-footer__btn--primary"
+          expand="block"
+          fill="outline"
+          shape="round"
+          color="warning"
+          @click="createUnidentifiedModel"
+      >
+        <ion-icon slot="start" :icon="eyeOutline"/>
+        Неопознанная модель
       </ion-button>
       <ion-button
           class="item-footer__btn item-footer__btn--primary"
@@ -1548,6 +2163,33 @@ function cancelEdit() {
   gap: 4px;
 }
 
+.unidentified-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.avatar--sm {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+}
+
+.avatar--sm .avatar-placeholder__icon {
+  font-size: 20px;
+}
+
+.avatar--sm .avatar-placeholder__text {
+  font-size: 9px;
+}
+
+.item-identity--compact {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+}
+
 .identity-input {
   --background: transparent;
   --padding-start: 0;
@@ -1576,6 +2218,30 @@ function cancelEdit() {
   gap: 10px;
 }
 
+.panels-split {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.panels-split > .panel,
+.panels-split > .panels-col {
+  min-width: 0;
+}
+
+.panels-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+@media (min-width: 1024px) {
+  .panels-split {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
 .panel {
   padding: 14px;
   border-radius: 16px;
@@ -1590,6 +2256,24 @@ function cancelEdit() {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: rgba(var(--ion-color-light-rgb), 0.45);
+}
+
+.panel__title-hint {
+  font-size: 12px;
+  font-weight: 400;
+  opacity: 0.6;
+  margin-left: 6px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.panel--unidentified {
+  border: 1px solid rgba(var(--ion-color-warning-rgb), 0.3);
+  background: rgba(var(--ion-color-warning-rgb), 0.05);
+}
+
+.description-input--sm {
+  margin-top: 12px;
 }
 
 .details-grid {
@@ -2017,35 +2701,21 @@ function cancelEdit() {
 
 @media (min-width: 1024px) {
   .item-page {
-    max-width: 960px;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-areas:
-      "header header"
-      "identity identity"
-      "details skills";
-    column-gap: 16px;
-    row-gap: 12px;
-    align-items: start;
+    max-width: 700px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
     padding-top: 8px;
   }
 
+  /* Когда показаны две панели (скрытые характеристики) — страница шире */
+  .item-page:has(.panels-split .panel--unidentified) {
+    max-width: 1200px;
+  }
+
   .item-header {
-    grid-area: header;
     gap: 38px;
-  }
-
-  .item-identity {
-    grid-area: identity;
-  }
-
-  .item-details {
-    grid-area: details;
-  }
-
-  .panel--skills {
-    grid-area: skills;
-    align-self: start;
   }
 
   .item-footer {
@@ -2067,5 +2737,24 @@ function cancelEdit() {
     border: 1px solid rgba(var(--ion-color-light-rgb), 0.2);
     border-radius: 14px;
   }
+}
+
+.unidentified-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(var(--ion-color-warning-rgb), 0.12);
+  border: 1px solid rgba(var(--ion-color-warning-rgb), 0.35);
+  color: var(--ion-color-warning);
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.unidentified-banner__icon {
+  font-size: 18px;
+  flex-shrink: 0;
 }
 </style>

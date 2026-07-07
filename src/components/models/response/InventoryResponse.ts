@@ -74,6 +74,9 @@ export interface Item {
     count?: number;
     visibleForPlayers?: boolean;
     creator?: string;
+    hiddenStats?: boolean;
+    unidentifiedItemId?: string;
+    unidentifiedName?: Name;
 }
 
 export interface InventoryItemSkill {
@@ -94,6 +97,7 @@ export interface InventoryItem {
     damageBonusValue: number;
     attackBonusValue: number;
     requirementsOk: boolean;
+    identified?: boolean;
     skills?: InventoryItemSkill[];
 }
 

@@ -16,19 +16,21 @@ import {
   IonSpinner,
   IonTitle,
   IonToolbar,
-  toastController
+  toastController,
+  useIonRouter
 } from "@ionic/vue";
 import {computed, onBeforeUnmount, onMounted, ref} from "vue";
-import {useRouter} from "vue-router";
 import {AxiosError, isAxiosError} from "axios";
 import {
   closeOutline,
+  diamondOutline,
   keyOutline,
   logOutOutline,
   mailOpenOutline,
   mailOutline,
   personOutline,
-  shieldCheckmarkOutline
+  shieldCheckmarkOutline,
+  starOutline,
 } from "ionicons/icons";
 
 import {TEXTS} from "@/config/localisations";
@@ -36,13 +38,27 @@ import {changeEmail, getCurrentUserInfo, resetPassword, sendChangeEmailCode, sen
 import {clearAuthTokens} from "@/utils/authTokens";
 import {mapPasswordResetErrorCodeToMessage} from "@/utils/passwordResetErrorMapper";
 import type {ApiError, UserInfoResponse} from "@/api/authApi.types";
+import {useSubscriptionStore} from "@/stores/SubscriptionStore";
+import {useCrystalsStore} from "@/stores/CrystalsStore";
 
 const MIN_PASSWORD_LENGTH = 8;
 const RESET_CODE_COOLDOWN_SECONDS = 60;
 const VERIFICATION_CODE_REGEXP = /^\d{6}$/;
 
-const router = useRouter();
+const ionRouter = useIonRouter();
+const subscriptionStore = useSubscriptionStore();
+const crystalsStore = useCrystalsStore();
 const currentUserInfo = ref<UserInfoResponse | null>(null);
+
+const TIER_LABELS: Record<string, string> = {
+  FREE: "Бесплатно",
+  PLAYER_PLUS: "Игрок+",
+  MASTER: "Мастер",
+};
+
+const currentTierLabel = computed(
+  () => TIER_LABELS[subscriptionStore.subscription?.tier ?? "FREE"] ?? "Бесплатно"
+);
 
 const isSecurityModalOpen = ref(false);
 const isEmailModalOpen = ref(false);
@@ -404,6 +420,7 @@ onMounted(async () => {
   } catch {
     // keep placeholders when profile endpoint is unavailable
   }
+  await Promise.all([subscriptionStore.load(), crystalsStore.load()]);
 });
 </script>
 
@@ -446,6 +463,30 @@ onMounted(async () => {
               </ion-label>
             </ion-item>
           </ion-list>
+
+          <section class="profile-extra-card">
+            <div class="extra-row" @click="ionRouter.navigate('/subscription', 'forward', 'push')">
+              <div class="extra-icon-wrap extra-icon-wrap--sub">
+                <ion-icon :icon="starOutline"/>
+              </div>
+              <div class="extra-body">
+                <div class="extra-label">Подписка</div>
+                <div class="extra-value">{{ currentTierLabel }}</div>
+              </div>
+              <div class="extra-action">Управлять</div>
+            </div>
+            <div class="extra-divider"/>
+            <div class="extra-row" @click="ionRouter.navigate('/crystals', 'forward', 'push')">
+              <div class="extra-icon-wrap extra-icon-wrap--gem">
+                <ion-icon :icon="diamondOutline"/>
+              </div>
+              <div class="extra-body">
+                <div class="extra-label">Кристаллы</div>
+                <div class="extra-value">{{ crystalsStore.loading ? "…" : crystalsStore.balance }}</div>
+              </div>
+              <div class="extra-action">Купить</div>
+            </div>
+          </section>
 
           <section class="password-card">
             <div class="section-header">
@@ -779,6 +820,79 @@ onMounted(async () => {
   color: var(--profile-text-primary);
   font-size: 15px;
   font-weight: 600;
+}
+
+.profile-extra-card {
+  border: 1px solid var(--profile-border);
+  background: linear-gradient(155deg, var(--profile-surface-strong), var(--profile-surface));
+  box-shadow: 0 14px 36px var(--profile-shadow),
+  inset 0 1px 0 rgba(var(--ion-color-light-rgb), 0.12);
+  border-radius: 20px;
+  backdrop-filter: blur(6px);
+  overflow: hidden;
+}
+
+.extra-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.extra-row:active {
+  background: rgba(var(--ion-color-primary-rgb), 0.06);
+}
+
+.extra-icon-wrap {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  font-size: 20px;
+}
+
+.extra-icon-wrap--sub {
+  background: rgba(var(--ion-color-tertiary-rgb), 0.18);
+  color: var(--ion-color-tertiary);
+}
+
+.extra-icon-wrap--gem {
+  background: rgba(139, 110, 240, 0.18);
+  color: #b39df5;
+}
+
+.extra-body {
+  flex: 1;
+}
+
+.extra-label {
+  font-size: 12px;
+  color: var(--profile-text-muted);
+  margin-bottom: 2px;
+}
+
+.extra-value {
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--profile-text-primary);
+}
+
+.extra-action {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--profile-accent);
+  flex: 0 0 auto;
+}
+
+.extra-divider {
+  height: 1px;
+  background: var(--profile-border);
+  margin: 0 16px;
 }
 
 .password-card {

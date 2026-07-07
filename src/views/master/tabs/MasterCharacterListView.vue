@@ -2,7 +2,9 @@
 import {IonButton, IonIcon, useIonRouter} from "@ionic/vue";
 import {
   alertCircleOutline,
+  chevronDownOutline,
   chevronForwardOutline,
+  flashOutline,
   peopleOutline,
   searchOutline,
   shieldOutline,
@@ -10,8 +12,13 @@ import {
 } from "ionicons/icons";
 import {computed, onMounted, ref} from "vue";
 import {useRoute} from "vue-router";
+import axios from "axios";
 import {Character} from "@/components/models/response/Character";
+import type {InventoryItem} from "@/components/models/response/InventoryResponse";
+import type {SpellBookItemDto} from "@/components/models/response/MagicApi";
 import {useRoomStore} from "@/stores/RoomStore";
+import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+import {getSpellBookByRoomAndCharacter} from "@/api/magicApi";
 import CachedFileImage from "@/components/CachedFileImage.vue";
 import {CHARACTER_AVATAR_PLACEHOLDER, getCharacterAvatarUrl} from "@/utils/characterAvatar";
 import {TEXTS} from "@/config/localisations";
@@ -142,6 +149,87 @@ function openStateModal(e: Event, character: Character) {
 function closeStateModal() {
   stateModalCharacter.value = null;
 }
+
+// ── Character details spoiler ──────────────────────────────────────────────
+
+interface CharacterDetails {
+  weapons: InventoryItem[];
+  spells: SpellBookItemDto[];
+  loading: boolean;
+  loaded: boolean;
+}
+
+const expandedCards = ref<Set<string>>(new Set());
+const cardDetailsMap = ref<Map<string, CharacterDetails>>(new Map());
+
+function spellName(item: SpellBookItemDto): string {
+  const n = item.spell?.name as Record<string, string> | undefined;
+  if (!n) return "—";
+  return n["rus"] ?? n["en"] ?? Object.values(n)[0] ?? "—";
+}
+
+function spellLevel(item: SpellBookItemDto): string {
+  const lvl = item.spell?.level;
+  if (!lvl || lvl === "0") return "Заговор";
+  return `${lvl} ур.`;
+}
+
+async function loadDetails(characterId: string): Promise<void> {
+  const roomId = route.params.roomId as string;
+  const existing = cardDetailsMap.value.get(characterId);
+  if (existing?.loaded) return;
+
+  cardDetailsMap.value.set(characterId, { weapons: [], spells: [], loading: true, loaded: false });
+
+  try {
+    const [invRes, spellBook] = await Promise.allSettled([
+      axios.get(
+        `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${roomId}${GATEWAY_INTEGRATION_ROUTES.inventory}/${characterId}`,
+        { headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` } }
+      ),
+      getSpellBookByRoomAndCharacter(roomId, characterId),
+    ]);
+
+    const weapons: InventoryItem[] =
+      invRes.status === "fulfilled"
+        ? (invRes.value.data.items as InventoryItem[]).filter(
+            (it) => it.inUse && it.item?.stats?.damage != null
+          )
+        : [];
+
+    const spells: SpellBookItemDto[] =
+      spellBook.status === "fulfilled"
+        ? (spellBook.value.spells ?? []).filter((s) => s.inUse)
+        : [];
+
+    cardDetailsMap.value.set(characterId, { weapons, spells, loading: false, loaded: true });
+  } catch {
+    cardDetailsMap.value.set(characterId, { weapons: [], spells: [], loading: false, loaded: true });
+  }
+}
+
+function refreshIfExpanded(characterId: string): void {
+  if (!expandedCards.value.has(characterId)) return;
+  const existing = cardDetailsMap.value.get(characterId);
+  if (existing) {
+    cardDetailsMap.value.set(characterId, { ...existing, loaded: false });
+  }
+  loadDetails(characterId);
+}
+
+defineExpose({ refreshIfExpanded });
+
+function toggleDetails(e: Event, characterId: string): void {
+  e.stopPropagation();
+  const next = new Set(expandedCards.value);
+  if (next.has(characterId)) {
+    next.delete(characterId);
+  } else {
+    next.add(characterId);
+    loadDetails(characterId);
+  }
+  expandedCards.value = next;
+}
 </script>
 
 <template>
@@ -170,87 +258,166 @@ function closeStateModal() {
           <span class="section-heading__count">{{ group.items.length }}</span>
         </div>
         <div class="character-grid">
-          <button
+          <div
             v-for="character in group.items"
             :key="character.id"
-            type="button"
-            class="character-card"
-            :class="{ 'character-card--owned': group.owned }"
-            @click="goToCharacter(character.id)"
+            class="character-card-wrapper"
           >
-            <div class="character-card__glow" aria-hidden="true" />
-            <span v-if="character.level" class="character-card__level">
-              <ion-icon :icon="sparklesOutline" aria-hidden="true" />
-              {{ character.level.level }}
-            </span>
+            <div
+              class="character-card"
+              :class="{ 'character-card--owned': group.owned }"
+              role="button"
+              tabindex="0"
+              @click="goToCharacter(character.id)"
+              @keydown.enter="goToCharacter(character.id)"
+            >
+              <div class="character-card__glow" aria-hidden="true" />
+              <span v-if="character.level" class="character-card__level">
+                <ion-icon :icon="sparklesOutline" aria-hidden="true" />
+                {{ character.level.level }}
+              </span>
 
-            <div class="character-card__top">
-              <div class="character-card__avatar">
-                <CachedFileImage
-                  :width="64"
-                  :height="64"
-                  :src="getCharacterAvatarUrl(character)"
-                  alt=""
-                  @error="($event.target as HTMLImageElement).src = CHARACTER_AVATAR_PLACEHOLDER"
-                />
-              </div>
-              <div class="character-card__identity">
-                <h3 class="character-card__name">{{ character.name }}</h3>
-                <p class="character-card__owner">@{{ character.ownerUsername }}</p>
-                <div class="character-card__tags">
-                  <span class="tag tag--race">{{ character.raceInfo.name }}</span>
-                  <span class="tag tag--class">{{ character.clazzInfo.name }}</span>
+              <div class="character-card__top">
+                <div class="character-card__avatar">
+                  <CachedFileImage
+                    :width="64"
+                    :height="64"
+                    :src="getCharacterAvatarUrl(character)"
+                    alt=""
+                    @error="($event.target as HTMLImageElement).src = CHARACTER_AVATAR_PLACEHOLDER"
+                  />
                 </div>
-              </div>
-              <ion-icon class="character-card__chevron" :icon="chevronForwardOutline" aria-hidden="true" />
-            </div>
-
-            <div class="character-card__bottom">
-              <div
-                v-if="characterActiveStates(character).length"
-                class="character-card__states"
-                @click.stop="openStateModal($event, character)"
-              >
-                <span
-                  v-for="state in characterActiveStates(character)"
-                  :key="state.id ?? state.stateCode"
-                  class="state-chip"
-                  :title="state.stateCode ?? ''"
-                >{{ stateName(state.stateCode ?? '') }}</span>
-              </div>
-
-              <div class="character-card__stats">
-                <div v-if="character.health" class="hp-meter">
-                  <div class="hp-meter__head">
-                    <span class="hp-meter__label">HP</span>
-                    <span class="hp-meter__value">
-                      {{ character.health.currentHp }}<span class="hp-meter__max">/{{ maxHpValue(character) }}</span>
-                      <span v-if="character.health.tempHp > 0" class="hp-meter__temp">+{{ character.health.tempHp }}</span>
-                    </span>
-                  </div>
-                  <div class="hp-meter__track">
-                    <div
-                      class="hp-meter__fill"
-                      :class="`hp-meter__fill--${hpTone(character)}`"
-                      :style="{ width: `${hpPercent(character)}%` }"
-                    />
+                <div class="character-card__identity">
+                  <h3 class="character-card__name">{{ character.name }}</h3>
+                  <p class="character-card__owner">@{{ character.ownerUsername }}</p>
+                  <div class="character-card__tags">
+                    <span class="tag tag--race">{{ character.raceInfo.name }}</span>
+                    <span class="tag tag--class">{{ character.clazzInfo.name }}</span>
                   </div>
                 </div>
-                <div class="ac-chip" :aria-label="`Класс брони ${armoryClassValue(character)}`">
-                  <ion-icon :icon="shieldOutline" aria-hidden="true" />
-                  <span>{{ armoryClassValue(character) }}</span>
-                </div>
-                <button
-                  class="state-manage-btn"
-                  :class="{ 'state-manage-btn--active': characterActiveStates(character).length }"
-                  :aria-label="`Состояния ${character.name}`"
+                <ion-icon class="character-card__chevron" :icon="chevronForwardOutline" aria-hidden="true" />
+              </div>
+
+              <div class="character-card__bottom">
+                <div
+                  v-if="characterActiveStates(character).length"
+                  class="character-card__states"
                   @click.stop="openStateModal($event, character)"
                 >
-                  <ion-icon :icon="alertCircleOutline"/>
+                  <span
+                    v-for="state in characterActiveStates(character)"
+                    :key="state.id ?? state.stateCode"
+                    class="state-chip"
+                    :title="state.stateCode ?? ''"
+                  >{{ stateName(state.stateCode ?? '') }}</span>
+                </div>
+
+                <div class="character-card__stats">
+                  <div v-if="character.health" class="hp-meter">
+                    <div class="hp-meter__head">
+                      <span class="hp-meter__label">HP</span>
+                      <span class="hp-meter__value">
+                        {{ character.health.currentHp }}<span class="hp-meter__max">/{{ maxHpValue(character) }}</span>
+                        <span v-if="character.health.tempHp > 0" class="hp-meter__temp">+{{ character.health.tempHp }}</span>
+                      </span>
+                    </div>
+                    <div class="hp-meter__track">
+                      <div
+                        class="hp-meter__fill"
+                        :class="`hp-meter__fill--${hpTone(character)}`"
+                        :style="{ width: `${hpPercent(character)}%` }"
+                      />
+                    </div>
+                  </div>
+                  <div class="ac-chip" :aria-label="`Класс брони ${armoryClassValue(character)}`">
+                    <ion-icon :icon="shieldOutline" aria-hidden="true" />
+                    <span>{{ armoryClassValue(character) }}</span>
+                  </div>
+                  <button
+                    class="state-manage-btn"
+                    :class="{ 'state-manage-btn--active': characterActiveStates(character).length }"
+                    :aria-label="`Состояния ${character.name}`"
+                    @click.stop="openStateModal($event, character)"
+                  >
+                    <ion-icon :icon="alertCircleOutline"/>
+                  </button>
+                </div>
+
+                <button
+                  class="details-toggle"
+                  :class="{ 'details-toggle--open': expandedCards.has(character.id) }"
+                  :aria-label="expandedCards.has(character.id) ? 'Скрыть атаки и заклинания' : 'Показать атаки и заклинания'"
+                  @click.stop="toggleDetails($event, character.id)"
+                >
+                  <span>Атаки и заклинания</span>
+                  <ion-icon :icon="chevronDownOutline" class="details-toggle__chevron" aria-hidden="true" />
                 </button>
               </div>
             </div>
-          </button>
+
+            <div
+              v-if="expandedCards.has(character.id)"
+              class="character-details"
+              @click.stop
+            >
+              <template v-if="cardDetailsMap.get(character.id)?.loading">
+                <div class="character-details__loading">
+                  <span class="details-spinner" />
+                </div>
+              </template>
+              <template v-else>
+                <div v-if="cardDetailsMap.get(character.id)?.weapons.length" class="details-section">
+                  <div class="details-section__title">
+                    <ion-icon :icon="flashOutline" aria-hidden="true" />
+                    Снаряжено
+                  </div>
+                  <div class="details-weapons">
+                    <div
+                      v-for="weapon in cardDetailsMap.get(character.id)!.weapons"
+                      :key="weapon.id"
+                      class="weapon-row"
+                    >
+                      <span class="weapon-row__name">{{ weapon.item.name.rus }}</span>
+                      <span class="weapon-row__damage">
+                        {{ weapon.item.stats.damage!.value }}
+                        <span v-if="weapon.item.stats.damage!.damageTypeName" class="weapon-row__type">
+                          {{ weapon.item.stats.damage!.damageTypeName }}
+                        </span>
+                      </span>
+                      <span v-if="weapon.attackBonusValue" class="weapon-row__bonus">
+                        +{{ weapon.attackBonusValue }} атк
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div v-if="cardDetailsMap.get(character.id)?.spells.length" class="details-section">
+                  <div class="details-section__title">
+                    <ion-icon :icon="sparklesOutline" aria-hidden="true" />
+                    Подготовленные заклинания
+                  </div>
+                  <div class="details-spells">
+                    <span
+                      v-for="spell in cardDetailsMap.get(character.id)!.spells"
+                      :key="spell.id"
+                      class="spell-chip"
+                      :title="spellLevel(spell)"
+                    >
+                      {{ spellName(spell) }}
+                      <span class="spell-chip__level">{{ spellLevel(spell) }}</span>
+                    </span>
+                  </div>
+                </div>
+
+                <div
+                  v-if="!cardDetailsMap.get(character.id)?.weapons.length && !cardDetailsMap.get(character.id)?.spells.length"
+                  class="details-empty"
+                >
+                  Нет снаряжённого оружия и подготовленных заклинаний
+                </div>
+              </template>
+            </div>
+          </div>
         </div>
       </section>
     </template>
@@ -552,6 +719,9 @@ function closeStateModal() {
   font-weight: 600;
   line-height: 1;
   white-space: nowrap;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tag--race {
@@ -757,5 +927,195 @@ function closeStateModal() {
   .character-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* ── Details spoiler ─────────────────────────────────────────────────────── */
+
+.character-card-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.character-card {
+  cursor: pointer;
+  outline: none;
+}
+
+.character-card:focus-visible {
+  box-shadow: 0 0 0 3px rgba(var(--ion-color-primary-rgb), 0.4);
+}
+
+.details-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 10px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
+  background: rgba(var(--ion-color-light-rgb), 0.04);
+  color: rgba(var(--ion-color-light-rgb), 0.5);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+
+.details-toggle:hover,
+.details-toggle--open {
+  background: rgba(var(--ion-color-primary-rgb), 0.08);
+  border-color: rgba(var(--ion-color-primary-rgb), 0.25);
+  color: var(--ion-color-primary);
+}
+
+.details-toggle__chevron {
+  font-size: 16px;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.details-toggle--open .details-toggle__chevron {
+  transform: rotate(180deg);
+}
+
+.character-details {
+  margin-top: 4px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
+  background: rgba(var(--ion-color-dark-rgb), 0.6);
+  backdrop-filter: blur(6px);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.character-details__loading {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0;
+}
+
+.details-spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(var(--ion-color-primary-rgb), 0.25);
+  border-top-color: var(--ion-color-primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.details-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.details-section__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(var(--ion-color-light-rgb), 0.45);
+}
+
+.details-section__title ion-icon {
+  font-size: 13px;
+  color: var(--ion-color-primary);
+}
+
+/* Weapons */
+.details-weapons {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.weapon-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: rgba(var(--ion-color-light-rgb), 0.04);
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.06);
+  flex-wrap: wrap;
+}
+
+.weapon-row__name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ion-color-light);
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.weapon-row__damage {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ion-color-danger-tint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.weapon-row__type {
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(var(--ion-color-light-rgb), 0.45);
+  margin-left: 3px;
+}
+
+.weapon-row__bonus {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ion-color-success);
+  white-space: nowrap;
+}
+
+/* Spells */
+.details-spells {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.spell-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(var(--ion-color-tertiary-rgb), 0.12);
+  border: 1px solid rgba(var(--ion-color-tertiary-rgb), 0.28);
+  color: var(--ion-color-light);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.spell-chip__level {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ion-color-tertiary);
+  opacity: 0.9;
+}
+
+.details-empty {
+  font-size: 12px;
+  color: rgba(var(--ion-color-light-rgb), 0.35);
+  text-align: center;
+  padding: 4px 0;
 }
 </style>

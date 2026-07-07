@@ -600,6 +600,9 @@ function openAddView() {
               <div class="item-name">
                 {{ item.name.rus }}
               </div>
+              <div v-if="item.hiddenStats && item.unidentifiedName?.rus" class="item-unidentified-hint">
+                До опознания: {{ item.unidentifiedName.rus }}
+              </div>
               <div
                   class="item-stats"
                   v-for="(stat, index) in getItemStats(item)"
@@ -742,6 +745,14 @@ function openAddView() {
 
 .item-stats {
   font-size: 11px;
+  display: flex;
+  justify-content: start;
+}
+
+.item-unidentified-hint {
+  font-size: 11px;
+  font-style: italic;
+  color: var(--ion-color-warning);
   display: flex;
   justify-content: start;
 }

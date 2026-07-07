@@ -465,6 +465,7 @@ async function takeMoney() {
           <div class="stats-block">
             <div class="item-name">
               {{ item.item.name.rus }}
+              <span v-if="item.identified === false" class="unidentified-badge">?</span>
             </div>
             <div class="item-stats" v-for="(stat, index) in getItemStats(item)" :key="index">
               {{ stat }}
@@ -500,6 +501,7 @@ async function takeMoney() {
           <div class="stats-block">
             <div class="item-name">
               {{ item.item.name.rus }}
+              <span v-if="item.identified === false" class="unidentified-badge">?</span>
             </div>
             <div class="item-stats" v-for="(stat, index) in getItemStats(item)" :key="index">
               {{ stat }}
@@ -536,6 +538,7 @@ async function takeMoney() {
           <div class="stats-block">
             <div class="item-name">
               {{ item.item.name.rus }}
+              <span v-if="item.identified === false" class="unidentified-badge">?</span>
             </div>
             <div class="item-stats" v-for="(stat, index) in getItemStats(item)" :key="index" v-if="getItemStats(item).length > 0">
               {{ stat }}
@@ -572,6 +575,7 @@ async function takeMoney() {
           <div class="stats-block">
             <div class="item-name">
               {{ item.item.name.rus }}
+              <span v-if="item.identified === false" class="unidentified-badge">?</span>
             </div>
             <div class="item-stats" v-for="(stat, index) in getItemStats(item)" :key="index">
               {{ stat }}
@@ -1145,5 +1149,18 @@ async function takeMoney() {
   .add-new-button {
     bottom: 14px;
   }
+}
+
+.unidentified-badge {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 0 5px;
+  border-radius: 6px;
+  background: rgba(var(--ion-color-warning-rgb), 0.2);
+  color: var(--ion-color-warning);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  vertical-align: middle;
 }
 </style>
