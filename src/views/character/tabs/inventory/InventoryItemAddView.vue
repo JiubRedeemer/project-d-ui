@@ -18,14 +18,15 @@ import {
 } from "@ionic/vue";
 import {HEADERS, TEXTS} from "@/config/localisations";
 import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
-import {add, addOutline, closeCircleOutline, eyeOutline, pencilOutline, saveOutline, trashOutline} from "ionicons/icons";
+import {add, addCircleOutline, addOutline, checkmarkCircle, closeCircleOutline, eyeOutline, pencilOutline, saveOutline, trashOutline} from "ionicons/icons";
 import {computed, onBeforeMount, ref, watch} from "vue";
 import {extractDominantColorFromUrl} from "@/utils/imageAmbient";
 import {useCreateInventoryItemStore} from "@/stores/CreateInventoryItemStore";
 import axios from "axios";
 import {v4 as uuidv4} from 'uuid';
-import {type ItemSkill, Price} from "@/components/models/response/InventoryResponse";
+import {type ItemBundle, type ItemSkill, Price} from "@/components/models/response/InventoryResponse";
 import {createTagForRoom, getTagsForRoom, type ItemTagDto} from "@/api/itemTagApi";
+import {getOwnBundles, importBundleItems} from "@/api/bundleApi";
 import {useRoute, useRouter} from "vue-router";
 import EditItemSkillValueModal from "@/views/character/tabs/inventory/EditItemSkillValueModal.vue";
 import {useInventoryStore} from "@/stores/InventoryStore";
@@ -69,6 +70,11 @@ const viewType = ref<string>("ARMOR");
 const visibleForPlayers = ref<boolean>(true);
 const customization = ref<boolean>(false);
 const hiddenStats = ref<boolean>(false);
+// Свои бандлы, в которые можно сразу добавить создаваемый предмет
+const myBundles = ref<ItemBundle[]>([]);
+const selectedBundleIds = ref<string[]>([]);
+// Показывать выбор бандлов: только при создании обычного (комнатного) предмета
+const canAddToBundles = computed(() => !isBundleMode.value && !isUnidentifiedModel.value && myBundles.value.length > 0);
 const unidentifiedFormItem = ref({
   name: { rus: '', eng: '' } as { rus: string; eng: string },
   description: '' as string,
@@ -132,6 +138,25 @@ async function loadAvailableTags() {
     availableTags.value = await getTagsForRoom(tagsRoomId.value);
   } catch (e) {
     console.error("Failed to load tags", e);
+  }
+}
+
+async function loadMyBundles() {
+  // В режиме редактирования внутри бандла выбор бандлов не нужен
+  if (isBundleMode.value) return;
+  try {
+    myBundles.value = await getOwnBundles();
+  } catch (e) {
+    console.error("Failed to load own bundles", e);
+  }
+}
+
+function toggleBundleSelection(id: string) {
+  const idx = selectedBundleIds.value.indexOf(id);
+  if (idx >= 0) {
+    selectedBundleIds.value.splice(idx, 1);
+  } else {
+    selectedBundleIds.value.push(id);
   }
 }
 
@@ -260,6 +285,7 @@ const openEditItemSkillModal = (isEditing: boolean, itemSkill: ItemSkill | undef
 
 onBeforeMount(async () => {
   await loadAvailableTags();
+  void loadMyBundles();
   if (!createInventoryItemStore.item.type) {
     createInventoryItemStore.item.id = itemId;
     createInventoryItemStore.item.typeName = "Доспех";
@@ -718,14 +744,6 @@ function createUnidentifiedModel() {
 }
 
 async function saveItem() {
-  try {
-    const myIdResponse = await getMyId();
-    createInventoryItemStore.item.creatorId = myIdResponse.data;
-    createInventoryItemStore.item.creator = "user";
-  } catch (e) {
-    console.error("Не удалось получить идентификатор пользователя", e);
-  }
-
   if (viewType.value == "WEAPON") {
     createInventoryItemStore.item.stats.damage = {
       damageType: damageType.value,
@@ -770,6 +788,14 @@ async function saveItem() {
 
   if (validateItem(viewType.value)) {
     invalidFields.value = [];
+
+    try {
+      const myIdResponse = await getMyId();
+      createInventoryItemStore.item.creatorId = myIdResponse.data;
+      createInventoryItemStore.item.creator = "user";
+    } catch (e) {
+      console.error("Не удалось получить идентификатор пользователя", e);
+    }
 
     // Куда сохраняем: в бандл (вне комнаты) или в комнату
     const saveItemUrl = isBundleMode.value
@@ -832,6 +858,18 @@ async function saveItem() {
             },
           },
       );
+
+      // Копируем созданный предмет в выбранные бандлы пользователя
+      if (canAddToBundles.value && selectedBundleIds.value.length > 0) {
+        const savedItemId = createInventoryItemStore.item.id;
+        await Promise.all(
+            selectedBundleIds.value.map(bId =>
+                importBundleItems(bId, [savedItemId]).catch(e =>
+                    console.error(`Не удалось добавить предмет в бандл ${bId}:`, e))
+            )
+        );
+      }
+
       router.back();
 
       if (hasCharacterContext.value) {
@@ -2020,6 +2058,24 @@ function cancelEdit() {
               </span>
             </div>
           </section>
+
+          <section v-if="canAddToBundles" class="panel panel--bundles">
+            <h2 class="panel__title">Добавить в мои наборы</h2>
+            <p class="bundles-hint">Копия предмета появится в выбранных наборах</p>
+            <div class="bundle-chips">
+              <button
+                  v-for="bundle in myBundles"
+                  :key="bundle.id"
+                  type="button"
+                  class="bundle-chip"
+                  :class="{ 'bundle-chip--active': selectedBundleIds.includes(bundle.id) }"
+                  @click="toggleBundleSelection(bundle.id)"
+              >
+                <ion-icon :icon="selectedBundleIds.includes(bundle.id) ? checkmarkCircle : addCircleOutline"/>
+                {{ bundle.name }}
+              </button>
+            </div>
+          </section>
         </div>
       </div>
     </ion-content>
@@ -2381,6 +2437,49 @@ function cancelEdit() {
 .panel--unidentified {
   border: 1px solid rgba(var(--ion-color-warning-rgb), 0.3);
   background: rgba(var(--ion-color-warning-rgb), 0.05);
+}
+
+.bundles-hint {
+  margin: -4px 0 12px;
+  font-size: 12px;
+  color: rgba(var(--ion-color-light-rgb), 0.5);
+}
+
+.bundle-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bundle-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(var(--ion-color-light-rgb), 0.75);
+  background: rgba(var(--ion-color-light-rgb), 0.06);
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.12);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.bundle-chip ion-icon {
+  font-size: 16px;
+}
+
+.bundle-chip:hover {
+  background: rgba(var(--ion-color-primary-rgb), 0.1);
+  border-color: rgba(var(--ion-color-primary-rgb), 0.3);
+  color: var(--ion-color-light);
+}
+
+.bundle-chip--active {
+  background: rgba(var(--ion-color-primary-rgb), 0.18);
+  border-color: var(--ion-color-primary);
+  color: var(--ion-color-primary);
 }
 
 .description-input--sm {

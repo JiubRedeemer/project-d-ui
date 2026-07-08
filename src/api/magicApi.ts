@@ -188,6 +188,19 @@ export async function setSpellInUse(
     return data;
 }
 
+export async function setSpellAlwaysPrepared(
+    spellBookId: string,
+    spellId: string,
+    alwaysPrepared: boolean
+): Promise<SpellBookItemDto> {
+    const { data } = await axios.patch<SpellBookItemDto>(
+        `${baseUrl()}${GATEWAY_INTEGRATION_ROUTES.spellBooks}/${spellBookId}/spells/${spellId}/always-prepared`,
+        undefined,
+        { headers: authHeaders(), params: { alwaysPrepared } }
+    );
+    return data;
+}
+
 export async function createSpellCellForBook(
     spellBookId: string,
     body: SpellCellDto

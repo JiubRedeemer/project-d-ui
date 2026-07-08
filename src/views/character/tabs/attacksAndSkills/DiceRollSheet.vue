@@ -50,6 +50,7 @@ const accentColor = computed(() =>
         <div class="sheet-header">
           <span class="sheet-title">{{ title }}</span>
         </div>
+        <div v-if="subtitle" class="sheet-subtitle">{{ subtitle }}</div>
 
         <!-- Кубики -->
         <div class="dice-row">

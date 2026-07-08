@@ -69,6 +69,7 @@ export interface SpellBookItemDto {
     spellBookId?: string;
     spellId?: string;
     inUse?: boolean;
+    alwaysPrepared?: boolean;
     spell?: SpellDto;
 }
 

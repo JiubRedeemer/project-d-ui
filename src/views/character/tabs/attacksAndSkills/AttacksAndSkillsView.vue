@@ -70,6 +70,58 @@ const isEquippedSectionExpanded = ref(true);
 const isItemSkillsSectionExpanded = ref(true);
 const isCharacterSkillsSectionExpanded = ref(true);
 
+// ── Фехтовальное: выбор СИЛ / ЛОВ ───────────────────────────────────────
+const finesseChoice = ref<Map<string, 'STR' | 'DEX'>>(new Map());
+
+function isFinesseWeapon(item: InventoryItem): boolean {
+  return item.item.stats?.tags?.includes('Фехтовальное') ?? false;
+}
+
+function getFinesseChoice(item: InventoryItem): 'STR' | 'DEX' {
+  return finesseChoice.value.get(item.id) ?? 'STR';
+}
+
+function toggleFinesseChoice(item: InventoryItem): void {
+  const next = new Map(finesseChoice.value);
+  next.set(item.id, getFinesseChoice(item) === 'STR' ? 'DEX' : 'STR');
+  finesseChoice.value = next;
+}
+
+// ── Универсальное: выбор одноручного / двуручного ────────────────────────
+const versatileChoice = ref<Map<string, 'one' | 'two'>>(new Map());
+
+function isVersatileWeapon(item: InventoryItem): boolean {
+  return item.item.stats?.tags?.some((t: string) => /^Универсальное/i.test(t)) ?? false;
+}
+
+function parseVersatileDamage(item: InventoryItem): string | null {
+  const tag = item.item.stats?.tags?.find((t: string) => /^Универсальное/i.test(t));
+  if (!tag) return null;
+  const match = /\(([^)]+)\)/.exec(tag);
+  if (!match) return null;
+  const raw = match[1].trim().replace(/к/gi, 'd');
+  return raw || null;
+}
+
+function getVersatileChoice(item: InventoryItem): 'one' | 'two' {
+  return versatileChoice.value.get(item.id) ?? 'one';
+}
+
+function toggleVersatileChoice(item: InventoryItem): void {
+  const next = new Map(versatileChoice.value);
+  next.set(item.id, getVersatileChoice(item) === 'one' ? 'two' : 'one');
+  versatileChoice.value = next;
+}
+
+function getEffectiveBaseDamage(item: InventoryItem): string {
+  const raw = String(item.item.stats?.damage?.value ?? '');
+  if (isVersatileWeapon(item) && getVersatileChoice(item) === 'two') {
+    const two = parseVersatileDamage(item);
+    if (two) return two;
+  }
+  return raw;
+}
+
 const getItemImageUrl = (imgUrl: string | undefined) => {
   return imgUrl != null
       ? `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.items_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.download}/${imgUrl}`
@@ -149,7 +201,7 @@ const getItemStats = (item: InventoryItem) => {
 const getDamageText = (item: InventoryItem) => {
   const d = item.item.stats?.damage;
   if (!d) return '';
-  const parsedDamage = replaceDamageAbilityPlaceholders(String(d.value ?? ""));
+  const parsedDamage = replaceDamageAbilityPlaceholders(getEffectiveBaseDamage(item));
   const fallbackDamageFromWeaponType = parsedDamage.hasPlaceholders ? 0 : calculateDamageFromWeaponType(item);
   const totalDamageBonus = fallbackDamageFromWeaponType + getDamageBonus(item);
   const value = parsedDamage.value
@@ -176,21 +228,46 @@ const setDamageBonus = (item: InventoryItem, value: number) => {
   (item.item.stats as Record<string, unknown>).damageBonus = value;
 };
 
+const isHeavyHandWeapon = (item: InventoryItem) =>
+  item.item.subtype === 'EHW' || item.item.subtype === 'AHW' || item.item.subtype === 'SHW';
+
+const isRangedWeapon = (item: InventoryItem) =>
+  item.item.subtype === 'ERW' || item.item.subtype === 'ARW' || item.item.subtype === 'SRW';
+
+const getAttackAbilityMod = (item: InventoryItem): number => {
+  if (isFinesseWeapon(item)) {
+    return getFinesseChoice(item) === 'DEX' ? dex.value : str.value;
+  }
+  if (isHeavyHandWeapon(item)) return str.value;
+  if (isRangedWeapon(item)) return dex.value;
+  return 0;
+};
+
+const getAttackAbilityLabel = (item: InventoryItem): string => {
+  if (isFinesseWeapon(item)) {
+    return getFinesseChoice(item) === 'DEX' ? 'ЛОВ' : 'СИЛ';
+  }
+  if (isHeavyHandWeapon(item)) return 'СИЛ';
+  if (isRangedWeapon(item)) return 'ЛОВ';
+  return '';
+};
+
 const calculateAttack = (item: InventoryItem) => {
-  if (item.item.subtype === 'EHW' || item.item.subtype === 'AHW' || item.item.subtype === 'SHW') {
-    return characterStore.character.proficiencyBonus + str.value + getAttackBonus(item);
-  } else if (item.item.subtype === 'ERW' || item.item.subtype === 'ARW' || item.item.subtype === 'SRW') {
-    return characterStore.character.proficiencyBonus + dex.value + getAttackBonus(item);
+  const mod = getAttackAbilityMod(item);
+  if (isHeavyHandWeapon(item) || isFinesseWeapon(item)) {
+    return characterStore.character.proficiencyBonus + mod + getAttackBonus(item);
+  } else if (isRangedWeapon(item)) {
+    return characterStore.character.proficiencyBonus + mod + getAttackBonus(item);
   }
   return getAttackBonus(item);
 };
 
 const calculateDamageFromWeaponType = (item: InventoryItem) => {
-  if (item.item.subtype === 'EHW' || item.item.subtype === 'AHW' || item.item.subtype === 'SHW') {
-    return str.value;
-  } else if (item.item.subtype === 'ERW' || item.item.subtype === 'ARW' || item.item.subtype === 'SRW') {
-    return dex.value;
+  if (isFinesseWeapon(item)) {
+    return getFinesseChoice(item) === 'DEX' ? dex.value : str.value;
   }
+  if (isHeavyHandWeapon(item)) return str.value;
+  if (isRangedWeapon(item)) return dex.value;
   return 0;
 };
 
@@ -385,13 +462,29 @@ const clearPressHintTimer = () => {
 
 const getAttackHintText = (item: InventoryItem): string => {
   const attackBonus = getAttackBonus(item);
-  if (item.item.subtype === 'EHW' || item.item.subtype === 'AHW' || item.item.subtype === 'SHW') {
-    return `Атака = Бонус мастерства (${characterStore.character.proficiencyBonus}) + СИЛ (${str.value}) + бонус атаки предмета (${attackBonus}) = ${calculateAttack(item)}`;
-  }
-  if (item.item.subtype === 'ERW' || item.item.subtype === 'ARW' || item.item.subtype === 'SRW') {
-    return `Атака = Бонус мастерства (${characterStore.character.proficiencyBonus}) + ЛОВ (${dex.value}) + бонус атаки предмета (${attackBonus}) = ${calculateAttack(item)}`;
+  const lbl = getAttackAbilityLabel(item);
+  const mod = getAttackAbilityMod(item);
+  if (isHeavyHandWeapon(item) || isRangedWeapon(item) || isFinesseWeapon(item)) {
+    return `Атака = Бонус мастерства (${characterStore.character.proficiencyBonus}) + ${lbl} (${mod}) + бонус атаки предмета (${attackBonus}) = ${calculateAttack(item)}`;
   }
   return `Атака = бонус атаки предмета (${attackBonus}) = ${calculateAttack(item)}`;
+};
+
+const getDamageBreakdownText = (item: InventoryItem): string => {
+  const baseDamage = getEffectiveBaseDamage(item);
+  const parsedDamage = replaceDamageAbilityPlaceholders(baseDamage);
+  const fallback = parsedDamage.hasPlaceholders ? 0 : calculateDamageFromWeaponType(item);
+  const itemBonus = getDamageBonus(item);
+
+  const parts: string[] = [baseDamage];
+  if (fallback !== 0) {
+    const lbl = getAttackAbilityLabel(item) || (isRangedWeapon(item) ? 'ЛОВ' : 'СИЛ');
+    parts.push(`${fallback > 0 ? '+' : ''}${fallback} (${lbl})`);
+  }
+  if (itemBonus !== 0) {
+    parts.push(`${itemBonus > 0 ? '+' : ''}${itemBonus} (предмет)`);
+  }
+  return parts.join(' ');
 };
 
 const getDamageHintText = (item: InventoryItem): string => {
@@ -448,7 +541,7 @@ const onCombatShortClick = (item: InventoryItem, type: "attack" | "damage") => {
     const formula = getDamageText(item);
     diceSheetMode.value = "damage";
     diceSheetTitle.value = `${item.item.name.rus} — Урон`;
-    diceSheetSubtitle.value = formula || "";
+    diceSheetSubtitle.value = getDamageBreakdownText(item);
     diceResult.value = formula ? rollFormula(formula) : rollFormula("1");
   }
   diceSheetOpen.value = true;
@@ -580,6 +673,20 @@ async function deleteCharacterSkill(id: string) {
               <div class="weapon-name">
                 {{ item.item.name.rus }}
                 <span v-if="characterStore.character.abilities.find(a => a.code === 'STR')?.value < Number(item.item.stats.requirement)" class="weapon-req-warning">*</span>
+              </div>
+              <div v-if="isFinesseWeapon(item)" class="finesse-toggle" @click.stop="toggleFinesseChoice(item)">
+                <span class="finesse-toggle__label">Фехтовальное</span>
+                <div class="finesse-toggle__switch">
+                  <span :class="['finesse-opt', getFinesseChoice(item) === 'STR' ? 'finesse-opt--active' : '']">СИЛ</span>
+                  <span :class="['finesse-opt', getFinesseChoice(item) === 'DEX' ? 'finesse-opt--active' : '']">ЛОВ</span>
+                </div>
+              </div>
+              <div v-if="isVersatileWeapon(item) && parseVersatileDamage(item)" class="finesse-toggle" @click.stop="toggleVersatileChoice(item)">
+                <span class="finesse-toggle__label">Универсальное</span>
+                <div class="finesse-toggle__switch">
+                  <span :class="['finesse-opt', getVersatileChoice(item) === 'one' ? 'finesse-opt--active' : '']">1Р</span>
+                  <span :class="['finesse-opt', getVersatileChoice(item) === 'two' ? 'finesse-opt--active' : '']">2Р</span>
+                </div>
               </div>
               <div class="weapon-chips" v-if="getItemStats(item).length">
                 <span class="weapon-chip" v-for="(stat, i) in getItemStats(item)" :key="i">{{ stat }}</span>
@@ -1117,5 +1224,43 @@ async function deleteCharacterSkill(id: string) {
 
 @media (min-width: 1024px) {
   .add-new-button { bottom: 10px; }
+}
+
+/* ── Finesse toggle ── */
+.finesse-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.finesse-toggle__label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(var(--ion-color-light-rgb), 0.45);
+  text-transform: uppercase;
+}
+
+.finesse-toggle__switch {
+  display: inline-flex;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.3);
+  background: rgba(var(--ion-color-dark-rgb), 0.4);
+}
+
+.finesse-opt {
+  padding: 2px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(var(--ion-color-light-rgb), 0.4);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.finesse-opt--active {
+  background: rgba(var(--ion-color-primary-rgb), 0.22);
+  color: var(--ion-color-primary);
 }
 </style>

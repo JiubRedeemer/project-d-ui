@@ -7,12 +7,12 @@ import {
   IonModal,
   toastController,
 } from "@ionic/vue";
-import { closeCircleOutline, createOutline, flashOutline, star, trashOutline } from "ionicons/icons";
+import { closeCircleOutline, createOutline, flashOutline, ribbon, star, trashOutline } from "ionicons/icons";
 
 import { computed } from "vue";
 import { useRoute } from "vue-router";
 import { useIonRouter } from "@ionic/vue";
-import { deleteSpellBookItem, setSpellInUse, useSpellCell } from "@/api/magicApi";
+import { deleteSpellBookItem, setSpellAlwaysPrepared, setSpellInUse, useSpellCell } from "@/api/magicApi";
 import type { SpellBookItemDto, SpellDto } from "@/components/models/response/MagicApi";
 import { FILE_STORAGE_INTEGRATION_ROUTES, SPELL_IMAGE_PLACEHOLDER } from "@/config/integrationRoutes";
 import { useMagicStore } from "@/stores/MagicStore";
@@ -67,6 +67,20 @@ async function togglePrepared() {
     }
   } catch (e) {
     console.error("Failed to toggle prepared:", e);
+  }
+}
+
+async function toggleAlwaysPrepared() {
+  if (!props.spellBookId || !props.item?.spellId) return;
+  const newValue = !(props.item.alwaysPrepared === true);
+  try {
+    const updated = await setSpellAlwaysPrepared(props.spellBookId, props.item.spellId, newValue);
+    if (magicStore.spellBook?.spells) {
+      const idx = magicStore.spellBook.spells.findIndex((s) => s.spellId === props.item!.spellId);
+      if (idx >= 0) magicStore.spellBook.spells[idx] = updated;
+    }
+  } catch (e) {
+    console.error("Failed to toggle always-prepared:", e);
   }
 }
 
@@ -169,15 +183,26 @@ function closeModal() {
             <div class="name">
               {{ getSpellName(spell) }}
             </div>
-            <ion-button
-              v-if="!props.readonly"
-              fill="clear"
-              size="small"
-              class="prepared-button"
-              @click="togglePrepared"
-            >
-              <ion-icon :icon="star" :class="{ filled: item.inUse }" />
-            </ion-button>
+            <div v-if="!props.readonly" class="prepared-buttons">
+              <ion-button
+                fill="clear"
+                size="small"
+                class="prepared-button"
+                title="Всегда подготовлено"
+                @click="toggleAlwaysPrepared"
+              >
+                <ion-icon :icon="ribbon" :class="{ 'filled-always': item.alwaysPrepared }" />
+              </ion-button>
+              <ion-button
+                fill="clear"
+                size="small"
+                class="prepared-button"
+                title="Подготовить"
+                @click="togglePrepared"
+              >
+                <ion-icon :icon="star" :class="{ filled: item.inUse }" />
+              </ion-button>
+            </div>
           </div>
           <div class="image-row">
             <div class="image">
@@ -497,6 +522,19 @@ ion-modal {
   color: var(--ion-color-warning);
   opacity: 1 !important;
   filter: drop-shadow(0 0 8px rgba(var(--ion-color-warning-rgb), 0.5));
+}
+
+.filled-always {
+  color: var(--ion-color-tertiary);
+  opacity: 1 !important;
+  filter: drop-shadow(0 0 8px rgba(var(--ion-color-tertiary-rgb), 0.5));
+}
+
+.prepared-buttons {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
 }
 
 .block-value {

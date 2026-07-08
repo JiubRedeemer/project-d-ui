@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, reactive, ref } from "vue";
+import { useIonRouter } from "@ionic/vue";
 import { TEXTS } from "@/config/localisations";
 
 import logo from "@/assets/landing/logo.png";
@@ -99,6 +100,8 @@ const SHOWCASE_SCREENS = [
   { key: "screen1", image: combatMockup, caption: "Боевой трекер" },
   { key: "screen2", image: guidebookMockup, caption: "Справочник мастера" },
 ];
+
+const ionRouter = useIonRouter();
 
 const rootEl = ref<HTMLElement | null>(null);
 const heroIn = ref(false);
@@ -373,7 +376,12 @@ onBeforeUnmount(() => {
     <div class="myth-footer">
       <span>© 2026 Mythrill</span>
       <div class="myth-footer__links">
-        <span>Условия</span>
+        <span
+          class="myth-footer__link"
+          @click="ionRouter.navigate('/welcome/terms', 'forward', 'push')"
+        >
+          Условия
+        </span>
         <span class="myth-footer__legal-btn" @click="showLegal = true">Правовая информация</span>
         <span class="myth-footer__contacts">
           <span class="myth-footer__contacts-label">Контакты:</span>
@@ -1262,6 +1270,7 @@ onBeforeUnmount(() => {
 .myth-footer__link {
   color: var(--myth-text-muted);
   text-decoration: none;
+  cursor: pointer;
   transition: color 0.2s ease;
 }
 

@@ -33,6 +33,11 @@ const ROUTE_SEO: Record<string, SeoConfig> = {
         title: "Восстановление пароля — Mythrill",
         robots: "noindex, follow",
     },
+    termsPage: {
+        title: "Условия использования — Mythrill",
+        description: "Условия использования сервиса Mythrill: предоставление сервиса «как есть», ответственность за пользовательский контент и ограничение ответственности.",
+        robots: "index, follow",
+    },
 };
 
 function setMeta(attr: "name" | "property", key: string, content: string) {

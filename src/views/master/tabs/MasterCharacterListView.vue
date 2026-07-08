@@ -444,6 +444,9 @@ function toggleDetails(e: Event, characterId: string): void {
 <style scoped>
 .master-character-list {
   width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -934,6 +937,7 @@ function toggleDetails(e: Event, characterId: string): void {
 .character-card-wrapper {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .character-card {

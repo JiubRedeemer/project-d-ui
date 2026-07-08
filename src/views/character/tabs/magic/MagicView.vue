@@ -118,12 +118,9 @@ function getSpellName(spell: SpellDto | undefined): string {
     return (spell.name as Record<string, string>).rus ?? (spell.name as Record<string, string>).en ?? "—";
 }
 
-const preparedSpells = computed(() => {
-    const items = spellBook.value?.spells ?? [];
-    const prepared = items.filter((item) => item.inUse === true);
-    // Кэшируем имена и уровни до sort чтобы не вычислять их O(n log n) раз
-    type Keyed = { item: typeof prepared[0]; level: number; name: string };
-    const keyed: Keyed[] = prepared.map((item) => ({
+function sortSpellItems(items: SpellBookItemDto[]): SpellBookItemDto[] {
+    type Keyed = { item: SpellBookItemDto; level: number; name: string };
+    const keyed: Keyed[] = items.map((item) => ({
         item,
         level: parseInt(String(item.spell?.level ?? "0"), 10),
         name: getSpellName(item.spell),
@@ -133,6 +130,17 @@ const preparedSpells = computed(() => {
         return a.name.localeCompare(b.name, "ru", { sensitivity: "base" });
     });
     return keyed.map((k) => k.item);
+}
+
+const alwaysPreparedSpells = computed(() => {
+    const items = spellBook.value?.spells ?? [];
+    return sortSpellItems(items.filter((item) => item.alwaysPrepared === true));
+});
+
+const preparedSpells = computed(() => {
+    const items = spellBook.value?.spells ?? [];
+    // "Всегда подготовлено" — отдельная категория, не дублируем в обычной "Подготовлено"
+    return sortSpellItems(items.filter((item) => item.inUse === true && item.alwaysPrepared !== true));
 });
 
 function getDetailsLine1(spell: SpellDto | undefined): string {
@@ -814,6 +822,39 @@ onBeforeUnmount(() => {
         <div class="hint-text">Нажмите кнопку <b>+</b> внизу экрана, чтобы открыть поиск и добавить заклинание.</div>
         <div class="hint-arrow" aria-hidden="true">↓</div>
       </div>
+      <h1 class="sectionHeader sectionHeader--always" v-if="alwaysPreparedSpells.length > 0">Всегда подготовлено</h1>
+      <div class="spell-list" v-if="alwaysPreparedSpells.length > 0">
+        <div class="section" v-for="item in alwaysPreparedSpells" :key="item.id">
+          <div class="section-start-block" @click="openSpellModal(item)">
+            <div class="image-block">
+              <img
+                width="55"
+                height="55"
+                class="spell-image"
+                :src="getSpellImageUrl(item.spell?.imgUrl)"
+                :alt="getSpellName(item.spell)"
+              />
+            </div>
+            <div class="stats-block">
+              <div class="item-name">{{ getSpellName(item.spell) }}</div>
+              <div class="item-stats">{{ getDetailsLine1(item.spell) }}</div>
+              <div class="item-stats">{{ getDetailsLine2(item.spell) }}</div>
+            </div>
+          </div>
+          <div class="star-button-block">
+            <ion-button
+              @click.stop="useSpell(item)"
+              size="small"
+              shape="round"
+              class="star-button"
+              :disabled="!canUseSpell(item)"
+            >
+              <ion-icon slot="icon-only" :icon="flashOutline"/>
+            </ion-button>
+          </div>
+        </div>
+      </div>
+
       <h1 class="sectionHeader" v-if="preparedSpells.length > 0">Подготовлено</h1>
       <div class="spell-list" v-if="preparedSpells.length > 0">
         <div class="section" v-for="item in preparedSpells" :key="item.id">
@@ -925,6 +966,19 @@ onBeforeUnmount(() => {
   font-size: 22px;
   font-weight: normal;
   margin-top: 10px;
+}
+
+.sectionHeader--always {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ion-color-tertiary);
+}
+
+.sectionHeader--always::before {
+  content: "◆";
+  font-size: 14px;
+  opacity: 0.85;
 }
 
 .spell-cells {
