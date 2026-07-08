@@ -23,7 +23,7 @@ import {useRoute, useRouter} from "vue-router";
 import {useInventoryStore} from "@/stores/InventoryStore";
 import {useCharacterStore} from "@/stores/CharacterStore";
 import {useCreateInventoryItemStore} from "@/stores/CreateInventoryItemStore";
-import {chevronForwardOutline, createOutline, eyeOutline, trashOutline} from "ionicons/icons";
+import {bookOutline, chevronForwardOutline, createOutline, eyeOutline, trashOutline} from "ionicons/icons";
 import type {ItemSkill} from "@/components/models/response/InventoryResponse";
 import {getTagsForRoom, type ItemTagDto} from "@/api/itemTagApi";
 import EditItemSkillValueModal from "@/views/character/tabs/inventory/EditItemSkillValueModal.vue";
@@ -336,6 +336,9 @@ function getRefillLabel(refill: ItemSkill["chargesRefill"]): string {
         <div class="item-details">
           <section v-if="showRequirementsWarning" class="notice notice--warning">
             Требования к характеристикам не выполнены
+          </section>
+          <section v-if="item.itemBundleId" class="notice notice--primary">
+            <ion-icon :icon="bookOutline" /> Из набора предметов: {{item.itemBundleName}}
           </section>
 
           <section class="panel">
@@ -710,12 +713,22 @@ function getRefillLabel(refill: ItemSkill["chargesRefill"]): string {
   font-size: 13px;
   font-weight: 600;
   line-height: 1.35;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
 }
 
 .notice--warning {
   color: var(--ion-color-warning);
   background: rgba(var(--ion-color-warning-rgb), 0.12);
   border: 1px solid rgba(var(--ion-color-warning-rgb), 0.28);
+}
+
+.notice--primary {
+  color: var(--ion-color-primary);
+  background: rgba(var(--ion-color-primary-rgb), 0.12);
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.28);
 }
 
 .panel {
@@ -994,7 +1007,6 @@ function getRefillLabel(refill: ItemSkill["chargesRefill"]): string {
 
   .item-page--no-skills .stats {
     flex: none;
-    width: auto;
     height: auto;
     min-height: 180px;
   }

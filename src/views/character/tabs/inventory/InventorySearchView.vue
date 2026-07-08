@@ -148,8 +148,8 @@ const contentScrollHost = ref<HTMLElement | null>(null);
 const hasMoreItems = ref(true);
 const selectedItem = ref<Item | null>(null);
 const showFullViewModal = ref(false);
-type SearchScope = "2024" | "2014" | "owned";
-const activeSearchScope = ref<SearchScope>("2024");
+type SearchScope = "room" | "owned";
+const activeSearchScope = ref<SearchScope>("room");
 const SEARCH_LIMIT = 100;
 
 function openFullView(item: Item) {
@@ -183,7 +183,7 @@ async function handleInput(event: any) {
 }
 
 async function handleSearchScopeChange(event: CustomEvent) {
-  activeSearchScope.value = (event.detail.value ?? "2024") as SearchScope;
+  activeSearchScope.value = (event.detail.value ?? "room") as SearchScope;
   findItems.value = [];
   hasMoreItems.value = false;
   isLoadingItems.value = false;
@@ -449,11 +449,8 @@ function openAddView() {
             mode="ios"
             scrolalble="true"
         >
-          <ion-segment-button value="2024">
-            <ion-label>2024</ion-label>
-          </ion-segment-button>
-          <ion-segment-button value="2014">
-            <ion-label>2014</ion-label>
+          <ion-segment-button value="room">
+            <ion-label>Предметы комнаты</ion-label>
           </ion-segment-button>
           <ion-segment-button value="owned">
             <ion-label>Созданные</ion-label>

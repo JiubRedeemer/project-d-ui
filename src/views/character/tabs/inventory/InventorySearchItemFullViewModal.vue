@@ -16,7 +16,7 @@ import type {Item, ItemSkill} from "@/components/models/response/InventoryRespon
 import type {ItemTagDto} from "@/api/itemTagApi";
 import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {HEADERS, TEXTS} from "@/config/localisations";
-import {add, chevronForwardOutline, remove} from "ionicons/icons";
+import {add, bookOutline, chevronForwardOutline, remove} from "ionicons/icons";
 import {marked} from "marked";
 import EditItemSkillValueModal from "@/views/character/tabs/inventory/EditItemSkillValueModal.vue";
 import {extractDominantColorFromUrl} from "@/utils/imageAmbient";
@@ -288,6 +288,9 @@ function getRefillLabel(refill: ItemSkill["chargesRefill"]): string {
         </div>
 
         <div class="item-details">
+          <section v-if="item.itemBundleId" class="notice notice--primary">
+            <ion-icon :icon="bookOutline" /> Из набора предметов: {{item.itemBundleName}}
+          </section>
           <section class="panel">
             <h2 class="panel__title">Характеристики</h2>
             <div class="details-grid">

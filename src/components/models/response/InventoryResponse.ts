@@ -78,6 +78,7 @@ export interface Item {
     unidentifiedItemId?: string;
     unidentifiedName?: Name;
     itemBundleId?: string;
+    itemBundleName?: string;
 }
 
 export interface ItemBundle {
