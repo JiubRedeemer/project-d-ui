@@ -77,6 +77,23 @@ export interface Item {
     hiddenStats?: boolean;
     unidentifiedItemId?: string;
     unidentifiedName?: Name;
+    itemBundleId?: string;
+}
+
+export interface ItemBundle {
+    id: string;
+    name: string;
+    description: string;
+    createdAt?: string;
+    imgUrl?: string;
+    /** null/undefined = системный (официальный) набор */
+    ownerUserId?: string;
+    isPublic?: boolean;
+    priceCrystals?: number;
+    /** Куплен ли набор текущим пользователем */
+    purchased?: boolean;
+    /** Populated only when listing bundles in the context of a specific room */
+    enabled?: boolean;
 }
 
 export interface InventoryItemSkill {

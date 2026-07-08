@@ -83,6 +83,7 @@ export const GATEWAY_INTEGRATION_ROUTES = {
     money: "/money",
     items: "/items",
     search: "/search",
+    bundles: "/bundles",
 
     notes: "/notes",
 

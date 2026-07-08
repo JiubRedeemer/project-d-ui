@@ -71,6 +71,16 @@ const routes: Array<RouteRecordRaw> = [
         name: 'profilePage'
     },
     {
+        path: '/my-bundles',
+        component: () => import('@/views/profile/MyBundlesView.vue'),
+        name: 'myBundlesView'
+    },
+    {
+        path: '/bundles/:bundleId/items/add',
+        component: () => import('@/views/character/tabs/inventory/InventoryItemAddView.vue'),
+        name: 'bundleItemAddView'
+    },
+    {
         path: '/subscription',
         component: PaywallView,
         name: 'paywallView'

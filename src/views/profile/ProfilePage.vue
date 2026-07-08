@@ -24,6 +24,7 @@ import {AxiosError, isAxiosError} from "axios";
 import {
   closeOutline,
   diamondOutline,
+  layersOutline,
   keyOutline,
   logOutOutline,
   mailOpenOutline,
@@ -391,7 +392,7 @@ async function submitChangeEmail() {
       position: "top"
     });
     await toast.present();
-    await router.replace({
+    ionRouter.replace({
       path: "/welcome/login/",
       query: {email: newEmail.value.trim().toLowerCase()}
     });
@@ -406,7 +407,7 @@ function logout() {
   closeSecurityModal();
   closeEmailModal();
   clearAuthTokens();
-  router.replace("/welcome");
+  ionRouter.replace("/welcome");
 }
 
 onBeforeUnmount(() => {
@@ -485,6 +486,17 @@ onMounted(async () => {
                 <div class="extra-value">{{ crystalsStore.loading ? "…" : crystalsStore.balance }}</div>
               </div>
               <div class="extra-action">Купить</div>
+            </div>
+            <div class="extra-divider"/>
+            <div class="extra-row" @click="ionRouter.navigate('/my-bundles', 'forward', 'push')">
+              <div class="extra-icon-wrap extra-icon-wrap--content">
+                <ion-icon :icon="layersOutline"/>
+              </div>
+              <div class="extra-body">
+                <div class="extra-label">Мой контент</div>
+                <div class="extra-value">Наборы предметов</div>
+              </div>
+              <div class="extra-action">Открыть</div>
             </div>
           </section>
 
@@ -864,6 +876,11 @@ onMounted(async () => {
 .extra-icon-wrap--gem {
   background: rgba(139, 110, 240, 0.18);
   color: #b39df5;
+}
+
+.extra-icon-wrap--content {
+  background: rgba(110, 200, 240, 0.15);
+  color: #7fd0f0;
 }
 
 .extra-body {

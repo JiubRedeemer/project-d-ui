@@ -380,7 +380,7 @@ export const HEADERS = {
     delete_from_inventory: {rus: 'Удалить предмет из инвентаря', eng: 'Remove an item from the inventory'},
     wallet: {rus: 'Кошель', eng: 'Wallet'},
     tags: {rus: 'Метки', eng: 'Tags'},
-    gm_access: {rus: 'Виден игроками при поиске', eng: 'Visible to players when searching'},
+    gm_access: {rus: 'Публичный для комнаты', eng: 'Visible to players when searching'},
     item_skills: {rus: 'Навыки от предметов', eng: 'Item\'s skills'},
     character_skills: {rus: 'Навыки персонажа', eng: 'Character\'s skills'},
 }

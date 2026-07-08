@@ -11,11 +11,12 @@ import {
   onIonViewDidEnter,
   onIonViewDidLeave
 } from "@ionic/vue";
-import {bookOutline, documentTextOutline, peopleOutline, shieldOutline} from "ionicons/icons";
+import {bookOutline, documentTextOutline, layersOutline, peopleOutline, shieldOutline} from "ionicons/icons";
 import MasterHeader from "@/views/master/MasterHeader.vue";
 import MasterCharacterListView from "@/views/master/tabs/MasterCharacterListView.vue";
 import MasterGuidebookView from "@/views/master/tabs/MasterGuidebookView.vue";
 import MasterFilesView from "@/views/master/tabs/MasterFilesView.vue";
+import MasterBundlesView from "@/views/master/tabs/MasterBundlesView.vue";
 import CombatTrackerPanel from "@/views/master/tabs/CombatTrackerPanel.vue";
 import {useRoute} from "vue-router";
 import {useRoomStore} from "@/stores/RoomStore";
@@ -27,7 +28,7 @@ const asyncDone = ref<boolean>(false);
 const route = useRoute();
 const roomStore = useRoomStore();
 const tabsRef = ref<InstanceType<typeof IonTabs> | null>(null);
-const selectedTab = ref<"characters" | "guidebook" | "files" | "combat">("characters");
+const selectedTab = ref<"characters" | "guidebook" | "files" | "combat" | "bundles">("characters");
 const isDesktop = ref<boolean>(window.innerWidth >= 1024);
 
 const DESKTOP_BREAKPOINT_PX = 1024;
@@ -40,6 +41,7 @@ const tabs = [
   {key: "combat", icon: shieldOutline, label: "Бой"},
   {key: "guidebook", icon: bookOutline, label: "Справочник"},
   {key: "files", icon: documentTextOutline, label: "Файлы"},
+  {key: "bundles", icon: layersOutline, label: "Наборы"},
 ] as const;
 
 const selectedTabTitle = computed(() => {
@@ -48,7 +50,7 @@ const selectedTabTitle = computed(() => {
 
 const onTabsChange = (event: CustomEvent<{ tab: string }>) => {
   const tab = event?.detail?.tab;
-  if (tab === "characters" || tab === "guidebook" || tab === "files" || tab === "combat") {
+  if (tab === "characters" || tab === "guidebook" || tab === "files" || tab === "combat" || tab === "bundles") {
     selectedTab.value = tab;
   }
 };
@@ -138,6 +140,7 @@ onIonViewDidLeave(() => {
             <MasterCharacterListView ref="charListRef" v-if="asyncDone && selectedTab === 'characters'"/>
             <MasterGuidebookView v-if="asyncDone && selectedTab === 'guidebook'"/>
             <MasterFilesView v-if="asyncDone && selectedTab === 'files'"/>
+            <MasterBundlesView v-if="asyncDone && selectedTab === 'bundles'"/>
             <CombatTrackerPanel v-if="asyncDone && selectedTab === 'combat'" :room-id="String(route.params.roomId)" @close="selectedTab = 'characters'"/>
           </div>
         </ion-content>
@@ -196,6 +199,19 @@ onIonViewDidLeave(() => {
           </div>
         </ion-content>
       </ion-tab>
+      <ion-tab tab="bundles">
+        <ion-content
+          class="ion-padding"
+          :fullscreen="true"
+          color="dark"
+          direction="y"
+          :scroll-x="false"
+        >
+          <div class="tab-content bundles">
+            <MasterBundlesView v-if="asyncDone"/>
+          </div>
+        </ion-content>
+      </ion-tab>
       <ion-tab-bar slot="bottom" color="dark" class="tab-bar" :translucent="true">
         <ion-tab-button tab="characters">
           <div class="tab-icon-wrapper">
@@ -215,6 +231,11 @@ onIonViewDidLeave(() => {
         <ion-tab-button tab="files">
           <div class="tab-icon-wrapper">
             <ion-icon :icon="documentTextOutline" />
+          </div>
+        </ion-tab-button>
+        <ion-tab-button tab="bundles">
+          <div class="tab-icon-wrapper">
+            <ion-icon :icon="layersOutline" />
           </div>
         </ion-tab-button>
       </ion-tab-bar>
@@ -372,7 +393,8 @@ onIonViewDidLeave(() => {
 .characters,
 .guidebook,
 .files,
-.combat {
+.combat,
+.bundles {
   margin-top: 50px;
   padding-top: 0;
 }

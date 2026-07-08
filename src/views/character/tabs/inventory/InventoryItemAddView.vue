@@ -36,12 +36,21 @@ import copperCoinIcon from "@/static/icons/CopperCoin.svg";
 const router = useRouter();
 const route = useRoute();
 const hasCharacterContext = computed(() => Boolean(route.params.characterId));
+// Режим создания предмета внутри бандла (вне комнаты)
+const bundleId = computed(() => route.params.bundleId ? String(route.params.bundleId) : null);
+const isBundleMode = computed(() => Boolean(bundleId.value));
+// Для тегов в бандл-режиме используется "нулевая" комната — вернутся только глобальные теги
+const ZERO_ROOM_ID = "00000000-0000-0000-0000-000000000000";
+const tagsRoomId = computed(() => isBundleMode.value ? ZERO_ROOM_ID : String(route.params.roomId));
 const canCreateUnidentifiedModel = computed(() =>
+    !isBundleMode.value &&
     Boolean(createInventoryItemStore.item.creatorId) &&
     hiddenStats.value &&
     !createInventoryItemStore.item.unidentifiedItemId
 );
 const isUnidentifiedModel = computed(() => Boolean(createInventoryItemStore.item.unidentifiedItemId));
+// Режим двух колонок: включены скрытые характеристики
+const isSplitMode = computed(() => hiddenStats.value && !isUnidentifiedModel.value);
 const previewImage = ref<string | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
 const createInventoryItemStore = useCreateInventoryItemStore();
@@ -120,7 +129,7 @@ const isCreatingTag = ref(false);
 
 async function loadAvailableTags() {
   try {
-    availableTags.value = await getTagsForRoom(String(route.params.roomId));
+    availableTags.value = await getTagsForRoom(tagsRoomId.value);
   } catch (e) {
     console.error("Failed to load tags", e);
   }
@@ -159,7 +168,7 @@ async function createAndSelectTag() {
   if (!name || isCreatingTag.value) return;
   isCreatingTag.value = true;
   try {
-    const newTag = await createTagForRoom(String(route.params.roomId), name);
+    const newTag = await createTagForRoom(tagsRoomId.value, name);
     availableTags.value.push(newTag);
     selectedTagIds.value.push(newTag.id);
     tagSearchQuery.value = "";
@@ -204,7 +213,7 @@ async function createAndSelectUnidentifiedTag() {
   if (!name || isCreatingTag.value) return;
   isCreatingTag.value = true;
   try {
-    const newTag = await createTagForRoom(String(route.params.roomId), name);
+    const newTag = await createTagForRoom(tagsRoomId.value, name);
     availableTags.value.push(newTag);
     unidentifiedSelectedTagIds.value.push(newTag.id);
     unidentifiedTagSearchQuery.value = "";
@@ -762,6 +771,11 @@ async function saveItem() {
   if (validateItem(viewType.value)) {
     invalidFields.value = [];
 
+    // Куда сохраняем: в бандл (вне комнаты) или в комнату
+    const saveItemUrl = isBundleMode.value
+        ? `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.bundles}/${bundleId.value}${GATEWAY_INTEGRATION_ROUTES.items}`
+        : `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.items}`;
+
     // Создаём/обновляем неопознанную модель если включены скрытые характеристики
     if (hiddenStats.value && unidentifiedFormItem.value.name.rus.trim()) {
       try {
@@ -781,7 +795,7 @@ async function saveItem() {
           uStats.damage = { value: u.stats.damage.value, damageType: u.stats.damage.damageType };
         }
         await axios.put(
-          `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.items}`,
+          saveItemUrl,
           {
             id: unidentifiedId,
             name: u.name,
@@ -791,7 +805,7 @@ async function saveItem() {
             subtype: u.subtype,
             subtypeName: u.subtypeName || undefined,
             rarity: u.rarity,
-            roomId: route.params.roomId,
+            roomId: isBundleMode.value ? undefined : route.params.roomId,
             imgUrl: u.imgUrl || undefined,
             stats: uStats,
             skills: unidentifiedItemSkills.value,
@@ -809,7 +823,7 @@ async function saveItem() {
 
     try {
       await axios.put(
-          `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.items}`,
+          saveItemUrl,
           createInventoryItemStore.item
           , {
             headers: {
@@ -1061,6 +1075,12 @@ watch(currentImageUrl, (src) => {
   });
 }, {immediate: true});
 
+watch(hiddenStats, (value) => {
+  if(value) {
+    visibleForPlayers.value = false;
+  }
+})
+
 const hasSubtypes = computed(() =>
     ["ARMOR", "WEAPON"].includes(createInventoryItemStore.item?.type ?? "")
 );
@@ -1167,7 +1187,7 @@ function cancelEdit() {
 
     <ion-content class="item-ion-content" color="dark">
       <div class="item-page">
-        <div class="item-header">
+        <div v-if="!isSplitMode" class="item-header">
           <button
               type="button"
               class="avatar"
@@ -1262,7 +1282,7 @@ function cancelEdit() {
           Неопознанная модель предмета
         </div>
 
-        <div class="item-identity">
+        <div v-if="!isSplitMode" class="item-identity">
           <ion-input
               v-model="createInventoryItemStore.item.name.rus"
               type="text"
@@ -1282,9 +1302,10 @@ function cancelEdit() {
         </div>
 
         <div class="item-details">
-          <div :class="hiddenStats && !isUnidentifiedModel ? 'panels-split' : ''">
-          <section v-if="hiddenStats && !isUnidentifiedModel" class="panel panel--unidentified">
-            <h2 class="panel__title">Видимый предмет <span class="panel__title-hint">(до опознания)</span></h2>
+          <div :class="isSplitMode ? 'panels-split' : ''">
+          <div v-if="isSplitMode" class="panels-col">
+          <section class="panel panel--unidentified">
+            <h2 class="panel__title">До опознания</h2>
 
             <div class="unidentified-header">
               <button
@@ -1487,7 +1508,7 @@ function cancelEdit() {
                   <ion-select-option value="COLD">Холодом</ion-select-option>
                   <ion-select-option value="FIRE">Огненный</ion-select-option>
                   <ion-select-option value="FORCE">Силовой</ion-select-option>
-                  <ion-select-option value="LIGHTNING">Молнией</ion-select-option>
+                  <ion-select-option value="LIGHTNING">Электрический</ion-select-option>
                   <ion-select-option value="NECROTIC">Некротический</ion-select-option>
                   <ion-select-option value="POISON">Ядовитый</ion-select-option>
                   <ion-select-option value="PSYCHIC">Психический</ion-select-option>
@@ -1551,67 +1572,157 @@ function cancelEdit() {
               </div>
             </div>
 
-            <div class="tags-block">
-              <div class="tags-block__label">Навыки предмета</div>
-              <div v-if="unidentifiedItemSkills.length" class="skills-list">
-                <div
-                    v-for="skill in unidentifiedItemSkills"
-                    :key="skill.id"
-                    class="skill-card"
-                >
-                  <div class="skill-card__media">
-                    <img
-                        class="skill-card__img"
-                        :src="getSkillImageUrl(skill.imgUrl)"
-                        :alt="skill.name.rus"
-                        @error="($event.target as HTMLImageElement).src = SKILL_IMAGE_PLACEHOLDER"
-                    />
-                  </div>
-                  <div class="skill-card__body">
-                    <div class="skill-card__name">{{ skill.name.rus }}</div>
-                    <div v-if="skill.shortDescription" class="skill-card__desc">{{ skill.shortDescription }}</div>
-                    <div class="skill-card__meta">
-                      Зарядов: {{ skill.charges }} · {{ getRefillLabel(skill.chargesRefill) }}
-                    </div>
-                  </div>
-                  <div class="skill-card__actions">
-                    <ion-button size="small" shape="round" fill="clear" @click="openEditItemSkillModal(false, skill, 'unidentified')">
-                      <ion-icon slot="icon-only" :icon="pencilOutline"/>
-                    </ion-button>
-                    <ion-button size="small" shape="round" fill="clear" color="danger" @click="removeUnidentifiedSkill(skill)">
-                      <ion-icon slot="icon-only" :icon="trashOutline"/>
-                    </ion-button>
-                  </div>
-                </div>
-              </div>
-              <ion-button
-                  class="add-skill-btn"
-                  expand="block"
-                  fill="outline"
-                  shape="round"
-                  @click="openEditItemSkillModal(true, undefined, 'unidentified')"
-              >
-                <ion-icon slot="start" :icon="addOutline"/>
-                Добавить навык
-              </ion-button>
-            </div>
+          </section>
 
+          <section class="panel panel--unidentified">
+            <h2 class="panel__title">{{ HEADERS.description.rus }}</h2>
             <ion-textarea
                 v-model="unidentifiedFormItem.description"
-                class="description-input description-input--sm"
+                class="description-input"
                 placeholder="Описание до опознания..."
-                :rows="4"
+                :rows="8"
                 auto-grow
             />
           </section>
 
+          <section class="panel panel--unidentified panel--skills">
+            <h2 class="panel__title">Навыки предмета</h2>
+            <div v-if="unidentifiedItemSkills.length" class="skills-list">
+              <div
+                  v-for="skill in unidentifiedItemSkills"
+                  :key="skill.id"
+                  class="skill-card"
+              >
+                <div class="skill-card__media">
+                  <img
+                      class="skill-card__img"
+                      :src="getSkillImageUrl(skill.imgUrl)"
+                      :alt="skill.name.rus"
+                      @error="($event.target as HTMLImageElement).src = SKILL_IMAGE_PLACEHOLDER"
+                  />
+                </div>
+                <div class="skill-card__body">
+                  <div class="skill-card__name">{{ skill.name.rus }}</div>
+                  <div v-if="skill.shortDescription" class="skill-card__desc">{{ skill.shortDescription }}</div>
+                  <div class="skill-card__meta">
+                    Зарядов: {{ skill.charges }} · {{ getRefillLabel(skill.chargesRefill) }}
+                  </div>
+                </div>
+                <div class="skill-card__actions">
+                  <ion-button size="small" shape="round" fill="clear" @click="openEditItemSkillModal(false, skill, 'unidentified')">
+                    <ion-icon slot="icon-only" :icon="pencilOutline"/>
+                  </ion-button>
+                  <ion-button size="small" shape="round" fill="clear" color="danger" @click="removeUnidentifiedSkill(skill)">
+                    <ion-icon slot="icon-only" :icon="trashOutline"/>
+                  </ion-button>
+                </div>
+              </div>
+            </div>
+            <ion-button
+                class="add-skill-btn"
+                expand="block"
+                fill="outline"
+                shape="round"
+                @click="openEditItemSkillModal(true, undefined, 'unidentified')"
+            >
+              <ion-icon slot="start" :icon="addOutline"/>
+              Добавить навык
+            </ion-button>
+          </section>
+          </div>
+
           <div class="panels-col">
           <section class="panel">
             <h2 class="panel__title">
-              <template v-if="hiddenStats && !isUnidentifiedModel">После опознания</template>
+              <template v-if="isSplitMode">После опознания</template>
               <template v-else>Характеристики</template>
             </h2>
+
+            <div v-if="isSplitMode" class="unidentified-header">
+              <button
+                  type="button"
+                  class="avatar avatar--sm"
+                  :class="rarityClass"
+                  @click="triggerFileInput"
+              >
+                <img
+                    v-if="previewImage"
+                    :src="previewImage"
+                    class="avatar-img"
+                    alt=""
+                />
+                <img
+                    v-else-if="createInventoryItemStore.item.imgUrl"
+                    :src="currentImageUrl ?? undefined"
+                    class="avatar-img"
+                    alt=""
+                />
+                <div v-else class="avatar-placeholder">
+                  <ion-icon :icon="add" class="avatar-placeholder__icon"/>
+                  <span class="avatar-placeholder__text">Фото</span>
+                </div>
+                <input
+                    ref="fileInput"
+                    type="file"
+                    accept="image/*"
+                    class="avatar-file-input"
+                    @change="handleFileUpload"
+                />
+              </button>
+
+              <div class="item-identity item-identity--compact">
+                <ion-input
+                    v-model="createInventoryItemStore.item.name.rus"
+                    type="text"
+                    class="identity-input identity-input--name"
+                    :placeholder="viewType === 'ARMOR' ? TEXTS.rus_armor_name.rus : viewType === 'WEAPON' ? TEXTS.rus_weapon_name.rus : TEXTS.rus_other_name.rus"
+                    :class="{ 'invalid-field': invalidFields.includes('nameRus') }"
+                    @ionInput="invalidFields = invalidFields.filter(field => field !== 'nameRus')"
+                />
+                <ion-input
+                    v-model="createInventoryItemStore.item.name.eng"
+                    type="text"
+                    class="identity-input identity-input--eng"
+                    :placeholder="viewType === 'ARMOR' ? TEXTS.eng_armor_name.rus : viewType === 'WEAPON' ? TEXTS.eng_weapon_name.rus : TEXTS.eng_other_name.rus"
+                    :class="{ 'invalid-field': invalidFields.includes('nameEng') }"
+                    @ionInput="invalidFields = invalidFields.filter(field => field !== 'nameEng')"
+                />
+              </div>
+            </div>
+
             <div class="details-grid">
+              <div v-if="isSplitMode" class="detail-row">
+                <span class="detail-row__label">Тип</span>
+                <ion-select
+                    v-model="selectedType"
+                    interface="action-sheet"
+                    class="detail-row__select"
+                    :class="{ 'invalid-field': invalidFields.includes('selectedType') }"
+                    @ionChange="onTypeNameChange($event)"
+                >
+                  <ion-select-option :value="HEADERS.armor.rus">{{ HEADERS.armor.rus }}</ion-select-option>
+                  <ion-select-option :value="HEADERS.weapon.rus">{{ HEADERS.weapon.rus }}</ion-select-option>
+                  <ion-select-option :value="HEADERS.magic_items.rus">{{ HEADERS.magic_items.rus }}</ion-select-option>
+                  <ion-select-option :value="HEADERS.other.rus">{{ HEADERS.other.rus }}</ion-select-option>
+                </ion-select>
+              </div>
+
+              <div v-if="isSplitMode && hasSubtypes" class="detail-row">
+                <span class="detail-row__label">Подтип</span>
+                <ion-select
+                    v-model="selectedSubtype"
+                    interface="action-sheet"
+                    class="detail-row__select"
+                    :class="{ 'invalid-field': invalidFields.includes('selectedSubtype') }"
+                >
+                  <ion-select-option
+                      v-for="option in getSubtypesByType(createInventoryItemStore.item.type)"
+                      :key="option.value"
+                      :value="option.label"
+                  >{{ option.label }}</ion-select-option>
+                </ion-select>
+              </div>
+
               <div class="detail-row">
                 <span class="detail-row__label">Цена</span>
                 <div
@@ -1755,7 +1866,7 @@ function cancelEdit() {
                   <ion-select-option value="COLD">Холодом</ion-select-option>
                   <ion-select-option value="FIRE">Огненный</ion-select-option>
                   <ion-select-option value="FORCE">Силовой</ion-select-option>
-                  <ion-select-option value="LIGHTNING">Молнией</ion-select-option>
+                  <ion-select-option value="LIGHTNING">Электрический</ion-select-option>
                   <ion-select-option value="NECROTIC">Некротический</ion-select-option>
                   <ion-select-option value="POISON">Ядовитый</ion-select-option>
                   <ion-select-option value="PSYCHIC">Психический</ion-select-option>
@@ -1899,11 +2010,11 @@ function cancelEdit() {
             <div class="detail-row">
               <span class="detail-row__label">{{ HEADERS.gm_access.rus }}</span>
               <span class="detail-row__value detail-row__value--toggle">
-                <ion-toggle v-model="visibleForPlayers"/>
+                <ion-toggle :disabled="hiddenStats" v-model="visibleForPlayers"/>
               </span>
             </div>
             <div v-if="!isUnidentifiedModel" class="detail-row">
-              <span class="detail-row__label">С скрытыми характеристиками</span>
+              <span class="detail-row__label">Требует опознания</span>
               <span class="detail-row__value detail-row__value--toggle">
                 <ion-toggle v-model="hiddenStats"/>
               </span>
