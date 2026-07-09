@@ -34,7 +34,8 @@ import {
   personOutline,
   searchOutline,
   sparkles,
-  sparklesOutline
+  sparklesOutline,
+  layersOutline
 } from "ionicons/icons";
 import {computed, onMounted, ref, shallowRef, watch, withDefaults} from "vue";
 import {useRoute} from "vue-router";
@@ -47,7 +48,8 @@ import {
   setRaceHidden
 } from "@/api/rulebookApi";
 import type {BackgroundDto, ClazzDto, RaceDto} from "@/api/rulebookApi.types";
-import {Item} from "@/components/models/response/InventoryResponse";
+import {Item, type ItemBundle} from "@/components/models/response/InventoryResponse";
+import {getBundlesForRoom} from "@/api/bundleApi";
 import type {SpellDto} from "@/components/models/response/MagicApi";
 import {listSpells, listSpellsDnd2024} from "@/api/magicApi";
 import {getAllNpcNpcRelationsForRoom, getAllNpcRelationsForRoom, getNpcsByRoomIdForRoom, saveCharacterNpcRelationForRoom, saveNpcForRoom} from "@/api/npcApi";
@@ -75,6 +77,7 @@ import MasterGuidebookAddFromCatalogModal from "@/views/master/modals/MasterGuid
 import MasterGuidebookItemModal from "@/views/master/modals/MasterGuidebookItemModal.vue";
 import MasterGuidebookSpellModal from "@/views/master/modals/MasterGuidebookSpellModal.vue";
 import MasterGuidebookStateModal from "@/views/master/modals/MasterGuidebookStateModal.vue";
+import MasterBundlesView from "@/views/master/tabs/MasterBundlesView.vue";
 import {useGuidebookStore} from "@/stores/GuidebookStore";
 
 const route = useRoute();
@@ -86,7 +89,7 @@ const fullBackgroundStore = useFullBackgroundStore();
 const guidebookStore = useGuidebookStore();
 const createInventoryItemStore = useCreateInventoryItemStore();
 
-type Section = "list" | "races" | "classes" | "backgrounds" | "items" | "spells" | "npcs" | "states";
+type Section = "list" | "races" | "classes" | "backgrounds" | "items" | "spells" | "npcs" | "states" | "bundles";
 const props = withDefaults(defineProps<{ lockedSection?: Section | null; externalSearchQuery?: string }>(), {
   lockedSection: null,
   externalSearchQuery: ""
@@ -109,7 +112,8 @@ const SECTIONS: { id: Section; label: string; icon: string; description: string;
   {id: "items", label: "Предметы", icon: "cubeOutline", description: "Снаряжение и артефакты", accent: "149, 115, 253"},
   {id: "spells", label: "Заклинания", icon: "sparklesOutline", description: "Магия по уровням", accent: "85, 191, 255"},
   {id: "npcs", label: "NPC", icon: "personOutline", description: "Персонажи мира", accent: "45, 213, 91"},
-  {id: "states", label: "Состояния", icon: "alertCircleOutline", description: "Состояния персонажей", accent: "208, 188, 254"}
+  {id: "states", label: "Состояния", icon: "alertCircleOutline", description: "Состояния персонажей", accent: "208, 188, 254"},
+  {id: "bundles", label: "Наборы", icon: "layersOutline", description: "Наборы предметов", accent: "45, 213, 91"}
 ];
 
 const sectionIcons: Record<string, unknown> = {
@@ -119,7 +123,8 @@ const sectionIcons: Record<string, unknown> = {
   documentTextOutline,
   cubeOutline,
   sparklesOutline,
-  alertCircleOutline
+  alertCircleOutline,
+  layersOutline
 };
 
 const NPC_TYPE_LABELS: Record<NpcTypeEnum, string> = {
@@ -169,6 +174,8 @@ const itemRarityFilter = ref<string>("");
 const itemCustomizationFilter = ref<"" | "true" | "false">("");
 const itemVisibleFilter = ref<"" | "true" | "false">("");
 const itemHasSkillsFilter = ref<"" | "true" | "false">("");
+const itemBundleFilter = ref<string>("");
+const availableBundles = ref<ItemBundle[]>([]);
 const showItemFiltersModal = ref(false);
 const availableItemTags = ref<ItemTagDto[]>([]);
 const shownTagInfo = ref<ItemTagDto | null>(null);
@@ -221,6 +228,10 @@ const allItemSubtypes = computed(() =>
 const allItemRarities = computed(() => RARITY_ORDER);
 
 const allItemTags = computed(() => availableItemTags.value);
+const allBundles = computed(() => availableBundles.value);
+const selectedBundleName = computed(
+  () => availableBundles.value.find((b) => b.id === itemBundleFilter.value)?.name ?? itemBundleFilter.value
+);
 
 const itemActiveFiltersCount = computed(() => {
   let c = 0;
@@ -231,6 +242,7 @@ const itemActiveFiltersCount = computed(() => {
   if (itemVisibleFilter.value !== "") c++;
   if (itemHasSkillsFilter.value !== "") c++;
   if (itemTagFilter.value.size > 0) c++;
+  if (itemBundleFilter.value) c++;
   return c;
 });
 
@@ -250,6 +262,7 @@ function resetItemFilters() {
   itemVisibleFilter.value = "";
   itemHasSkillsFilter.value = "";
   itemTagFilter.value = new Set();
+  itemBundleFilter.value = "";
 }
 
 watch(itemTypeFilter, () => { itemSubtypeFilter.value = ""; searchItems(true); });
@@ -258,6 +271,7 @@ watch(itemRarityFilter, () => { searchItems(true); });
 watch(itemCustomizationFilter, () => { searchItems(true); });
 watch(itemVisibleFilter, () => { searchItems(true); });
 watch(itemHasSkillsFilter, () => { searchItems(true); });
+watch(itemBundleFilter, () => { searchItems(true); });
 watch(itemTagFilter, () => { searchItems(true); }, { deep: true });
 
 async function loadItemTags() {
@@ -265,6 +279,16 @@ async function loadItemTags() {
     availableItemTags.value = await getTagsForRoom(String(roomId.value));
   } catch (e) {
     console.error("Failed to load item tags", e);
+  }
+}
+
+async function loadRoomBundles() {
+  try {
+    const bundles = await getBundlesForRoom(String(roomId.value));
+    // Только наборы, подключённые в комнате.
+    availableBundles.value = bundles.filter((b) => b.enabled);
+  } catch (e) {
+    console.error("Failed to load room bundles", e);
   }
 }
 
@@ -866,6 +890,7 @@ async function searchItems(replaceResults = true) {
     if (itemTagFilter.value.size > 0) requestBody.tags = [...itemTagFilter.value];
     if (itemCustomizationFilter.value !== "") requestBody.customization = itemCustomizationFilter.value === "true";
     if (itemHasSkillsFilter.value !== "") requestBody.hasSkills = itemHasSkillsFilter.value === "true";
+    if (itemBundleFilter.value) requestBody.itemBundleId = itemBundleFilter.value;
 
     const {data} = await axios.post<Item[]>(
         `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${roomId.value}${GATEWAY_INTEGRATION_ROUTES.items}${GATEWAY_INTEGRATION_ROUTES.search}`,
@@ -1415,8 +1440,9 @@ async function ensureSectionDataLoaded(section: Section) {
     } else {
       await loadSpells();
     }
-  } else if (section === "items" && items.value.length === 0) {
-    await Promise.all([searchItems(true), loadItemTags()]);
+  } else if (section === "items") {
+    if (availableBundles.value.length === 0) void loadRoomBundles();
+    if (items.value.length === 0) await Promise.all([searchItems(true), loadItemTags()]);
   } else if (section === "npcs" && npcs.value.length === 0) {
     await loadNpcs();
   } else if (section === "states" && states.value.length === 0) {
@@ -1431,7 +1457,8 @@ const sectionTitles: Record<string, string> = {
   items: "Предметы",
   spells: "Заклинания",
   npcs: "NPC",
-  states: "Состояния"
+  states: "Состояния",
+  bundles: "Наборы"
 };
 
 onIonViewDidEnter(async () => {
@@ -1869,6 +1896,10 @@ async function onCatalogApplied(
             {{ itemHasSkillsFilter === 'true' ? 'Есть навыки' : 'Нет навыков' }}
             <button @click="itemHasSkillsFilter = ''"><ion-icon :icon="closeOutline"/></button>
           </span>
+          <span v-if="itemBundleFilter" class="item-active-chip">
+            {{ selectedBundleName }}
+            <button @click="itemBundleFilter = ''"><ion-icon :icon="closeOutline"/></button>
+          </span>
           <span v-for="tag in [...itemTagFilter]" :key="tag" class="item-active-chip">
             #{{ tag }}
             <button @click="toggleItemTagFilter(tag)"><ion-icon :icon="closeOutline"/></button>
@@ -1887,6 +1918,17 @@ async function onCatalogApplied(
                 </button>
               </div>
               <div class="item-filters-modal__body">
+
+                <div v-if="allBundles.length" class="item-filters-section">
+                  <div class="item-filters-label">Набор</div>
+                  <div class="item-filters-chips">
+                    <button
+                        v-for="bundle in allBundles" :key="bundle.id"
+                        :class="['item-filters-chip', { 'item-filters-chip--active': itemBundleFilter === bundle.id }]"
+                        @click="itemBundleFilter = itemBundleFilter === bundle.id ? '' : bundle.id"
+                    >{{ bundle.name }}</button>
+                  </div>
+                </div>
 
                 <div v-if="allItemTypes.length" class="item-filters-section">
                   <div class="item-filters-label">Тип</div>
@@ -2402,6 +2444,10 @@ async function onCatalogApplied(
         </div>
         <div v-else-if="statesLoading" class="loading-placeholder">Загрузка...</div>
         <div v-else class="empty-placeholder">Нет состояний в этой комнате</div>
+      </div>
+
+      <div v-show="currentSection === 'bundles'" class="segment-content">
+        <MasterBundlesView v-if="currentSection === 'bundles'"/>
       </div>
 
       <ion-popover

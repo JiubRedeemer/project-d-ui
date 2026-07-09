@@ -23,6 +23,8 @@ import {extractDominantColorFromUrl} from "@/utils/imageAmbient";
 import goldenCoinIcon from "@/static/icons/GoldenCoin.svg";
 import silverCoinIcon from "@/static/icons/SilverCoin.svg";
 import copperCoinIcon from "@/static/icons/CopperCoin.svg";
+import electrumCoinIcon from "@/static/icons/ElectrumCoin.svg";
+import platinumCoinIcon from "@/static/icons/PlatinumCoin.svg";
 import axios from "axios";
 
 const props = withDefaults(
@@ -195,6 +197,10 @@ function getCoinType(coinType: string | undefined) {
       return {icon: silverCoinIcon};
     case "COPPER":
       return {icon: copperCoinIcon};
+    case "ELECTRUM":
+      return {icon: electrumCoinIcon};
+    case "PLATINUM":
+      return {icon: platinumCoinIcon};
     default:
       return {icon: ""};
   }

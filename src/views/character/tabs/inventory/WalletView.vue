@@ -3,6 +3,8 @@ import {IonButton, IonIcon, IonInput, IonSelect, IonSelectOption} from "@ionic/v
 import goldenCoinIcon from "@/static/icons/GoldenCoin.svg";
 import silverCoinIcon from "@/static/icons/SilverCoin.svg";
 import copperCoinIcon from "@/static/icons/CopperCoin.svg";
+import electrumCoinIcon from "@/static/icons/ElectrumCoin.svg";
+import platinumCoinIcon from "@/static/icons/PlatinumCoin.svg";
 import {useWalletStore} from "@/stores/WalletStore";
 import {computed, ref, watch} from "vue";
 import axios from "axios";
@@ -27,121 +29,80 @@ watch(
     }
 );
 
-const EXCHANGE_RATES = {
-  golden_coin: {silver_coin: 10, copper_coin: 100},
-  silver_coin: {golden_coin: 0.1, copper_coin: 10},
-  copper_coin: {golden_coin: 0.01, silver_coin: 0.1},
+type CoinType = "copper_coin" | "silver_coin" | "electrum_coin" | "golden_coin" | "platinum_coin";
+
+// Стоимость монеты в золотых (GP)
+const COIN_VALUE_GP: Record<CoinType, number> = {
+  copper_coin: 0.01,
+  silver_coin: 0.1,
+  electrum_coin: 0.5,
+  golden_coin: 1,
+  platinum_coin: 10,
 };
 
-// Вычисляемые значения для кнопок обмена
-const toGolden = computed(() => {
-  const count = Number(walletStore.wallet.count) || 0;
-  if (walletStore.wallet.type === "golden_coin") return count;
-  if (walletStore.wallet.type === "silver_coin") return count * EXCHANGE_RATES.silver_coin.golden_coin;
-  return count * EXCHANGE_RATES.copper_coin.golden_coin;
-});
+const COINS: { type: CoinType; label: string; short: string; icon: string; field: keyof NonNullable<typeof walletStore.userMoney> }[] = [
+  {type: "copper_coin", label: "медные монеты", short: "мм.", icon: copperCoinIcon, field: "copperCount"},
+  {type: "silver_coin", label: "серебряные монеты", short: "см.", icon: silverCoinIcon, field: "silverCount"},
+  {type: "golden_coin", label: "золотые монеты", short: "зм.", icon: goldenCoinIcon, field: "goldenCount"},
+  {type: "electrum_coin", label: "электрумовые монеты", short: "эм.", icon: electrumCoinIcon, field: "electrumCount"},
+  {type: "platinum_coin", label: "платиновые монеты", short: "пм.", icon: platinumCoinIcon, field: "platinumCount"},
+];
 
-const toSilver = computed(() => {
-  const count = Number(walletStore.wallet.count) || 0;
-  if (walletStore.wallet.type === "silver_coin") return count;
-  if (walletStore.wallet.type === "golden_coin") return count * EXCHANGE_RATES.golden_coin.silver_coin;
-  return count * EXCHANGE_RATES.copper_coin.silver_coin;
-});
-
-const toCopper = computed(() => {
-  const count = Number(walletStore.wallet.count) || 0;
-  if (walletStore.wallet.type === "copper_coin") return count;
-  if (walletStore.wallet.type === "golden_coin") return count * EXCHANGE_RATES.golden_coin.copper_coin;
-  return count * EXCHANGE_RATES.silver_coin.copper_coin;
-});
-const isGoldenInteger = computed(() => Number.isInteger(toGolden.value));
-const isSilverInteger = computed(() => Number.isInteger(toSilver.value));
-const isCopperInteger = computed(() => Number.isInteger(toCopper.value));
 const exchangeCount = computed(() => Number(walletStore.wallet.count) || 0);
 
-const hasEnoughSourceCoins = computed(() => {
-  if (!walletStore.userMoney) {
-    return false;
-  }
-  if (exchangeCount.value <= 0) {
-    return false;
-  }
+const sourceType = computed<CoinType>(() => (walletStore.wallet.type as CoinType) ?? "golden_coin");
 
-  switch (walletStore.wallet.type) {
-    case "golden_coin":
-      return walletStore.userMoney.goldenCount >= exchangeCount.value;
-    case "silver_coin":
-      return walletStore.userMoney.silverCount >= exchangeCount.value;
-    case "copper_coin":
-      return walletStore.userMoney.copperCount >= exchangeCount.value;
-    default:
-      return false;
-  }
+// Кол-во монет-источника у пользователя
+const sourceOwnedCount = computed(() => {
+  if (!walletStore.userMoney) return 0;
+  const field = COINS.find(c => c.type === sourceType.value)?.field;
+  return field ? Number((walletStore.userMoney as any)[field]) || 0 : 0;
 });
 
-async function exchangeCoins(exchangeType: string) {
-  if (!(walletStore && walletStore.userMoney && walletStore.wallet && walletStore.wallet.count)) {
-    return;
-  }
-  if (!hasEnoughSourceCoins.value) {
-    return;
-  }
-  switch (exchangeType) {
-    case "to_golden_coin":
-      switch (walletStore.wallet.type) {
-        case "golden_coin":
-          break;
-        case "silver_coin":
-          walletStore.userMoney.silverCount = walletStore.userMoney.silverCount - walletStore.wallet.count;
-          walletStore.userMoney.goldenCount = walletStore.userMoney.goldenCount + toGolden.value;
-          break;
-        case "copper_coin":
-          walletStore.userMoney.copperCount = walletStore.userMoney.copperCount - walletStore.wallet.count;
-          walletStore.userMoney.goldenCount = walletStore.userMoney.goldenCount + toGolden.value;
-          break;
-      }
-      break;
-    case "to_silver_coin":
-      switch (walletStore.wallet.type) {
-        case "golden_coin":
-          walletStore.userMoney.goldenCount = walletStore.userMoney.goldenCount - walletStore.wallet.count;
-          walletStore.userMoney.silverCount = walletStore.userMoney.silverCount + toSilver.value;
-          break;
-        case "silver_coin":
-          break;
-        case "copper_coin":
-          walletStore.userMoney.copperCount = walletStore.userMoney.copperCount - walletStore.wallet.count;
-          walletStore.userMoney.silverCount = walletStore.userMoney.silverCount + toSilver.value;
-          break;
-      }
-      break;
-    case "to_copper_coin":
-      switch (walletStore.wallet.type) {
-        case "golden_coin":
-          walletStore.userMoney.goldenCount = walletStore.userMoney.goldenCount - walletStore.wallet.count;
-          walletStore.userMoney.copperCount = walletStore.userMoney.copperCount + toCopper.value;
-          break;
-        case "silver_coin":
-          walletStore.userMoney.silverCount = walletStore.userMoney.silverCount - walletStore.wallet.count;
-          walletStore.userMoney.copperCount = walletStore.userMoney.copperCount + toCopper.value;
-          break;
-        case "copper_coin":
-          break;
-      }
-  }
-  await exchangeMoneyRequest(walletStore.userMoney.goldenCount, walletStore.userMoney.silverCount, walletStore.userMoney.copperCount)
+const hasEnoughSourceCoins = computed(() =>
+    exchangeCount.value > 0 && sourceOwnedCount.value >= exchangeCount.value
+);
+
+// Сколько получится монет targetType из exchangeCount монет sourceType
+function convertTo(targetType: CoinType): number {
+  return exchangeCount.value * COIN_VALUE_GP[sourceType.value] / COIN_VALUE_GP[targetType];
 }
 
-async function exchangeMoneyRequest(goldenCount: number, silverCount: number, copperCount: number) {
+function isIntegerResult(targetType: CoinType): boolean {
+  return Number.isInteger(convertTo(targetType));
+}
+
+// Целевые монеты для кнопок обмена (все, кроме источника)
+const exchangeTargets = computed(() => COINS.filter(c => c.type !== sourceType.value));
+
+async function exchangeCoins(targetType: CoinType) {
+  if (!walletStore.userMoney || !hasEnoughSourceCoins.value || !isIntegerResult(targetType)) return;
+
+  const source = COINS.find(c => c.type === sourceType.value)!;
+  const target = COINS.find(c => c.type === targetType)!;
+  const gained = convertTo(targetType);
+
+  const money = walletStore.userMoney as any;
+  money[source.field] = Number(money[source.field]) - exchangeCount.value;
+  money[target.field] = Number(money[target.field]) + gained;
+
+  await exchangeMoneyRequest();
+}
+
+async function exchangeMoneyRequest() {
+  if (!walletStore.userMoney) return;
+  const money = walletStore.userMoney as any;
   try {
     await axios.patch(
         `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.inventory}/${route.params.characterId}${GATEWAY_INTEGRATION_ROUTES.money}`,
         {
-          "id": "",
-          "inventoryId": "",
-          "goldenCount": goldenCount,
-          "silverCount": silverCount,
-          "copperCount": copperCount,
+          "id": money.id ?? "",
+          "inventoryId": money.inventoryId ?? "",
+          "goldenCount": money.goldenCount,
+          "silverCount": money.silverCount,
+          "copperCount": money.copperCount,
+          "electrumCount": money.electrumCount,
+          "platinumCount": money.platinumCount,
         },
         {
           headers: {
@@ -167,34 +128,25 @@ async function exchangeMoneyRequest(goldenCount: number, silverCount: number, co
         v-model="walletStore.wallet.count"
     >
       <ion-select slot="start" aria-label="Coin" interface="popover" v-model="walletStore.wallet.type">
-        <ion-select-option value="golden_coin">зм.</ion-select-option>
-        <ion-select-option value="silver_coin">см.</ion-select-option>
-        <ion-select-option value="copper_coin">мм.</ion-select-option>
+        <ion-select-option v-for="coin in COINS" :key="coin.type" :value="coin.type">{{ coin.short }}</ion-select-option>
       </ion-select>
     </ion-input>
     <div class="exchange-buttons">
-      <ion-button class="exchange-button" fill="outline" shape="default" expand="block" size="small" :disabled="!isGoldenInteger || !hasEnoughSourceCoins"
-                  @click="exchangeCoins('to_golden_coin')">
-        <span class="ion-text-left exchange-button-name">Обменять на золотые монеты</span>
+      <ion-button
+          v-for="target in exchangeTargets"
+          :key="target.type"
+          class="exchange-button"
+          fill="outline"
+          shape="default"
+          expand="block"
+          size="small"
+          :disabled="!isIntegerResult(target.type) || !hasEnoughSourceCoins"
+          @click="exchangeCoins(target.type)"
+      >
+        <span class="ion-text-left exchange-button-name">Обменять на {{ target.label }}</span>
         <div class="exchange-end">
-          <div class="exchange-button-value">={{ toGolden.toFixed(1) }}</div>
-          <ion-icon class="exchange-button-icon" size="small" slot="end" :src="goldenCoinIcon"></ion-icon>
-        </div>
-      </ion-button>
-      <ion-button class="exchange-button" fill="outline" shape="default" expand="block" size="small" :disabled="!isSilverInteger || !hasEnoughSourceCoins"
-                  @click="exchangeCoins('to_silver_coin')">
-        <span class="ion-text-left exchange-button-name">Обменять на серебряные монеты</span>
-        <div class="exchange-end">
-          <div class="exchange-button-value">={{ toSilver.toFixed(1) }}</div>
-          <ion-icon class="exchange-button-icon" size="small" slot="end" :src="silverCoinIcon"></ion-icon>
-        </div>
-      </ion-button>
-      <ion-button class="exchange-button" fill="outline" shape="default" expand="block" size="small" :disabled="!isCopperInteger || !hasEnoughSourceCoins"
-                  @click="exchangeCoins('to_copper_coin')">
-        <span class="ion-text-left exchange-button-name">Обменять на медные монеты</span>
-        <div class="exchange-end">
-          <div class="exchange-button-value">={{ toCopper.toFixed(1) }}</div>
-          <ion-icon class="exchange-button-icon" size="small" slot="end" :src="copperCoinIcon"></ion-icon>
+          <div class="exchange-button-value">={{ convertTo(target.type).toFixed(1) }}</div>
+          <ion-icon class="exchange-button-icon" size="small" slot="end" :src="target.icon"></ion-icon>
         </div>
       </ion-button>
     </div>
@@ -220,10 +172,12 @@ ion-button {
 
 .exchange-buttons {
   width: 85%;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
 
 .exchange-button {
-  margin-top: 15px;
   --border-radius: 15px;
 }
 

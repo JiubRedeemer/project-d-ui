@@ -33,6 +33,8 @@ import {useInventoryStore} from "@/stores/InventoryStore";
 import goldenCoinIcon from "@/static/icons/GoldenCoin.svg";
 import silverCoinIcon from "@/static/icons/SilverCoin.svg";
 import copperCoinIcon from "@/static/icons/CopperCoin.svg";
+import electrumCoinIcon from "@/static/icons/ElectrumCoin.svg";
+import platinumCoinIcon from "@/static/icons/PlatinumCoin.svg";
 
 const router = useRouter();
 const route = useRoute();
@@ -1176,6 +1178,10 @@ function getCoinIcon(coinType: string | undefined) {
       return silverCoinIcon;
     case "COPPER":
       return copperCoinIcon;
+    case "ELECTRUM":
+      return electrumCoinIcon;
+    case "PLATINUM":
+      return platinumCoinIcon;
     case "GOLDEN":
     default:
       return goldenCoinIcon;
@@ -1459,9 +1465,11 @@ function cancelEdit() {
                         aria-label="Монета"
                         class="coin-select-wrap__select"
                     >
-                      <ion-select-option value="GOLDEN">Золотые монеты</ion-select-option>
-                      <ion-select-option value="SILVER">Серебряные монеты</ion-select-option>
                       <ion-select-option value="COPPER">Медные монеты</ion-select-option>
+                      <ion-select-option value="SILVER">Серебряные монеты</ion-select-option>
+                      <ion-select-option value="GOLDEN">Золотые монеты</ion-select-option>
+                      <ion-select-option value="ELECTRUM">Электрумовые монеты</ion-select-option>
+                      <ion-select-option value="PLATINUM">Платиновые монеты</ion-select-option>
                     </ion-select>
                   </div>
                 </div>
@@ -1785,9 +1793,11 @@ function cancelEdit() {
                         class="coin-select-wrap__select"
                         @ionChange="invalidFields = invalidFields.filter(f => f !== 'defaultPriceCoinType')"
                     >
-                      <ion-select-option value="GOLDEN">Золотые монеты</ion-select-option>
-                      <ion-select-option value="SILVER">Серебряные монеты</ion-select-option>
                       <ion-select-option value="COPPER">Медные монеты</ion-select-option>
+                      <ion-select-option value="SILVER">Серебряные монеты</ion-select-option>
+                      <ion-select-option value="GOLDEN">Золотые монеты</ion-select-option>
+                      <ion-select-option value="ELECTRUM">Электрумовые монеты</ion-select-option>
+                      <ion-select-option value="PLATINUM">Платиновые монеты</ion-select-option>
                     </ion-select>
                   </div>
                 </div>

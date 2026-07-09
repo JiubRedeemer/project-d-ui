@@ -41,6 +41,7 @@ import MasterGuidebookItemsView from "@/views/master/tabs/guidebook/MasterGuideb
 import MasterGuidebookSpellsView from "@/views/master/tabs/guidebook/MasterGuidebookSpellsView.vue";
 import MasterGuidebookNpcsView from "@/views/master/tabs/guidebook/MasterGuidebookNpcsView.vue";
 import MasterGuidebookStatesView from "@/views/master/tabs/guidebook/MasterGuidebookStatesView.vue";
+import MasterGuidebookBundlesSectionView from "@/views/master/tabs/guidebook/MasterGuidebookBundlesSectionView.vue";
 import ProfilePage from "@/views/profile/ProfilePage.vue";
 import {applySeo} from "@/config/seo";
 import PaywallView from "@/views/subscription/PaywallView.vue";
@@ -305,6 +306,11 @@ const routes: Array<RouteRecordRaw> = [
         path: '/rooms/:roomId/master/guidebook/states',
         component: MasterGuidebookStatesView,
         name: 'masterGuidebookStatesView',
+    },
+    {
+        path: '/rooms/:roomId/master/guidebook/bundles',
+        component: MasterGuidebookBundlesSectionView,
+        name: 'masterGuidebookBundlesSectionView',
     }
 ]
 

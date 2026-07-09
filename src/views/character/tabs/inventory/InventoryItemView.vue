@@ -31,6 +31,8 @@ import {extractDominantColorFromUrl} from "@/utils/imageAmbient";
 import goldenCoinIcon from "@/static/icons/GoldenCoin.svg";
 import silverCoinIcon from "@/static/icons/SilverCoin.svg";
 import copperCoinIcon from "@/static/icons/CopperCoin.svg";
+import electrumCoinIcon from "@/static/icons/ElectrumCoin.svg";
+import platinumCoinIcon from "@/static/icons/PlatinumCoin.svg";
 
 const route = useRoute();
 const ionRouter = useIonRouter();
@@ -178,6 +180,10 @@ function getCoinType(coinType: string | undefined) {
       return {rus: "см.", eng: "sc.", icon: silverCoinIcon};
     case "COPPER":
       return {rus: "мм.", eng: "cc.", icon: copperCoinIcon};
+    case "ELECTRUM":
+      return {rus: "эм.", eng: "ep.", icon: electrumCoinIcon};
+    case "PLATINUM":
+      return {rus: "пм.", eng: "pp.", icon: platinumCoinIcon};
     default:
       return {rus: "", eng: "", icon: ""};
   }

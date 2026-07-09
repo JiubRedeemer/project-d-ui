@@ -26,6 +26,8 @@ import {TEXTS} from "@/config/localisations";
 import {add, addOutline, arrowBack, closeOutline, filterOutline, remove} from "ionicons/icons";
 import {useInventoryStore} from "@/stores/InventoryStore";
 import {getTagsForRoom, type ItemTagDto} from "@/api/itemTagApi";
+import {getBundlesForRoom} from "@/api/bundleApi";
+import type {ItemBundle} from "@/components/models/response/InventoryResponse";
 import InventorySearchItemFullViewModal from "@/views/character/tabs/inventory/InventorySearchItemFullViewModal.vue";
 
 const inventoryStore = useInventoryStore();
@@ -40,7 +42,9 @@ const itemSubtypeFilter = ref<string>("");
 const itemRarityFilter = ref<string>("");
 const itemCustomizationFilter = ref<"" | "true" | "false">("");
 const itemHasSkillsFilter = ref<"" | "true" | "false">("");
+const itemBundleFilter = ref<string>("");
 const showItemFiltersModal = ref(false);
+const availableBundles = ref<ItemBundle[]>([]);
 
 const RARITY_ORDER = ["COMMON", "UNCOMMON", "RARE", "VERY_RARE", "LEGENDARY"];
 const RARITY_LABELS: Record<string, string> = {
@@ -89,6 +93,10 @@ function toggleTagInfo(tag: ItemTagDto) {
   shownTagInfo.value = shownTagInfo.value?.id === tag.id ? null : tag;
 }
 const allItemTags = computed(() => availableItemTags.value);
+const allBundles = computed(() => availableBundles.value);
+const selectedBundleName = computed(
+  () => availableBundles.value.find((b) => b.id === itemBundleFilter.value)?.name ?? itemBundleFilter.value
+);
 
 const itemActiveFiltersCount = computed(() => {
   let c = 0;
@@ -98,6 +106,7 @@ const itemActiveFiltersCount = computed(() => {
   if (itemCustomizationFilter.value !== "") c++;
   if (itemHasSkillsFilter.value !== "") c++;
   if (itemTagFilter.value.size > 0) c++;
+  if (itemBundleFilter.value) c++;
   return c;
 });
 
@@ -116,6 +125,7 @@ function resetItemFilters() {
   itemCustomizationFilter.value = "";
   itemHasSkillsFilter.value = "";
   itemTagFilter.value = new Set();
+  itemBundleFilter.value = "";
 }
 
 watch(itemTypeFilter, () => { itemSubtypeFilter.value = ""; triggerFilteredSearch(); });
@@ -123,6 +133,7 @@ watch(itemSubtypeFilter, () => { triggerFilteredSearch(); });
 watch(itemRarityFilter, () => { triggerFilteredSearch(); });
 watch(itemCustomizationFilter, () => { triggerFilteredSearch(); });
 watch(itemHasSkillsFilter, () => { triggerFilteredSearch(); });
+watch(itemBundleFilter, () => { triggerFilteredSearch(); });
 watch(itemTagFilter, () => { triggerFilteredSearch(); }, { deep: true });
 
 function triggerFilteredSearch() {
@@ -138,6 +149,16 @@ async function loadItemTags() {
     availableItemTags.value = await getTagsForRoom(String(route.params.roomId));
   } catch (e) {
     console.error("Failed to load item tags", e);
+  }
+}
+
+async function loadRoomBundles() {
+  try {
+    const bundles = await getBundlesForRoom(String(route.params.roomId));
+    // Только наборы, подключённые в комнате — их предметы и так есть в поиске комнаты.
+    availableBundles.value = bundles.filter((b) => b.enabled);
+  } catch (e) {
+    console.error("Failed to load room bundles", e);
   }
 }
 
@@ -203,7 +224,8 @@ onMounted(async () => {
   hasMoreItems.value = true;
   await Promise.all([
     loadItems("", null, null, searchToken, true),
-    loadItemTags()
+    loadItemTags(),
+    loadRoomBundles()
   ]);
 });
 
@@ -242,6 +264,8 @@ async function loadItems(
     if (itemTagFilter.value.size > 0) requestBody.tags = [...itemTagFilter.value];
     if (itemCustomizationFilter.value !== "") requestBody.customization = itemCustomizationFilter.value === "true";
     if (itemHasSkillsFilter.value !== "") requestBody.hasSkills = itemHasSkillsFilter.value === "true";
+    // Фильтр по набору применим только к предметам комнаты (созданные пользователем в наборы не входят)
+    if (activeSearchScope.value !== "owned" && itemBundleFilter.value) requestBody.itemBundleId = itemBundleFilter.value;
 
     const response = await axios.post(
         `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}${GATEWAY_INTEGRATION_ROUTES.rooms}/${route.params.roomId}${GATEWAY_INTEGRATION_ROUTES.items}${searchPath}`,
@@ -483,6 +507,10 @@ function openAddView() {
           {{ itemHasSkillsFilter === 'true' ? 'Есть навыки' : 'Нет навыков' }}
           <button @click="itemHasSkillsFilter = ''"><ion-icon :icon="closeOutline"/></button>
         </span>
+        <span v-if="itemBundleFilter" class="active-chip">
+          {{ selectedBundleName }}
+          <button @click="itemBundleFilter = ''"><ion-icon :icon="closeOutline"/></button>
+        </span>
         <span v-for="tag in [...itemTagFilter]" :key="tag" class="active-chip">
           #{{ tag }}
           <button @click="toggleItemTagFilter(tag)"><ion-icon :icon="closeOutline"/></button>
@@ -501,6 +529,17 @@ function openAddView() {
               </button>
             </div>
             <div class="filters-modal__body">
+
+              <div v-if="allBundles.length && activeSearchScope !== 'owned'" class="filters-section">
+                <div class="filters-label">Набор</div>
+                <div class="filters-chips">
+                  <button
+                      v-for="bundle in allBundles" :key="bundle.id"
+                      :class="['filters-chip', { 'filters-chip--active': itemBundleFilter === bundle.id }]"
+                      @click="itemBundleFilter = itemBundleFilter === bundle.id ? '' : bundle.id"
+                  >{{ bundle.name }}</button>
+                </div>
+              </div>
 
               <div v-if="allItemTypes.length" class="filters-section">
                 <div class="filters-label">Тип</div>

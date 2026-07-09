@@ -11,12 +11,12 @@ import {
   onIonViewDidEnter,
   onIonViewDidLeave
 } from "@ionic/vue";
-import {bookOutline, documentTextOutline, layersOutline, peopleOutline, shieldOutline} from "ionicons/icons";
+import {bookOutline, documentTextOutline, peopleOutline, shieldOutline, storefrontOutline} from "ionicons/icons";
 import MasterHeader from "@/views/master/MasterHeader.vue";
 import MasterCharacterListView from "@/views/master/tabs/MasterCharacterListView.vue";
 import MasterGuidebookView from "@/views/master/tabs/MasterGuidebookView.vue";
 import MasterFilesView from "@/views/master/tabs/MasterFilesView.vue";
-import MasterBundlesView from "@/views/master/tabs/MasterBundlesView.vue";
+import MasterShopsView from "@/views/master/tabs/guidebook/MasterGuidebookShopsView.vue";
 import CombatTrackerPanel from "@/views/master/tabs/CombatTrackerPanel.vue";
 import {useRoute} from "vue-router";
 import {useRoomStore} from "@/stores/RoomStore";
@@ -28,7 +28,7 @@ const asyncDone = ref<boolean>(false);
 const route = useRoute();
 const roomStore = useRoomStore();
 const tabsRef = ref<InstanceType<typeof IonTabs> | null>(null);
-const selectedTab = ref<"characters" | "guidebook" | "files" | "combat" | "bundles">("characters");
+const selectedTab = ref<"characters" | "guidebook" | "files" | "combat" | "shops">("characters");
 const isDesktop = ref<boolean>(window.innerWidth >= 1024);
 
 const DESKTOP_BREAKPOINT_PX = 1024;
@@ -41,7 +41,7 @@ const tabs = [
   {key: "combat", icon: shieldOutline, label: "Бой"},
   {key: "guidebook", icon: bookOutline, label: "Справочник"},
   {key: "files", icon: documentTextOutline, label: "Файлы"},
-  {key: "bundles", icon: layersOutline, label: "Наборы"},
+  {key: "shops", icon: storefrontOutline, label: "Магазины"},
 ] as const;
 
 const selectedTabTitle = computed(() => {
@@ -50,7 +50,7 @@ const selectedTabTitle = computed(() => {
 
 const onTabsChange = (event: CustomEvent<{ tab: string }>) => {
   const tab = event?.detail?.tab;
-  if (tab === "characters" || tab === "guidebook" || tab === "files" || tab === "combat" || tab === "bundles") {
+  if (tab === "characters" || tab === "guidebook" || tab === "files" || tab === "combat" || tab === "shops") {
     selectedTab.value = tab;
   }
 };
@@ -59,7 +59,7 @@ const onResize = () => {
   isDesktop.value = window.innerWidth >= DESKTOP_BREAKPOINT_PX;
 };
 
-const selectDesktopTab = (tab: "characters" | "guidebook" | "files" | "combat") => {
+const selectDesktopTab = (tab: "characters" | "guidebook" | "files" | "combat" | "shops") => {
   selectedTab.value = tab;
 };
 
@@ -140,7 +140,7 @@ onIonViewDidLeave(() => {
             <MasterCharacterListView ref="charListRef" v-if="asyncDone && selectedTab === 'characters'"/>
             <MasterGuidebookView v-if="asyncDone && selectedTab === 'guidebook'"/>
             <MasterFilesView v-if="asyncDone && selectedTab === 'files'"/>
-            <MasterBundlesView v-if="asyncDone && selectedTab === 'bundles'"/>
+            <MasterShopsView v-if="asyncDone && selectedTab === 'shops'"/>
             <CombatTrackerPanel v-if="asyncDone && selectedTab === 'combat'" :room-id="String(route.params.roomId)" @close="selectedTab = 'characters'"/>
           </div>
         </ion-content>
@@ -199,7 +199,7 @@ onIonViewDidLeave(() => {
           </div>
         </ion-content>
       </ion-tab>
-      <ion-tab tab="bundles">
+      <ion-tab tab="shops">
         <ion-content
           class="ion-padding"
           :fullscreen="true"
@@ -207,8 +207,8 @@ onIonViewDidLeave(() => {
           direction="y"
           :scroll-x="false"
         >
-          <div class="tab-content bundles">
-            <MasterBundlesView v-if="asyncDone"/>
+          <div class="tab-content shops">
+            <MasterShopsView v-if="asyncDone"/>
           </div>
         </ion-content>
       </ion-tab>
@@ -233,9 +233,9 @@ onIonViewDidLeave(() => {
             <ion-icon :icon="documentTextOutline" />
           </div>
         </ion-tab-button>
-        <ion-tab-button tab="bundles">
+        <ion-tab-button tab="shops">
           <div class="tab-icon-wrapper">
-            <ion-icon :icon="layersOutline" />
+            <ion-icon :icon="storefrontOutline" />
           </div>
         </ion-tab-button>
       </ion-tab-bar>
@@ -394,7 +394,7 @@ onIonViewDidLeave(() => {
 .guidebook,
 .files,
 .combat,
-.bundles {
+.shops {
   margin-top: 50px;
   padding-top: 0;
 }

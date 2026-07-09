@@ -15,7 +15,7 @@ import { FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES } from "@/c
 import { useRoute } from "vue-router";
 import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { InventoryItem } from "@/components/models/response/InventoryResponse";
-import { add, caretUpCircleOutline, manOutline, remove } from "ionicons/icons";
+import { add, caretUpCircleOutline, chevronBackOutline, chevronForwardOutline, manOutline, remove } from "ionicons/icons";
 import { useInventoryItemStore } from "@/stores/InventoryItemStore";
 import { HEADERS, TEXTS } from "@/config/localisations";
 import { useCharacterStore } from "@/stores/CharacterStore";
@@ -26,6 +26,8 @@ import { useInventoryStore } from "@/stores/InventoryStore";
 import goldenCoinIcon from "@/static/icons/GoldenCoin.svg";
 import silverCoinIcon from "@/static/icons/SilverCoin.svg";
 import copperCoinIcon from "@/static/icons/CopperCoin.svg";
+import electrumCoinIcon from "@/static/icons/ElectrumCoin.svg";
+import platinumCoinIcon from "@/static/icons/PlatinumCoin.svg";
 
 const ionRouter = useIonRouter();
 
@@ -41,6 +43,9 @@ const { isOpen, keyboardHeight } = useKeyboard();
 const moneyRootRef = ref<HTMLElement | null>(null);
 
 const moneyRootMaxHeight = ref<string>("70vh");
+
+// Электрум и платина — редкие монеты, скрыты под спойлером
+const showRareCoins = ref(false);
 
 // Клавиатура реально открыта (есть и флаг, и ненулевая высота).
 const keyboardOpen = computed(() => isOpen.value && keyboardHeight.value > 0);
@@ -303,6 +308,8 @@ async function exchangeMoneyRequest() {
         "goldenCount": walletStore.userMoney.goldenCount,
         "silverCount": walletStore.userMoney.silverCount,
         "copperCount": walletStore.userMoney.copperCount,
+        "electrumCount": walletStore.userMoney.electrumCount,
+        "platinumCount": walletStore.userMoney.platinumCount,
       },
       {
         headers: {
@@ -340,6 +347,18 @@ async function giveMoney() {
         walletStore.userMoney.copperCount = walletStore.userMoney.copperCount as number - walletStore.wallet.count as number;
       }
       break;
+
+    case "electrum_coin":
+      if ((walletStore.userMoney.electrumCount as number - walletStore.wallet.count as number) >= 0) {
+        walletStore.userMoney.electrumCount = walletStore.userMoney.electrumCount as number - walletStore.wallet.count as number;
+      }
+      break;
+
+    case "platinum_coin":
+      if ((walletStore.userMoney.platinumCount as number - walletStore.wallet.count as number) >= 0) {
+        walletStore.userMoney.platinumCount = walletStore.userMoney.platinumCount as number - walletStore.wallet.count as number;
+      }
+      break;
   }
   await exchangeMoneyRequest();
 }
@@ -357,6 +376,12 @@ async function takeMoney() {
       break;
     case "copper_coin":
       walletStore.userMoney.copperCount = parseInt(walletStore.userMoney.copperCount) + parseInt(walletStore.wallet.count);
+      break;
+    case "electrum_coin":
+      walletStore.userMoney.electrumCount = parseInt(walletStore.userMoney.electrumCount) + parseInt(walletStore.wallet.count);
+      break;
+    case "platinum_coin":
+      walletStore.userMoney.platinumCount = parseInt(walletStore.userMoney.platinumCount) + parseInt(walletStore.wallet.count);
       break;
   }
   await exchangeMoneyRequest();
@@ -379,19 +404,37 @@ async function takeMoney() {
         <div class="money-title">{{ HEADERS.wallet.rus }}:</div>
         <div class="coins-group">
           <button class="coin-chip copper" :class="{ selected: walletStore.wallet.type === 'copper_coin' }" type="button"
-            aria-label="Медные монеты" @click.stop="expandMoneyBlock(); walletStore.wallet.type = 'copper_coin'">
+            aria-label="Медные монеты" title="Медные монеты" @click.stop="expandMoneyBlock(); walletStore.wallet.type = 'copper_coin'">
             <ion-icon class="coin-icon" :src="copperCoinIcon" aria-hidden="true" />
             <span class="coin-value">{{ walletStore.userMoney?.copperCount ?? 0 }}</span>
           </button>
           <button class="coin-chip silver" :class="{ selected: walletStore.wallet.type === 'silver_coin' }" type="button"
-            aria-label="Серебряные монеты" @click.stop="expandMoneyBlock(); walletStore.wallet.type = 'silver_coin'">
+            aria-label="Серебряные монеты" title="Серебряные монеты" @click.stop="expandMoneyBlock(); walletStore.wallet.type = 'silver_coin'">
             <ion-icon class="coin-icon" :src="silverCoinIcon" aria-hidden="true" />
             <span class="coin-value">{{ walletStore.userMoney?.silverCount ?? 0 }}</span>
           </button>
           <button class="coin-chip golden" :class="{ selected: walletStore.wallet.type === 'golden_coin' }" type="button"
-            aria-label="Золотые монеты" @click.stop="expandMoneyBlock(); walletStore.wallet.type = 'golden_coin'">
+            aria-label="Золотые монеты" title="Золотые монеты" @click.stop="expandMoneyBlock(); walletStore.wallet.type = 'golden_coin'">
             <ion-icon class="coin-icon" :src="goldenCoinIcon" aria-hidden="true" />
             <span class="coin-value">{{ walletStore.userMoney?.goldenCount ?? 0 }}</span>
+          </button>
+          <template v-if="showRareCoins">
+            <button class="coin-chip electrum" :class="{ selected: walletStore.wallet.type === 'electrum_coin' }" type="button"
+              aria-label="Электрумовые монеты" title="Электрумовые монеты" @click.stop="expandMoneyBlock(); walletStore.wallet.type = 'electrum_coin'">
+              <ion-icon class="coin-icon" :src="electrumCoinIcon" aria-hidden="true" />
+              <span class="coin-value">{{ walletStore.userMoney?.electrumCount ?? 0 }}</span>
+            </button>
+            <button class="coin-chip platinum" :class="{ selected: walletStore.wallet.type === 'platinum_coin' }" type="button"
+              aria-label="Платиновые монеты" title="Платиновые монеты" @click.stop="expandMoneyBlock(); walletStore.wallet.type = 'platinum_coin'">
+              <ion-icon class="coin-icon" :src="platinumCoinIcon" aria-hidden="true" />
+              <span class="coin-value">{{ walletStore.userMoney?.platinumCount ?? 0 }}</span>
+            </button>
+          </template>
+          <button class="coin-toggle" type="button"
+            :aria-label="showRareCoins ? 'Скрыть редкие монеты' : 'Показать электрум и платину'"
+            :title="showRareCoins ? 'Скрыть редкие монеты' : 'Электрум и платина'"
+            @click.stop="showRareCoins = !showRareCoins">
+            <ion-icon :icon="showRareCoins ? chevronForwardOutline : chevronBackOutline" />
           </button>
         </div>
       </div>
@@ -872,25 +915,32 @@ async function takeMoney() {
 .coins-group {
   display: flex;
   flex-direction: row;
-  gap: 6px;
+  flex-wrap: nowrap;
+  gap: 4px;
   align-items: center;
   margin-left: auto;
+  min-width: 0;
+  flex: 1;
+  justify-content: flex-end;
 }
 
 .money-title {
   font-size: 16px;
   font-weight: bold;
+  flex-shrink: 0;
 }
 
 .coin-chip {
-  height: 30px;
-  min-width: 66px;
+  height: 28px;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 58px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  padding: 0 10px 0 7px;
+  justify-content: center;
+  gap: 3px;
+  padding: 0 6px 0 5px;
   border: 1px solid rgba(var(--ion-color-light-rgb), 0.12);
   background: linear-gradient(180deg, rgba(var(--ion-color-dark-rgb), 0.18), rgba(var(--ion-color-dark-rgb), 0.13));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 4px 10px rgba(0, 0, 0, 0.20);
@@ -903,19 +953,44 @@ async function takeMoney() {
 }
 
 .coin-icon {
-  width: 17px;
-  height: 17px;
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.28));
 }
 
+.coin-toggle {
+  flex-shrink: 0;
+  width: 26px;
+  height: 28px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.12);
+  background: rgba(var(--ion-color-dark-rgb), 0.18);
+  color: rgba(var(--ion-color-light-rgb), 0.7);
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.coin-toggle:active {
+  transform: translateY(1px) scale(0.96);
+}
+
+.coin-toggle ion-icon {
+  font-size: 15px;
+}
+
 .coin-value {
-  min-width: 24px;
+  min-width: 0;
   text-align: right;
-  font-size: 14px;
+  font-size: 12.5px;
   font-weight: 700;
   line-height: 1;
   color: var(--ion-color-light);
   font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .coin-chip.copper {
@@ -932,11 +1007,25 @@ async function takeMoney() {
   border-color: rgba(216, 216, 216, 0.40);
 }
 
+.coin-chip.electrum {
+  background:
+    radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 60%),
+    linear-gradient(180deg, rgba(167, 201, 87, 0.26), rgba(167, 201, 87, 0.10));
+  border-color: rgba(167, 201, 87, 0.42);
+}
+
 .coin-chip.golden {
   background:
     radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0) 60%),
     linear-gradient(180deg, rgba(212, 175, 55, 0.24), rgba(212, 175, 55, 0.09));
   border-color: rgba(212, 175, 55, 0.38);
+}
+
+.coin-chip.platinum {
+  background:
+    radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 60%),
+    linear-gradient(180deg, rgba(234, 241, 247, 0.24), rgba(234, 241, 247, 0.09));
+  border-color: rgba(234, 241, 247, 0.42);
 }
 
 .coin-chip.selected {
@@ -965,6 +1054,22 @@ async function takeMoney() {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.10),
     0 0 0 2px rgba(193, 128, 0, 0.14),
+    0 6px 14px rgba(0, 0, 0, 0.22);
+}
+
+.coin-chip.electrum.selected {
+  border-color: rgba(167, 201, 87, 0.6);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    0 0 0 2px rgba(167, 201, 87, 0.16),
+    0 6px 14px rgba(0, 0, 0, 0.22);
+}
+
+.coin-chip.platinum.selected {
+  border-color: rgba(234, 241, 247, 0.65);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    0 0 0 2px rgba(234, 241, 247, 0.16),
     0 6px 14px rgba(0, 0, 0, 0.22);
 }
 
@@ -1019,12 +1124,17 @@ async function takeMoney() {
   }
 
   .coins-group {
-    gap: 8px;
+    gap: 6px;
   }
 
   .coin-chip {
-    min-width: 72px;
+    min-width: 0;
+    max-width: 84px;
     height: 32px;
+  }
+
+  .coin-value {
+    font-size: 13.5px;
   }
 
   .money-submit-buttons {

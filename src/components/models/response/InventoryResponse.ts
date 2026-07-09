@@ -133,6 +133,8 @@ export interface MoneyDto {
     goldenCount: number;
     silverCount: number;
     copperCount: number;
+    electrumCount: number;
+    platinumCount: number;
 }
 
 export interface WalletStoreDto {

@@ -83,6 +83,8 @@ ion-app {
     --coin-color-gold: #fffb00;
     --coin-color-silver: #d8d8d8;
     --coin-color-copper: #c18000;
+    --coin-color-electrum: #a7c957;
+    --coin-color-platinum: #eaf1f7;
 
     --race-color: rgba(197, 0, 15, 0.3);
     --clazz-color: rgba(255, 196, 9, 0.3);
