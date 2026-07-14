@@ -9,6 +9,7 @@ import {
   IonHeader,
   IonIcon,
   IonInput,
+  IonModal,
   IonPage,
   IonSelect,
   IonSelectOption,
@@ -16,7 +17,31 @@ import {
   IonToolbar,
   toastController,
 } from "@ionic/vue";
-import {add, closeCircleOutline, saveOutline} from "ionicons/icons";
+import {
+  add,
+  barbellOutline,
+  cameraOutline,
+  chevronDownOutline,
+  closeCircleOutline,
+  copyOutline,
+  documentTextOutline,
+  eyeOffOutline,
+  eyeOutline,
+  flameOutline,
+  flashOutline,
+  pawOutline,
+  personOutline,
+  ribbonOutline,
+  saveOutline,
+  shieldCheckmarkOutline,
+  shieldHalfOutline,
+  shieldOutline,
+  skullOutline,
+  sparkles,
+  sparklesOutline,
+  starOutline,
+  statsChartOutline,
+} from "ionicons/icons";
 import {
   getNpcByIdForRoom,
   saveCharacterNpcRelationForRoom,
@@ -25,12 +50,17 @@ import {
 import type {
   NpcDto,
   NpcActionType,
+  NpcSpellDto,
   NpcTypeEnum,
   RelationTypeEnum,
   SaveCharacterNpcRelationRequest,
   SaveNpcRequest,
 } from "@/api/npcApi.types";
 import {getClassesForRoom, getRacesForRoom} from "@/api/rulebookApi";
+import type {SpellDto} from "@/components/models/response/MagicApi";
+import {loadRoomSpellMap} from "@/api/magicApi";
+import {useRoomStore} from "@/stores/RoomStore";
+import MagicSearchView from "@/views/character/tabs/magic/MagicSearchView.vue";
 import {
   FILE_STORAGE_INTEGRATION_ROUTES,
   GATEWAY_INTEGRATION_ROUTES,
@@ -38,14 +68,6 @@ import {
 import axios from "axios";
 import {useNpcRelationsStore} from "@/stores/NpcRelationsStore";
 import {extractDominantColorFromUrl} from "@/utils/imageAmbient";
-
-const NPC_TYPE_ABBREVIATIONS: Record<NpcTypeEnum, string> = {
-  RATIONAL: "Р",
-  BEAST: "Ж",
-  MONSTER: "М",
-  DEITY: "Б",
-  UNDEAD: "Н",
-};
 
 const route = useRoute();
 const router = useRouter();
@@ -138,7 +160,7 @@ const npc = ref<SaveNpcRequest>({
   senses: [] as { name: string; value: number | null }[],
   languages: null as string | null,
   spellSlots: [] as { level: number; max: number; current: number }[],
-  spells: [] as { name: string; level: number; description: string; chargesPerDay: number | null }[],
+  spells: [] as NpcSpellDto[],
   imgUrl: null,
   createdBy: "",
 });
@@ -151,6 +173,19 @@ const npcTypeOptions: Array<{ value: NpcTypeEnum; label: string }> = [
   {value: "UNDEAD", label: "Нежить"},
 ];
 
+const NPC_TYPE_ICONS: Record<NpcTypeEnum, string> = {
+  RATIONAL: personOutline,
+  BEAST: pawOutline,
+  MONSTER: flameOutline,
+  DEITY: sparklesOutline,
+  UNDEAD: skullOutline,
+};
+
+const npcTypeLabel = computed(
+    () => npcTypeOptions.find((o) => o.value === npc.value.type)?.label ?? "—"
+);
+const npcTypeIcon = computed(() => NPC_TYPE_ICONS[npc.value.type] ?? personOutline);
+
 const calculatedHp = computed(() => {
   const diceCount = npc.value.hpDiceCount;
   const dieSize = npc.value.hpDieSize;
@@ -160,6 +195,53 @@ const calculatedHp = computed(() => {
   const bonus = npc.value.hpDiceBonus ?? 0;
   return Math.max(1, Math.round(diceCount * (dieSize + 1) / 2 + conMod * diceCount) + bonus);
 });
+
+// Выбор заклинаний из справочника комнаты через MagicSearchView (модалка).
+// Заклинания NPC хранятся ссылкой (spellId); детали (имя/уровень) разрешаем по каталогу.
+const roomStore = useRoomStore();
+const showSpellPicker = ref(false);
+const spellById = ref<Map<string, SpellDto>>(new Map());
+
+function spellLevelLabel(level: number | null | undefined): string {
+  return level && level > 0 ? `${level} ур.` : "Заговор";
+}
+
+function spellName(dto: SpellDto | undefined): string {
+  const n = dto?.name as Record<string, string> | undefined;
+  return n?.rus ?? n?.en ?? n?.eng ?? "";
+}
+
+function resolveSpell(entry: NpcSpellDto): { name: string; level: number } {
+  const ref = entry.spellId ? spellById.value.get(entry.spellId) : undefined;
+  if (ref) {
+    return {name: spellName(ref) || (entry.name ?? "—"), level: Number(ref.level ?? 0) || 0};
+  }
+  return {name: entry.name ?? "Неизвестное заклинание", level: Number(entry.level ?? 0) || 0};
+}
+
+async function loadRoomSpellCatalog() {
+  try {
+    if (!roomStore.room?.id) {
+      await roomStore.getRoomInfo(roomId.value);
+    }
+    spellById.value = await loadRoomSpellMap(roomStore.room?.baseRuleType);
+  } catch (e) {
+    console.error("Failed to load room spell catalog:", e);
+  }
+}
+
+function openSpellPicker() {
+  showSpellPicker.value = true;
+}
+
+function onPickSpell(spell: SpellDto) {
+  showSpellPicker.value = false;
+  if (!spell.id) return;
+  if (!npc.value.spells) npc.value.spells = [];
+  if (npc.value.spells.some((s) => s.spellId === spell.id)) return; // уже добавлено
+  spellById.value.set(spell.id, spell);
+  npc.value.spells.push({spellId: spell.id, chargesPerDay: null});
+}
 
 const roomClasses = ref<{ value: string; label: string }[]>([]);
 const roomRaces = ref<{ value: string; label: string }[]>([]);
@@ -197,15 +279,6 @@ watch(currentImageUrl, (src) => {
     }
   });
 }, {immediate: true});
-
-function getNpcTypeAbbreviation(type: NpcTypeEnum | undefined | null): string {
-  if (!type) return "—";
-  return NPC_TYPE_ABBREVIATIONS[type] ?? type.charAt(0);
-}
-
-function formatBool(value: boolean | undefined | null): string {
-  return value ? "Да" : "Нет";
-}
 
 function toggleVisible() {
   npc.value.visible = !npc.value.visible;
@@ -319,9 +392,11 @@ function fillFromDto(dto: NpcDto) {
     languages: dto.languages ?? null,
     spellSlots: dto.spellSlots ?? [],
     spells: dto.spells?.map(s => ({
-      ...s,
-      description: s.description ?? "",
-      chargesPerDay: s.chargesPerDay ?? null
+      spellId: s.spellId ?? null,
+      name: s.name ?? null,
+      level: s.level ?? null,
+      description: s.description ?? null,
+      chargesPerDay: s.chargesPerDay ?? null,
     })) ?? [],
     imgUrl: dto.imgUrl ?? null,
     createdBy: npc.value.createdBy || dto.createdBy || "",
@@ -443,6 +518,7 @@ onMounted(() => {
       console.error("Failed to resolve myId:", e);
     }
   })();
+  void loadRoomSpellCatalog();
   void (async () => {
     await loadNpcIfEditing();
     roomClassesLoading.value = true;
@@ -518,44 +594,55 @@ onMounted(() => {
                 class="avatar-file-input"
                 @change="handleFileUpload"
             />
+            <span class="avatar-edit-badge" aria-hidden="true">
+              <ion-icon :icon="cameraOutline"/>
+            </span>
           </button>
 
           <div class="stats">
-            <div class="stat">
-              <span class="stat__label">Тип</span>
-              <span class="stat-value" @click="openTypeSelect">
-                {{ getNpcTypeAbbreviation(npc.type) }}
+            <button type="button" class="meta-chip meta-chip--type" @click="openTypeSelect">
+              <span class="meta-chip__icon"><ion-icon :icon="npcTypeIcon"/></span>
+              <span class="meta-chip__body">
+                <span class="meta-chip__label">Тип существа</span>
+                <span class="meta-chip__value">{{ npcTypeLabel }}</span>
               </span>
-              <ion-select
-                  ref="typeSelectRef"
-                  :value="npc.type"
-                  interface="action-sheet"
-                  class="hidden-select"
-                  @ionChange="(e) => setType((e as CustomEvent).detail.value)"
+              <ion-icon class="meta-chip__chevron" :icon="chevronDownOutline"/>
+            </button>
+            <ion-select
+                ref="typeSelectRef"
+                :value="npc.type"
+                interface="action-sheet"
+                class="hidden-select"
+                @ionChange="(e) => setType((e as CustomEvent).detail.value)"
+            >
+              <ion-select-option
+                  v-for="opt in npcTypeOptions"
+                  :key="opt.value"
+                  :value="opt.value"
               >
-                <ion-select-option
-                    v-for="opt in npcTypeOptions"
-                    :key="opt.value"
-                    :value="opt.value"
-                >
-                  {{ opt.label }}
-                </ion-select-option>
-              </ion-select>
-            </div>
+                {{ opt.label }}
+              </ion-select-option>
+            </ion-select>
 
-            <div class="stat">
-              <span class="stat__label">Видимость</span>
-              <span class="stat-value stat-value--wide" @click="toggleVisible">
-                {{ formatBool(npc.visible) }}
-              </span>
-            </div>
+            <button
+                type="button"
+                class="meta-toggle"
+                :class="{ 'meta-toggle--on': npc.visible }"
+                @click="toggleVisible"
+            >
+              <ion-icon :icon="npc.visible ? eyeOutline : eyeOffOutline"/>
+              <span>{{ npc.visible ? "Виден игрокам" : "Скрыт от игроков" }}</span>
+            </button>
 
-            <div class="stat">
-              <span class="stat__label">Уникальность</span>
-              <span class="stat-value stat-value--wide" @click="toggleUnique">
-                {{ formatBool(npc.unique) }}
-              </span>
-            </div>
+            <button
+                type="button"
+                class="meta-toggle"
+                :class="{ 'meta-toggle--on': npc.unique }"
+                @click="toggleUnique"
+            >
+              <ion-icon :icon="npc.unique ? sparklesOutline : copyOutline"/>
+              <span>{{ npc.unique ? "Уникальный" : "Обычный" }}</span>
+            </button>
           </div>
         </div>
 
@@ -570,7 +657,9 @@ onMounted(() => {
 
         <div class="item-details">
           <section class="panel">
-            <h2 class="panel__title">Характеристики</h2>
+            <h2 class="panel__title">
+              <span class="panel__icon"><ion-icon :icon="shieldHalfOutline"/></span>Основные параметры
+            </h2>
             <div class="details-grid">
               <div class="detail-row">
                 <span class="detail-row__label">Класс</span>
@@ -711,7 +800,9 @@ onMounted(() => {
           </section>
 
           <section class="panel">
-            <h2 class="panel__title">Характеристики</h2>
+            <h2 class="panel__title">
+              <span class="panel__icon"><ion-icon :icon="barbellOutline"/></span>Характеристики
+            </h2>
             <div class="abilities-grid">
               <div v-for="ab in [
                 { key: 'strScore', label: 'СИЛ' },
@@ -741,7 +832,9 @@ onMounted(() => {
           </section>
 
           <section class="panel">
-            <h2 class="panel__title">Боевые параметры</h2>
+            <h2 class="panel__title">
+              <span class="panel__icon"><ion-icon :icon="statsChartOutline"/></span>Боевые параметры
+            </h2>
             <div class="detail-grid">
               <div class="detail-row">
                 <span class="detail-row__label">Уровень</span>
@@ -765,7 +858,9 @@ onMounted(() => {
           </section>
 
           <section class="panel">
-            <h2 class="panel__title">Навыки</h2>
+            <h2 class="panel__title">
+              <span class="panel__icon"><ion-icon :icon="ribbonOutline"/></span>Навыки
+            </h2>
             <div class="list-editor">
               <div v-for="(skill, i) in npc.skills" :key="i" class="list-editor__row">
                 <ion-select
@@ -790,7 +885,9 @@ onMounted(() => {
           </section>
 
           <section class="panel">
-            <h2 class="panel__title">Умения</h2>
+            <h2 class="panel__title">
+              <span class="panel__icon"><ion-icon :icon="starOutline"/></span>Умения
+            </h2>
             <div class="list-editor">
               <div v-for="(feat, i) in npc.features" :key="i" class="list-editor__entry">
                 <div class="list-editor__entry-header">
@@ -812,11 +909,13 @@ onMounted(() => {
           </section>
 
           <section class="panel">
-            <h2 class="panel__title">Действия</h2>
+            <h2 class="panel__title">
+              <span class="panel__icon"><ion-icon :icon="flashOutline"/></span>Действия
+            </h2>
             <div class="list-editor">
               <div v-for="(action, i) in npc.actions" :key="i" class="list-editor__entry">
                 <div class="list-editor__entry-header">
-                  <ion-select :value="action.type" placeholder="Тип действия"
+                  <ion-select class="list-editor__select" :value="action.type" placeholder="Тип действия"
                               @ionChange="(e:any) => action.type=e.detail.value">
                     <ion-select-option value="ACTION">Действие</ion-select-option>
                     <ion-select-option value="BONUS_ACTION">Бонусное действие</ion-select-option>
@@ -824,7 +923,7 @@ onMounted(() => {
                     <ion-select-option value="LEGENDARY_ACTION">Легендарное действие</ion-select-option>
                     <ion-select-option value="LAIR_ACTION">Действие логова</ion-select-option>
                   </ion-select>
-                  <ion-input class="list-editor__input list-editor__input--name"
+                  <ion-input class="list-editor__input list-editor__input--name list-editor__input--action-name"
                              :value="action.name" placeholder="Название действия"
                              @ionInput="(e: any) => { action.name = e.target.value; }"/>
                   <button class="list-editor__remove" @click="npc.actions.splice(i, 1)">✕</button>
@@ -840,7 +939,9 @@ onMounted(() => {
             </div>
           </section>
 
-          <section class="panel"><h2 class="panel__title">Спасброски</h2>
+          <section class="panel"><h2 class="panel__title">
+            <span class="panel__icon"><ion-icon :icon="shieldOutline"/></span>Спасброски
+          </h2>
             <div class="list-editor">
               <div v-for="(save, i) in npc.savingThrows" :key="i" class="list-editor__row">
                 <ion-select label="Характеристика" label-placement="stacked" class="list-editor__select"
@@ -862,7 +963,9 @@ onMounted(() => {
               </button>
             </div>
           </section>
-          <section class="panel"><h2 class="panel__title">Сопротивления, иммунитеты и прочее</h2>
+          <section class="panel"><h2 class="panel__title">
+            <span class="panel__icon"><ion-icon :icon="shieldCheckmarkOutline"/></span>Сопротивления, иммунитеты и прочее
+          </h2>
             <ion-select multiple label="Сопротивления" label-placement="stacked" :value="npc.resistances"
                         @ionChange="(e:any) => npc.resistances=e.detail.value">
               <ion-select-option value="STABBING">Колющий</ion-select-option>
@@ -897,29 +1000,29 @@ onMounted(() => {
             <ion-input label="Языки" label-placement="stacked" :value="npc.languages ?? ''"
                        @ionInput="(e:any) => npc.languages=e.target.value"/>
           </section>
-          <section class="panel"><h2 class="panel__title">Заклинания</h2>
+          <section class="panel"><h2 class="panel__title">
+            <span class="panel__icon"><ion-icon :icon="sparkles"/></span>Заклинания
+          </h2>
             <div class="list-editor">
-              <div v-for="(spell,i) in npc.spells" :key="i" class="list-editor__entry">
-                <div class="list-editor__entry-header">
-                  <ion-input :value="spell.name" placeholder="Название"
-                             @ionInput="(e:any)=>spell.name=e.target.value"/>
-                  <ion-input type="number" :value="spell.level" placeholder="Уровень"
-                             @ionInput="(e:any)=>spell.level=Number(e.target.value)"/>
-                  <ion-input type="number" :value="spell.chargesPerDay ?? ''" placeholder="Заряды/день"
+              <div v-for="(spell,i) in npc.spells" :key="spell.spellId ?? i" class="list-editor__entry">
+                <div class="list-editor__entry-header spell-entry-header">
+                  <span class="spell-level-badge">{{ spellLevelLabel(resolveSpell(spell).level) }}</span>
+                  <span class="spell-picked-name">{{ resolveSpell(spell).name }}</span>
+                  <ion-input type="number" inputmode="numeric" class="list-editor__input spell-charges"
+                             :value="spell.chargesPerDay ?? ''" placeholder="Заряды/день"
                              @ionInput="(e:any)=>spell.chargesPerDay=Number(e.target.value)"/>
                   <button class="list-editor__remove" @click="npc.spells.splice(i,1)">✕</button>
                 </div>
-                <ion-textarea :value="spell.description" placeholder="Описание"
-                              @ionInput="(e:any)=>spell.description=e.target.value"/>
               </div>
-              <button class="list-editor__add"
-                      @click="npc.spells.push({name:'',level:null,description:'',chargesPerDay:null})">+ Добавить
-                заклинание
+              <button class="list-editor__add" @click="openSpellPicker">
+                + Добавить заклинание из справочника
               </button>
             </div>
           </section>
           <section class="panel">
-            <h2 class="panel__title">Описание</h2>
+            <h2 class="panel__title">
+              <span class="panel__icon"><ion-icon :icon="documentTextOutline"/></span>Описание
+            </h2>
             <ion-textarea
                 v-model="npc.description"
                 class="description-input"
@@ -955,6 +1058,10 @@ onMounted(() => {
         Сохранить
       </ion-button>
     </div>
+
+    <ion-modal :is-open="showSpellPicker" @didDismiss="showSpellPicker = false">
+      <MagicSearchView pick-mode @select="onPickSpell" @close="showSpellPicker = false"/>
+    </ion-modal>
   </ion-page>
 </template>
 
@@ -1066,64 +1173,131 @@ onMounted(() => {
   border-radius: 25px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: center;
   gap: 8px;
-  padding: 10px 8px;
-  background-color: var(--ion-color-medium);
+  padding: 12px 10px;
+  background: linear-gradient(158deg, rgba(var(--ion-color-medium-rgb), 0.95) 0%, rgba(var(--ion-color-dark-rgb), 0.55) 100%);
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.12);
 }
 
-.stat {
+/* Type chip */
+.meta-chip--type {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 6px;
-  background-color: var(--ion-color-secondary-opacity-40);
-  flex: 1 1 0;
-  min-height: 0;
-  border-radius: 15px;
-  padding: 0 8px;
-  font-weight: bold;
-  font-size: 11px;
-  line-height: 1.2;
-  color: var(--ion-color-light);
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: 16px;
+  text-align: left;
+  cursor: pointer;
+  background: linear-gradient(150deg, rgba(var(--ion-color-primary-rgb), 0.2), rgba(var(--ion-color-primary-rgb), 0.06));
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.3);
+  transition: border-color 0.15s ease, transform 0.1s ease;
 }
 
-.stat__label {
+.meta-chip--type:active {
+  transform: scale(0.98);
+}
+
+.meta-chip__icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  background: rgba(var(--ion-color-primary-rgb), 0.18);
+  color: var(--ion-color-primary);
+  font-size: 18px;
+}
+
+.meta-chip__body {
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-width: 0;
+  gap: 1px;
+}
+
+.meta-chip__label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(var(--ion-color-light-rgb), 0.5);
+}
+
+.meta-chip__value {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ion-color-light);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.stat-value {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.meta-chip__chevron {
   flex-shrink: 0;
-  background-color: var(--ion-color-primary);
-  color: var(--ion-color-primary-contrast);
-  border-radius: 50%;
-  height: 30px;
-  width: 30px;
-  font-size: 11px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  cursor: pointer;
+  font-size: 14px;
+  color: rgba(var(--ion-color-light-rgb), 0.4);
 }
 
-.stat-value--wide {
-  width: auto;
-  min-width: 30px;
-  max-width: 48px;
-  padding: 0 7px;
-  border-radius: 999px;
-  font-size: 10px;
-  letter-spacing: -0.02em;
+/* Toggle chips (visibility / uniqueness) */
+.meta-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: 14px;
+  cursor: pointer;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(var(--ion-color-light-rgb), 0.6);
+  background: rgba(var(--ion-color-light-rgb), 0.04);
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.08);
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.meta-toggle ion-icon {
+  flex-shrink: 0;
+  font-size: 17px;
+}
+
+.meta-toggle span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.meta-toggle--on {
+  background: rgba(var(--ion-color-primary-rgb), 0.14);
+  border-color: rgba(var(--ion-color-primary-rgb), 0.4);
+  color: var(--ion-color-primary);
 }
 
 .hidden-select {
   display: none;
+}
+
+/* Avatar edit badge */
+.avatar-edit-badge {
+  position: absolute;
+  z-index: 2;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 11px;
+  color: var(--ion-color-primary-contrast);
+  background: var(--ion-color-primary);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  font-size: 16px;
 }
 
 .item-identity {
@@ -1152,19 +1326,36 @@ onMounted(() => {
 }
 
 .panel {
-  padding: 14px;
-  border-radius: 16px;
-  background: var(--ion-color-medium);
-  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.1);
+  padding: 16px 14px;
+  border-radius: 18px;
+  background: linear-gradient(160deg, rgba(var(--ion-color-medium-rgb), 0.96) 0%, rgba(var(--ion-color-dark-rgb), 0.42) 100%);
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.06);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
 }
 
 .panel__title {
-  margin: 0 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 12px;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: rgba(var(--ion-color-light-rgb), 0.45);
+  color: rgba(var(--ion-color-light-rgb), 0.72);
+}
+
+.panel__icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  background: rgba(var(--ion-color-primary-rgb), 0.14);
+  color: var(--ion-color-primary);
+  font-size: 15px;
 }
 
 .details-grid {
@@ -1529,6 +1720,51 @@ onMounted(() => {
 
 .list-editor__remove:hover {
   background: rgba(var(--ion-color-danger-rgb), 0.1);
+}
+
+/* Spell picker row */
+.spell-entry-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.spell-level-badge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  height: 30px;
+  border-radius: 8px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--ion-color-primary);
+  background: rgba(var(--ion-color-primary-rgb), 0.12);
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.25);
+}
+
+.spell-picked-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ion-color-light);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.spell-charges {
+  width: 104px;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+@media (max-width: 640px) {
+  .spell-charges {
+    width: 84px;
+  }
 }
 
 .list-editor__add {

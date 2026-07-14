@@ -38,7 +38,16 @@ export type NpcActionDto = { name: string; description: string; type?: NpcAction
 export type NpcFeatureDto = { name: string; description: string };
 export type NpcSavingThrowDto = { name: string; bonus: number };
 export type NpcSpellSlotDto = { level: number; max: number; current: number };
-export type NpcSpellDto = { name: string; level: number | null; description?: string | null; chargesPerDay?: number | null };
+// Заклинание NPC хранится ссылкой (spellId) на заклинание из справочника.
+// Поля name/level/description оставлены опциональными для обратной совместимости
+// со старыми NPC, где заклинания хранились по значению.
+export type NpcSpellDto = {
+  spellId?: string | null;
+  name?: string | null;
+  level?: number | null;
+  description?: string | null;
+  chargesPerDay?: number | null;
+};
 export type NpcSenseDto = { name: string; value: number };
 
 export type NpcDto = {

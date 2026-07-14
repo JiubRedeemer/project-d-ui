@@ -28,6 +28,7 @@ import type {
   CharacterNpcRelationDto,
   NpcDto,
   NpcNpcRelationDto,
+  NpcSpellDto,
   NpcTypeEnum,
   RelationTypeEnum,
   SaveCharacterNpcRelationRequest,
@@ -36,6 +37,9 @@ import type {
 import {marked} from "marked";
 import {extractDominantColorFromUrl} from "@/utils/imageAmbient";
 import {getRoomCharacters} from "@/api/masterApi";
+import {loadRoomSpellMap} from "@/api/magicApi";
+import type {SpellDto} from "@/components/models/response/MagicApi";
+import {useRoomStore} from "@/stores/RoomStore";
 import type {Character} from "@/components/models/response/Character";
 
 marked.setOptions({breaks: true});
@@ -53,8 +57,34 @@ const NPC_IMAGE_PLACEHOLDER =
 
 const route = useRoute();
 const ionRouter = useRouter();
+const roomStore = useRoomStore();
 
 const npc = ref<NpcDto | null>(null);
+const spellById = ref<Map<string, SpellDto>>(new Map());
+
+function spellNameOf(dto: SpellDto | undefined): string {
+  const n = dto?.name as Record<string, string> | undefined;
+  return n?.rus ?? n?.en ?? n?.eng ?? "";
+}
+
+// Заклинания NPC хранятся ссылкой (spellId); разрешаем детали по каталогу комнаты,
+// со старым форматом (по значению) в качестве запасного варианта.
+const resolvedSpells = computed(() => {
+  const list = (npc.value?.spells ?? []) as NpcSpellDto[];
+  return list.map((s) => {
+    const ref = s.spellId ? spellById.value.get(s.spellId) : undefined;
+    return {
+      name: ref ? (spellNameOf(ref) || s.name || "—") : (s.name ?? "Неизвестное заклинание"),
+      level: Number((ref?.level ?? s.level) ?? 0) || 0,
+      description: ref?.description ?? s.description ?? "",
+      chargesPerDay: s.chargesPerDay ?? null,
+    };
+  });
+});
+
+const spellLevels = computed(() =>
+    [...new Set(resolvedSpells.value.map((s) => s.level))].sort((a, b) => a - b)
+);
 const ambientColor = ref<string | null>(null);
 const relations = ref<CharacterNpcRelationDto[]>([]);
 const npcNpcRelations = ref<NpcNpcRelationDto[]>([]);
@@ -216,8 +246,21 @@ async function loadNpc() {
       getNpcsByRoomIdForRoom(roomId, { forceAll: true }),
     ]);
     await loadRelations();
+    void loadSpellCatalog(roomId);
   } catch (e) {
     console.error("Failed to load NPC for full view:", e);
+  }
+}
+
+async function loadSpellCatalog(roomId: string) {
+  try {
+    if (!(npc.value?.spells?.length)) return;
+    if (!roomStore.room?.id || roomStore.room.id !== roomId) {
+      await roomStore.getRoomInfo(roomId);
+    }
+    spellById.value = await loadRoomSpellMap(roomStore.room?.baseRuleType);
+  } catch (e) {
+    console.error("Failed to load spell catalog for NPC:", e);
   }
 }
 
@@ -506,7 +549,7 @@ async function submitAddRelation() {
           </section>
 
           <section v-if="npc.resistances?.length || npc.immunities?.length || npc.senses?.length || npc.languages" class="panel"><h2 class="panel__title">Особые параметры</h2><p v-if="npc.resistances?.length"><b>Сопротивления:</b> {{ npc.resistances.join(', ') }}</p><p v-if="npc.immunities?.length"><b>Иммунитеты:</b> {{ npc.immunities.join(', ') }}</p><p v-if="npc.senses?.length"><b>Пассивные чувства:</b> {{ npc.senses.map(s => `${s.name} ${s.value}`).join(', ') }}</p><p v-if="npc.languages"><b>Языки:</b> {{ npc.languages }}</p></section>
-          <section v-if="npc.spells?.length" class="panel"><h2 class="panel__title">Заклинания</h2><div v-for="level in [...new Set(npc.spells.map(s => s.level))].sort((a,b)=>a-b)" :key="level"><h3>{{ level === 0 ? 'Заговоры' : `Уровень ${level}` }}</h3><p v-for="spell in npc.spells.filter(s => s.level === level)" :key="spell.name"><b>{{ spell.name }}</b><span v-if="spell.chargesPerDay != null"> <small>({{ spell.chargesPerDay }} в день)</small></span><span v-if="spell.description"> — {{ spell.description }}</span></p></div></section>
+          <section v-if="resolvedSpells.length" class="panel"><h2 class="panel__title">Заклинания</h2><div v-for="level in spellLevels" :key="level"><h3>{{ level === 0 ? 'Заговоры' : `Уровень ${level}` }}</h3><p v-for="(spell, si) in resolvedSpells.filter(s => s.level === level)" :key="si"><b>{{ spell.name }}</b><span v-if="spell.chargesPerDay != null"> <small>({{ spell.chargesPerDay }} в день)</small></span><span v-if="spell.description"> — {{ spell.description }}</span></p></div></section>
 
           <section v-if="npc.description" class="panel">
             <h2 class="panel__title">Описание</h2>

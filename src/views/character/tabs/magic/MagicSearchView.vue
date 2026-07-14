@@ -21,8 +21,8 @@ import {
   toastController,
   useIonRouter,
 } from "@ionic/vue";
-import {add, addOutline, arrowBack} from "ionicons/icons";
-import {computed, ref, watch, shallowRef} from "vue";
+import {add, addOutline, arrowBack, checkmarkOutline, closeOutline} from "ionicons/icons";
+import {computed, onMounted, ref, watch, shallowRef} from "vue";
 import {useRoute, useRouter} from "vue-router";
 import {
   addSpellToBook,
@@ -41,6 +41,11 @@ import {useCharacterStore} from "@/stores/CharacterStore";
 import {useMagicStore} from "@/stores/MagicStore";
 import {useRoomStore} from "@/stores/RoomStore";
 import SpellInfoModal from "@/views/character/tabs/magic/SpellInfoModal.vue";
+
+// Режим выбора: компонент встраивается в модалку (например, при создании NPC)
+// и вместо добавления в книгу заклинаний эмитит выбранное заклинание.
+const props = withDefaults(defineProps<{ pickMode?: boolean }>(), {pickMode: false});
+const emit = defineEmits<{ (e: "select", spell: SpellDto): void; (e: "close"): void }>();
 
 const route = useRoute();
 const ionRouter = useIonRouter();
@@ -298,7 +303,13 @@ function closeSpellModal() {
   selectedSpellId.value = null;
 }
 
-onIonViewDidEnter(async () => {
+const initialized = ref(false);
+
+async function initView() {
+  if (initialized.value) return;
+  initialized.value = true;
+  // В режиме выбора для NPC не привязываемся к классу персонажа
+  if (props.pickMode) forMyClass.value = false;
   if (!roomStore.room?.id || roomStore.room.id !== roomId.value) {
     try {
       await roomStore.getRoomInfo(roomId.value);
@@ -307,8 +318,18 @@ onIonViewDidEnter(async () => {
     }
   }
   selectedCatalog.value = orderedCatalogs.value[0];
-  await loadSpellBook();
+  if (!props.pickMode) await loadSpellBook();
   await loadSpells();
+}
+
+function pickSpell(spell: SpellDto) {
+  emit("select", spell);
+}
+
+onIonViewDidEnter(initView);
+onMounted(() => {
+  // В модалке ionViewDidEnter может не сработать — инициализируем вручную.
+  if (props.pickMode) void initView();
 });
 
 watch([forMyClass, selectedCatalog], () => {
@@ -331,7 +352,10 @@ function openAddSpellView() {
     <ion-header class="search-header">
       <ion-toolbar>
         <ion-buttons slot="start">
-          <ion-back-button :default-href="`/rooms/${roomId}/characters/${characterId}`"/>
+          <ion-button v-if="pickMode" fill="clear" @click="emit('close')">
+            <ion-icon slot="icon-only" :icon="closeOutline"/>
+          </ion-button>
+          <ion-back-button v-else :default-href="`/rooms/${roomId}/characters/${characterId}`"/>
         </ion-buttons>
         <ion-searchbar
             v-model="searchQuery"
@@ -352,6 +376,7 @@ function openAddSpellView() {
       </div>
       <div class="filter-row">
         <ion-toggle
+            v-if="!pickMode"
             v-model="forMyClass"
             color="primary"
         >
@@ -415,7 +440,16 @@ function openAddSpellView() {
             </div>
             <div class="add-button-block">
               <ion-button
-                  v-if="!row.inBook"
+                  v-if="pickMode"
+                  @click="pickSpell(row.raw)"
+                  size="small"
+                  shape="round"
+                  class="add-button"
+              >
+                <ion-icon slot="icon-only" :icon="checkmarkOutline"/>
+              </ion-button>
+              <ion-button
+                  v-else-if="!row.inBook"
                   @click="addSpell(row.raw)"
                   size="small"
                   shape="round"
@@ -433,12 +467,12 @@ function openAddSpellView() {
         </div>
       </div>
     </ion-content>
-    <ion-fab slot="fixed" vertical="bottom" horizontal="start">
+    <ion-fab v-if="!pickMode" slot="fixed" vertical="bottom" horizontal="start">
       <ion-fab-button color="primary" @click="router.back()">
         <ion-icon :icon="arrowBack" color="dark"/>
       </ion-fab-button>
     </ion-fab>
-    <ion-fab slot="fixed" vertical="bottom" horizontal="end">
+    <ion-fab v-if="!pickMode" slot="fixed" vertical="bottom" horizontal="end">
       <ion-fab-button color="primary" @click="openAddSpellView()">
         <ion-icon :icon="add" color="dark"/>
       </ion-fab-button>

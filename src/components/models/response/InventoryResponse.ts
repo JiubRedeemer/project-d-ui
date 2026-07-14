@@ -77,6 +77,8 @@ export interface Item {
     hiddenStats?: boolean;
     unidentifiedItemId?: string;
     unidentifiedName?: Name;
+    /** Полная модель "неопознанного" вида. Приходит только мастеру комнаты. */
+    unidentifiedItem?: Item;
     itemBundleId?: string;
     itemBundleName?: string;
 }

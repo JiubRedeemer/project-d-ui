@@ -246,7 +246,65 @@ const itemActiveFiltersCount = computed(() => {
   return c;
 });
 
-const filteredItems = computed(() => items.value);
+// ── Опознание предметов ──────────────────────────────
+// Предмет "требует опознания", если у него задан unidentifiedItemId —
+// ссылка на отдельный предмет-маскировку (как он выглядит до опознания).
+function requiresIdentification(item: Item): boolean {
+  return Boolean(item.unidentifiedItemId);
+}
+
+// id предметов-маскировок, которые пришли в списке — их не показываем
+// отдельными карточками, они доступны только через оборот карточки-родителя.
+const disguiseItemIds = computed(() => {
+  const set = new Set<string>();
+  for (const it of items.value) {
+    if (it.unidentifiedItemId) set.add(it.unidentifiedItemId);
+  }
+  return set;
+});
+
+const filteredItems = computed(() =>
+  items.value.filter((i) => !disguiseItemIds.value.has(i.id))
+);
+
+// Возвращает предмет-маскировку (неопознанный вид) для карточки родителя.
+// Полная модель приходит с бэкенда мастеру во вложенном поле unidentifiedItem;
+// если её нет — пытаемся найти по id среди уже загруженных предметов.
+function getDisguiseItem(item: Item): Item | null {
+  if (item.unidentifiedItem) return item.unidentifiedItem;
+  const id = item.unidentifiedItemId;
+  if (!id) return null;
+  return items.value.find((i) => i.id === id) ?? null;
+}
+
+// Какие карточки повёрнуты обратной (опознанной) стороной.
+const flippedItemIds = ref<Set<string>>(new Set());
+function toggleItemFlip(item: Item) {
+  const next = new Set(flippedItemIds.value);
+  if (next.has(item.id)) next.delete(item.id); else next.add(item.id);
+  flippedItemIds.value = next;
+}
+
+// Открыть модалку с полной версией предмета в зависимости от стороны карточки:
+// "Неопознан" → полная версия предмета-маскировки, "Опознан" → настоящий предмет.
+function openFlipCardModal(item: Item) {
+  if (flippedItemIds.value.has(item.id)) {
+    openItemModal(item);
+    return;
+  }
+  openItemModal(getDisguiseItem(item) ?? item);
+}
+
+// Имя/картинка неопознанного вида (front карточки).
+function getUnidentifiedName(item: Item): string {
+  const disguise = getDisguiseItem(item);
+  if (disguise) return getItemName(disguise);
+  const n = item.unidentifiedName as { rus?: string; eng?: string } | undefined;
+  return n?.rus ?? n?.eng ?? "Неопознанный предмет";
+}
+function getUnidentifiedImageUrl(item: Item): string {
+  return getItemImageUrl(getDisguiseItem(item)?.imgUrl);
+}
 
 function toggleItemTagFilter(tag: string) {
   const next = new Set(itemTagFilter.value);
@@ -2035,30 +2093,79 @@ async function onCatalogApplied(
         </Teleport>
 
         <div v-if="filteredItems.length" class="items-list">
-          <button
-              v-for="item in filteredItems"
-              :key="item.id"
-              type="button"
-              class="item-card"
-              @click="openItemModal(item)"
-          >
-            <div class="item-card__media">
-              <img :src="getItemImageUrl(item.imgUrl)" :alt="getItemName(item)" class="item-card__img"/>
-            </div>
-            <div class="item-card__body">
-              <div class="item-card__name">{{ getItemName(item) }}</div>
-              <div class="item-card__meta">
-                {{ item.typeName }}<span v-if="item.subtypeName"> · {{ item.subtypeName }}</span>
+          <template v-for="item in filteredItems" :key="item.id">
+            <!-- Предмет, требующий опознания: картонная карточка-перевёртыш -->
+            <div
+                v-if="requiresIdentification(item)"
+                class="flip-card"
+                :class="{ 'flip-card--flipped': flippedItemIds.has(item.id) }"
+            >
+              <div class="flip-card__inner">
+                <!-- Front: неопознанный вид -->
+                <div class="flip-card__face flip-card__face--front">
+                  <button type="button" class="flip-card__open" @click="openFlipCardModal(item)">
+                    <div class="item-card__media flip-card__media">
+                      <img :src="getUnidentifiedImageUrl(item)" :alt="getUnidentifiedName(item)" class="item-card__img"/>
+                    </div>
+                    <div class="item-card__body">
+                      <div class="flip-card__badge">🔒 Требует опознания</div>
+                      <div class="item-card__name">{{ getUnidentifiedName(item) }}</div>
+                      <div class="item-card__meta">Так предмет выглядит для игроков</div>
+                    </div>
+                  </button>
+                  <button type="button" class="flip-card__flip-btn" title="Показать опознанный предмет"
+                          @click.stop="toggleItemFlip(item)">
+                    <ion-icon :icon="eyeOutline"/>
+                  </button>
+                </div>
+                <!-- Back: опознанный (настоящий) предмет -->
+                <div class="flip-card__face flip-card__face--back">
+                  <button type="button" class="flip-card__open" @click="openFlipCardModal(item)">
+                    <div class="item-card__media flip-card__media">
+                      <img :src="getItemImageUrl(item.imgUrl)" :alt="getItemName(item)" class="item-card__img"/>
+                    </div>
+                    <div class="item-card__body">
+                      <div class="flip-card__badge flip-card__badge--revealed">✨ Опознанный предмет</div>
+                      <div class="item-card__name">{{ getItemName(item) }}</div>
+                      <div class="item-card__meta">
+                        {{ item.typeName }}<span v-if="item.subtypeName"> · {{ item.subtypeName }}</span>
+                      </div>
+                      <span v-if="item.stats?.armorClass" class="item-card__pill">КБ {{ item.stats.armorClass }}</span>
+                      <span v-else-if="item.stats?.damage?.value" class="item-card__pill">{{ item.stats.damage.value + ' (' + item.stats.damage.damageTypeName + ')'}}</span>
+                    </div>
+                  </button>
+                  <button type="button" class="flip-card__flip-btn" title="Показать неопознанный вид"
+                          @click.stop="toggleItemFlip(item)">
+                    <ion-icon :icon="eyeOffOutline"/>
+                  </button>
+                </div>
               </div>
-              <span v-if="item.stats?.armorClass" class="item-card__pill">КБ {{ item.stats.armorClass }}</span>
-              <span v-else-if="item.stats?.damage?.value" class="item-card__pill">{{ item.stats.damage.value + ' (' + item.stats.damage.damageTypeName + ')'}}</span>
-              <div v-if="item.stats?.tags?.length" class="item-card__tags">
-                <span v-for="tag in item.stats.tags" :key="tag" class="item-card__tag"
-                      :title="availableItemTags.find(t => t.name === tag)?.description">#{{ tag }}</span>
-              </div>
             </div>
-            <ion-icon class="item-card__chevron" :icon="chevronForwardOutline"/>
-          </button>
+            <!-- Обычный предмет -->
+            <button
+                v-else
+                type="button"
+                class="item-card"
+                @click="openItemModal(item)"
+            >
+              <div class="item-card__media">
+                <img :src="getItemImageUrl(item.imgUrl)" :alt="getItemName(item)" class="item-card__img"/>
+              </div>
+              <div class="item-card__body">
+                <div class="item-card__name">{{ getItemName(item) }}</div>
+                <div class="item-card__meta">
+                  {{ item.typeName }}<span v-if="item.subtypeName"> · {{ item.subtypeName }}</span>
+                </div>
+                <span v-if="item.stats?.armorClass" class="item-card__pill">КБ {{ item.stats.armorClass }}</span>
+                <span v-else-if="item.stats?.damage?.value" class="item-card__pill">{{ item.stats.damage.value + ' (' + item.stats.damage.damageTypeName + ')'}}</span>
+                <div v-if="item.stats?.tags?.length" class="item-card__tags">
+                  <span v-for="tag in item.stats.tags" :key="tag" class="item-card__tag"
+                        :title="availableItemTags.find(t => t.name === tag)?.description">#{{ tag }}</span>
+                </div>
+              </div>
+              <ion-icon class="item-card__chevron" :icon="chevronForwardOutline"/>
+            </button>
+          </template>
         </div>
         <ion-button
             v-if="items.length && hasMoreItems && !loading"
@@ -3845,6 +3952,123 @@ ion-searchbar {
   color: rgba(var(--ion-color-primary-rgb), 0.85);
   background: rgba(var(--ion-color-primary-rgb), 0.1);
   border: 1px solid rgba(var(--ion-color-primary-rgb), 0.22);
+}
+
+/* ── Карточка-перевёртыш для предметов, требующих опознания ── */
+.flip-card {
+  width: 100%;
+  perspective: 1200px;
+}
+
+.flip-card__inner {
+  position: relative;
+  width: 100%;
+  transition: transform 0.55s cubic-bezier(0.4, 0.2, 0.2, 1);
+  transform-style: preserve-3d;
+}
+
+.flip-card--flipped .flip-card__inner {
+  transform: rotateY(180deg);
+}
+
+.flip-card__face {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 16px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* front занимает поток, back накладывается поверх */
+.flip-card__face--back {
+  position: absolute;
+  inset: 0;
+  transform: rotateY(180deg);
+}
+
+/* Картонный вид "неопознанной" стороны */
+.flip-card__face--front {
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(120, 82, 45, 0.10) 0px,
+      rgba(120, 82, 45, 0.10) 10px,
+      rgba(120, 82, 45, 0.04) 10px,
+      rgba(120, 82, 45, 0.04) 20px
+    ),
+    linear-gradient(155deg, rgba(158, 118, 74, 0.28) 0%, rgba(90, 63, 36, 0.32) 100%);
+  border: 1px dashed rgba(214, 178, 120, 0.55);
+  box-shadow: inset 0 0 24px rgba(60, 38, 16, 0.35);
+}
+
+.flip-card__face--back {
+  background: linear-gradient(155deg, rgba(var(--ion-color-medium-rgb), 0.95) 0%, rgba(var(--ion-color-dark-rgb), 0.92) 100%);
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.35);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.32);
+}
+
+.flip-card__media {
+  border-color: rgba(214, 178, 120, 0.3);
+}
+
+.flip-card__badge {
+  display: inline-block;
+  align-self: flex-start;
+  margin-bottom: 2px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: rgba(238, 210, 160, 0.95);
+  background: rgba(120, 82, 45, 0.35);
+  border: 1px solid rgba(214, 178, 120, 0.4);
+}
+
+.flip-card__badge--revealed {
+  color: var(--ion-color-primary);
+  background: rgba(var(--ion-color-primary-rgb), 0.14);
+  border-color: rgba(var(--ion-color-primary-rgb), 0.3);
+}
+
+.flip-card__open {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.flip-card__flip-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  cursor: pointer;
+  color: var(--ion-color-light);
+  background: rgba(var(--ion-color-light-rgb), 0.08);
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.12);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.flip-card__flip-btn:hover {
+  background: rgba(var(--ion-color-primary-rgb), 0.18);
+  border-color: rgba(var(--ion-color-primary-rgb), 0.35);
+}
+
+.flip-card__flip-btn ion-icon {
+  font-size: 18px;
 }
 
 /* ── Items search row + filter button ─────────────────── */

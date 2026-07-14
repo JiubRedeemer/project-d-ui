@@ -479,15 +479,15 @@ watch(activeStates, (states) => { emits("has-states", states.length > 0); }, { i
 }
 
 .stat-card--hp {
-  border-color: rgba(var(--ion-color-danger-rgb), 0.28);
+  border-color: rgba(var(--ion-color-success-rgb), 0.28);
 }
 
 .stat-card__icon--hp {
-  color: var(--ion-color-danger);
+  color: var(--ion-color-success);
 }
 
 .stat-card__value--hp {
-  color: var(--ion-color-danger-tint);
+  color: var(--ion-color-success-tint);
 }
 
 .stat-card__temp-hp {

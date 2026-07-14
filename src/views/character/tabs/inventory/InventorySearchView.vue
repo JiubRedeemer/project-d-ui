@@ -23,7 +23,7 @@ import axios from "axios";
 import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {useRoute, useRouter} from "vue-router";
 import {TEXTS} from "@/config/localisations";
-import {add, addOutline, arrowBack, closeOutline, filterOutline, remove} from "ionicons/icons";
+import {add, addOutline, arrowBack, closeOutline, eyeOffOutline, eyeOutline, filterOutline, remove} from "ionicons/icons";
 import {useInventoryStore} from "@/stores/InventoryStore";
 import {getTagsForRoom, type ItemTagDto} from "@/api/itemTagApi";
 import {getBundlesForRoom} from "@/api/bundleApi";
@@ -181,6 +181,45 @@ function openFullView(item: Item) {
 function closeFullView() {
   showFullViewModal.value = false;
   selectedItem.value = null;
+}
+
+// ── Опознание предметов (только для мастера) ─────────────
+// Полная модель "неопознанного" вида (unidentifiedItem) приходит с бэкенда
+// только мастеру комнаты. Наличие этого поля и есть признак карточки-перевёртыша.
+function requiresIdentification(item: Item): boolean {
+  return Boolean(item.unidentifiedItem);
+}
+
+function getDisguiseItem(item: Item): Item | null {
+  return item.unidentifiedItem ?? null;
+}
+
+function getUnidentifiedName(item: Item): string {
+  const disguise = getDisguiseItem(item);
+  if (disguise) return disguise.name?.rus ?? disguise.name?.eng ?? "Неопознанный предмет";
+  return item.unidentifiedName?.rus ?? item.unidentifiedName?.eng ?? "Неопознанный предмет";
+}
+
+function getUnidentifiedImageUrl(item: Item): string {
+  return getItemImageUrl(getDisguiseItem(item)?.imgUrl);
+}
+
+// Какие карточки повёрнуты обратной (опознанной) стороной.
+const flippedItemIds = ref<Set<string>>(new Set());
+function toggleItemFlip(item: Item) {
+  const next = new Set(flippedItemIds.value);
+  if (next.has(item.id)) next.delete(item.id); else next.add(item.id);
+  flippedItemIds.value = next;
+}
+
+// Открыть модалку с полной версией в зависимости от стороны карточки:
+// "Неопознан" → полная версия предмета-маскировки, "Опознан" → настоящий предмет.
+function openFlipCardModal(item: Item) {
+  if (flippedItemIds.value.has(item.id)) {
+    openFullView(item);
+    return;
+  }
+  openFullView(getDisguiseItem(item) ?? item);
 }
 
 async function addFromFullView(item: Item, count: number) {
@@ -623,7 +662,49 @@ function openAddView() {
       <!-- Список -->
       <div class="found" v-if="displayedItems.length > 0">
         <div class="section" v-for="item in displayedItems" :key="item.id">
-          <div class="section-start-block" @click="openFullView(item)">
+          <!-- Предмет, требующий опознания: картонная сторона-перевёртыш (только у мастера) -->
+          <div
+              v-if="requiresIdentification(item)"
+              class="flip-start"
+              :class="{ 'flip-start--flipped': flippedItemIds.has(item.id) }"
+          >
+            <button
+                type="button"
+                class="flip-toggle-btn"
+                :title="flippedItemIds.has(item.id) ? 'Показать неопознанный вид' : 'Показать опознанный предмет'"
+                @click.stop="toggleItemFlip(item)"
+            >
+              <ion-icon :icon="flippedItemIds.has(item.id) ? eyeOffOutline : eyeOutline"/>
+            </button>
+            <div class="flip-inner">
+              <!-- Front: неопознанный вид -->
+              <button type="button" class="flip-face flip-face--front" @click="openFlipCardModal(item)">
+                <div class="image-block">
+                  <img class="item-image flip-item-image"
+                       :src="getUnidentifiedImageUrl(item)" :alt="getUnidentifiedName(item)"/>
+                </div>
+                <div class="stats-block">
+                  <div class="flip-badge">🔒 Требует опознания</div>
+                  <div class="item-name">{{ getUnidentifiedName(item) }}</div>
+                  <div class="item-stats">Так предмет виден игрокам</div>
+                </div>
+              </button>
+              <!-- Back: опознанный (настоящий) предмет -->
+              <button type="button" class="flip-face flip-face--back" @click="openFlipCardModal(item)">
+                <div class="image-block">
+                  <img class="item-image" :class="getRarityClass(item.rarity)"
+                       :src="getItemImageUrl(item.imgUrl)" :alt="item.name.rus"/>
+                </div>
+                <div class="stats-block">
+                  <div class="flip-badge flip-badge--revealed">✨ Опознанный предмет</div>
+                  <div class="item-name">{{ item.name.rus }}</div>
+                  <div class="item-stats" v-for="(stat, index) in getItemStats(item)" :key="index">{{ stat }}</div>
+                </div>
+              </button>
+            </div>
+          </div>
+          <!-- Обычный предмет -->
+          <div v-else class="section-start-block" @click="openFullView(item)">
             <div class="image-block">
               <img
                   class="item-image"
@@ -880,6 +961,92 @@ ion-searchbar {
 
 .rarity-legendary {
   border-color: orange;
+}
+
+/* ── Карточка-перевёртыш для предметов, требующих опознания ── */
+.flip-start {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  perspective: 900px;
+}
+
+.flip-inner {
+  position: relative;
+  width: 100%;
+  min-height: 55px;
+  transition: transform 0.55s cubic-bezier(0.4, 0.2, 0.2, 1);
+  transform-style: preserve-3d;
+}
+
+.flip-start--flipped .flip-inner {
+  transform: rotateY(180deg);
+}
+
+.flip-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.flip-face--back {
+  transform: rotateY(180deg);
+}
+
+.flip-item-image {
+  border-style: dashed !important;
+  border-color: rgba(214, 178, 120, 0.65) !important;
+}
+
+.flip-badge {
+  display: inline-block;
+  align-self: flex-start;
+  margin-bottom: 2px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: rgba(238, 210, 160, 0.95);
+  background: rgba(120, 82, 45, 0.4);
+  border: 1px solid rgba(214, 178, 120, 0.45);
+}
+
+.flip-badge--revealed {
+  color: var(--ion-color-primary);
+  background: rgba(var(--ion-color-primary-rgb), 0.16);
+  border-color: rgba(var(--ion-color-primary-rgb), 0.35);
+}
+
+.flip-toggle-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: var(--ion-color-light);
+  cursor: pointer;
+}
+
+.flip-toggle-btn ion-icon {
+  font-size: 15px;
 }
 
 /* ── Filter button in header ─────────────────────────── */

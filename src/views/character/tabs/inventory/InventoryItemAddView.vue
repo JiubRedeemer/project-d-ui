@@ -51,8 +51,14 @@ const canCreateUnidentifiedModel = computed(() =>
     hiddenStats.value &&
     !createInventoryItemStore.item.unidentifiedItemId
 );
-const isUnidentifiedModel = computed(() => Boolean(createInventoryItemStore.item.unidentifiedItemId));
-// Режим двух колонок: включены скрытые характеристики
+// "Неопознанная модель" — это отдельный (legacy) предмет-модель без скрытых характеристик,
+// ссылающийся на родителя через unidentifiedItemId.
+// НЕ путать с настоящим (опознанным) предметом: у него hiddenStats=true и unidentifiedItemId
+// указывает на его маскировку — такой предмет редактируется в режиме двух колонок (split).
+const isUnidentifiedModel = computed(() =>
+    Boolean(createInventoryItemStore.item.unidentifiedItemId) && !hiddenStats.value
+);
+// Режим двух колонок: включены скрытые характеристики (редактируем предмет + его маскировку)
 const isSplitMode = computed(() => hiddenStats.value && !isUnidentifiedModel.value);
 const previewImage = ref<string | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
@@ -335,11 +341,16 @@ onBeforeMount(async () => {
     hiddenStats.value = createInventoryItemStore.item.hiddenStats ?? false;
     if (hiddenStats.value && createInventoryItemStore.item.unidentifiedItemId) {
       try {
-        const resp = await axios.get(
-          `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}/items/by-id/${createInventoryItemStore.item.unidentifiedItemId}`,
-          { headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` } }
-        );
-        const d = resp.data;
+        // Полная модель "неопознанного" вида приходит мастеру вложенной в предмет
+        // (item.unidentifiedItem). Используем её; при отсутствии — пробуем догрузить по id.
+        let d: any = createInventoryItemStore.item.unidentifiedItem;
+        if (!d) {
+          const resp = await axios.get(
+            `${GATEWAY_INTEGRATION_ROUTES.baseURL}${GATEWAY_INTEGRATION_ROUTES.api}/items/by-id/${createInventoryItemStore.item.unidentifiedItemId}`,
+            { headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` } }
+          );
+          d = resp.data;
+        }
         unidentifiedFormItem.value.name = d.name ?? { rus: '', eng: '' };
         unidentifiedFormItem.value.description = d.description ?? '';
         unidentifiedFormItem.value.imgUrl = d.imgUrl ?? '';

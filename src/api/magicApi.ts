@@ -53,6 +53,21 @@ export async function listSpellsDnd2024(
     return data;
 }
 
+/**
+ * Загружает каталог заклинаний комнаты (2014/2024 по baseRuleType) и
+ * строит карту по id — удобно для разрешения заклинаний, хранимых ссылкой (spellId).
+ */
+export async function loadRoomSpellMap(baseRuleType?: string): Promise<Map<string, SpellDto>> {
+    const spells = baseRuleType === "DND2024"
+        ? await listSpellsDnd2024()
+        : await listSpells();
+    const map = new Map<string, SpellDto>();
+    for (const spell of spells ?? []) {
+        if (spell.id) map.set(spell.id, spell);
+    }
+    return map;
+}
+
 export async function createSpell(body: SpellDto): Promise<SpellDto> {
     const { data } = await axios.post<SpellDto>(
         `${baseUrl()}${GATEWAY_INTEGRATION_ROUTES.spells}`,
