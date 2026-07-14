@@ -16,25 +16,20 @@ import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
 import {FILE_STORAGE_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import axios from "axios";
 import {AbilityDto, BackgroundDto, BackgroundStatsDto} from "@/api/rulebookApi.types";
-import {createBackground, getAbilitiesForRoom, updateBackground} from "@/api/rulebookApi";
-import {getOwnRulebookBundles, saveBundleBackground} from "@/api/rulebookBundleApi";
-import type {RulebookBundleDto} from "@/api/rulebookBundleApi.types";
-
-const ownBundles = ref<RulebookBundleDto[]>([]);
-const targetBundleId = ref<string | null>(null);
-import {useGuidebookStore} from "@/stores/GuidebookStore";
-import {useFullBackgroundStore} from "@/stores/FullBackgroundStore";
+import {getBundleBackgrounds, saveBundleBackground} from "@/api/rulebookBundleApi";
 
 const fileInput = ref<HTMLInputElement | null>(null);
 const previewImage = ref<string | null>(null);
 
 const createBackgroundStore = useCreateBackgroundStore();
-const guidebookStore = useGuidebookStore();
-const fullBackgroundStore = useFullBackgroundStore();
 const route = useRoute();
 const router = useRouter();
 
 const abilities = ref<AbilityDto[]>([]);
+const bundleBackgrounds = ref<BackgroundDto[]>([]);
+
+const bundleId = computed(() => String(route.params.bundleId));
+const contentId = computed(() => (route.params.contentId ? String(route.params.contentId) : null));
 
 const allowedFormats = [
   "image/jpeg",
@@ -125,7 +120,7 @@ function removeTrait(index: number) {
 
 function slugCode(name: string): string {
   const base = name.trim().toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "") || "background";
-  const existing = new Set(guidebookStore.backgrounds.map((b) => b.code));
+  const existing = new Set(bundleBackgrounds.value.map((b) => b.code));
   if (!existing.has(base)) return base;
   let n = 1;
   while (existing.has(`${base}_${n}`)) n++;
@@ -140,16 +135,6 @@ async function onSave() {
   const b = createBackgroundStore.background;
   if (!b.name?.trim()) return;
 
-  const routeRoomId = (() => {
-    const v = route.params.roomId as string | string[] | undefined;
-    return Array.isArray(v) ? v[0] : v;
-  })();
-  const roomId =
-    createBackgroundStore.roomId ??
-    guidebookStore.roomId ??
-    routeRoomId;
-  if (!roomId) return;
-
   const code = b.code?.trim() || slugCode(b.name);
   const normalizedTraits = (b.stats?.traits ?? [])
     .map((t) => {
@@ -160,9 +145,9 @@ async function onSave() {
       return {...t, name, description, code: traitCode};
     })
     .filter((t): t is NonNullable<typeof t> => Boolean(t));
-  const dto: BackgroundDto = {
-    id: b.id || "",
-    roomId,
+  const dto = {
+    id: b.id || undefined,
+    roomId: "00000000-0000-0000-0000-000000000000",
     name: b.name.trim(),
     description: b.description?.trim() || "",
     code,
@@ -173,34 +158,12 @@ async function onSave() {
       traits: normalizedTraits,
       proficiencies: b.stats?.proficiencies ?? [],
     },
-  };
+  } as unknown as BackgroundDto;
 
   isSaving.value = true;
   try {
-    const saved = dto.id
-      ? await updateBackground(roomId, dto)
-      : await createBackground(roomId, dto);
-
-    const idx = guidebookStore.backgrounds.findIndex(
-      (x) => (saved.id && x.id === saved.id) || (saved.code && x.code === saved.code)
-    );
-    guidebookStore.backgrounds =
-      idx >= 0
-        ? [...guidebookStore.backgrounds.slice(0, idx), saved, ...guidebookStore.backgrounds.slice(idx + 1)]
-        : [...guidebookStore.backgrounds, saved];
-    fullBackgroundStore.background = saved;
+    const saved = await saveBundleBackground(bundleId.value, dto);
     createBackgroundStore.background = saved;
-    guidebookStore.lastUpdatedAt = Date.now();
-
-    if (targetBundleId.value) {
-      try {
-        await saveBundleBackground(targetBundleId.value, {...dto, id: undefined});
-      } catch (e) {
-        console.error("Не удалось добавить предысторию в набор:", e);
-        alert("Предыстория сохранена в комнате, но не добавлена в набор.");
-      }
-    }
-
     router.back();
   } catch (e) {
     console.error("Не удалось сохранить предысторию:", e);
@@ -249,6 +212,19 @@ async function uploadBackgroundImage(file: File): Promise<string> {
 }
 
 onBeforeMount(async () => {
+  try {
+    bundleBackgrounds.value = await getBundleBackgrounds(bundleId.value);
+  } catch {
+    bundleBackgrounds.value = [];
+  }
+
+  if (contentId.value) {
+    const existing = bundleBackgrounds.value.find((b) => b.id === contentId.value);
+    createBackgroundStore.background = existing ? {...existing} : ({} as BackgroundDto);
+  } else {
+    createBackgroundStore.background = {} as BackgroundDto;
+  }
+
   if (!createBackgroundStore.background.stats) {
     createBackgroundStore.background.stats = {
       id: "",
@@ -263,26 +239,7 @@ onBeforeMount(async () => {
   if (!createBackgroundStore.background.stats.traits) {
     createBackgroundStore.background.stats.traits = [];
   }
-
-  const roomId =
-    createBackgroundStore.roomId ??
-    guidebookStore.roomId ??
-    (() => {
-      const v = route.params.roomId as string | string[] | undefined;
-      return Array.isArray(v) ? v[0] : v;
-    })();
-  if (roomId) {
-    try {
-      abilities.value = await getAbilitiesForRoom(roomId);
-    } catch {
-      abilities.value = [];
-    }
-  }
-  try {
-    ownBundles.value = (await getOwnRulebookBundles()).filter((b) => b.category === "BACKGROUND");
-  } catch {
-    ownBundles.value = [];
-  }
+  // Характеристики стандартные — набор вне комнаты, room-scoped справочник не запрашиваем.
 });
 </script>
 
@@ -401,19 +358,6 @@ onBeforeMount(async () => {
           </div>
         </div>
       </div>
-      <div v-if="ownBundles.length" class="bundle-add-row">
-        <span class="bundle-add-row__label">Добавить в свой набор</span>
-        <ion-select
-          v-model="targetBundleId"
-          interface="popover"
-          placeholder="Не добавлять"
-          class="bundle-add-row__select"
-        >
-          <ion-select-option :value="null">Не добавлять</ion-select-option>
-          <ion-select-option v-for="b in ownBundles" :key="b.id" :value="b.id">{{ b.name }}</ion-select-option>
-        </ion-select>
-      </div>
-
       <ion-buttons class="buttons-block">
         <ion-button color="primary" fill="solid" shape="round" @click="onCancel">
           <ion-icon slot="start" :icon="closeCircleOutline" />
@@ -572,27 +516,4 @@ onBeforeMount(async () => {
   gap: 12px;
   padding: 16px 10px;
 }
-
-.bundle-add-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin: 8px 10px 0;
-  padding: 8px 12px;
-  border-radius: 12px;
-  background: rgba(var(--ion-color-dark-rgb), 0.5);
-  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.28);
-}
-
-.bundle-add-row__label {
-  font-size: 13px;
-  color: rgba(var(--ion-color-light-rgb), 0.8);
-}
-
-.bundle-add-row__select {
-  max-width: 60%;
-  color: var(--ion-color-light);
-}
 </style>
-

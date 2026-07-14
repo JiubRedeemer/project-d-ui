@@ -78,6 +78,14 @@ const routes: Array<RouteRecordRaw> = [
         name: 'profilePage'
     },
     {
+        path: '/my-bundles/rulebook/:category/:bundleId/new',
+        component: () => import('@/views/profile/RulebookBundleContentEditorView.vue'),
+    },
+    {
+        path: '/my-bundles/rulebook/:category/:bundleId/edit/:contentId',
+        component: () => import('@/views/profile/RulebookBundleContentEditorView.vue'),
+    },
+    {
         path: '/my-bundles',
         component: () => import('@/views/profile/MyBundlesView.vue'),
         name: 'myBundlesView'

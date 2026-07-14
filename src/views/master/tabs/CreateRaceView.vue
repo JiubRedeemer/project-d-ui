@@ -17,8 +17,13 @@ import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
 import axios from "axios";
 import {AbilityDto, RaceDto, RaceStatsDto} from "@/api/rulebookApi.types";
 import {createRace, getAbilitiesForRoom, getRootRacesForRoom, updateRace} from "@/api/rulebookApi";
+import {getOwnRulebookBundles, saveBundleRace} from "@/api/rulebookBundleApi";
+import type {RulebookBundleDto} from "@/api/rulebookBundleApi.types";
 import {useGuidebookStore} from "@/stores/GuidebookStore";
 import {useFullRaceStore} from "@/stores/FullRaceStore";
+
+const ownBundles = ref<RulebookBundleDto[]>([]);
+const targetBundleId = ref<string | null>(null);
 
 const ZERO_UUID = "00000000-0000-0000-0000-000000000000";
 
@@ -204,6 +209,16 @@ async function onSave() {
     createRaceStore.race = saved;
     guidebookStore.lastUpdatedAt = Date.now();
 
+    // Опционально — добавить копию в свой набор правил.
+    if (targetBundleId.value) {
+      try {
+        await saveBundleRace(targetBundleId.value, {...raceDto, id: undefined});
+      } catch (e) {
+        console.error("Не удалось добавить расу в набор:", e);
+        alert("Раса сохранена в комнате, но не добавлена в набор.");
+      }
+    }
+
     router.back();
   } catch (e) {
     console.error("Не удалось сохранить расу:", e);
@@ -288,6 +303,12 @@ onBeforeMount(async () => {
     } catch {
       speciesList.value = [];
     }
+  }
+
+  try {
+    ownBundles.value = (await getOwnRulebookBundles()).filter((b) => b.category === "RACE");
+  } catch {
+    ownBundles.value = [];
   }
 });
 </script>
@@ -469,6 +490,19 @@ onBeforeMount(async () => {
         </div>
       </div>
 
+      <div v-if="ownBundles.length" class="bundle-add-row">
+        <span class="bundle-add-row__label">Добавить в свой набор</span>
+        <ion-select
+          v-model="targetBundleId"
+          interface="popover"
+          placeholder="Не добавлять"
+          class="bundle-add-row__select"
+        >
+          <ion-select-option :value="null">Не добавлять</ion-select-option>
+          <ion-select-option v-for="b in ownBundles" :key="b.id" :value="b.id">{{ b.name }}</ion-select-option>
+        </ion-select>
+      </div>
+
       <ion-buttons class="buttons-block">
         <ion-button color="primary" fill="solid" shape="round" @click="onCancel" :disabled="isSaving">
           <ion-icon slot="start" :icon="closeCircleOutline"></ion-icon>
@@ -493,7 +527,7 @@ onBeforeMount(async () => {
 
 .helper-text {
   font-size: 12px;
-  color: var(--ion-color-medium);
+  color: var(--ion-color-secondary);
   margin: 0 0 6px 0;
   line-height: 1.3;
 }
@@ -513,6 +547,28 @@ onBeforeMount(async () => {
   justify-content: center;
   gap: 12px;
   padding: 16px 10px;
+}
+
+.bundle-add-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 8px 10px 0;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(var(--ion-color-dark-rgb), 0.5);
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.28);
+}
+
+.bundle-add-row__label {
+  font-size: 13px;
+  color: rgba(var(--ion-color-light-rgb), 0.8);
+}
+
+.bundle-add-row__select {
+  max-width: 60%;
+  color: var(--ion-color-light);
 }
 
 .header {

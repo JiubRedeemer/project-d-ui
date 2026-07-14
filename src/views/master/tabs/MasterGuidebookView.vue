@@ -430,6 +430,20 @@ watch(
     {flush: "post"}
 );
 
+// Инвалидация кэша справочника при изменении наборов правил (вкл/выкл бандла или элемента).
+watch(
+    () => guidebookStore.lastUpdatedAt,
+    () => {
+      guidebookCache.clear();
+      races.value = [];
+      classes.value = [];
+      backgrounds.value = [];
+      if (currentSection.value !== "list") {
+        void ensureSectionDataLoaded(currentSection.value);
+      }
+    }
+);
+
 type RaceGroup = {
   key: string;
   root: RaceDto | null;
@@ -1463,6 +1477,9 @@ const sectionTitles: Record<string, string> = {
 
 onIonViewDidEnter(async () => {
   await initializeView();
+  // NPCs can be edited on a separate Ionic view; refresh them when returning
+  // so the list reflects the just-saved entity without a full page reload.
+  if (currentSection.value === "npcs") await loadNpcs();
 });
 
 onMounted(() => {

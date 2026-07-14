@@ -1,33 +1,15 @@
 <script setup lang="ts">
 import {add, closeCircleOutline, saveOutline} from "ionicons/icons";
-import {
-  IonButton,
-  IonIcon,
-  IonInput,
-  IonPage,
-  IonSelect,
-  IonSelectOption,
-  IonTextarea,
-} from "@ionic/vue";
-import {onBeforeMount, ref, computed} from "vue";
-import {useRouter} from "vue-router";
+import {IonButton, IonIcon, IonInput, IonPage, IonSelect, IonSelectOption, IonTextarea,} from "@ionic/vue";
+import {computed, onBeforeMount, ref} from "vue";
+import {useRoute, useRouter} from "vue-router";
 import {useCreateClassStore} from "@/stores/createEntity/CreateClassStore";
-import {useRoomCreationStore} from "@/stores/RoomCreationStore";
 import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
 import {FILE_STORAGE_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import axios from "axios";
-import {
-  AbilityDto,
-  ClazzDto,
-  ClazzStatsDto,
-} from "@/api/rulebookApi.types";
-import {getAbilitiesForRoom, getRootClassesForRoom} from "@/api/rulebookApi";
-import {
-  HP_HIT_DIE_OPTIONS,
-  formatClassHpDice,
-  normalizeClassHpDice,
-  parseClassHpDice,
-} from "@/utils/classHpDice";
+import {AbilityDto, ClazzDto, ClazzStatsDto,} from "@/api/rulebookApi.types";
+import {getBundleClasses, saveBundleClass} from "@/api/rulebookBundleApi";
+import {formatClassHpDice, HP_HIT_DIE_OPTIONS, normalizeClassHpDice, parseClassHpDice,} from "@/utils/classHpDice";
 
 const SKILLS_LIST = [
   { name: "Атлетика", code: "ATHL" },
@@ -50,19 +32,22 @@ const SKILLS_LIST = [
   { name: "Убеждение", code: "PERS" },
 ];
 
-const ZERO_UUID = "00000000-0000-0000-0000-000000000000";
-
 const fileInput = ref<HTMLInputElement | null>(null);
 const previewImage = ref<string | null>(null);
 const createClassStore = useCreateClassStore();
-const roomCreationStore = useRoomCreationStore();
+const route = useRoute();
 const router = useRouter();
 const abilities = ref<AbilityDto[]>([]);
 const rootClassesList = ref<ClazzDto[]>([]);
+const bundleClasses = ref<ClazzDto[]>([]);
 const allowedFormats = ["image/jpeg", "image/png", "image/gif", "image/bmp", "image/webp", "image/tiff", "image/svg+xml"];
+const isSaving = ref(false);
+
+const bundleId = computed(() => String(route.params.bundleId));
+const contentId = computed(() => (route.params.contentId ? String(route.params.contentId) : null));
 
 const abilityOptions = computed(() => {
-  const fromApi = abilities.value.map((a) => ({ code: a.code ?? "", name: a.name ?? a.code }));
+  const fromApi = abilities.value.map((a) => ({ code: a.code ?? "", name: a.name ?? a.code ?? "" }));
   const standard = [
     { code: "STR", name: "Сила" },
     { code: "DEX", name: "Ловкость" },
@@ -93,7 +78,7 @@ function savingThrowOptionsForIndex(index: number) {
   const usedCodes = new Set(list.map((st, i) => (i !== index ? st.code : null)).filter(Boolean));
   const currentCode = list[index]?.code;
   return abilityOptions.value.filter(
-    (opt) => opt.code === currentCode || !usedCodes.has(opt.code)
+      (opt) => opt.code === currentCode || !usedCodes.has(opt.code)
   );
 }
 
@@ -175,11 +160,11 @@ function setSkillInPool(index: number, code: string | null) {
 function skillOptionsForIndex(index: number) {
   const pool = skillPool.value;
   const usedCodes = new Set(
-    pool.map((c, i) => (i !== index && c ? c : null)).filter((c): c is string => !!c)
+      pool.map((c, i) => (i !== index && c ? c : null)).filter((c): c is string => !!c)
   );
   const currentCode = pool[index] ?? null;
   return SKILLS_LIST.filter(
-    (s) => s.code === currentCode || !usedCodes.has(s.code)
+      (s) => s.code === currentCode || !usedCodes.has(s.code)
   );
 }
 
@@ -207,18 +192,21 @@ const handleFileUpload = async (event: Event) => {
 async function uploadClassImage(file: File): Promise<string> {
   const formData = new FormData();
   formData.append("file", file);
-  formData.append("userFilename", createClassStore.clazz.id || createClassStore.clazz.code || "class");
+  formData.append(
+    "userFilename",
+    createClassStore.clazz.id || createClassStore.clazz.code || `class_${Date.now()}`
+  );
   const res = await axios.put(
-    `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.classes_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.upload}`,
-    formData,
-    { headers: { "Content-Type": "multipart/form-data" } }
+      `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.classes_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.upload}`,
+      formData,
+      { headers: { "Content-Type": "multipart/form-data" } }
   );
   return res.data;
 }
 
 function slugCode(name: string): string {
   const base = name.trim().toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "") || "class";
-  const existing = new Set(roomCreationStore.classes.map((c) => c.code));
+  const existing = new Set(bundleClasses.value.map((c) => c.code));
   if (!existing.has(base)) return base;
   let n = 1;
   while (existing.has(`${base}_${n}`)) n++;
@@ -229,25 +217,48 @@ function onCancel() {
   router.back();
 }
 
-function onSave() {
+async function onSave() {
   const c = createClassStore.clazz;
   if (!c.name?.trim()) return;
   const code = c.code?.trim() || slugCode(c.name);
-  const clazzDto: ClazzDto = {
-    id: c.id || "",
-    roomId: c.roomId || "",
+  const clazzDto = {
+    id: c.id || undefined,
+    roomId: "00000000-0000-0000-0000-000000000000",
     name: c.name.trim(),
     description: c.description?.trim() || null,
     code,
     groupCode: c.groupCode || null,
     imgUrl: c.imgUrl || null,
     stats: c.stats!,
-  };
-  roomCreationStore.classes = [...roomCreationStore.classes, clazzDto];
-  router.back();
+  } as unknown as ClazzDto;
+  isSaving.value = true;
+  try {
+    const saved = await saveBundleClass(bundleId.value, clazzDto);
+    createClassStore.clazz = saved;
+    router.back();
+  } catch (e) {
+    console.error("Не удалось сохранить класс:", e);
+    alert("Не удалось сохранить класс. Проверьте соединение и заполнение полей.");
+  } finally {
+    isSaving.value = false;
+  }
 }
 
 onBeforeMount(async () => {
+  try {
+    bundleClasses.value = await getBundleClasses(bundleId.value);
+  } catch {
+    bundleClasses.value = [];
+  }
+  rootClassesList.value = bundleClasses.value;
+
+  if (contentId.value) {
+    const existing = bundleClasses.value.find((c) => c.id === contentId.value);
+    createClassStore.clazz = existing ? {...existing} : ({} as ClazzDto);
+  } else {
+    createClassStore.clazz = {} as ClazzDto;
+  }
+
   if (!createClassStore.clazz.stats) {
     createClassStore.clazz.stats = {
       id: "",
@@ -263,20 +274,7 @@ onBeforeMount(async () => {
   if (!createClassStore.clazz.stats.availableSkills?.length) {
     createClassStore.clazz.stats.availableSkills = [{ type: "ABILITY", count: 2, of: [] }];
   }
-  const roomId = createClassStore.roomId ?? roomCreationStore.roomInfoCreatedId;
-  const baseRules = roomCreationStore.roomInfo?.baseRules;
-  if (roomId) {
-    try {
-      abilities.value = await getAbilitiesForRoom(roomId);
-    } catch {
-      abilities.value = [];
-    }
-  }
-  try {
-    rootClassesList.value = await getRootClassesForRoom(ZERO_UUID, baseRules);
-  } catch {
-    rootClassesList.value = [];
-  }
+  // Характеристики стандартные — набор вне комнаты, room-scoped справочник не запрашиваем.
 });
 </script>
 
@@ -303,13 +301,13 @@ onBeforeMount(async () => {
             <div class="stat-section-name">Название класса</div>
             <p class="helper-text">Краткое название, например: Воин, Плут.</p>
             <ion-input
-              type="text"
-              fill="outline"
-              color="primary"
-              :clear-input="true"
-              v-model="createClassStore.clazz.name"
-              label-placement="floating"
-              class="input-block"
+                type="text"
+                fill="outline"
+                color="primary"
+                :clear-input="true"
+                v-model="createClassStore.clazz.name"
+                label-placement="floating"
+                class="input-block"
             />
           </div>
 
@@ -317,12 +315,12 @@ onBeforeMount(async () => {
             <div class="stat-section-name">Описание</div>
             <p class="helper-text">Подробное описание класса для игроков.</p>
             <ion-textarea
-              fill="outline"
-              color="primary"
-              :clear-input="true"
-              v-model="createClassStore.clazz.description"
-              class="input-block"
-              :rows="5"
+                fill="outline"
+                color="primary"
+                :clear-input="true"
+                v-model="createClassStore.clazz.description"
+                class="input-block"
+                :rows="5"
             />
           </div>
 
@@ -333,13 +331,13 @@ onBeforeMount(async () => {
             </p>
             <div class="hp-dice-row">
               <ion-select
-                fill="outline"
-                color="primary"
-                :value="hpDiceParts.die"
-                interface="popover"
-                class="hp-dice-select"
-                placeholder="Кость"
-                @ionChange="(e) => setHpDiceDie((e as CustomEvent).detail.value ?? hpDiceParts.die)"
+                  fill="outline"
+                  color="primary"
+                  :value="hpDiceParts.die"
+                  interface="popover"
+                  class="hp-dice-select"
+                  placeholder="Кость"
+                  @ionChange="(e) => setHpDiceDie((e as CustomEvent).detail.value ?? hpDiceParts.die)"
               >
                 <ion-select-option v-for="d in HP_HIT_DIE_OPTIONS" :key="d.value" :value="d.value">
                   {{ d.label }}
@@ -347,18 +345,18 @@ onBeforeMount(async () => {
               </ion-select>
               <span class="hp-dice-plus" aria-hidden="true">+</span>
               <ion-select
-                fill="outline"
-                color="primary"
-                :value="hpDiceParts.ability"
-                interface="popover"
-                class="hp-dice-select hp-dice-select--ability"
-                placeholder="Характеристика"
-                @ionChange="(e) => setHpDiceAbility((e as CustomEvent).detail.value ?? hpDiceParts.ability)"
+                  fill="outline"
+                  color="primary"
+                  :value="hpDiceParts.ability"
+                  interface="popover"
+                  class="hp-dice-select hp-dice-select--ability"
+                  placeholder="Характеристика"
+                  @ionChange="(e) => setHpDiceAbility((e as CustomEvent).detail.value ?? hpDiceParts.ability)"
               >
                 <ion-select-option
-                  v-for="opt in abilityOptions"
-                  :key="opt.code"
-                  :value="opt.code"
+                    v-for="opt in abilityOptions"
+                    :key="opt.code"
+                    :value="opt.code"
                 >
                   {{ opt.name }} ({{ opt.code }})
                 </ion-select-option>
@@ -371,22 +369,22 @@ onBeforeMount(async () => {
             <div class="stat-section-name">Владение спасбросками</div>
             <p class="helper-text">Характеристики, по которым класс получает владение спасбросками (обычно две).</p>
             <div
-              v-for="(st, index) in savingThrows"
-              :key="index"
-              class="bonus-row"
+                v-for="(st, index) in savingThrows"
+                :key="index"
+                class="bonus-row"
             >
               <ion-select
-                fill="outline"
-                color="primary"
-                :value="st.code"
-                @ionChange="(e) => setSavingThrowCode(index, (e as CustomEvent).detail.value ?? st.code)"
-                interface="popover"
-                class="bonus-select"
+                  fill="outline"
+                  color="primary"
+                  :value="st.code"
+                  @ionChange="(e) => setSavingThrowCode(index, (e as CustomEvent).detail.value ?? st.code)"
+                  interface="popover"
+                  class="bonus-select"
               >
                 <ion-select-option
-                  v-for="opt in savingThrowOptionsForIndex(index)"
-                  :key="opt.code"
-                  :value="opt.code"
+                    v-for="opt in savingThrowOptionsForIndex(index)"
+                    :key="opt.code"
+                    :value="opt.code"
                 >
                   {{ opt.name }}
                 </ion-select-option>
@@ -404,24 +402,24 @@ onBeforeMount(async () => {
             <div class="stat-section-name">Доступные навыки</div>
             <p class="helper-text">Навыки, из которых игрок может выбрать (например: Атлетика, Медицина).</p>
             <div
-              v-for="(code, index) in skillPool"
-              :key="index"
-              class="bonus-row"
+                v-for="(code, index) in skillPool"
+                :key="index"
+                class="bonus-row"
             >
               <ion-select
-                fill="outline"
-                color="primary"
-                :value="code ?? ''"
-                @ionChange="(e) => setSkillInPool(index, (e as CustomEvent).detail.value || null)"
-                interface="popover"
-                placeholder="Выберите навык"
-                class="bonus-select skill-select-full"
+                  fill="outline"
+                  color="primary"
+                  :value="code ?? ''"
+                  @ionChange="(e) => setSkillInPool(index, (e as CustomEvent).detail.value || null)"
+                  interface="popover"
+                  placeholder="Выберите навык"
+                  class="bonus-select skill-select-full"
               >
                 <ion-select-option value="">—</ion-select-option>
                 <ion-select-option
-                  v-for="s in skillOptionsForIndex(index)"
-                  :key="s.code"
-                  :value="s.code"
+                    v-for="s in skillOptionsForIndex(index)"
+                    :key="s.code"
+                    :value="s.code"
                 >
                   {{ s.name }}
                 </ion-select-option>
@@ -436,14 +434,14 @@ onBeforeMount(async () => {
             <div class="stat-section skill-count-block">
               <div class="stat-section-name">Количество навыков к выбору:</div>
               <ion-input
-                type="number"
-                fill="outline"
-                color="primary"
-                :clear-input="true"
-                :value="skillChooseCount"
-                @ionInput="(e) => { const v = Number((e.target as HTMLIonInputElement).value); if (!Number.isNaN(v) && v >= 0) setSkillChooseCount(v); }"
-                min="0"
-                class="input-block skill-count-input"
+                  type="number"
+                  fill="outline"
+                  color="primary"
+                  :clear-input="true"
+                  :value="skillChooseCount"
+                  @ionInput="(e) => { const v = Number((e.target as HTMLIonInputElement).value); if (!Number.isNaN(v) && v >= 0) setSkillChooseCount(v); }"
+                  min="0"
+                  class="input-block skill-count-input"
               />
             </div>
           </div>
@@ -452,19 +450,19 @@ onBeforeMount(async () => {
             <div class="stat-section-name">Является подклассом</div>
             <p class="helper-text">Выберите родительский класс, если это подкласс (например, следопыт — подкласс воина).</p>
             <ion-select
-              fill="outline"
-              color="primary"
-              :value="createClassStore.clazz.groupCode ?? ''"
-              @ionChange="(e) => { const v = (e as CustomEvent).detail.value; createClassStore.clazz.groupCode = v === '' ? null : v; }"
-              interface="popover"
-              placeholder="Нет (основной класс)"
-              class="input-block"
+                fill="outline"
+                color="primary"
+                :value="createClassStore.clazz.groupCode ?? ''"
+                @ionChange="(e) => { const v = (e as CustomEvent).detail.value; createClassStore.clazz.groupCode = v === '' ? null : v; }"
+                interface="popover"
+                placeholder="Нет (основной класс)"
+                class="input-block"
             >
               <ion-select-option value="">Нет (основной класс)</ion-select-option>
               <ion-select-option
-                v-for="root in rootClassesList"
-                :key="root.code"
-                :value="root.code"
+                  v-for="root in rootClassesList"
+                  :key="root.code"
+                  :value="root.code"
               >
                 {{ root.name }}
               </ion-select-option>
@@ -477,7 +475,13 @@ onBeforeMount(async () => {
           <ion-icon slot="start" :icon="closeCircleOutline" />
           Отменить
         </ion-button>
-        <ion-button color="primary" fill="solid" shape="round" :disabled="!createClassStore.clazz.name?.trim()" @click="onSave">
+        <ion-button
+            color="primary"
+            fill="solid"
+            shape="round"
+            :disabled="!createClassStore.clazz.name?.trim() || isSaving"
+            @click="onSave"
+        >
           <ion-icon slot="start" :icon="saveOutline" />
           Сохранить
         </ion-button>

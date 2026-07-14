@@ -3,10 +3,15 @@ import {
   IonButton,
   IonIcon,
   IonInput,
+  IonLabel,
+  IonSegment,
+  IonSegmentButton,
   IonToggle,
   toastController,
 } from "@ionic/vue";
 import {computed, onMounted, ref} from "vue";
+import MasterRulebookBundlesView from "@/views/master/tabs/MasterRulebookBundlesView.vue";
+import type {RulebookBundleCategory} from "@/api/rulebookBundleApi.types";
 import {useRoute} from "vue-router";
 import {
   checkmarkCircle,
@@ -28,6 +33,7 @@ import {
 } from "@/api/bundleApi";
 
 const route = useRoute();
+const subTab = ref<"items" | RulebookBundleCategory>("items");
 const bundles = ref<ItemBundle[]>([]);
 const isLoading = ref(false);
 const searchQuery = ref("");
@@ -160,6 +166,17 @@ function closePreview() {
 
 <template>
   <div class="bundles-view">
+    <!-- Подвкладки: предметы / расы / классы / предыстории -->
+    <ion-segment v-model="subTab" class="bundles-subtabs" mode="ios" scrollable>
+      <ion-segment-button value="items"><ion-label>Предметы</ion-label></ion-segment-button>
+      <ion-segment-button value="RACE"><ion-label>Расы</ion-label></ion-segment-button>
+      <ion-segment-button value="CLAZZ"><ion-label>Классы</ion-label></ion-segment-button>
+      <ion-segment-button value="BACKGROUND"><ion-label>Предыстории</ion-label></ion-segment-button>
+    </ion-segment>
+
+    <MasterRulebookBundlesView v-if="subTab !== 'items'" :category="subTab" />
+
+    <template v-else>
     <!-- Шапка -->
     <div class="bundles-hero">
       <div class="bundles-hero__icon">
@@ -265,6 +282,7 @@ function closePreview() {
         </div>
       </div>
     </div>
+    </template>
 
     <!-- Просмотр состава -->
     <Teleport to="body">
@@ -341,6 +359,62 @@ function closePreview() {
   max-width: 860px;
   margin: 0 auto;
   width: 100%;
+}
+.bundles-subtabs {
+  --background: transparent;
+  --indicator-color: transparent;
+  width: 100%;
+  min-height: 48px;
+  padding: 4px;
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.09);
+  border-radius: 16px;
+  background:
+    linear-gradient(115deg, rgba(var(--ion-color-primary-rgb), 0.13), transparent 46%),
+    rgba(var(--ion-color-medium-rgb), 0.4);
+  box-shadow: inset 0 1px 0 rgba(var(--ion-color-light-rgb), 0.05), 0 8px 22px rgba(0, 0, 0, 0.14);
+  overflow: hidden;
+}
+
+.bundles-subtabs ion-segment-button {
+  --background: transparent;
+  --background-checked: rgba(var(--ion-color-primary-rgb), 0.24);
+  --color: rgba(var(--ion-color-light-rgb), 0.6);
+  --color-checked: var(--ion-color-light);
+  --indicator-color: transparent;
+  min-width: max-content;
+  min-height: 38px;
+  margin: 0;
+  border-radius: 11px;
+  font-size: 12.5px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.bundles-subtabs ion-segment-button::part(indicator-background) {
+  border-radius: 11px;
+  box-shadow: inset 0 0 0 1px rgba(var(--ion-color-primary-rgb), 0.38), 0 4px 12px rgba(var(--ion-color-primary-rgb), 0.18);
+}
+
+.bundles-subtabs ion-segment-button.segment-button-checked {
+  font-weight: 750;
+}
+
+.bundles-subtabs ion-segment-button:not(.segment-button-checked):hover {
+  --color: rgba(var(--ion-color-light-rgb), 0.9);
+  --background: rgba(var(--ion-color-light-rgb), 0.05);
+}
+
+@media (max-width: 420px) {
+  .bundles-subtabs {
+    margin-inline: -2px;
+    width: calc(100% + 4px);
+  }
+
+  .bundles-subtabs ion-segment-button {
+    font-size: 12px;
+  }
 }
 
 /* ── Шапка ────────────────────────────────────── */

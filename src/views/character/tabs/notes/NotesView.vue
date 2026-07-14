@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {computed, onMounted, ref, watch} from "vue";
+import {computed, onMounted, onUnmounted, ref, watch} from "vue";
 import {useNoteStore} from "@/stores/NoteStore";
 import {useRoute} from "vue-router";
 import axios from "axios";
@@ -12,6 +12,7 @@ import {
   IonLabel,
   IonTextarea,
   onIonViewDidEnter,
+  onIonViewDidLeave,
   useIonRouter
 } from "@ionic/vue";
 import {addOutline, documentOutline, chevronDownOutline, createOutline, saveOutline, trashOutline} from "ionicons/icons";
@@ -355,8 +356,16 @@ const openFilesView = () => {
 const noteStore = useNoteStore();
 watch(() => noteStore.refreshTrigger, (val, old) => { if (val !== old) loadNotesData(); });
 
+// Прячем нижний таб-бар (PlayerView), пока открыта карточка — он перекрывает контент.
+watch(isBlockExpanded, (value) => {
+  noteStore.editingActive = value !== null;
+});
+
 onMounted(loadNotesData);
 onIonViewDidEnter(loadNotesData);
+
+onIonViewDidLeave(() => { noteStore.editingActive = false; });
+onUnmounted(() => { noteStore.editingActive = false; });
 
 const expandBlock = (noteNumber: number, section: NoteSection) => {
   isBlockExpanded.value = noteNumber;
@@ -915,7 +924,7 @@ const onNotesViewOutsideClick = (e: MouseEvent) => {
     </div>
   </div>
 
-  <div class="add-new-button">
+  <div class="add-new-button" v-show="isBlockExpanded === null">
     <ion-button size="large" shape="round" color="secondary" @click="isBlockExpanded = 'new'">
       <ion-icon slot="icon-only" :icon="addOutline"/>
     </ion-button>

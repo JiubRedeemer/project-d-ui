@@ -33,8 +33,13 @@ export type NpcAbilityScore = {
 };
 
 export type NpcSkillDto = { name: string; bonus: number };
-export type NpcActionDto = { name: string; description: string };
+export type NpcActionType = "ACTION" | "BONUS_ACTION" | "REACTION" | "LEGENDARY_ACTION" | "LAIR_ACTION";
+export type NpcActionDto = { name: string; description: string; type?: NpcActionType | null };
 export type NpcFeatureDto = { name: string; description: string };
+export type NpcSavingThrowDto = { name: string; bonus: number };
+export type NpcSpellSlotDto = { level: number; max: number; current: number };
+export type NpcSpellDto = { name: string; level: number | null; description?: string | null; chargesPerDay?: number | null };
+export type NpcSenseDto = { name: string; value: number };
 
 export type NpcDto = {
   id: string;
@@ -61,6 +66,13 @@ export type NpcDto = {
   skills?: NpcSkillDto[] | null;
   actions?: NpcActionDto[] | null;
   features?: NpcFeatureDto[] | null;
+  savingThrows?: NpcSavingThrowDto[] | null;
+  resistances?: string[] | null;
+  immunities?: string[] | null;
+  senses?: NpcSenseDto[] | null;
+  languages?: string | null;
+  spellSlots?: NpcSpellSlotDto[] | null;
+  spells?: NpcSpellDto[] | null;
   abilities?: NpcAbilityScore[] | null;
   imgUrl?: string | null;
   createdBy: string;
@@ -91,6 +103,13 @@ export type SaveNpcRequest = {
   skills?: NpcSkillDto[] | null;
   actions?: NpcActionDto[] | null;
   features?: NpcFeatureDto[] | null;
+  savingThrows?: NpcSavingThrowDto[] | null;
+  resistances?: string[] | null;
+  immunities?: string[] | null;
+  senses?: NpcSenseDto[] | null;
+  languages?: string | null;
+  spellSlots?: NpcSpellSlotDto[] | null;
+  spells?: NpcSpellDto[] | null;
   strScore?: number | null;
   dexScore?: number | null;
   conScore?: number | null;

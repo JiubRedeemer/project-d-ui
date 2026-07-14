@@ -1,5 +1,4 @@
 <script setup lang="ts">
-
 import {FILE_STORAGE_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {add, closeCircleOutline, saveOutline} from "ionicons/icons";
 import {
@@ -12,48 +11,58 @@ import {
   IonTextarea,
 } from "@ionic/vue";
 import {computed, onBeforeMount, ref} from "vue";
-import {useRouter} from "vue-router";
+import {useRoute, useRouter} from "vue-router";
 import {useCreateRaceStore} from "@/stores/createEntity/CreateRaceStore";
-import {useRoomCreationStore} from "@/stores/RoomCreationStore";
-import axios from "axios";
 import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
+import axios from "axios";
 import {AbilityDto, RaceDto, RaceStatsDto} from "@/api/rulebookApi.types";
-import {getAbilitiesForRoom, getRootRacesForRoom} from "@/api/rulebookApi";
-
-const ZERO_UUID = "00000000-0000-0000-0000-000000000000";
+import {getBundleRaces, saveBundleRace} from "@/api/rulebookBundleApi";
 
 const fileInput = ref<HTMLInputElement | null>(null);
 const previewImage = ref<string | null>(null);
-const createRaceStore = useCreateRaceStore();
-const roomCreationStore = useRoomCreationStore();
-const router = useRouter();
-const allowedFormats = ["image/jpeg", "image/png", "image/gif", "image/bmp", "image/webp", "image/tiff", "image/svg+xml"];
 const avatarImage = ref<File | null>(null);
 const filePath = ref<string>("");
+
+const createRaceStore = useCreateRaceStore();
+const route = useRoute();
+const router = useRouter();
+
+const bundleId = computed(() => String(route.params.bundleId));
+const contentId = computed(() => (route.params.contentId ? String(route.params.contentId) : null));
+
 const abilities = ref<AbilityDto[]>([]);
 const speciesList = ref<RaceDto[]>([]);
+const bundleRaces = ref<RaceDto[]>([]);
+
+const allowedFormats = [
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/bmp",
+  "image/webp",
+  "image/tiff",
+  "image/svg+xml",
+];
+
+const isSaving = ref(false);
 
 const abilityOptions = computed(() => {
-  const fromApi = abilities.value.map((a) => ({ code: a.code ?? "", name: a.name ?? a.code }));
+  const fromApi = abilities.value.map((a) => ({code: a.code ?? "", name: a.name ?? a.code}));
   const special = [
-    { code: "ANY", name: "Любая" },
-    { code: "ALL", name: "Все" },
+    {code: "ANY", name: "Любая"},
+    {code: "ALL", name: "Все"},
   ];
   const standard = [
-    { code: "STR", name: "Сила" },
-    { code: "DEX", name: "Ловкость" },
-    { code: "CON", name: "Телосложение" },
-    { code: "INT", name: "Интеллект" },
-    { code: "WIS", name: "Мудрость" },
-    { code: "CHA", name: "Харизма" },
+    {code: "STR", name: "Сила"},
+    {code: "DEX", name: "Ловкость"},
+    {code: "CON", name: "Телосложение"},
+    {code: "INT", name: "Интеллект"},
+    {code: "WIS", name: "Мудрость"},
+    {code: "CHA", name: "Харизма"},
   ];
   if (fromApi.length) return [...fromApi, ...special];
   return [...standard, ...special];
 });
-
-function abilityCodeToLabel(code: string): string {
-  return abilityOptions.value.find((o) => o.code === code)?.name ?? code;
-}
 
 const raceImageUrl = computed(() => {
   const url = createRaceStore.race.imgUrl;
@@ -71,7 +80,7 @@ const canAddBonus = computed(() => {
 function addBonus() {
   if (!createRaceStore.race.stats) return;
   const list = [...(createRaceStore.race.stats.abilityModifiers ?? [])];
-  list.push({ code: "STR", value: 0, count: 1 });
+  list.push({code: "STR", value: 0, count: 1});
   createRaceStore.race.stats.abilityModifiers = list;
 }
 
@@ -87,7 +96,7 @@ function setModifierCode(index: number, code: string) {
   if (!list || !list[index]) return;
   list[index].code = code;
   if (code === "ALL" || code === "ANY") {
-    const kept = { ...list[index] };
+    const kept = {...list[index]};
     createRaceStore.race.stats!.abilityModifiers = [kept];
   }
 }
@@ -120,13 +129,12 @@ function removeTrait(index: number) {
   createRaceStore.race.stats!.traits = next;
 }
 
-const triggerFileInput = () => {
-  fileInput.value?.click();
-};
+const triggerFileInput = () => fileInput.value?.click();
 
 function slugCode(name: string): string {
-  const base = name.trim().toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "") || "race";
-  const existing = new Set(roomCreationStore.races.map((r) => r.code));
+  const base =
+    name.trim().toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "") || "race";
+  const existing = new Set(bundleRaces.value.map((r) => r.code));
   if (!existing.has(base)) return base;
   let n = 1;
   while (existing.has(`${base}_${n}`)) n++;
@@ -137,9 +145,10 @@ function onCancel() {
   router.back();
 }
 
-function onSave() {
+async function onSave() {
   const r = createRaceStore.race;
   if (!r.name?.trim()) return;
+
   const code = r.code?.trim() || slugCode(r.name);
   const normalizedTraits = (r.stats?.traits ?? [])
     .map((t) => {
@@ -150,9 +159,11 @@ function onSave() {
       return {...t, name, description, code: traitCode};
     })
     .filter((t): t is NonNullable<typeof t> => Boolean(t));
-  const raceDto: RaceDto = {
-    id: r.id || "",
-    roomId: r.roomId || "",
+  const raceDto = {
+    id: r.id || undefined,
+    // roomId рулбук игнорирует для контента бандла (проставляет null); шлём заглушку,
+    // чтобы удовлетворить обязательное поле gateway-DTO.
+    roomId: "00000000-0000-0000-0000-000000000000",
     name: r.name.trim(),
     description: r.description?.trim() || "",
     code,
@@ -164,12 +175,73 @@ function onSave() {
       traits: normalizedTraits,
       proficiencies: r.stats?.proficiencies ?? [],
     },
-  };
-  roomCreationStore.races = [...roomCreationStore.races, raceDto];
-  router.back();
+  } as unknown as RaceDto;
+
+  isSaving.value = true;
+  try {
+    const saved = await saveBundleRace(bundleId.value, raceDto);
+    createRaceStore.race = saved;
+    router.back();
+  } catch (e) {
+    console.error("Не удалось сохранить расу:", e);
+    alert("Не удалось сохранить расу. Проверьте соединение и заполнение полей.");
+  } finally {
+    isSaving.value = false;
+  }
 }
 
+function uploadToMinio(file: File): Promise<string> {
+  const userFilename = createRaceStore.race.id || createRaceStore.race.code || `race_${Date.now()}`;
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("userFilename", String(userFilename));
+
+  return axios
+    .put(
+      `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.races_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.upload}`,
+      formData,
+      {headers: {"Content-Type": "multipart/form-data"}}
+    )
+    .then((res) => res.data);
+}
+
+const handleFileUpload = async (event: Event) => {
+  const file = (event.target as HTMLInputElement).files?.[0] || null;
+  if (!file || !allowedFormats.includes(file.type)) {
+    alert("Формат файла не поддерживается. Разрешены: JPG, PNG, GIF, BMP, WEBP, TIFF, SVG.");
+    return;
+  }
+
+  avatarImage.value = file;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    previewImage.value = reader.result as string;
+  };
+  reader.readAsDataURL(file);
+
+  filePath.value = await uploadToMinio(file);
+  createRaceStore.race.imgUrl = filePath.value;
+};
+
 onBeforeMount(async () => {
+  // Загружаем список рас набора (для выбора родительского вида и генерации кодов)
+  try {
+    bundleRaces.value = await getBundleRaces(bundleId.value);
+  } catch {
+    bundleRaces.value = [];
+  }
+  speciesList.value = bundleRaces.value;
+
+  // Редактирование существующей расы либо создание новой
+  if (contentId.value) {
+    const existing = bundleRaces.value.find((r) => r.id === contentId.value);
+    createRaceStore.race = existing ? {...existing} : ({} as RaceDto);
+  } else {
+    createRaceStore.race = {} as RaceDto;
+  }
+
   if (!createRaceStore.race.stats) {
     createRaceStore.race.stats = {
       id: "",
@@ -188,53 +260,8 @@ onBeforeMount(async () => {
   if (!createRaceStore.race.stats.traits) {
     createRaceStore.race.stats.traits = [];
   }
-  const roomId = createRaceStore.roomId ?? roomCreationStore.roomInfoCreatedId;
-  const baseRules = roomCreationStore.roomInfo?.baseRules;
-  if (roomId) {
-    try {
-      abilities.value = await getAbilitiesForRoom(roomId);
-    } catch {
-      abilities.value = [];
-    }
-  }
-  try {
-    speciesList.value = await getRootRacesForRoom(ZERO_UUID, baseRules);
-  } catch {
-    speciesList.value = [];
-  }
+  // Характеристики стандартные (STR/DEX/…) — набор вне комнаты, room-scoped справочник не запрашиваем.
 });
-
-const handleFileUpload = async (event: Event) => {
-  const file = (event.target as HTMLInputElement).files?.[0] || null;
-  if (file && allowedFormats.includes(file.type)) {
-    avatarImage.value = file;
-    const reader = new FileReader();
-    reader.onload = () => {
-      previewImage.value = reader.result as string;
-    };
-    reader.readAsDataURL(file);
-    filePath.value = await uploadToMinio(avatarImage.value);
-    createRaceStore.race.imgUrl = filePath.value;
-  } else {
-    alert("Формат файла не поддерживается. Разрешены: JPG, PNG, GIF, BMP, WEBP, TIFF, SVG.");
-  }
-};
-
-const uploadToMinio = async (file: File): Promise<string> => {
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("userFilename", createRaceStore.race.id);
-  const res = await axios.put(
-      `${FILE_STORAGE_INTEGRATION_ROUTES.baseURL}${FILE_STORAGE_INTEGRATION_ROUTES.api}${FILE_STORAGE_INTEGRATION_ROUTES.races_images_bucket}${FILE_STORAGE_INTEGRATION_ROUTES.upload}`,
-      formData,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      }
-  );
-  return res.data;
-};
 </script>
 
 <template>
@@ -256,6 +283,7 @@ const uploadToMinio = async (file: File): Promise<string> => {
             <p class="helper-text helper-text--block">Нажмите, чтобы загрузить изображение. Форматы: JPG, PNG, GIF, BMP, WEBP, TIFF, SVG.</p>
           </div>
         </div>
+
         <div class="body">
           <div class="stat-section">
             <div class="stat-section-name">Название вида</div>
@@ -412,12 +440,13 @@ const uploadToMinio = async (file: File): Promise<string> => {
           </div>
         </div>
       </div>
+
       <ion-buttons class="buttons-block">
-        <ion-button color="primary" fill="solid" shape="round" @click="onCancel">
+        <ion-button color="primary" fill="solid" shape="round" @click="onCancel" :disabled="isSaving">
           <ion-icon slot="start" :icon="closeCircleOutline"></ion-icon>
           Отменить
         </ion-button>
-        <ion-button color="primary" fill="solid" shape="round" :disabled="!createRaceStore.race.name?.trim()" @click="onSave">
+        <ion-button color="primary" fill="solid" shape="round" :disabled="!createRaceStore.race.name?.trim() || isSaving" @click="onSave">
           <ion-icon slot="start" :icon="saveOutline"></ion-icon>
           Сохранить
         </ion-button>
@@ -503,17 +532,17 @@ const uploadToMinio = async (file: File): Promise<string> => {
   color: var(--ion-color-light);
 }
 
-.stat-section {
-  margin-top: 16px;
-  font-size: 16px;
-  width: 90%;
-}
-
 .body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  padding: 16px 0;
+}
+
+.stat-section {
+  margin-top: 16px;
+  font-size: 16px;
+  width: 90%;
 }
 
 .section-description {

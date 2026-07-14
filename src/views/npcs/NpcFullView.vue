@@ -483,6 +483,8 @@ async function submitAddRelation() {
             </div>
           </section>
 
+          <section v-if="npc.savingThrows?.length" class="panel"><h2 class="panel__title">Спасброски</h2><div class="skill-chips"><div v-for="save in npc.savingThrows" :key="save.name" class="skill-chip"><span class="skill-chip__name">{{ save.name }}</span><span class="skill-chip__bonus">{{ save.bonus >= 0 ? '+' : '' }}{{ save.bonus }}</span></div></div></section>
+
           <section v-if="npc.features && npc.features.length > 0" class="panel">
             <h2 class="panel__title">Умения</h2>
             <div class="entry-list">
@@ -497,11 +499,14 @@ async function submitAddRelation() {
             <h2 class="panel__title">Действия</h2>
             <div class="entry-list">
               <div v-for="action in npc.actions" :key="action.name" class="entry-card entry-card--action">
-                <div class="entry-card__name">{{ action.name }}</div>
+                <div class="entry-card__name">{{ action.name }} <small v-if="action.type">({{ ({ACTION:'Действие',BONUS_ACTION:'Бонусное действие',REACTION:'Реакция',LEGENDARY_ACTION:'Легендарное действие',LAIR_ACTION:'Действие логова'} as Record<string,string>)[action.type] }})</small></div>
                 <div class="entry-card__desc">{{ action.description }}</div>
               </div>
             </div>
           </section>
+
+          <section v-if="npc.resistances?.length || npc.immunities?.length || npc.senses?.length || npc.languages" class="panel"><h2 class="panel__title">Особые параметры</h2><p v-if="npc.resistances?.length"><b>Сопротивления:</b> {{ npc.resistances.join(', ') }}</p><p v-if="npc.immunities?.length"><b>Иммунитеты:</b> {{ npc.immunities.join(', ') }}</p><p v-if="npc.senses?.length"><b>Пассивные чувства:</b> {{ npc.senses.map(s => `${s.name} ${s.value}`).join(', ') }}</p><p v-if="npc.languages"><b>Языки:</b> {{ npc.languages }}</p></section>
+          <section v-if="npc.spells?.length" class="panel"><h2 class="panel__title">Заклинания</h2><div v-for="level in [...new Set(npc.spells.map(s => s.level))].sort((a,b)=>a-b)" :key="level"><h3>{{ level === 0 ? 'Заговоры' : `Уровень ${level}` }}</h3><p v-for="spell in npc.spells.filter(s => s.level === level)" :key="spell.name"><b>{{ spell.name }}</b><span v-if="spell.chargesPerDay != null"> <small>({{ spell.chargesPerDay }} в день)</small></span><span v-if="spell.description"> — {{ spell.description }}</span></p></div></section>
 
           <section v-if="npc.description" class="panel">
             <h2 class="panel__title">Описание</h2>

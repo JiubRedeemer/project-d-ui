@@ -24,6 +24,7 @@ import {
 } from "@/api/npcApi";
 import type {
   NpcDto,
+  NpcActionType,
   NpcTypeEnum,
   RelationTypeEnum,
   SaveCharacterNpcRelationRequest,
@@ -72,24 +73,24 @@ const fileInput = ref<HTMLInputElement | null>(null);
 const typeSelectRef = ref<InstanceType<typeof IonSelect> | null>(null);
 
 const DND_SKILLS = [
-  { name: "Атлетика", code: "ATHL" },
-  { name: "Акробатика", code: "ACRO" },
-  { name: "Ловкость рук", code: "SLEI" },
-  { name: "Скрытность", code: "STEA" },
-  { name: "История", code: "HIST" },
-  { name: "Магия", code: "ARCA" },
-  { name: "Природа", code: "NATR" },
-  { name: "Расследование", code: "INVE" },
-  { name: "Религия", code: "RELI" },
-  { name: "Восприятие", code: "PERC" },
-  { name: "Выживание", code: "SURV" },
-  { name: "Медицина", code: "MEDI" },
-  { name: "Проницательность", code: "INSI" },
-  { name: "Уход за животными", code: "ANIM" },
-  { name: "Выступление", code: "PERF" },
-  { name: "Запугивание", code: "INTI" },
-  { name: "Обман", code: "DECE" },
-  { name: "Убеждение", code: "PERS" },
+  {name: "Атлетика", code: "ATHL"},
+  {name: "Акробатика", code: "ACRO"},
+  {name: "Ловкость рук", code: "SLEI"},
+  {name: "Скрытность", code: "STEA"},
+  {name: "История", code: "HIST"},
+  {name: "Магия", code: "ARCA"},
+  {name: "Природа", code: "NATR"},
+  {name: "Расследование", code: "INVE"},
+  {name: "Религия", code: "RELI"},
+  {name: "Восприятие", code: "PERC"},
+  {name: "Выживание", code: "SURV"},
+  {name: "Медицина", code: "MEDI"},
+  {name: "Проницательность", code: "INSI"},
+  {name: "Уход за животными", code: "ANIM"},
+  {name: "Выступление", code: "PERF"},
+  {name: "Запугивание", code: "INTI"},
+  {name: "Обман", code: "DECE"},
+  {name: "Убеждение", code: "PERS"},
 ];
 
 const allowedFormats = [
@@ -129,8 +130,15 @@ const npc = ref<SaveNpcRequest>({
   proficiencyBonus: null,
   challengeRating: null,
   skills: [] as { name: string; bonus: number | null }[],
-  actions: [] as { name: string; description: string }[],
+  actions: [] as { name: string; description: string; type: NpcActionType }[],
   features: [] as { name: string; description: string }[],
+  savingThrows: [] as { name: string; bonus: number | null }[],
+  resistances: [] as string[],
+  immunities: [] as string[],
+  senses: [] as { name: string; value: number | null }[],
+  languages: null as string | null,
+  spellSlots: [] as { level: number; max: number; current: number }[],
+  spells: [] as { name: string; level: number; description: string; chargesPerDay: number | null }[],
   imgUrl: null,
   createdBy: "",
 });
@@ -297,9 +305,24 @@ function fillFromDto(dto: NpcDto) {
     level: dto.level ?? null,
     proficiencyBonus: dto.proficiencyBonus ?? null,
     challengeRating: dto.challengeRating ?? null,
-    skills: dto.skills ? dto.skills.map(s => ({ name: s.name, bonus: s.bonus ?? null })) : [],
-    actions: dto.actions ? dto.actions.map(a => ({ name: a.name, description: a.description })) : [],
-    features: dto.features ? dto.features.map(f => ({ name: f.name, description: f.description })) : [],
+    skills: dto.skills ? dto.skills.map(s => ({name: s.name, bonus: s.bonus ?? null})) : [],
+    actions: dto.actions ? dto.actions.map(a => ({
+      name: a.name,
+      description: a.description,
+      type: a.type ?? "ACTION"
+    })) : [],
+    features: dto.features ? dto.features.map(f => ({name: f.name, description: f.description})) : [],
+    savingThrows: dto.savingThrows?.map(s => ({name: s.name, bonus: s.bonus})) ?? [],
+    resistances: dto.resistances ?? [],
+    immunities: dto.immunities ?? [],
+    senses: dto.senses?.map(s => ({...s, value: s.value ?? null})) ?? [],
+    languages: dto.languages ?? null,
+    spellSlots: dto.spellSlots ?? [],
+    spells: dto.spells?.map(s => ({
+      ...s,
+      description: s.description ?? "",
+      chargesPerDay: s.chargesPerDay ?? null
+    })) ?? [],
     imgUrl: dto.imgUrl ?? null,
     createdBy: npc.value.createdBy || dto.createdBy || "",
   };
@@ -700,12 +723,12 @@ onMounted(() => {
               ]" :key="ab.key" class="ability-cell">
                 <span class="ability-cell__label">{{ ab.label }}</span>
                 <ion-input
-                  type="number"
-                  inputmode="numeric"
-                  class="ability-cell__input"
-                  :value="(npc as any)[ab.key] ?? ''"
-                  placeholder="—"
-                  @ionInput="(e: any) => {
+                    type="number"
+                    inputmode="numeric"
+                    class="ability-cell__input"
+                    :value="(npc as any)[ab.key] ?? ''"
+                    placeholder="—"
+                    @ionInput="(e: any) => {
                     const v = Number(e.target.value);
                     (npc as any)[ab.key] = Number.isFinite(v) && v > 0 ? v : null;
                   }"
@@ -723,20 +746,20 @@ onMounted(() => {
               <div class="detail-row">
                 <span class="detail-row__label">Уровень</span>
                 <ion-input type="number" inputmode="numeric" class="detail-row__input"
-                  :value="npc.level ?? ''" placeholder="—"
-                  @ionInput="(e: any) => { const v = Number(e.target.value); npc.level = Number.isFinite(v) && v > 0 ? v : null; }"/>
+                           :value="npc.level ?? ''" placeholder="—"
+                           @ionInput="(e: any) => { const v = Number(e.target.value); npc.level = Number.isFinite(v) && v > 0 ? v : null; }"/>
               </div>
               <div class="detail-row">
                 <span class="detail-row__label">Бонус мастерства</span>
                 <ion-input type="number" inputmode="numeric" class="detail-row__input"
-                  :value="npc.proficiencyBonus ?? ''" placeholder="—"
-                  @ionInput="(e: any) => { const v = Number(e.target.value); npc.proficiencyBonus = Number.isFinite(v) && v > 0 ? v : null; }"/>
+                           :value="npc.proficiencyBonus ?? ''" placeholder="—"
+                           @ionInput="(e: any) => { const v = Number(e.target.value); npc.proficiencyBonus = Number.isFinite(v) && v > 0 ? v : null; }"/>
               </div>
               <div class="detail-row">
                 <span class="detail-row__label">Опасность (CR)</span>
                 <ion-input type="text" class="detail-row__input"
-                  :value="npc.challengeRating ?? ''" placeholder="—"
-                  @ionInput="(e: any) => { npc.challengeRating = e.target.value?.trim() || null; }"/>
+                           :value="npc.challengeRating ?? ''" placeholder="—"
+                           @ionInput="(e: any) => { npc.challengeRating = e.target.value?.trim() || null; }"/>
               </div>
             </div>
           </section>
@@ -746,21 +769,23 @@ onMounted(() => {
             <div class="list-editor">
               <div v-for="(skill, i) in npc.skills" :key="i" class="list-editor__row">
                 <ion-select
-                  class="list-editor__select"
-                  :value="skill.name"
-                  placeholder="Навык"
-                  interface="action-sheet"
-                  @ionChange="(e: any) => { skill.name = e.detail.value; }">
+                    class="list-editor__select"
+                    :value="skill.name"
+                    placeholder="Навык"
+                    interface="action-sheet"
+                    @ionChange="(e: any) => { skill.name = e.detail.value; }">
                   <ion-select-option
-                    v-for="s in DND_SKILLS.filter(s => s.name === skill.name || !npc.skills.some(sk => sk.name === s.name))"
-                    :key="s.code" :value="s.name">{{ s.name }}</ion-select-option>
+                      v-for="s in DND_SKILLS.filter(s => s.name === skill.name || !npc.skills.some(sk => sk.name === s.name))"
+                      :key="s.code" :value="s.name">{{ s.name }}
+                  </ion-select-option>
                 </ion-select>
                 <ion-input type="number" inputmode="numeric" class="list-editor__input list-editor__input--bonus"
-                  :value="skill.bonus ?? ''" placeholder="бонус"
-                  @ionInput="(e: any) => { const v = Number(e.target.value); skill.bonus = Number.isFinite(v) ? v : null; }"/>
+                           :value="skill.bonus ?? ''" placeholder="бонус"
+                           @ionInput="(e: any) => { const v = Number(e.target.value); skill.bonus = Number.isFinite(v) ? v : null; }"/>
                 <button class="list-editor__remove" @click="npc.skills.splice(i, 1)">✕</button>
               </div>
-              <button class="list-editor__add" @click="npc.skills.push({ name: '', bonus: null })">+ Добавить навык</button>
+              <button class="list-editor__add" @click="npc.skills.push({ name: '', bonus: null })">+ Добавить навык
+              </button>
             </div>
           </section>
 
@@ -769,17 +794,20 @@ onMounted(() => {
             <div class="list-editor">
               <div v-for="(feat, i) in npc.features" :key="i" class="list-editor__entry">
                 <div class="list-editor__entry-header">
-                  <ion-input class="list-editor__input list-editor__input--name"
-                    :value="feat.name" placeholder="Название умения"
-                    @ionInput="(e: any) => { feat.name = e.target.value; }"/>
+                  <ion-input label="Название действия" label-placement="stacked"
+                             class="list-editor__input list-editor__input--name list-editor__input--action-name"
+                             :value="feat.name" placeholder="Название умения"
+                             @ionInput="(e: any) => { feat.name = e.target.value; }"/>
                   <button class="list-editor__remove" @click="npc.features.splice(i, 1)">✕</button>
                 </div>
                 <ion-textarea class="list-editor__textarea"
-                  :value="feat.description" placeholder="Описание..."
-                  :rows="3" auto-grow
-                  @ionInput="(e: any) => { feat.description = e.target.value; }"/>
+                              :value="feat.description" placeholder="Описание..."
+                              :rows="3" auto-grow
+                              @ionInput="(e: any) => { feat.description = e.target.value; }"/>
               </div>
-              <button class="list-editor__add" @click="npc.features.push({ name: '', description: '' })">+ Добавить умение</button>
+              <button class="list-editor__add" @click="npc.features.push({ name: '', description: '' })">+ Добавить
+                умение
+              </button>
             </div>
           </section>
 
@@ -788,20 +816,108 @@ onMounted(() => {
             <div class="list-editor">
               <div v-for="(action, i) in npc.actions" :key="i" class="list-editor__entry">
                 <div class="list-editor__entry-header">
+                  <ion-select :value="action.type" placeholder="Тип действия"
+                              @ionChange="(e:any) => action.type=e.detail.value">
+                    <ion-select-option value="ACTION">Действие</ion-select-option>
+                    <ion-select-option value="BONUS_ACTION">Бонусное действие</ion-select-option>
+                    <ion-select-option value="REACTION">Реакция</ion-select-option>
+                    <ion-select-option value="LEGENDARY_ACTION">Легендарное действие</ion-select-option>
+                    <ion-select-option value="LAIR_ACTION">Действие логова</ion-select-option>
+                  </ion-select>
                   <ion-input class="list-editor__input list-editor__input--name"
-                    :value="action.name" placeholder="Название действия"
-                    @ionInput="(e: any) => { action.name = e.target.value; }"/>
+                             :value="action.name" placeholder="Название действия"
+                             @ionInput="(e: any) => { action.name = e.target.value; }"/>
                   <button class="list-editor__remove" @click="npc.actions.splice(i, 1)">✕</button>
                 </div>
                 <ion-textarea class="list-editor__textarea"
-                  :value="action.description" placeholder="Описание..."
-                  :rows="3" auto-grow
-                  @ionInput="(e: any) => { action.description = e.target.value; }"/>
+                              :value="action.description" placeholder="Описание..."
+                              :rows="3" auto-grow
+                              @ionInput="(e: any) => { action.description = e.target.value; }"/>
               </div>
-              <button class="list-editor__add" @click="npc.actions.push({ name: '', description: '' })">+ Добавить действие</button>
+              <button class="list-editor__add" @click="npc.actions.push({ name: '', description: '', type: 'ACTION' })">
+                + Добавить действие
+              </button>
             </div>
           </section>
 
+          <section class="panel"><h2 class="panel__title">Спасброски</h2>
+            <div class="list-editor">
+              <div v-for="(save, i) in npc.savingThrows" :key="i" class="list-editor__row">
+                <ion-select label="Характеристика" label-placement="stacked" class="list-editor__select"
+                            :value="save.name" placeholder="Выберите" @ionChange="(e:any) => save.name=e.detail.value">
+                  <ion-select-option value="STR">Сила</ion-select-option>
+                  <ion-select-option value="DEX">Ловкость</ion-select-option>
+                  <ion-select-option value="CON">Телосложение</ion-select-option>
+                  <ion-select-option value="INT">Интеллект</ion-select-option>
+                  <ion-select-option value="WIS">Мудрость</ion-select-option>
+                  <ion-select-option value="CHA">Харизма</ion-select-option>
+                </ion-select>
+                <ion-input type="number" label="Бонус" label-placement="stacked"
+                           class="list-editor__input list-editor__input--bonus" :value="save.bonus ?? ''"
+                           placeholder="+0" @ionInput="(e:any) => save.bonus=Number(e.target.value)"/>
+                <button class="list-editor__remove" @click="npc.savingThrows.splice(i,1)">✕</button>
+              </div>
+              <button class="list-editor__add" @click="npc.savingThrows.push({name:'',bonus:null})">+ Добавить
+                спасбросок
+              </button>
+            </div>
+          </section>
+          <section class="panel"><h2 class="panel__title">Сопротивления, иммунитеты и прочее</h2>
+            <ion-select multiple label="Сопротивления" label-placement="stacked" :value="npc.resistances"
+                        @ionChange="(e:any) => npc.resistances=e.detail.value">
+              <ion-select-option value="STABBING">Колющий</ion-select-option>
+              <ion-select-option value="CHOPPING">Рубящий</ion-select-option>
+              <ion-select-option value="CRUSHING">Дробящий</ion-select-option>
+              <ion-select-option value="ACID">Кислотный</ion-select-option>
+              <ion-select-option value="COLD">Холодом</ion-select-option>
+              <ion-select-option value="FIRE">Огненный</ion-select-option>
+              <ion-select-option value="FORCE">Силовой</ion-select-option>
+              <ion-select-option value="LIGHTNING">Электрический</ion-select-option>
+              <ion-select-option value="NECROTIC">Некротический</ion-select-option>
+              <ion-select-option value="POISON">Ядовитый</ion-select-option>
+              <ion-select-option value="PSYCHIC">Психический</ion-select-option>
+              <ion-select-option value="RADIANT">Сияющий</ion-select-option>
+              <ion-select-option value="THUNDER">Громовой</ion-select-option>
+            </ion-select>
+            <ion-input label="Иммунитеты к состояниям (через запятую)" label-placement="stacked"
+                       :value="npc.immunities.join(', ')"
+                       @ionInput="(e:any) => npc.immunities=e.target.value.split(',').map((v:string)=>v.trim()).filter(Boolean)"/>
+            <div class="list-editor__entry" v-for="(sense,i) in npc.senses" :key="i">
+              <div class="list-editor__entry-header">
+                <ion-input :value="sense.name" placeholder="Пассивное чувство"
+                           @ionInput="(e:any)=>sense.name=e.target.value"/>
+                <ion-input type="number" :value="sense.value ?? ''" placeholder="Значение"
+                           @ionInput="(e:any)=>sense.value=Number(e.target.value)"/>
+                <button class="list-editor__remove" @click="npc.senses.splice(i,1)">✕</button>
+              </div>
+            </div>
+            <button class="list-editor__add" @click="npc.senses.push({name:'',value:null})">+ Добавить пассивное
+              чувство
+            </button>
+            <ion-input label="Языки" label-placement="stacked" :value="npc.languages ?? ''"
+                       @ionInput="(e:any) => npc.languages=e.target.value"/>
+          </section>
+          <section class="panel"><h2 class="panel__title">Заклинания</h2>
+            <div class="list-editor">
+              <div v-for="(spell,i) in npc.spells" :key="i" class="list-editor__entry">
+                <div class="list-editor__entry-header">
+                  <ion-input :value="spell.name" placeholder="Название"
+                             @ionInput="(e:any)=>spell.name=e.target.value"/>
+                  <ion-input type="number" :value="spell.level" placeholder="Уровень"
+                             @ionInput="(e:any)=>spell.level=Number(e.target.value)"/>
+                  <ion-input type="number" :value="spell.chargesPerDay ?? ''" placeholder="Заряды/день"
+                             @ionInput="(e:any)=>spell.chargesPerDay=Number(e.target.value)"/>
+                  <button class="list-editor__remove" @click="npc.spells.splice(i,1)">✕</button>
+                </div>
+                <ion-textarea :value="spell.description" placeholder="Описание"
+                              @ionInput="(e:any)=>spell.description=e.target.value"/>
+              </div>
+              <button class="list-editor__add"
+                      @click="npc.spells.push({name:'',level:null,description:'',chargesPerDay:null})">+ Добавить
+                заклинание
+              </button>
+            </div>
+          </section>
           <section class="panel">
             <h2 class="panel__title">Описание</h2>
             <ion-textarea
@@ -1077,7 +1193,7 @@ onMounted(() => {
   color: rgba(var(--ion-color-light-rgb), 0.62);
 }
 
-.dice-row{
+.dice-row {
   min-width: 200px;
 }
 
@@ -1200,15 +1316,18 @@ onMounted(() => {
   flex: 1;
   min-width: 0;
 }
+
 .dice-count-input, .dice-size-input, .dice-bonus-input {
   flex: 1;
 }
+
 .dice-sep {
   font-size: 1rem;
   font-weight: 700;
   color: var(--ion-color-primary);
   flex-shrink: 0;
 }
+
 .dice-preview {
   font-size: 0.75rem;
   color: var(--ion-color-secondary);
@@ -1244,7 +1363,7 @@ onMounted(() => {
 .ability-cell__input {
   --background: transparent;
   --color: var(--ion-color-light);
-  --placeholder-color: rgba(255,255,255,0.3);
+  --placeholder-color: rgba(255, 255, 255, 0.3);
   text-align: center;
   font-size: 1.1rem;
   font-weight: 700;
@@ -1270,13 +1389,42 @@ onMounted(() => {
   gap: 6px;
 }
 
+.list-editor__row > ion-select,
+.list-editor__row > ion-input {
+  min-width: 0;
+}
+
+.list-editor__action-header {
+  display: grid;
+  grid-template-columns: minmax(170px, 0.75fr) minmax(240px, 1.5fr) auto;
+  align-items: end;
+}
+
+.list-editor__entry-header:has(.list-editor__input--action-name) {
+  display: grid;
+  grid-template-columns: minmax(170px, 0.75fr) minmax(240px, 1.5fr) auto;
+  align-items: end;
+}
+
+.list-editor__entry-header:has(.list-editor__input--action-name) ion-select,
+.list-editor__entry-header:has(.list-editor__input--action-name) ion-input {
+  min-width: 0;
+  width: 100%;
+}
+
+.list-editor__action-header ion-select,
+.list-editor__action-header ion-input {
+  min-width: 0;
+  width: 100%;
+}
+
 .list-editor__entry {
   display: flex;
   flex-direction: column;
   gap: 6px;
   padding: 10px;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.07);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 10px;
 }
 
@@ -1287,40 +1435,77 @@ onMounted(() => {
 }
 
 .list-editor__input {
-  --background: rgba(255,255,255,0.06);
+  --background: rgba(255, 255, 255, 0.06);
   --border-radius: 8px;
   --padding-start: 10px;
   --padding-end: 10px;
   --color: var(--ion-color-light);
-  --placeholder-color: rgba(255,255,255,0.3);
-  border: 1px solid rgba(255,255,255,0.1);
+  --placeholder-color: rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   font-size: 0.88rem;
   height: 36px;
 }
 
-.list-editor__input--name { flex: 1; }
-.list-editor__input--bonus { width: 80px; flex-shrink: 0; }
+.list-editor__input--name {
+  flex: 1;
+}
+
+.list-editor__input--action-name {
+  min-width: 180px;
+}
+
+.list-editor__input--bonus {
+  width: 80px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .list-editor__action-header {
+    grid-template-columns: 1fr auto;
+  }
+
+  .list-editor__action-header ion-select {
+    grid-column: 1 / -1;
+  }
+
+  .list-editor__action-header .list-editor__input--action-name {
+    min-width: 0;
+  }
+
+  .list-editor__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 80px auto;
+  }
+
+  .list-editor__entry-header:has(.list-editor__input--action-name) {
+    grid-template-columns: 1fr auto;
+  }
+
+  .list-editor__entry-header:has(.list-editor__input--action-name) ion-select {
+    grid-column: 1 / -1;
+  }
+}
 
 .list-editor__select {
   flex: 1;
-  --background: rgba(255,255,255,0.06);
+  --background: rgba(255, 255, 255, 0.06);
   --border-radius: 8px;
   --padding-start: 10px;
   --padding-end: 10px;
   border-radius: 8px;
-  background: rgba(255,255,255,0.06);
+  background: rgba(255, 255, 255, 0.06);
   min-height: 40px;
 }
 
 .list-editor__textarea {
-  --background: rgba(255,255,255,0.04);
+  --background: rgba(255, 255, 255, 0.04);
   --border-radius: 8px;
   --padding-start: 10px;
   --padding-end: 10px;
   --color: var(--ion-color-light);
-  --placeholder-color: rgba(255,255,255,0.3);
-  border: 1px solid rgba(255,255,255,0.08);
+  --placeholder-color: rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
   font-size: 0.85rem;
   width: 100%;
@@ -1341,7 +1526,10 @@ onMounted(() => {
   flex-shrink: 0;
   transition: background 0.12s;
 }
-.list-editor__remove:hover { background: rgba(var(--ion-color-danger-rgb), 0.1); }
+
+.list-editor__remove:hover {
+  background: rgba(var(--ion-color-danger-rgb), 0.1);
+}
 
 .list-editor__add {
   background: transparent;
@@ -1355,7 +1543,10 @@ onMounted(() => {
   transition: background 0.12s;
   text-align: left;
 }
-.list-editor__add:hover { background: rgba(var(--ion-color-primary-rgb), 0.06); }
+
+.list-editor__add:hover {
+  background: rgba(var(--ion-color-primary-rgb), 0.06);
+}
 
 
 </style>

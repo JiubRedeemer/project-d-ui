@@ -342,7 +342,7 @@ onBeforeMount(async () => {
 
 .helper-text {
   font-size: 12px;
-  color: var(--ion-color-medium);
+  color: var(--ion-color-secondary);
   margin: 0 0 6px 0;
   line-height: 1.3;
 }

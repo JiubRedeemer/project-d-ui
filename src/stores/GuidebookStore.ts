@@ -11,4 +11,13 @@ export const useGuidebookStore = defineStore('guidebookStore', {
         lastUpdatedAt: 0 as number,
     }),
     persist: true,
+    actions: {
+        /** Сбрасывает кэш справочника (расы/классы/предыстории) — вызывать при изменении наборов правил. */
+        invalidate() {
+            this.races = [];
+            this.classes = [];
+            this.backgrounds = [];
+            this.lastUpdatedAt = Date.now();
+        },
+    },
 })

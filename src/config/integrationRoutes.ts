@@ -84,6 +84,7 @@ export const GATEWAY_INTEGRATION_ROUTES = {
     items: "/items",
     search: "/search",
     bundles: "/bundles",
+    rulebookBundles: "/rulebook-bundles",
     shops: "/shops",
 
     notes: "/notes",

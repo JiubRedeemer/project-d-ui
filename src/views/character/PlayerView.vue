@@ -761,7 +761,7 @@ const openSubheader = () => {
     </IonTabs>
 
     <!-- Кастомный таб-бар вне IonTabs — не сбрасывается при ре-рендере -->
-    <div v-if="!isDesktop" class="tab-bar" role="tablist">
+    <div v-if="!isDesktop && !noteStore.editingActive" class="tab-bar" role="tablist">
       <button
         v-for="tabKey in tabBarConfig.ALL_TABS"
         :key="tabKey"
