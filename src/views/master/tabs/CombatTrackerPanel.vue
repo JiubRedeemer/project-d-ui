@@ -15,8 +15,10 @@ import {
   personOutline,
   skullOutline,
   flashOutline,
+  openOutline,
 } from 'ionicons/icons';
 import { useRoute } from 'vue-router';
+import { useIonRouter } from '@ionic/vue';
 import { useRoomStore } from '@/stores/RoomStore';
 import type { CombatStateDto, CombatParticipantDto } from '@/api/combatApi.types';
 import type { NpcDto } from '@/api/npcApi.types';
@@ -37,6 +39,8 @@ import {
 import { useCombatWebSocket } from '@/composables/useCombatWebSocket';
 import { useRoomCharactersWebSocket } from '@/composables/useCharacterWebSocket';
 import { getNpcsByRoomIdForRoom } from '@/api/npcApi';
+import { loadRoomSpellMap } from '@/api/magicApi';
+import type { SpellDto } from '@/components/models/response/MagicApi';
 import { getStatesForRoom, saveCharacterState, deleteCharacterState } from '@/api/statesApi';
 import type { StateDto } from '@/api/statesApi.types';
 import { getCharacterAvatarUrl, CHARACTER_AVATAR_PLACEHOLDER } from '@/utils/characterAvatar';
@@ -52,6 +56,7 @@ const combat = ref<CombatStateDto | null>(null);
 const loading = ref(false);
 const startingFight = ref(false);
 const npcs = ref<NpcDto[]>([]);
+const spellById = ref<Map<string, SpellDto>>(new Map());
 const showNpcPicker = ref(false);
 const showActiveNpcPicker = ref(false);
 const npcCopyCount = ref(1);
@@ -295,6 +300,45 @@ function isDying(p: CombatParticipantDto): boolean {
 let wsClient: ReturnType<typeof useCombatWebSocket> | null = null;
 let charWsClient: ReturnType<typeof useRoomCharactersWebSocket> | null = null;
 
+const ionRouter = useIonRouter();
+
+function goToNpcCard(npcId?: string | null) {
+  if (!npcId) return;
+  ionRouter.navigate(`/rooms/${props.roomId}/npcs/${npcId}/full`, 'forward', 'push');
+}
+
+const SAVE_LABELS: Record<string, string> = {
+  STR: 'Сила', DEX: 'Ловкость', CON: 'Телосложение',
+  INT: 'Интеллект', WIS: 'Мудрость', CHA: 'Харизма',
+};
+const DAMAGE_LABELS: Record<string, string> = {
+  STABBING: 'Колющий', CHOPPING: 'Рубящий', CRUSHING: 'Дробящий',
+  ACID: 'Кислота', COLD: 'Холод', FIRE: 'Огонь', FORCE: 'Силовое',
+  LIGHTNING: 'Электричество', NECROTIC: 'Некротический', POISON: 'Яд',
+  PSYCHIC: 'Психический', RADIANT: 'Сияющий', THUNDER: 'Гром',
+};
+function saveLabel(code: string): string { return SAVE_LABELS[code] ?? code; }
+function damageLabel(code: string): string { return DAMAGE_LABELS[code] ?? code; }
+
+function spellNameOf(dto?: SpellDto): string {
+  const n = dto?.name as Record<string, string> | undefined;
+  return n?.rus ?? n?.en ?? n?.eng ?? '';
+}
+
+// Заклинания NPC хранятся ссылкой (spellId) — разрешаем детали по каталогу комнаты.
+function npcSpellsResolved(npc: NpcDto): Array<{ name: string; level: number; chargesPerDay: number | null }> {
+  return (npc.spells ?? [])
+    .map((s) => {
+      const ref = s.spellId ? spellById.value.get(s.spellId) : undefined;
+      return {
+        name: ref ? (spellNameOf(ref) || s.name || '—') : (s.name ?? 'Заклинание'),
+        level: Number((ref?.level ?? s.level) ?? 0) || 0,
+        chargesPerDay: s.chargesPerDay ?? null,
+      };
+    })
+    .sort((a, b) => a.level - b.level || a.name.localeCompare(b.name, 'ru'));
+}
+
 onMounted(async () => {
   await loadCombat();
   try {
@@ -304,6 +348,12 @@ onMounted(async () => {
     ]);
     npcs.value = fetchedNpcs ?? [];
     roomStates.value = fetchedStates ?? [];
+    if (npcs.value.some((n) => n.spells?.length)) {
+      if (!roomStore.room?.id || roomStore.room.id !== props.roomId) {
+        await roomStore.getRoomInfo(props.roomId);
+      }
+      spellById.value = await loadRoomSpellMap(roomStore.room?.baseRuleType);
+    }
   } catch {}
   wsClient = useCombatWebSocket(props.roomId, onWsEvent);
   charWsClient = useRoomCharactersWebSocket(props.roomId, () => onWsEvent());
@@ -777,10 +827,15 @@ function participantAvatarUrl(p: CombatParticipantDto): string {
 
                 <template v-if="p.participantType === 'NPC' && npcs.find(n => n.id === p.referenceId)">
                   <template v-for="npcRef in [npcs.find(n => n.id === p.referenceId)!]" :key="'npc-extra-' + p.id">
-                    <div v-if="npcRef.level || npcRef.proficiencyBonus || npcRef.challengeRating" class="npc-extra-params">
+                    <br/>
+                    <button class="npc-open-card-btn" @click="goToNpcCard(p.referenceId)">
+                      <ion-icon :icon="openOutline"/> Открыть карточку NPC
+                    </button>
+                    <div v-if="npcRef.level || npcRef.proficiencyBonus || npcRef.challengeRating || npcRef.speed" class="npc-extra-params">
                       <span v-if="npcRef.level" class="npc-param-chip"><span class="npc-param-chip__label">Ур.</span>{{ npcRef.level }}</span>
                       <span v-if="npcRef.proficiencyBonus" class="npc-param-chip"><span class="npc-param-chip__label">Маст.</span>+{{ npcRef.proficiencyBonus }}</span>
                       <span v-if="npcRef.challengeRating" class="npc-param-chip"><span class="npc-param-chip__label">CR</span>{{ npcRef.challengeRating }}</span>
+                      <span v-if="npcRef.speed" class="npc-param-chip"><span class="npc-param-chip__label">Скор.</span>{{ npcRef.speed }}</span>
                     </div>
 
                     <div v-if="npcRef.skills?.length" class="npc-extra-block">
@@ -805,6 +860,50 @@ function participantAvatarUrl(p: CombatParticipantDto): string {
                       <div v-for="act in npcRef.actions" :key="act.name" class="npc-entry-row npc-entry-row--action">
                         <span class="npc-entry-row__name">{{ act.name }}.</span>
                         <span class="npc-entry-row__desc">{{ act.description }}</span>
+                      </div>
+                    </div>
+
+                    <div v-if="npcRef.savingThrows?.length" class="npc-extra-block">
+                      <div class="npc-extra-block__title">Спасброски</div>
+                      <div class="npc-skill-chips">
+                        <span v-for="sv in npcRef.savingThrows" :key="sv.name" class="npc-skill-chip">
+                          {{ saveLabel(sv.name) }}&nbsp;<b>{{ sv.bonus >= 0 ? '+' : '' }}{{ sv.bonus }}</b>
+                        </span>
+                      </div>
+                    </div>
+
+                    <div v-if="npcRef.resistances?.length" class="npc-extra-block">
+                      <div class="npc-extra-block__title">Сопротивления</div>
+                      <div class="npc-skill-chips">
+                        <span v-for="r in npcRef.resistances" :key="r" class="npc-skill-chip">{{ damageLabel(r) }}</span>
+                      </div>
+                    </div>
+
+                    <div v-if="npcRef.immunities?.length" class="npc-extra-block">
+                      <div class="npc-extra-block__title">Иммунитеты</div>
+                      <div class="npc-skill-chips">
+                        <span v-for="im in npcRef.immunities" :key="im" class="npc-skill-chip">{{ im }}</span>
+                      </div>
+                    </div>
+
+                    <div v-if="npcRef.senses?.length" class="npc-extra-block">
+                      <div class="npc-extra-block__title">Чувства</div>
+                      <div class="npc-skill-chips">
+                        <span v-for="se in npcRef.senses" :key="se.name" class="npc-skill-chip">{{ se.name }}&nbsp;<b>{{ se.value }}</b></span>
+                      </div>
+                    </div>
+
+                    <div v-if="npcRef.languages" class="npc-extra-block">
+                      <div class="npc-extra-block__title">Языки</div>
+                      <div class="npc-extra-block__text">{{ npcRef.languages }}</div>
+                    </div>
+
+                    <div v-if="npcRef.spells?.length" class="npc-extra-block">
+                      <div class="npc-extra-block__title">Заклинания</div>
+                      <div class="npc-skill-chips">
+                        <span v-for="(sp, spi) in npcSpellsResolved(npcRef)" :key="spi" class="npc-skill-chip">
+                          <span v-if="sp.level > 0" class="npc-spell-lvl">{{ sp.level }}</span>{{ sp.name }}<b v-if="sp.chargesPerDay != null">&nbsp;{{ sp.chargesPerDay }}/д</b>
+                        </span>
                       </div>
                     </div>
                   </template>
@@ -1658,6 +1757,46 @@ function participantAvatarUrl(p: CombatParticipantDto): string {
 .npc-skill-chip b {
   color: var(--ion-color-primary);
   font-weight: 700;
+}
+.npc-spell-lvl {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  border-radius: 5px;
+  font-size: 0.6rem;
+  font-weight: 800;
+  color: var(--ion-color-primary-contrast);
+  background: var(--ion-color-primary);
+}
+.npc-extra-block__text {
+  font-size: 0.74rem;
+  line-height: 1.45;
+  color: rgba(var(--ion-color-light-rgb), 0.78);
+}
+.npc-open-card-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 10px;
+  margin-top: 10px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--ion-color-primary);
+  background: rgba(var(--ion-color-primary-rgb), 0.12);
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.3);
+  transition: background 0.14s ease;
+}
+.npc-open-card-btn:hover {
+  background: rgba(var(--ion-color-primary-rgb), 0.2);
+}
+.npc-open-card-btn ion-icon {
+  font-size: 0.95rem;
 }
 .npc-entry-row {
   display: flex;

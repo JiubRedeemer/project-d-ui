@@ -11,6 +11,7 @@ import {
 } from "@ionic/vue";
 import {computed, onMounted, ref} from "vue";
 import MasterRulebookBundlesView from "@/views/master/tabs/MasterRulebookBundlesView.vue";
+import MasterSpellBundlesView from "@/views/master/tabs/MasterSpellBundlesView.vue";
 import type {RulebookBundleCategory} from "@/api/rulebookBundleApi.types";
 import {useRoute} from "vue-router";
 import {
@@ -33,7 +34,7 @@ import {
 } from "@/api/bundleApi";
 
 const route = useRoute();
-const subTab = ref<"items" | RulebookBundleCategory>("items");
+const subTab = ref<"items" | "spells" | RulebookBundleCategory>("items");
 const bundles = ref<ItemBundle[]>([]);
 const isLoading = ref(false);
 const searchQuery = ref("");
@@ -169,12 +170,15 @@ function closePreview() {
     <!-- Подвкладки: предметы / расы / классы / предыстории -->
     <ion-segment v-model="subTab" class="bundles-subtabs" mode="ios" scrollable>
       <ion-segment-button value="items"><ion-label>Предметы</ion-label></ion-segment-button>
+      <ion-segment-button value="spells"><ion-label>Заклинания</ion-label></ion-segment-button>
       <ion-segment-button value="RACE"><ion-label>Расы</ion-label></ion-segment-button>
       <ion-segment-button value="CLAZZ"><ion-label>Классы</ion-label></ion-segment-button>
       <ion-segment-button value="BACKGROUND"><ion-label>Предыстории</ion-label></ion-segment-button>
     </ion-segment>
 
-    <MasterRulebookBundlesView v-if="subTab !== 'items'" :category="subTab" />
+    <MasterSpellBundlesView v-if="subTab === 'spells'" />
+
+    <MasterRulebookBundlesView v-else-if="subTab !== 'items'" :category="(subTab as RulebookBundleCategory)" />
 
     <template v-else>
     <!-- Шапка -->

@@ -10,27 +10,21 @@ import {
   IonIcon,
   IonLabel,
   IonPage,
-  IonSegment,
-  IonSegmentButton,
   IonSearchbar,
-  IonSelect,
-  IonSelectOption,
-  IonToggle,
   IonToolbar,
   onIonViewDidEnter,
   toastController,
   useIonRouter,
 } from "@ionic/vue";
-import {add, addOutline, arrowBack, checkmarkOutline, closeOutline} from "ionicons/icons";
+import {add, addOutline, arrowBack, checkmarkOutline, closeOutline, filterOutline} from "ionicons/icons";
 import {computed, onMounted, ref, watch, shallowRef} from "vue";
 import {useRoute, useRouter} from "vue-router";
 import {
   addSpellToBook,
   getSpellBookByRoomAndCharacter,
-  listSpells,
-  listSpellsDnd2024,
 } from "@/api/magicApi";
-import type {SpellDto} from "@/components/models/response/MagicApi";
+import {getSpellBundlesForRoom, getRoomSpellsFromBundles} from "@/api/spellBundleApi";
+import type {SpellBundle, SpellDto} from "@/components/models/response/MagicApi";
 import type {SpellClass} from "@/components/models/response/MagicApi";
 import type {SpellBookItemDto} from "@/components/models/response/MagicApi";
 import {
@@ -67,8 +61,26 @@ const loading = ref(true);
 const addingSpellId = ref<string | null>(null);
 const selectedSpellId = ref<string | null>(null);
 const showSpellModal = ref(false);
-type SpellCatalog = "DND5E" | "DND2024";
-const selectedCatalog = ref<SpellCatalog>("DND5E");
+const availableBundles = ref<SpellBundle[]>([]);
+const selectedSpellBundle = ref<string>("ALL"); // "ALL" => все включённые наборы + пользовательские
+const showFiltersModal = ref(false);
+
+const spellActiveFiltersCount = computed(() =>
+    (selectedSpellBundle.value !== "ALL" ? 1 : 0) +
+    (!props.pickMode && forMyClass.value ? 1 : 0) +
+    (selectedSchool.value ? 1 : 0) +
+    (selectedLevel.value ? 1 : 0)
+);
+const selectedBundleName = computed(
+    () => availableBundles.value.find((b) => b.id === selectedSpellBundle.value)?.name ?? selectedSpellBundle.value
+);
+
+function resetSpellFilters() {
+  selectedSpellBundle.value = "ALL";
+  if (!props.pickMode) forMyClass.value = false;
+  selectedSchool.value = "";
+  selectedLevel.value = "";
+}
 
 const spellBookId = computed(() => magicStore.spellBook?.id ?? null);
 const spellsInBook = computed(
@@ -84,20 +96,6 @@ const characterSpellClass = computed((): SpellClass | undefined => {
   ];
   return valid.includes(code as SpellClass) ? (code as SpellClass) : undefined;
 });
-
-const roomBaseRuleType = computed<SpellCatalog>(() => {
-  return roomStore.room?.baseRuleType === "DND2024" ? "DND2024" : "DND5E";
-});
-
-const orderedCatalogs = computed<SpellCatalog[]>(() => {
-  return roomBaseRuleType.value === "DND2024"
-      ? ["DND2024", "DND5E"]
-      : ["DND5E", "DND2024"];
-});
-
-function getCatalogLabel(catalog: SpellCatalog): string {
-  return catalog === "DND2024" ? "2024" : "2014";
-}
 
 let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 watch(searchQuery, (val) => {
@@ -262,14 +260,22 @@ async function presentToast() {
   await toast.present();
 }
 
+async function loadBundles() {
+  try {
+    const bundles = await getSpellBundlesForRoom(roomId.value);
+    availableBundles.value = bundles.filter((b) => b.enabled);
+  } catch (e) {
+    console.error("Failed to load spell bundles:", e);
+    availableBundles.value = [];
+  }
+}
+
 async function loadSpells() {
   loading.value = true;
   try {
     const spellClass = forMyClass.value ? characterSpellClass.value : undefined;
-    allSpells.value =
-        selectedCatalog.value === "DND2024"
-            ? await listSpellsDnd2024(spellClass)
-            : await listSpells(spellClass);
+    const bundleId = selectedSpellBundle.value === "ALL" ? undefined : selectedSpellBundle.value;
+    allSpells.value = await getRoomSpellsFromBundles(roomId.value, spellClass, bundleId);
   } catch (e) {
     console.error("Failed to load spells:", e);
     allSpells.value = [];
@@ -317,7 +323,7 @@ async function initView() {
       console.error("Failed to load room info:", e);
     }
   }
-  selectedCatalog.value = orderedCatalogs.value[0];
+  await loadBundles();
   if (!props.pickMode) await loadSpellBook();
   await loadSpells();
 }
@@ -332,7 +338,7 @@ onMounted(() => {
   if (props.pickMode) void initView();
 });
 
-watch([forMyClass, selectedCatalog], () => {
+watch([forMyClass, selectedSpellBundle], () => {
   selectedSchool.value = "";
   selectedLevel.value = "";
   loadSpells();
@@ -363,58 +369,103 @@ function openAddSpellView() {
             class="search-line"
         />
       </ion-toolbar>
-      <div class="filter-row">
-        <ion-segment v-model="selectedCatalog" class="rule-segment" mode="ios">
-          <ion-segment-button
-              v-for="catalog in orderedCatalogs"
-              :key="catalog"
-              :value="catalog"
-          >
-            <ion-label>{{ getCatalogLabel(catalog) }}</ion-label>
-          </ion-segment-button>
-        </ion-segment>
-      </div>
-      <div class="filter-row">
-        <ion-toggle
-            v-if="!pickMode"
-            v-model="forMyClass"
-            color="primary"
+      <div class="filter-row filter-row--bar">
+        <div class="spell-active-chips">
+          <span v-if="selectedSpellBundle !== 'ALL'" class="item-active-chip">
+            {{ selectedBundleName }}
+            <button @click="selectedSpellBundle = 'ALL'"><ion-icon :icon="closeOutline"/></button>
+          </span>
+          <span v-if="!pickMode && forMyClass" class="item-active-chip">
+            Мой класс
+            <button @click="forMyClass = false"><ion-icon :icon="closeOutline"/></button>
+          </span>
+          <span v-if="selectedSchool" class="item-active-chip">
+            {{ selectedSchool }}
+            <button @click="selectedSchool = ''"><ion-icon :icon="closeOutline"/></button>
+          </span>
+          <span v-if="selectedLevel" class="item-active-chip">
+            {{ getLevelLabel(selectedLevel) }}
+            <button @click="selectedLevel = ''"><ion-icon :icon="closeOutline"/></button>
+          </span>
+        </div>
+        <button
+            :class="['items-filter-btn', { 'items-filter-btn--active': spellActiveFiltersCount > 0 }]"
+            @click="showFiltersModal = true"
         >
-          Для моего класса
-        </ion-toggle>
-        <ion-select
-            v-model="selectedSchool"
-            interface="popover"
-            placeholder="Школа"
-            aria-label="Фильтр по школе заклинания"
-        >
-          <ion-select-option value="">Все школы</ion-select-option>
-          <ion-select-option
-              v-for="s in availableSchools"
-              :key="s"
-              :value="s"
-          >
-            {{ s }}
-          </ion-select-option>
-        </ion-select>
-
-        <ion-select
-            v-model="selectedLevel"
-            interface="popover"
-            placeholder="Уровень"
-            aria-label="Фильтр по уровню заклинания"
-        >
-          <ion-select-option value="">Все уровни</ion-select-option>
-          <ion-select-option
-              v-for="lvl in availableLevels"
-              :key="lvl"
-              :value="lvl"
-          >
-            {{ getLevelLabel(lvl) }}
-          </ion-select-option>
-        </ion-select>
+          <ion-icon :icon="filterOutline"/>
+          <span v-if="spellActiveFiltersCount > 0" class="items-filter-btn__badge">{{ spellActiveFiltersCount }}</span>
+        </button>
       </div>
     </ion-header>
+
+    <Teleport to="body">
+      <div v-if="showFiltersModal" class="item-filters-overlay" @click.self="showFiltersModal = false">
+        <div class="item-filters-modal">
+          <div class="item-filters-modal__header">
+            <span>Фильтры</span>
+            <button class="item-filters-modal__close" @click="showFiltersModal = false">
+              <ion-icon :icon="closeOutline"/>
+            </button>
+          </div>
+          <div class="item-filters-modal__body">
+            <div v-if="availableBundles.length" class="item-filters-section">
+              <div class="item-filters-label">Набор</div>
+              <div class="item-filters-chips">
+                <button
+                    :class="['item-filters-chip', { 'item-filters-chip--active': selectedSpellBundle === 'ALL' }]"
+                    @click="selectedSpellBundle = 'ALL'"
+                >Все наборы</button>
+                <button
+                    v-for="b in availableBundles" :key="b.id"
+                    :class="['item-filters-chip', { 'item-filters-chip--active': selectedSpellBundle === b.id }]"
+                    @click="selectedSpellBundle = b.id"
+                >{{ b.name }}</button>
+              </div>
+            </div>
+
+            <div v-if="!pickMode" class="item-filters-section">
+              <div class="item-filters-label">Класс</div>
+              <div class="item-filters-chips">
+                <button
+                    :class="['item-filters-chip', { 'item-filters-chip--active': forMyClass }]"
+                    @click="forMyClass = true"
+                >Мой класс</button>
+                <button
+                    :class="['item-filters-chip', { 'item-filters-chip--active': !forMyClass }]"
+                    @click="forMyClass = false"
+                >Все заклинания</button>
+              </div>
+            </div>
+
+            <div v-if="availableSchools.length" class="item-filters-section">
+              <div class="item-filters-label">Школа</div>
+              <div class="item-filters-chips">
+                <button
+                    v-for="s in availableSchools" :key="s"
+                    :class="['item-filters-chip', { 'item-filters-chip--active': selectedSchool === s }]"
+                    @click="selectedSchool = selectedSchool === s ? '' : s"
+                >{{ s }}</button>
+              </div>
+            </div>
+
+            <div v-if="availableLevels.length" class="item-filters-section">
+              <div class="item-filters-label">Уровень</div>
+              <div class="item-filters-chips">
+                <button
+                    v-for="lvl in availableLevels" :key="lvl"
+                    :class="['item-filters-chip', { 'item-filters-chip--active': selectedLevel === lvl }]"
+                    @click="selectedLevel = selectedLevel === lvl ? '' : lvl"
+                >{{ getLevelLabel(lvl) }}</button>
+              </div>
+            </div>
+          </div>
+          <div class="item-filters-modal__footer">
+            <button class="item-filters-reset" @click="resetSpellFilters">Сбросить</button>
+            <button class="item-filters-apply" @click="showFiltersModal = false">Применить</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
     <ion-content>
       <div v-if="loading" class="loading">Загрузка...</div>
       <div v-else class="found" :class="{ 'has-content': filteredSpells.length > 0 }">
@@ -625,4 +676,223 @@ ion-searchbar {
 .found, ion-toolbar, ion-content, .filter-row {
   --background: var(--ion-color-dark);
 }
+
+/* ── Панель фильтров (стиль как в поиске предметов) ── */
+.filter-row--bar {
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.spell-active-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.items-filter-btn {
+  flex-shrink: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.14);
+  background: rgba(var(--ion-color-light-rgb), 0.06);
+  color: rgba(var(--ion-color-light-rgb), 0.6);
+  font-size: 18px;
+  cursor: pointer;
+  transition: background 0.14s, border-color 0.14s, color 0.14s;
+}
+
+.items-filter-btn:hover {
+  background: rgba(var(--ion-color-primary-rgb), 0.1);
+  border-color: rgba(var(--ion-color-primary-rgb), 0.35);
+  color: var(--ion-color-primary);
+}
+
+.items-filter-btn--active {
+  background: rgba(var(--ion-color-primary-rgb), 0.16);
+  border-color: var(--ion-color-primary);
+  color: var(--ion-color-primary);
+}
+
+.items-filter-btn__badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--ion-color-primary);
+  color: var(--ion-color-primary-contrast);
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.item-active-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ion-color-primary);
+  background: rgba(var(--ion-color-primary-rgb), 0.14);
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.35);
+}
+
+.item-active-chip button {
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 0;
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+.item-active-chip button:hover { opacity: 1; }
+
+.item-filters-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.item-filters-modal {
+  width: 100%;
+  max-width: 680px;
+  max-height: 80vh;
+  background: var(--ion-color-dark);
+  border-radius: 20px 20px 0 0;
+  border-top: 1px solid rgba(var(--ion-color-light-rgb), 0.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.item-filters-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ion-color-light);
+  border-bottom: 1px solid rgba(var(--ion-color-light-rgb), 0.07);
+  flex-shrink: 0;
+}
+
+.item-filters-modal__close {
+  background: transparent;
+  border: none;
+  color: rgba(var(--ion-color-light-rgb), 0.5);
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 8px;
+}
+
+.item-filters-modal__close:hover { color: var(--ion-color-light); background: rgba(var(--ion-color-light-rgb), 0.07); }
+
+.item-filters-modal__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.item-filters-section { display: flex; flex-direction: column; gap: 8px; }
+
+.item-filters-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(var(--ion-color-light-rgb), 0.4);
+}
+
+.item-filters-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.item-filters-chip {
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(var(--ion-color-light-rgb), 0.75);
+  background: rgba(var(--ion-color-light-rgb), 0.06);
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.12);
+  cursor: pointer;
+  transition: background 0.13s, border-color 0.13s, color 0.13s;
+}
+
+.item-filters-chip:hover {
+  background: rgba(var(--ion-color-primary-rgb), 0.1);
+  border-color: rgba(var(--ion-color-primary-rgb), 0.35);
+  color: var(--ion-color-primary);
+}
+
+.item-filters-chip--active {
+  background: rgba(var(--ion-color-primary-rgb), 0.18);
+  border-color: var(--ion-color-primary);
+  color: var(--ion-color-primary);
+  font-weight: 600;
+}
+
+.item-filters-modal__footer {
+  display: flex;
+  gap: 10px;
+  padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid rgba(var(--ion-color-light-rgb), 0.07);
+  flex-shrink: 0;
+}
+
+.item-filters-reset {
+  flex: 1;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--ion-color-light-rgb), 0.14);
+  background: transparent;
+  color: rgba(var(--ion-color-light-rgb), 0.6);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.item-filters-reset:hover { background: rgba(var(--ion-color-danger-rgb), 0.08); color: var(--ion-color-danger); border-color: var(--ion-color-danger); }
+
+.item-filters-apply {
+  flex: 2;
+  padding: 12px;
+  border-radius: 12px;
+  border: none;
+  background: var(--ion-color-primary);
+  color: var(--ion-color-primary-contrast);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.item-filters-apply:hover { opacity: 0.88; }
 </style>

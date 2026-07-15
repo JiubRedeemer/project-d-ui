@@ -21,6 +21,7 @@ import {
 import {computed, ref} from "vue";
 import axios from "axios";
 import MyRulebookBundlesPanel from "@/views/profile/MyRulebookBundlesPanel.vue";
+import MySpellBundlesPanel from "@/views/profile/MySpellBundlesPanel.vue";
 import type {RulebookBundleCategory} from "@/api/rulebookBundleApi.types";
 import {
   add,
@@ -50,7 +51,7 @@ import {
 } from "@/api/bundleApi";
 
 const ionRouter = useIonRouter();
-const subTab = ref<"items" | RulebookBundleCategory>("items");
+const subTab = ref<"items" | "spells" | RulebookBundleCategory>("items");
 const bundles = ref<ItemBundle[]>([]);
 const isLoading = ref(false);
 
@@ -296,12 +297,15 @@ function getRarityClass(rarity: string | undefined) {
     <ion-content color="dark" class="ion-padding">
       <ion-segment v-model="subTab" class="mybundles-subtabs" mode="ios" scrollable>
         <ion-segment-button value="items"><ion-label>Предметы</ion-label></ion-segment-button>
+        <ion-segment-button value="spells"><ion-label>Заклинания</ion-label></ion-segment-button>
         <ion-segment-button value="RACE"><ion-label>Расы</ion-label></ion-segment-button>
         <ion-segment-button value="CLAZZ"><ion-label>Классы</ion-label></ion-segment-button>
         <ion-segment-button value="BACKGROUND"><ion-label>Предыстории</ion-label></ion-segment-button>
       </ion-segment>
 
-      <MyRulebookBundlesPanel v-if="subTab !== 'items'" :category="subTab" />
+      <MySpellBundlesPanel v-if="subTab === 'spells'" />
+
+      <MyRulebookBundlesPanel v-else-if="subTab !== 'items'" :category="(subTab as RulebookBundleCategory)" />
 
       <div v-else class="bundles-page">
         <!-- Hero -->

@@ -69,22 +69,50 @@ function spellNameOf(dto: SpellDto | undefined): string {
 
 // Заклинания NPC хранятся ссылкой (spellId); разрешаем детали по каталогу комнаты,
 // со старым форматом (по значению) в качестве запасного варианта.
-const resolvedSpells = computed(() => {
+interface ResolvedSpell {
+  name: string;
+  level: number;
+  description: string;
+  chargesPerDay: number | null;
+  school: string;
+  meta: string[];
+}
+
+const resolvedSpells = computed<ResolvedSpell[]>(() => {
   const list = (npc.value?.spells ?? []) as NpcSpellDto[];
   return list.map((s) => {
     const ref = s.spellId ? spellById.value.get(s.spellId) : undefined;
+    const meta: string[] = [];
+    if (ref?.school) meta.push(ref.school);
+    if (ref?.useTime) meta.push(ref.useTime);
+    if (ref?.distance) meta.push(ref.distance);
+    if (ref?.duration) meta.push(ref.duration);
+    if (ref?.ritual) meta.push("ритуал");
     return {
       name: ref ? (spellNameOf(ref) || s.name || "—") : (s.name ?? "Неизвестное заклинание"),
       level: Number((ref?.level ?? s.level) ?? 0) || 0,
       description: ref?.description ?? s.description ?? "",
       chargesPerDay: s.chargesPerDay ?? null,
+      school: ref?.school ?? "",
+      meta,
     };
   });
 });
 
-const spellLevels = computed(() =>
-    [...new Set(resolvedSpells.value.map((s) => s.level))].sort((a, b) => a - b)
-);
+const spellGroups = computed(() => {
+  const byLevel = new Map<number, ResolvedSpell[]>();
+  for (const spell of resolvedSpells.value) {
+    if (!byLevel.has(spell.level)) byLevel.set(spell.level, []);
+    byLevel.get(spell.level)!.push(spell);
+  }
+  return [...byLevel.entries()]
+      .sort(([a], [b]) => a - b)
+      .map(([level, spells]) => ({
+        level,
+        label: level === 0 ? "Заговоры" : `${level} уровень`,
+        spells: spells.sort((a, b) => a.name.localeCompare(b.name, "ru")),
+      }));
+});
 const ambientColor = ref<string | null>(null);
 const relations = ref<CharacterNpcRelationDto[]>([]);
 const npcNpcRelations = ref<NpcNpcRelationDto[]>([]);
@@ -549,7 +577,32 @@ async function submitAddRelation() {
           </section>
 
           <section v-if="npc.resistances?.length || npc.immunities?.length || npc.senses?.length || npc.languages" class="panel"><h2 class="panel__title">Особые параметры</h2><p v-if="npc.resistances?.length"><b>Сопротивления:</b> {{ npc.resistances.join(', ') }}</p><p v-if="npc.immunities?.length"><b>Иммунитеты:</b> {{ npc.immunities.join(', ') }}</p><p v-if="npc.senses?.length"><b>Пассивные чувства:</b> {{ npc.senses.map(s => `${s.name} ${s.value}`).join(', ') }}</p><p v-if="npc.languages"><b>Языки:</b> {{ npc.languages }}</p></section>
-          <section v-if="resolvedSpells.length" class="panel"><h2 class="panel__title">Заклинания</h2><div v-for="level in spellLevels" :key="level"><h3>{{ level === 0 ? 'Заговоры' : `Уровень ${level}` }}</h3><p v-for="(spell, si) in resolvedSpells.filter(s => s.level === level)" :key="si"><b>{{ spell.name }}</b><span v-if="spell.chargesPerDay != null"> <small>({{ spell.chargesPerDay }} в день)</small></span><span v-if="spell.description"> — {{ spell.description }}</span></p></div></section>
+          <section v-if="resolvedSpells.length" class="panel">
+            <h2 class="panel__title">Заклинания</h2>
+            <div class="spell-groups">
+              <div v-for="group in spellGroups" :key="group.level" class="spell-group">
+                <div class="spell-group__header">
+                  <span class="spell-group__badge">{{ group.level === 0 ? '★' : group.level }}</span>
+                  <span class="spell-group__label">{{ group.label }}</span>
+                  <span class="spell-group__count">{{ group.spells.length }}</span>
+                </div>
+                <div class="spell-cards">
+                  <div v-for="(spell, si) in group.spells" :key="si" class="spell-card">
+                    <div class="spell-card__top">
+                      <span class="spell-card__name">{{ spell.name }}</span>
+                      <span v-if="spell.chargesPerDay != null" class="spell-card__charges">
+                        {{ spell.chargesPerDay }}/день
+                      </span>
+                    </div>
+                    <div v-if="spell.meta.length" class="spell-card__meta">
+                      <span v-for="(m, mi) in spell.meta" :key="mi" class="spell-card__tag">{{ m }}</span>
+                    </div>
+                    <div v-if="spell.description" class="spell-card__desc">{{ spell.description }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
 
           <section v-if="npc.description" class="panel">
             <h2 class="panel__title">Описание</h2>
@@ -1091,6 +1144,124 @@ async function submitAddRelation() {
   line-height: 1.55;
   color: rgba(var(--ion-color-light-rgb), 0.72);
   white-space: pre-wrap;
+}
+
+/* Spells */
+.spell-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.spell-group__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.spell-group__badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--ion-color-primary-contrast);
+  background: var(--ion-color-primary);
+}
+
+.spell-group__label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(var(--ion-color-light-rgb), 0.7);
+}
+
+.spell-group__count {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(var(--ion-color-light-rgb), 0.6);
+  background: rgba(var(--ion-color-light-rgb), 0.08);
+}
+
+.spell-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.spell-card {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border-left: 3px solid var(--ion-color-secondary);
+  background: rgba(var(--ion-color-light-rgb), 0.04);
+}
+
+.spell-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.spell-card__name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ion-color-light);
+}
+
+.spell-card__charges {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--ion-color-primary);
+  background: rgba(var(--ion-color-primary-rgb), 0.14);
+  border: 1px solid rgba(var(--ion-color-primary-rgb), 0.28);
+}
+
+.spell-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.spell-card__tag {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: rgba(var(--ion-color-light-rgb), 0.72);
+  background: rgba(var(--ion-color-light-rgb), 0.07);
+}
+
+.spell-card__desc {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: rgba(var(--ion-color-light-rgb), 0.72);
+  white-space: pre-wrap;
+}
+
+@media (min-width: 720px) {
+  .spell-cards {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 @media (min-width: 1024px) {

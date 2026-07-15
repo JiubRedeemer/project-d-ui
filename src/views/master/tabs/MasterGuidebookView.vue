@@ -50,8 +50,8 @@ import {
 import type {BackgroundDto, ClazzDto, RaceDto} from "@/api/rulebookApi.types";
 import {Item, type ItemBundle} from "@/components/models/response/InventoryResponse";
 import {getBundlesForRoom} from "@/api/bundleApi";
-import type {SpellDto} from "@/components/models/response/MagicApi";
-import {listSpells, listSpellsDnd2024} from "@/api/magicApi";
+import {getSpellBundlesForRoom, getRoomSpellsFromBundles} from "@/api/spellBundleApi";
+import type {SpellBundle, SpellDto} from "@/components/models/response/MagicApi";
 import {getAllNpcNpcRelationsForRoom, getAllNpcRelationsForRoom, getNpcsByRoomIdForRoom, saveCharacterNpcRelationForRoom, saveNpcForRoom} from "@/api/npcApi";
 import type {CharacterNpcRelationDto, NpcDto, NpcNpcRelationDto, NpcTypeEnum, RelationTypeEnum} from "@/api/npcApi.types";
 import {getStatesForRoom} from "@/api/statesApi";
@@ -113,7 +113,7 @@ const SECTIONS: { id: Section; label: string; icon: string; description: string;
   {id: "spells", label: "Заклинания", icon: "sparklesOutline", description: "Магия по уровням", accent: "85, 191, 255"},
   {id: "npcs", label: "NPC", icon: "personOutline", description: "Персонажи мира", accent: "45, 213, 91"},
   {id: "states", label: "Состояния", icon: "alertCircleOutline", description: "Состояния персонажей", accent: "208, 188, 254"},
-  {id: "bundles", label: "Наборы", icon: "layersOutline", description: "Наборы предметов", accent: "45, 213, 91"}
+  {id: "bundles", label: "Наборы", icon: "layersOutline", description: "Наборы контента", accent: "123, 321, 22"}
 ];
 
 const sectionIcons: Record<string, unknown> = {
@@ -355,8 +355,8 @@ const showItemModal = ref(false);
 const selectedSpell = ref<SpellDto | null>(null);
 const showSpellModal = ref(false);
 
-type SpellCatalog = "DND5E" | "DND2024";
-const selectedSpellCatalog = ref<SpellCatalog>("DND5E");
+const availableSpellBundles = ref<SpellBundle[]>([]);
+const selectedSpellBundle = ref<string>("ALL"); // "ALL" => все включённые наборы + пользовательские
 
 const npcs = ref<NpcDto[]>([]);
 const npcsLoading = ref(false);
@@ -446,20 +446,6 @@ const baseRuleType = computed(() => {
   return fromStore || undefined;
 });
 const effectiveBaseRuleType = computed(() => baseRuleType.value ?? guidebookStore.baseRuleType ?? "");
-
-const roomSpellCatalogDefault = computed<SpellCatalog>(() =>
-    baseRuleType.value === "DND2024" ? "DND2024" : "DND5E"
-);
-
-const orderedSpellCatalogs = computed<SpellCatalog[]>(() =>
-    roomSpellCatalogDefault.value === "DND2024"
-        ? ["DND2024", "DND5E"]
-        : ["DND5E", "DND2024"]
-);
-
-function getSpellCatalogLabel(catalog: SpellCatalog): string {
-  return catalog === "DND2024" ? "2024" : "2014";
-}
 
 // Кэш для рас, классов и предысторий (ключ: roomId:baseRuleType)
 const guidebookCache = new Map<string, { races: RaceDto[]; classes: ClazzDto[]; backgrounds: BackgroundDto[] }>();
@@ -1040,7 +1026,39 @@ function closeSpellModal() {
 }
 
 function getSpellCacheKey() {
-  return `${selectedSpellCatalog.value}:${selectedSpellClass.value}`;
+  return `${selectedSpellBundle.value}:${selectedSpellClass.value}`;
+}
+
+async function loadRoomSpellBundles() {
+  if (!roomId.value) return;
+  try {
+    const bundles = await getSpellBundlesForRoom(String(roomId.value));
+    availableSpellBundles.value = bundles.filter((b) => b.enabled);
+  } catch (e) {
+    console.error("Failed to load spell bundles", e);
+    availableSpellBundles.value = [];
+  }
+}
+
+const showSpellFiltersModal = ref(false);
+const spellActiveFiltersCount = computed(() =>
+    (selectedSpellBundle.value !== "ALL" ? 1 : 0) +
+    (selectedSpellClass.value !== "ALL" ? 1 : 0) +
+    (selectedSpellSchool.value ? 1 : 0) +
+    (selectedSpellLevel.value ? 1 : 0)
+);
+const selectedSpellBundleName = computed(
+    () => availableSpellBundles.value.find((b) => b.id === selectedSpellBundle.value)?.name ?? selectedSpellBundle.value
+);
+const selectedSpellClassName = computed(
+    () => spellClasses.value.find((c) => c.value === selectedSpellClass.value)?.label ?? selectedSpellClass.value
+);
+
+function resetSpellFilters() {
+  selectedSpellBundle.value = "ALL";
+  selectedSpellClass.value = "ALL";
+  selectedSpellSchool.value = "";
+  selectedSpellLevel.value = "";
 }
 
 async function loadSpells() {
@@ -1050,15 +1068,8 @@ async function loadSpells() {
   try {
     const spellClass =
         selectedSpellClass.value === "ALL" ? undefined : (selectedSpellClass.value as string);
-    const rootSpellClass =
-        spellClass != null
-            ? (spellClasses.value.find((c) => c.value === spellClass)?.groupCode ?? undefined)
-            : undefined;
-    if (selectedSpellCatalog.value === "DND2024") {
-      spells.value = await listSpellsDnd2024(spellClass);
-    } else {
-      spells.value = await listSpells(spellClass, rootSpellClass ?? undefined);
-    }
+    const bundleId = selectedSpellBundle.value === "ALL" ? undefined : selectedSpellBundle.value;
+    spells.value = await getRoomSpellsFromBundles(String(roomId.value), spellClass, bundleId);
     loadedSpellKey.value = key;
   } finally {
     loading.value = false;
@@ -1083,7 +1094,7 @@ async function loadSpellClassesForRoom() {
   }
 }
 
-watch([selectedSpellClass, selectedSpellCatalog], () => {
+watch([selectedSpellClass, selectedSpellBundle], () => {
   selectedSpellSchool.value = "";
   selectedSpellLevel.value = "";
   loadedSpellKey.value = null;
@@ -1506,12 +1517,8 @@ async function ensureSectionDataLoaded(section: Section) {
     await loadBackgrounds();
   } else if (section === "spells") {
     if (spellClasses.value.length === 0) await loadSpellClassesForRoom();
-    const nextCatalog = orderedSpellCatalogs.value[0];
-    if (selectedSpellCatalog.value !== nextCatalog) {
-      selectedSpellCatalog.value = nextCatalog;
-    } else {
-      await loadSpells();
-    }
+    if (availableSpellBundles.value.length === 0) await loadRoomSpellBundles();
+    await loadSpells();
   } else if (section === "items") {
     if (availableBundles.value.length === 0) void loadRoomBundles();
     if (items.value.length === 0) await Promise.all([searchItems(true), loadItemTags()]);
@@ -2199,73 +2206,105 @@ async function onCatalogApplied(
       <!-- Заклинания -->
       <div v-show="currentSection === 'spells'" class="segment-content spells-section">
         <div class="spells-filters">
-          <ion-segment v-model="selectedSpellCatalog" class="spell-rule-segment" mode="ios">
-            <ion-segment-button
-                v-for="catalog in orderedSpellCatalogs"
-                :key="catalog"
-                :value="catalog"
+          <div class="items-search-row">
+            <ion-searchbar
+                v-model="spellSearchQuery"
+                placeholder="Найти заклинание"
+                debounce="200"
+                class="items-searchbar"
+            />
+            <button
+                :class="['items-filter-btn', { 'items-filter-btn--active': spellActiveFiltersCount > 0 }]"
+                @click="showSpellFiltersModal = true"
             >
-              <ion-label>{{ getSpellCatalogLabel(catalog) }}</ion-label>
-            </ion-segment-button>
-          </ion-segment>
-          <ion-searchbar
-              v-model="spellSearchQuery"
-              placeholder="Найти заклинание"
-              debounce="200"
-              class="spells-searchbar"
-          />
-          <div class="spell-class-select-wrapper">
-            <label class="spell-class-label" for="spell-class-select">Класс</label>
-            <select
-                id="spell-class-select"
-                v-model="selectedSpellClass"
-                class="spell-class-select"
-                :disabled="spellClassesLoading"
-            >
-              <option value="ALL">Все классы</option>
-              <option
-                  v-for="opt in spellClasses"
-                  :key="opt.value"
-                  :value="opt.value"
-              >
-                {{ opt.label }}
-              </option>
-            </select>
+              <ion-icon :icon="filterOutline"/>
+              <span v-if="spellActiveFiltersCount > 0" class="items-filter-btn__badge">{{ spellActiveFiltersCount }}</span>
+            </button>
           </div>
-          <div class="spells-filter-row">
-            <IonSelect
-                v-model="selectedSpellSchool"
-                interface="popover"
-                placeholder="Школа"
-                aria-label="Фильтр по школе заклинания"
-                class="spells-filter-select"
-            >
-              <IonSelectOption value="">Все школы</IonSelectOption>
-              <IonSelectOption
-                  v-for="s in availableSpellSchools"
-                  :key="s"
-                  :value="s"
-              >
-                {{ s }}
-              </IonSelectOption>
-            </IonSelect>
-            <IonSelect
-                v-model="selectedSpellLevel"
-                interface="popover"
-                placeholder="Уровень"
-                aria-label="Фильтр по уровню заклинания"
-                class="spells-filter-select"
-            >
-              <IonSelectOption value="">Все уровни</IonSelectOption>
-              <IonSelectOption
-                  v-for="lvl in availableSpellLevels"
-                  :key="lvl"
-                  :value="lvl"
-              >
-                {{ getSpellLevelLabel(lvl) }}
-              </IonSelectOption>
-            </IonSelect>
+
+          <!-- Активные фильтры -->
+          <div v-if="spellActiveFiltersCount > 0" class="items-active-filters">
+            <span v-if="selectedSpellBundle !== 'ALL'" class="item-active-chip">
+              {{ selectedSpellBundleName }}
+              <button @click="selectedSpellBundle = 'ALL'"><ion-icon :icon="closeOutline"/></button>
+            </span>
+            <span v-if="selectedSpellClass !== 'ALL'" class="item-active-chip">
+              {{ selectedSpellClassName }}
+              <button @click="selectedSpellClass = 'ALL'"><ion-icon :icon="closeOutline"/></button>
+            </span>
+            <span v-if="selectedSpellSchool" class="item-active-chip">
+              {{ selectedSpellSchool }}
+              <button @click="selectedSpellSchool = ''"><ion-icon :icon="closeOutline"/></button>
+            </span>
+            <span v-if="selectedSpellLevel" class="item-active-chip">
+              {{ getSpellLevelLabel(selectedSpellLevel) }}
+              <button @click="selectedSpellLevel = ''"><ion-icon :icon="closeOutline"/></button>
+            </span>
+            <button class="item-active-chip item-active-chip--reset" @click="resetSpellFilters">Сбросить</button>
           </div>
+
+          <!-- Модалка фильтров -->
+          <Teleport to="body">
+            <div v-if="showSpellFiltersModal" class="item-filters-overlay" @click.self="showSpellFiltersModal = false">
+              <div class="item-filters-modal">
+                <div class="item-filters-modal__header">
+                  <span>Фильтры</span>
+                  <button class="item-filters-modal__close" @click="showSpellFiltersModal = false">
+                    <ion-icon :icon="closeOutline"/>
+                  </button>
+                </div>
+                <div class="item-filters-modal__body">
+                  <div v-if="availableSpellBundles.length" class="item-filters-section">
+                    <div class="item-filters-label">Набор</div>
+                    <div class="item-filters-chips">
+                      <button
+                          v-for="b in availableSpellBundles" :key="b.id"
+                          :class="['item-filters-chip', { 'item-filters-chip--active': selectedSpellBundle === b.id }]"
+                          @click="selectedSpellBundle = selectedSpellBundle === b.id ? 'ALL' : b.id"
+                      >{{ b.name }}</button>
+                    </div>
+                  </div>
+
+                  <div v-if="spellClasses.length" class="item-filters-section">
+                    <div class="item-filters-label">Класс</div>
+                    <div class="item-filters-chips">
+                      <button
+                          v-for="opt in spellClasses" :key="opt.value"
+                          :class="['item-filters-chip', { 'item-filters-chip--active': selectedSpellClass === opt.value }]"
+                          @click="selectedSpellClass = selectedSpellClass === opt.value ? 'ALL' : opt.value"
+                      >{{ opt.label }}</button>
+                    </div>
+                  </div>
+
+                  <div v-if="availableSpellSchools.length" class="item-filters-section">
+                    <div class="item-filters-label">Школа</div>
+                    <div class="item-filters-chips">
+                      <button
+                          v-for="s in availableSpellSchools" :key="s"
+                          :class="['item-filters-chip', { 'item-filters-chip--active': selectedSpellSchool === s }]"
+                          @click="selectedSpellSchool = selectedSpellSchool === s ? '' : s"
+                      >{{ s }}</button>
+                    </div>
+                  </div>
+
+                  <div v-if="availableSpellLevels.length" class="item-filters-section">
+                    <div class="item-filters-label">Уровень</div>
+                    <div class="item-filters-chips">
+                      <button
+                          v-for="lvl in availableSpellLevels" :key="lvl"
+                          :class="['item-filters-chip', { 'item-filters-chip--active': selectedSpellLevel === lvl }]"
+                          @click="selectedSpellLevel = selectedSpellLevel === lvl ? '' : lvl"
+                      >{{ getSpellLevelLabel(lvl) }}</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="item-filters-modal__footer">
+                  <button class="item-filters-reset" @click="resetSpellFilters">Сбросить</button>
+                  <button class="item-filters-apply" @click="showSpellFiltersModal = false">Применить</button>
+                </div>
+              </div>
+            </div>
+          </Teleport>
         </div>
         <div v-if="!loading && filteredSpells.length" class="spells-content">
           <div v-for="[level, levelSpells] in spellsByLevel" :key="level" class="spell-level-group">

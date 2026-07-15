@@ -104,7 +104,8 @@ export const GATEWAY_INTEGRATION_ROUTES = {
     spellBooks: "/spell-books",
     spellBooksByRoomCharacter: "/spell-books/by-room-character",
     spellBookItems: "/spell-book-items",
-    spellCells: "/spell-cells"
+    spellCells: "/spell-cells",
+    spellBundles: "/spell-bundles"
 };
 
 export const SPELL_IMAGE_PLACEHOLDER =

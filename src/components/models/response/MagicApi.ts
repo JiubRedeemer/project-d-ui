@@ -48,6 +48,22 @@ export interface SpellDto {
     imgUrl?: string;
 }
 
+export interface SpellBundle {
+    id: string;
+    name: string;
+    description: string;
+    createdAt?: string;
+    imgUrl?: string;
+    /** null/undefined = системный (официальный) набор */
+    ownerUserId?: string;
+    isPublic?: boolean;
+    priceCrystals?: number;
+    /** Куплен ли набор текущим пользователем */
+    purchased?: boolean;
+    /** Populated only when listing bundles in the context of a specific room */
+    enabled?: boolean;
+}
+
 export type ChargesRefillEnum = "SHORT_REST" | "LONG_REST" | "REST";
 
 /** Request body for refill rest endpoints */
