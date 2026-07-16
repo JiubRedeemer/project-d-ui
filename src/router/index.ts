@@ -40,6 +40,9 @@ import MasterGuidebookBackgroundsView from "@/views/master/tabs/guidebook/Master
 import MasterGuidebookItemsView from "@/views/master/tabs/guidebook/MasterGuidebookItemsView.vue";
 import MasterGuidebookSpellsView from "@/views/master/tabs/guidebook/MasterGuidebookSpellsView.vue";
 import MasterGuidebookNpcsView from "@/views/master/tabs/guidebook/MasterGuidebookNpcsView.vue";
+import MasterGuidebookOrganizationsView from "@/views/master/tabs/guidebook/MasterGuidebookOrganizationsView.vue";
+import OrganizationFullView from "@/views/npcs/OrganizationFullView.vue";
+import CreateOrganizationView from "@/views/npcs/CreateOrganizationView.vue";
 import MasterGuidebookStatesView from "@/views/master/tabs/guidebook/MasterGuidebookStatesView.vue";
 import MasterGuidebookBundlesSectionView from "@/views/master/tabs/guidebook/MasterGuidebookBundlesSectionView.vue";
 import ProfilePage from "@/views/profile/ProfilePage.vue";
@@ -309,6 +312,26 @@ const routes: Array<RouteRecordRaw> = [
         path: '/rooms/:roomId/master/guidebook/npcs',
         component: MasterGuidebookNpcsView,
         name: 'masterGuidebookNpcsView',
+    },
+    {
+        path: '/rooms/:roomId/master/guidebook/organizations',
+        component: MasterGuidebookOrganizationsView,
+        name: 'masterGuidebookOrganizationsView',
+    },
+    {
+        path: '/rooms/:roomId/organizations/create',
+        component: CreateOrganizationView,
+        name: 'createOrganization',
+    },
+    {
+        path: '/rooms/:roomId/organizations/:orgId/full',
+        component: OrganizationFullView,
+        name: 'organizationFullView',
+    },
+    {
+        path: '/rooms/:roomId/organizations/:orgId/edit',
+        component: CreateOrganizationView,
+        name: 'editOrganization',
     },
     {
         path: '/rooms/:roomId/master/guidebook/states',

@@ -57,6 +57,7 @@ export type NpcDto = {
   description?: string | null;
   visible?: boolean;
   unique?: boolean;
+  statsHidden?: boolean;
   type: NpcTypeEnum;
   clazzCode?: string | null;
   clazzInfo?: ClassInfoDto | null;
@@ -97,6 +98,7 @@ export type SaveNpcRequest = {
   type: NpcTypeEnum;
   visible?: boolean;
   unique?: boolean;
+  statsHidden?: boolean;
   clazzCode?: string | null;
   raceCode?: string | null;
   armoryClass?: string | null;

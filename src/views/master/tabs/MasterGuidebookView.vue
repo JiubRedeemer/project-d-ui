@@ -35,7 +35,8 @@ import {
   searchOutline,
   sparkles,
   sparklesOutline,
-  layersOutline
+  layersOutline,
+  businessOutline
 } from "ionicons/icons";
 import {computed, onMounted, ref, shallowRef, watch, withDefaults} from "vue";
 import {useRoute} from "vue-router";
@@ -89,7 +90,7 @@ const fullBackgroundStore = useFullBackgroundStore();
 const guidebookStore = useGuidebookStore();
 const createInventoryItemStore = useCreateInventoryItemStore();
 
-type Section = "list" | "races" | "classes" | "backgrounds" | "items" | "spells" | "npcs" | "states" | "bundles";
+type Section = "list" | "races" | "classes" | "backgrounds" | "items" | "spells" | "npcs" | "organizations" | "states" | "bundles";
 const props = withDefaults(defineProps<{ lockedSection?: Section | null; externalSearchQuery?: string }>(), {
   lockedSection: null,
   externalSearchQuery: ""
@@ -112,6 +113,7 @@ const SECTIONS: { id: Section; label: string; icon: string; description: string;
   {id: "items", label: "Предметы", icon: "cubeOutline", description: "Снаряжение и артефакты", accent: "149, 115, 253"},
   {id: "spells", label: "Заклинания", icon: "sparklesOutline", description: "Магия по уровням", accent: "85, 191, 255"},
   {id: "npcs", label: "NPC", icon: "personOutline", description: "Персонажи мира", accent: "45, 213, 91"},
+  {id: "organizations", label: "Организации", icon: "businessOutline", description: "Фракции и группировки", accent: "255, 149, 0"},
   {id: "states", label: "Состояния", icon: "alertCircleOutline", description: "Состояния персонажей", accent: "208, 188, 254"},
   {id: "bundles", label: "Наборы", icon: "layersOutline", description: "Наборы контента", accent: "123, 321, 22"}
 ];
@@ -124,7 +126,8 @@ const sectionIcons: Record<string, unknown> = {
   cubeOutline,
   sparklesOutline,
   alertCircleOutline,
-  layersOutline
+  layersOutline,
+  businessOutline
 };
 
 const NPC_TYPE_LABELS: Record<NpcTypeEnum, string> = {

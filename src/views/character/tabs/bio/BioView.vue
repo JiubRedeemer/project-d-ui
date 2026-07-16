@@ -5,7 +5,7 @@ import axios from "axios";
 import {FILE_STORAGE_INTEGRATION_ROUTES, GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
 import {TEXTS} from "@/config/localisations";
 import {marked} from "marked";
-import {add, chevronBackOutline, createOutline, saveOutline, sparkles} from "ionicons/icons";
+import {add, businessOutline, chevronBackOutline, createOutline, saveOutline, sparkles} from "ionicons/icons";
 import {
   IonButton,
   IonIcon,
@@ -20,6 +20,8 @@ import {useNpcRelationsStore} from "@/stores/NpcRelationsStore";
 import {useSubheaderOpenedStore} from "@/stores/SubheaderStore";
 import {deleteCharacterNpcRelationByIdForRoom} from "@/api/npcApi";
 import type { NpcWithRelationIdDto, RelationTypeEnum } from "@/api/npcApi.types";
+import {getOrganizationMembershipsForCharacter} from "@/api/organizationApi";
+import {ORGANIZATION_RELATION_LABELS, type OrganizationMembershipDto} from "@/api/organizationApi.types";
 import type {CharacterBio} from "@/components/models/response/Character";
 import CachedFileImage from "@/components/CachedFileImage.vue";
 import {extractDominantColorFromUrl} from "@/utils/imageAmbient";
@@ -246,6 +248,32 @@ async function loadAllRelatedNpcs() {
   await npcRelationsStore.loadAll(roomId, characterId);
 }
 
+const organizationMemberships = ref<OrganizationMembershipDto[]>([]);
+
+function organizationLogoUrl(imgUrl: string | null | undefined): string | null {
+  return imgUrl?.trim() ? getNpcImageUrl(imgUrl) : null;
+}
+
+function relationLabel(type: OrganizationMembershipDto["relationType"]): string {
+  return type ? (ORGANIZATION_RELATION_LABELS[type] ?? "") : "";
+}
+
+async function loadOrganizationMemberships() {
+  const roomId = route.params.roomId as string;
+  const characterId = route.params.characterId as string;
+  try {
+    organizationMemberships.value = await getOrganizationMembershipsForCharacter(roomId, characterId);
+  } catch (e) {
+    console.error("Failed to load organization memberships:", e);
+    organizationMemberships.value = [];
+  }
+}
+
+function goToOrganization(orgId: string | null | undefined) {
+  if (!orgId) return;
+  ionRouter.push(`/rooms/${route.params.roomId}/organizations/${orgId}/full`);
+}
+
 function onAddRelation(type: RelationTypeEnum) {
   const roomId = route.params.roomId as string;
   const characterId = route.params.characterId as string;
@@ -415,8 +443,13 @@ const uploadToMinio = async (file: File): Promise<string> => {
   return res.data;
 };
 
-onMounted(loadAllRelatedNpcs);
-onIonViewDidEnter(loadAllRelatedNpcs);
+function loadBioRelations() {
+  void loadAllRelatedNpcs();
+  void loadOrganizationMemberships();
+}
+
+onMounted(loadBioRelations);
+onIonViewDidEnter(loadBioRelations);
 
 const avatarRemoteSrc = computed(() => {
   const avatar = characterStore.character?.characterBio?.avatar;
@@ -778,6 +811,34 @@ onBeforeUnmount(() => {
           </div>
         </div>
       </div>
+
+      <template v-if="organizationMemberships.length">
+        <h1 class="sectionHeader">Организации:</h1>
+        <div class="npc-section">
+          <div class="npc-relations-list">
+            <div
+              class="npc-card"
+              v-for="(org, oi) in organizationMemberships"
+              :key="oi"
+              @click="goToOrganization(org.organizationId)"
+            >
+              <div class="npc-card-avatar-wrap">
+                <img
+                  v-if="organizationLogoUrl(org.imgUrl)"
+                  class="npc-avatar"
+                  :src="organizationLogoUrl(org.imgUrl)!"
+                  :alt="org.organizationName ?? ''"
+                />
+                <div v-else class="npc-avatar org-avatar-placeholder">
+                  <ion-icon :icon="businessOutline"/>
+                </div>
+              </div>
+              <div class="npc-name">{{ org.organizationName }}</div>
+              <div v-if="org.relationType" class="org-relation-label">{{ relationLabel(org.relationType) }}</div>
+            </div>
+          </div>
+        </div>
+      </template>
     </template>
 
     <ion-popover
@@ -1328,6 +1389,24 @@ div.avatar-img {
 .npc-add-icon {
   font-size: 44px;
   color: var(--ion-color-primary);
+}
+
+.org-avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(var(--ion-color-primary-rgb), 0.12);
+  color: var(--ion-color-primary);
+  font-size: 34px;
+}
+
+.org-relation-label {
+  width: 75px;
+  text-align: center;
+  font-size: 10px;
+  line-height: 1.1;
+  color: var(--ion-color-primary);
+  word-break: break-word;
 }
 
 .npc-relations-loading {

@@ -29,6 +29,8 @@ import {
   eyeOutline,
   flameOutline,
   flashOutline,
+  lockClosedOutline,
+  lockOpenOutline,
   pawOutline,
   personOutline,
   ribbonOutline,
@@ -133,6 +135,7 @@ const npc = ref<SaveNpcRequest>({
   type: "RATIONAL",
   visible: true,
   unique: true,
+  statsHidden: false,
   clazzCode: null,
   raceCode: null,
   armoryClass: null,
@@ -288,6 +291,10 @@ function toggleUnique() {
   npc.value.unique = !npc.value.unique;
 }
 
+function toggleStatsHidden() {
+  npc.value.statsHidden = !npc.value.statsHidden;
+}
+
 function openTypeSelect() {
   if (typeSelectRef.value?.$el?.open) {
     typeSelectRef.value.$el.open();
@@ -360,6 +367,7 @@ function fillFromDto(dto: NpcDto) {
     type: dto.type,
     visible: dto.visible ?? true,
     unique: dto.unique ?? false,
+    statsHidden: dto.statsHidden ?? false,
     clazzCode: dto.clazzCode ?? null,
     raceCode: dto.raceCode ?? null,
     armoryClass: dto.armoryClass ?? null,
@@ -642,6 +650,17 @@ onMounted(() => {
             >
               <ion-icon :icon="npc.unique ? sparklesOutline : copyOutline"/>
               <span>{{ npc.unique ? "Уникальный" : "Обычный" }}</span>
+            </button>
+
+            <button
+                type="button"
+                class="meta-toggle"
+                :class="{ 'meta-toggle--on': npc.statsHidden }"
+                @click="toggleStatsHidden"
+                title="Игроки увидят только имя, описание и портрет"
+            >
+              <ion-icon :icon="npc.statsHidden ? lockClosedOutline : lockOpenOutline"/>
+              <span>{{ npc.statsHidden ? "Хар-ки скрыты" : "Хар-ки видны" }}</span>
             </button>
           </div>
         </div>
@@ -1168,13 +1187,13 @@ onMounted(() => {
 .stats {
   flex-shrink: 0;
   width: 180px;
-  height: 180px;
+  min-height: 180px;
   box-sizing: border-box;
   border-radius: 25px;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 8px;
+  gap: 7px;
   padding: 12px 10px;
   background: linear-gradient(158deg, rgba(var(--ion-color-medium-rgb), 0.95) 0%, rgba(var(--ion-color-dark-rgb), 0.55) 100%);
   border: 1px solid rgba(var(--ion-color-primary-rgb), 0.12);
