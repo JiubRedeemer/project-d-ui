@@ -1,6 +1,6 @@
-export type RulebookBundleCategory = "RACE" | "CLAZZ" | "BACKGROUND";
+export type RulebookBundleCategory = "RACE" | "CLAZZ" | "BACKGROUND" | "BLUEPRINT";
 
-/** Элемент набора (раса/класс/предыстория) с признаком включённости в комнате. */
+/** Элемент набора (раса/класс/предыстория/чертёж) с признаком включённости в комнате. */
 export interface RulebookBundleContentDto {
   id: string;
   name: string;

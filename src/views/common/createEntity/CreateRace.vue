@@ -189,7 +189,6 @@ onBeforeMount(async () => {
     createRaceStore.race.stats.traits = [];
   }
   const roomId = createRaceStore.roomId ?? roomCreationStore.roomInfoCreatedId;
-  const baseRules = roomCreationStore.roomInfo?.baseRules;
   if (roomId) {
     try {
       abilities.value = await getAbilitiesForRoom(roomId);
@@ -198,7 +197,7 @@ onBeforeMount(async () => {
     }
   }
   try {
-    speciesList.value = await getRootRacesForRoom(ZERO_UUID, baseRules);
+    speciesList.value = await getRootRacesForRoom(ZERO_UUID, undefined);
   } catch {
     speciesList.value = [];
   }

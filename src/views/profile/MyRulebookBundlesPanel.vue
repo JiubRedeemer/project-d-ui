@@ -16,6 +16,7 @@ import {
   bookOutline,
   chevronBackOutline,
   closeOutline,
+  constructOutline,
   createOutline,
   cubeOutline,
   documentTextOutline,
@@ -44,12 +45,14 @@ const CATEGORY_LABEL: Record<RulebookBundleCategory, string> = {
   RACE: "рас",
   CLAZZ: "классов",
   BACKGROUND: "предысторий",
+  BLUEPRINT: "чертежей",
 };
 
 const CATEGORY_ICON: Record<RulebookBundleCategory, string> = {
   RACE: peopleOutline,
   CLAZZ: bookOutline,
   BACKGROUND: documentTextOutline,
+  BLUEPRINT: constructOutline,
 };
 const categoryIcon = computed(() => CATEGORY_ICON[props.category]);
 

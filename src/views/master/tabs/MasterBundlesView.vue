@@ -167,13 +167,14 @@ function closePreview() {
 
 <template>
   <div class="bundles-view">
-    <!-- Подвкладки: предметы / расы / классы / предыстории -->
+    <!-- Подвкладки: предметы / заклинания / расы / классы / предыстории / чертежи -->
     <ion-segment v-model="subTab" class="bundles-subtabs" mode="ios" scrollable>
       <ion-segment-button value="items"><ion-label>Предметы</ion-label></ion-segment-button>
       <ion-segment-button value="spells"><ion-label>Заклинания</ion-label></ion-segment-button>
       <ion-segment-button value="RACE"><ion-label>Расы</ion-label></ion-segment-button>
       <ion-segment-button value="CLAZZ"><ion-label>Классы</ion-label></ion-segment-button>
       <ion-segment-button value="BACKGROUND"><ion-label>Предыстории</ion-label></ion-segment-button>
+      <ion-segment-button value="BLUEPRINT"><ion-label>Чертежи</ion-label></ion-segment-button>
     </ion-segment>
 
     <MasterSpellBundlesView v-if="subTab === 'spells'" />

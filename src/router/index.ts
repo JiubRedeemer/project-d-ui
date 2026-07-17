@@ -15,10 +15,7 @@ import InventorySearchView from "@/views/character/tabs/inventory/InventorySearc
 import InventoryItemAddView from "@/views/character/tabs/inventory/InventoryItemAddView.vue";
 import MagicSearchView from "@/views/character/tabs/magic/MagicSearchView.vue";
 import SpellAddView from "@/views/character/tabs/magic/SpellAddView.vue";
-import ChooseRuletype from "@/views/rooms/steps/ChooseRuletype.vue";
-import ChooseRaces from "@/views/rooms/steps/ChooseRaces.vue";
-import ChooseClasses from "@/views/rooms/steps/ChooseClasses.vue";
-import ChooseBackgrounds from "@/views/rooms/steps/ChooseBackgrounds.vue";
+import ChooseBundles from "@/views/rooms/steps/ChooseBundles.vue";
 import RaceFullView from "@/views/common/guidebook/RaceFullView.vue";
 import ClassFullView from "@/views/common/guidebook/ClassFullView.vue";
 import BackgroundFullView from "@/views/common/guidebook/BackgroundFullView.vue";
@@ -124,24 +121,9 @@ const routes: Array<RouteRecordRaw> = [
         name: 'createRoom'
     },
     {
-        path: '/rooms/create/ruleType',
-        component: ChooseRuletype,
-        name: 'ruleType'
-    },
-    {
-        path: '/rooms/create/races',
-        component: ChooseRaces,
-        name: 'races'
-    },
-    {
-        path: '/rooms/create/classes',
-        component: ChooseClasses,
-        name: 'classes'
-    },
-    {
-        path: '/rooms/create/backgrounds',
-        component: ChooseBackgrounds,
-        name: 'backgrounds'
+        path: '/rooms/create/bundles/:roomId',
+        component: ChooseBundles,
+        name: 'createRoomBundles'
     },
     {
         path: '/invites',

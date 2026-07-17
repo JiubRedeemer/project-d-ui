@@ -2,7 +2,7 @@
 import { IonIcon, IonSpinner, IonToggle, toastController } from "@ionic/vue";
 import { computed, onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
-import { bookOutline, chevronDownOutline, chevronForwardOutline, peopleOutline, documentTextOutline } from "ionicons/icons";
+import { bookOutline, chevronDownOutline, chevronForwardOutline, constructOutline, peopleOutline, documentTextOutline } from "ionicons/icons";
 import type { RulebookBundleCategory, RulebookBundleContentDto, RulebookBundleDto } from "@/api/rulebookBundleApi.types";
 import {
   disableRulebookBundleForRoom,
@@ -14,7 +14,10 @@ import {
 } from "@/api/rulebookBundleApi";
 import { useGuidebookStore } from "@/stores/GuidebookStore";
 
-const props = defineProps<{ category: RulebookBundleCategory }>();
+/** showHint скрывается, когда секции показаны стопкой и подсказка дублировалась бы. */
+const props = withDefaults(defineProps<{ category: RulebookBundleCategory; showHint?: boolean }>(), {
+  showHint: true,
+});
 const guidebookStore = useGuidebookStore();
 
 const route = useRoute();
@@ -34,6 +37,7 @@ const CATEGORY_META: Record<RulebookBundleCategory, { label: string; icon: strin
   RACE: { label: "Расы", icon: peopleOutline },
   CLAZZ: { label: "Классы", icon: bookOutline },
   BACKGROUND: { label: "Предыстории", icon: documentTextOutline },
+  BLUEPRINT: { label: "Чертежи", icon: constructOutline },
 };
 
 /** Бандлы выбранной категории (расы/классы/предыстории), по одному на издание. */
@@ -149,7 +153,7 @@ async function toggleItem(bundle: RulebookBundleDto, item: RulebookBundleContent
       <span>{{ CATEGORY_META[props.category].label }}</span>
       <span v-if="enabledCount" class="rb-count">{{ enabledCount }}</span>
     </div>
-    <p class="rb-hint">Соберите любой набор: можно смешивать издания — например, расы из 2024, а классы из 2014.</p>
+    <p v-if="props.showHint" class="rb-hint">Соберите любой набор: можно смешивать издания — например, расы из 2024, а классы из 2014.</p>
 
     <div v-if="isLoading" class="rb-loading"><ion-spinner name="crescent" /></div>
 

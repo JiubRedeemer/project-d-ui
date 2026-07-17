@@ -56,23 +56,36 @@ onMounted(() => {
 </template>
 
 <style scoped>
+/* ion-title не сжимается по умолчанию — без min-width длинное название распирает тулбар. */
+ion-title {
+  min-width: 0;
+}
+
 .header-content {
   display: flex;
   flex-direction: column;
   align-items: start;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .name-block {
   font-size: 16px;
   font-weight: bold;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .race-class-block {
   font-size: 10px;
   max-height: 50px;
   color: var(--ion-color-primary);
-
-  white-space: wrap; /* разрешает перенос строк */
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .level-container {

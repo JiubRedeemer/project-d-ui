@@ -98,7 +98,7 @@ const goToCreateRoom = () => {
     ionRouter.navigate('/subscription', 'forward', 'push');
     return;
   }
-  ionRouter.navigate('/rooms/create/ruleType', 'forward', 'push');
+  ionRouter.navigate('/rooms/create', 'forward', 'push');
 };
 
 const onRoomPressMove = (e: MouseEvent | TouchEvent) => {

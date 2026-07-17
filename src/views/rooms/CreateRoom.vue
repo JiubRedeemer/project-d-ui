@@ -6,9 +6,10 @@ import {
   IonIcon,
   IonInput,
   IonItem,
+  IonLabel,
   IonPage,
-  IonSelect,
-  IonSelectOption,
+  IonSpinner,
+  IonToggle,
   toastController,
   useIonRouter
 } from "@ionic/vue";
@@ -17,16 +18,16 @@ import RoomsHeader from "@/views/rooms/RoomsHeader.vue";
 import {ref} from "vue";
 import axios from "axios";
 import {FILE_STORAGE_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
-import {add, checkmark} from "ionicons/icons";
+import {add, arrowForward} from "ionicons/icons";
 import {useRoomCreationStore} from "@/stores/RoomCreationStore";
 
 const ionRouter = useIonRouter();
 
 const roomName = ref("");
 const roomDescription = ref("");
-const roomRules = ref("DND5E");
-const roomRootRules = ref("DND5E");
+const roomIsPublic = ref(false);
 const roomImage = ref<File | null>(null);
+const isCreating = ref(false);
 const previewImage = ref<string | null>(null);
 const filePath = ref<string>("");
 
@@ -81,22 +82,42 @@ async function showValidationErrorToast() {
   await toast.present();
 }
 
+async function showCreationErrorToast() {
+  const toast = await toastController.create({
+    message: "Не удалось создать комнату. Попробуйте ещё раз.",
+    duration: 2000,
+    position: 'top'
+  })
+  await toast.present();
+}
+
+/**
+ * Комната создаётся сразу: наборы правил включаются уже для существующей комнаты,
+ * поэтому сборка происходит следующим шагом.
+ */
 const createRoom = async () => {
+  if (isCreating.value) return;
   if (!roomName.value.trim()) {
     await showValidationErrorToast();
     return;
   }
 
-  if (roomImage.value) filePath.value = await uploadToMinio(roomImage.value);
+  isCreating.value = true;
+  try {
+    if (roomImage.value) filePath.value = await uploadToMinio(roomImage.value);
 
-  roomCreationStore.roomInfo.name = roomName.value;
-  roomCreationStore.roomInfo.description = roomDescription.value;
-  roomCreationStore.roomInfo.rules = roomRules.value;
-  roomCreationStore.roomInfo.baseRules = roomRootRules.value;
-  roomCreationStore.roomInfo.filePath = filePath.value;
-  await roomCreationStore.createRoom();
-  ionRouter.replace("/rooms");
-  roomCreationStore.clearAll()
+    roomCreationStore.roomInfo.name = roomName.value;
+    roomCreationStore.roomInfo.description = roomDescription.value;
+    roomCreationStore.roomInfo.filePath = filePath.value;
+    roomCreationStore.roomInfo.isPublic = roomIsPublic.value;
+    const roomId = await roomCreationStore.createRoom();
+    ionRouter.navigate(`/rooms/create/bundles/${roomId}`, 'forward', 'push');
+  } catch (error) {
+    console.error("Ошибка создания комнаты", error);
+    await showCreationErrorToast();
+  } finally {
+    isCreating.value = false;
+  }
 };
 </script>
 
@@ -123,33 +144,16 @@ const createRoom = async () => {
                      :placeholder="TEXTS.enterRoomDescription.rus" v-model="roomDescription"></ion-input>
         </ion-item>
         <ion-item color="dark" class="input-block">
-          <ion-select
-              label="Правила"
-              label-placement="floating"
-              fill="outline"
-              color="primary"
-              v-model="roomRules"
-          >
-            <ion-select-option value="DND5E">Днд 5e</ion-select-option>
-            <ion-select-option value="DND2024">Днд 5.5e</ion-select-option>
-            <ion-select-option value="HOMEBREW">Хоумбрю</ion-select-option>
-          </ion-select>
+          <ion-label>Публичная комната</ion-label>
+          <ion-toggle v-model="roomIsPublic" slot="end" color="primary"/>
         </ion-item>
-        <ion-item color="dark" class="input-block" v-show="roomRules === 'HOMEBREW'">
-          <ion-select
-              label="База для правил"
-              label-placement="floating"
-              fill="outline"
-              color="primary"
-              v-model="roomRootRules"
-          >
-            <ion-select-option value="DND5E">Днд 5e</ion-select-option>
-            <ion-select-option value="DND2024">Днд 5.5e</ion-select-option>
-          </ion-select>
-        </ion-item>
+        <p class="rules-hint">
+          Правила комнаты собираются из наборов — расы, классы и предыстории вы выберете на следующем шаге.
+        </p>
         <ion-fab slot="fixed" vertical="bottom" horizontal="end">
-          <ion-fab-button color="primary" @click="createRoom">
-            <ion-icon :icon="checkmark" color="dark"></ion-icon>
+          <ion-fab-button color="primary" :disabled="isCreating" @click="createRoom">
+            <ion-spinner v-if="isCreating" name="crescent" color="dark"></ion-spinner>
+            <ion-icon v-else :icon="arrowForward" color="dark"></ion-icon>
           </ion-fab-button>
         </ion-fab>
       </div>
@@ -216,6 +220,13 @@ const createRoom = async () => {
   width: 100%;
 }
 
+.rules-hint {
+  width: 100%;
+  margin: 0;
+  font-size: 13px;
+  color: rgba(var(--ion-color-light-rgb), 0.6);
+}
+
 @media (min-width: 1024px) {
   .form-wrapper {
     max-width: 1100px;
@@ -226,8 +237,8 @@ const createRoom = async () => {
     grid-template-areas:
       "image name"
       "image description"
-      "image rules"
-      "image base";
+      "image public"
+      "image hint";
     align-items: start;
     column-gap: 22px;
     row-gap: 14px;
@@ -259,8 +270,8 @@ const createRoom = async () => {
 
   .input-block:nth-of-type(1) { grid-area: name; }
   .input-block:nth-of-type(2) { grid-area: description; }
-  .input-block:nth-of-type(3) { grid-area: rules; }
-  .input-block:nth-of-type(4) { grid-area: base; }
+  .input-block:nth-of-type(3) { grid-area: public; }
+  .rules-hint { grid-area: hint; }
 
   ion-fab {
     margin-right: 14px;

@@ -24,7 +24,7 @@
             size="default"
             class="list-button"
             fill="clear"
-            :color="hasSubclasses ? 'primary' : 'light'"
+            :color="hasSubclasses ? 'primary' : 'medium'"
             :disabled="!currentClassOptions.length"
             @click="openSubclassList"
         >

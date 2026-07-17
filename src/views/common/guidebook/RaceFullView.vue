@@ -25,9 +25,9 @@ onMounted(async () => {
   const race = fullRaceStore.race;
   if (race?.code) {
     if (roomStore.room.id) {
-      subspecies.value = await roomCreationStore.getAvailableSubRacesForRoomId(race.code, roomStore.room.id, roomCreationStore.roomInfo.baseRules) ?? [];
+      subspecies.value = await roomCreationStore.getAvailableSubRacesForRoomId(race.code, roomStore.room.id, undefined) ?? [];
     } else {
-      subspecies.value = await roomCreationStore.getAvailableSubRaces(race.code, roomCreationStore.roomInfo.baseRules) ?? [];
+      subspecies.value = await roomCreationStore.getAvailableSubRaces(race.code, undefined) ?? [];
     }
   }
 });

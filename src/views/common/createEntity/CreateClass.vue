@@ -264,7 +264,6 @@ onBeforeMount(async () => {
     createClassStore.clazz.stats.availableSkills = [{ type: "ABILITY", count: 2, of: [] }];
   }
   const roomId = createClassStore.roomId ?? roomCreationStore.roomInfoCreatedId;
-  const baseRules = roomCreationStore.roomInfo?.baseRules;
   if (roomId) {
     try {
       abilities.value = await getAbilitiesForRoom(roomId);
@@ -273,7 +272,7 @@ onBeforeMount(async () => {
     }
   }
   try {
-    rootClassesList.value = await getRootClassesForRoom(ZERO_UUID, baseRules);
+    rootClassesList.value = await getRootClassesForRoom(ZERO_UUID, undefined);
   } catch {
     rootClassesList.value = [];
   }

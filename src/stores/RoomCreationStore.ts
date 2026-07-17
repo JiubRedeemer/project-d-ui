@@ -1,9 +1,6 @@
 import {defineStore} from "pinia";
 import {BackgroundDto, ClazzDto, RaceDto} from "@/api/rulebookApi.types";
 import {
-    createBackground,
-    createClass,
-    createRace,
     getBackgroundsForRoom,
     getClassesForRoom,
     getRacesForRoom,
@@ -12,6 +9,16 @@ import {
 } from "@/api/rulebookApi";
 import axios from "axios";
 import {GATEWAY_INTEGRATION_ROUTES} from "@/config/integrationRoutes";
+
+/** Расы, классы и предыстории комнаты собираются из бандлов, а не наследуют готовое издание. */
+const ROOM_RULES = "HOMEBREW";
+
+/**
+ * Характеристики и навыки бандлами не покрыты: rulebook выбирает их по baseRuleType
+ * (AbilityService.chooseRuleType), и только DND5E/DND2024 отдают общую таблицу 5e.
+ * При HOMEBREW список характеристик оказывается пустым, поэтому база — издание 2024.
+ */
+const ROOM_BASE_RULES = "DND2024";
 
 export const useRoomCreationStore = defineStore('createRoomCreationStore', {
     state: () => ({
@@ -22,31 +29,11 @@ export const useRoomCreationStore = defineStore('createRoomCreationStore', {
         roomInfo: {} as {
             name: string,
             description: string,
-            rules: string,
-            baseRules: string,
             filePath: string,
             isPublic: boolean,
         },
     }),
     actions: {
-        async createRacesBulk(roomId: any): Promise<void> {
-            this.races.forEach(raceDto => {
-                raceDto.roomId = this.roomInfoCreatedId;
-                createRace(this.roomInfoCreatedId, raceDto)
-            })
-        },
-        async createClassesBulk(roomId: any): Promise<void> {
-            this.classes.forEach(classDto => {
-                classDto.roomId = this.roomInfoCreatedId;
-                createClass(this.roomInfoCreatedId, classDto)
-            })
-        },
-        async createBackgroundsBulk(roomId: any): Promise<void> {
-            this.backgrounds.forEach(backgroundDto => {
-                backgroundDto.roomId = this.roomInfoCreatedId;
-                createBackground(this.roomInfoCreatedId, backgroundDto)
-            })
-        },
         async getAvailableRaces(forceRuleType: string | undefined): Promise<RaceDto[]> {
             const ZERO_UUID = "00000000-0000-0000-0000-000000000000";
             return await getRacesForRoom(ZERO_UUID, forceRuleType)
@@ -73,28 +60,24 @@ export const useRoomCreationStore = defineStore('createRoomCreationStore', {
             const ZERO_UUID = "00000000-0000-0000-0000-000000000000";
             return await getBackgroundsForRoom(ZERO_UUID, forceRuleType)
         },
-        async createRoom(): Promise<{ id: string } | undefined> {
-            try {
-                const res = await axios.put(GATEWAY_INTEGRATION_ROUTES.baseURL +
-                    GATEWAY_INTEGRATION_ROUTES.api +
-                    GATEWAY_INTEGRATION_ROUTES.rooms, {
-                    name: this.roomInfo.name,
-                    description: this.roomInfo.description,
-                    rules: this.roomInfo.rules,
-                    baseRules: this.roomInfo.baseRules,
-                    filePath: this.roomInfo.filePath,
-                    isPublic: this.roomInfo.isPublic ?? false,
-                }, {
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${localStorage.getItem("accessToken")}`
-                    }
-                });
-                this.roomInfoCreatedId = res.data.id;
-                return res.data.id
-            } catch (error) {
-                console.error("Ошибка создания комнаты", error);
-            }
+        async createRoom(): Promise<string> {
+            const res = await axios.put(GATEWAY_INTEGRATION_ROUTES.baseURL +
+                GATEWAY_INTEGRATION_ROUTES.api +
+                GATEWAY_INTEGRATION_ROUTES.rooms, {
+                name: this.roomInfo.name,
+                description: this.roomInfo.description,
+                rules: ROOM_RULES,
+                baseRules: ROOM_BASE_RULES,
+                filePath: this.roomInfo.filePath,
+                isPublic: this.roomInfo.isPublic ?? false,
+            }, {
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${localStorage.getItem("accessToken")}`
+                }
+            });
+            this.roomInfoCreatedId = res.data.id;
+            return res.data.id
         },
         clearAll(): void {
             this.races = [];
@@ -103,9 +86,8 @@ export const useRoomCreationStore = defineStore('createRoomCreationStore', {
             this.roomInfo = {} as {
                 name: string,
                 description: string,
-                rules: string,
-                baseRules: string,
                 filePath: string,
+                isPublic: boolean,
             };
             this.roomInfoCreatedId = "";
         }

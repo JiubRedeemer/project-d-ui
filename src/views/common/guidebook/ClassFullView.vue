@@ -26,9 +26,9 @@ onMounted(async () => {
   const clazz = fullClassStore.clazz;
   if (clazz?.code) {
     if (roomStore.room.id) {
-      subClasses.value = await roomCreationStore.getAvailableSubClassesForRoomId(clazz.code, roomStore.room.id, roomCreationStore.roomInfo.baseRules) ?? [];
+      subClasses.value = await roomCreationStore.getAvailableSubClassesForRoomId(clazz.code, roomStore.room.id, undefined) ?? [];
     } else {
-      subClasses.value = await roomCreationStore.getAvailableSubClasses(clazz.code, roomCreationStore.roomInfo.baseRules) ?? [];
+      subClasses.value = await roomCreationStore.getAvailableSubClasses(clazz.code, undefined) ?? [];
     }
   }
 });

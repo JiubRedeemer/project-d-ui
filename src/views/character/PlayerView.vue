@@ -34,8 +34,10 @@ import inventoryTabIcon from "../../static/icons/InventoryTab.svg"
 import notesTabIcon from "../../static/icons/NotesTab.svg"
 import magicTabIcon from "../../static/icons/Magic.svg"
 import traitsTabIcon from "../../static/icons/TraitsTab.svg"
-import { pawOutline, appsOutline } from 'ionicons/icons'
+import { pawOutline, appsOutline, constructOutline } from 'ionicons/icons'
 import InventoryView from "@/views/character/tabs/inventory/InventoryView.vue";
+import BlueprintsView from "@/views/character/tabs/inventory/BlueprintsView.vue";
+import {useBlueprintsStore} from "@/stores/BlueprintsStore";
 import TabBarCustomizeSheet from "@/components/TabBarCustomizeSheet.vue";
 import { useTabBarConfig, type TabKey } from "@/composables/useTabBarConfig";
 import {useCharacterStore} from "@/stores/CharacterStore";
@@ -64,6 +66,7 @@ import InitiativeModal from "@/views/character/tabs/common/InitiativeModal.vue";
 const route = useRoute();
 const characterStore = useCharacterStore()
 const inventoryStore = useInventoryStore()
+const blueprintsStore = useBlueprintsStore()
 const magicStore = useMagicStore()
 const noteStore = useNoteStore()
 const walletStore = useWalletStore()
@@ -88,9 +91,11 @@ const earlyVersionClickCount = ref(0);
 type PlayerTabKey = "character" | "combat" | "inventory" | "notes" | "companions";
 type CharSubTab = "abilities" | "bio" | "traits";
 type CombatSubTab = "attacks" | "magic";
+type InventorySubTab = "inventory" | "blueprints";
 const selectedTab = ref<PlayerTabKey>("character");
 const characterSubTab = ref<CharSubTab>("abilities");
 const combatSubTab = ref<CombatSubTab>("attacks");
+const inventorySubTab = ref<InventorySubTab>("inventory");
 const isDesktop = ref<boolean>(window.innerWidth >= 1024);
 const DESKTOP_BREAKPOINT_PX = 1024;
 
@@ -124,6 +129,17 @@ const COMBAT_SUB_META: Record<CombatSubTab, { label: string; icon: string }> = {
 }
 const COMBAT_SUB_TABS: CombatSubTab[] = ['attacks', 'magic']
 
+const INVENTORY_SUB_META: Record<InventorySubTab, { label: string; icon: string }> = {
+  inventory:  { label: 'Инвентарь', icon: inventoryTabIcon },
+  blueprints: { label: 'Чертежи',   icon: constructOutline },
+}
+// Подвкладка «Чертежи» появляется только если персонажу доступны чертежи;
+// без них подвкладки вообще не показываем.
+const INVENTORY_SUB_TABS = computed<InventorySubTab[]>(() =>
+  blueprintsStore.hasBlueprints ? ['inventory', 'blueprints'] : ['inventory']
+)
+const showInventorySubTabs = computed(() => blueprintsStore.hasBlueprints)
+
 const tabs = [
   {key: "character",  icon: abilitiesTabIcon, label: "Персонаж"},
   {key: "combat",     icon: attacksTabIcon,   label: "Бой"},
@@ -138,13 +154,24 @@ const showCustomizeSheet = ref(false)
 const ionTabsRef = ref<InstanceType<typeof IonTabs> | null>(null)
 const charSwipeRef = ref<HTMLElement | null>(null)
 const combatSwipeRef = ref<HTMLElement | null>(null)
+const inventorySwipeRef = ref<HTMLElement | null>(null)
 const desktopSwipeRef = ref<HTMLElement | null>(null)
 let charGesture: Gesture | null = null
 let combatGesture: Gesture | null = null
+let inventoryGesture: Gesture | null = null
 let desktopGesture: Gesture | null = null
 
 const charTransition = ref('slide-left')
 const combatTransition = ref('slide-left')
+const inventoryTransition = ref('slide-left')
+
+function setInventorySubTab(sub: InventorySubTab, direction?: 'left' | 'right') {
+  const tabs = INVENTORY_SUB_TABS.value
+  const from = tabs.indexOf(inventorySubTab.value)
+  const to = tabs.indexOf(sub)
+  inventoryTransition.value = direction ?? (to > from ? 'slide-left' : 'slide-right')
+  inventorySubTab.value = sub
+}
 
 function setCharSubTab(sub: CharSubTab, direction?: 'left' | 'right') {
   const from = CHAR_SUB_TABS.indexOf(characterSubTab.value)
@@ -212,6 +239,34 @@ function attachGestures() {
       }
     })
     combatGesture.enable()
+  }
+  if (inventorySwipeRef.value && !isDesktop.value) {
+    inventoryGesture?.destroy()
+    inventoryGesture = createGesture({
+      el: inventorySwipeRef.value,
+      gestureName: 'inventory-subtab-swipe',
+      direction: 'x',
+      threshold: 10,
+      canStart(detail) {
+        let el = detail.event.target as HTMLElement | null;
+        while (el) {
+          const style = window.getComputedStyle(el);
+          if (style.overflowX === 'auto' || style.overflowX === 'scroll') return false;
+          el = el.parentElement;
+        }
+        return true;
+      },
+      onEnd(detail) {
+        if (Math.abs(detail.deltaX) < 48 || Math.abs(detail.deltaX) < Math.abs(detail.deltaY) * 1.5) return
+        const tabs = INVENTORY_SUB_TABS.value
+        if (tabs.length < 2) return
+        const idx = tabs.indexOf(inventorySubTab.value)
+        const dir = detail.deltaX < 0 ? 'left' : 'right'
+        if (detail.deltaX < 0 && idx < tabs.length - 1) setInventorySubTab(tabs[idx + 1], dir)
+        else if (detail.deltaX > 0 && idx > 0) setInventorySubTab(tabs[idx - 1], dir)
+      }
+    })
+    inventoryGesture.enable()
   }
   if (desktopSwipeRef.value && isDesktop.value) {
     desktopGesture?.destroy()
@@ -396,9 +451,28 @@ onMounted(async () => {
   window.addEventListener("resize", onResize);
   void detectIpCountryCode();
   window.addEventListener(QUEUE_FLUSHED_EVENT, onQueueFlushed);
+  void loadBlueprints();
   await nextTick();
   attachGestures();
 });
+
+async function loadBlueprints() {
+  const roomId = route.params.roomId as string;
+  const characterId = route.params.characterId as string;
+  if (!roomId || !characterId) return;
+  await blueprintsStore.loadForCharacter(roomId, characterId);
+  // Персонаж мог сменить класс/уровень — если чертежей больше нет, вернуть на инвентарь.
+  if (!blueprintsStore.hasBlueprints) inventorySubTab.value = "inventory";
+}
+
+// Чертежи выдаются не выше уровня персонажа, поэтому на повышении список перезапрашиваем.
+watch(
+  () => characterStore.character?.level?.level,
+  (level, prevLevel) => {
+    if (level == null || prevLevel == null || level === prevLevel) return;
+    void loadBlueprints();
+  }
+);
 
 watch(asyncDone, async (done) => {
   if (done) { await nextTick(); attachGestures(); }
@@ -409,6 +483,7 @@ onUnmounted(() => {
   window.removeEventListener(QUEUE_FLUSHED_EVENT, onQueueFlushed);
   charGesture?.destroy()
   combatGesture?.destroy()
+  inventoryGesture?.destroy()
   desktopGesture?.destroy()
   if (refreshTimer) clearTimeout(refreshTimer);
   if (queueFlushedTimer) clearTimeout(queueFlushedTimer);
@@ -576,7 +651,7 @@ const openSubheader = () => {
       <div class="subheader-block"
            :class="{
              openSubheader: subheaderStore.subheaderOpened,
-             'has-subtabs': !isDesktop && (selectedTab === 'character' || selectedTab === 'combat'),
+             'has-subtabs': !isDesktop && (selectedTab === 'character' || selectedTab === 'combat' || (selectedTab === 'inventory' && showInventorySubTabs)),
              'has-states': subheaderHasStates,
            }">
         <PlayerViewSubheader v-if="asyncDone" @speed-selected="openEditSpeedModal"
@@ -610,6 +685,18 @@ const openSubheader = () => {
           >
             <ion-icon :icon="COMBAT_SUB_META[sub].icon"/>
             <span>{{ COMBAT_SUB_META[sub].label }}</span>
+          </button>
+        </div>
+        <div v-if="!isDesktop && selectedTab === 'inventory' && showInventorySubTabs" class="char-subtab-bar">
+          <button
+            v-for="sub in INVENTORY_SUB_TABS"
+            :key="sub"
+            class="char-subtab-btn"
+            :class="{ active: inventorySubTab === sub }"
+            @click="setInventorySubTab(sub)"
+          >
+            <ion-icon :icon="INVENTORY_SUB_META[sub].icon"/>
+            <span>{{ INVENTORY_SUB_META[sub].label }}</span>
           </button>
         </div>
       </div>
@@ -660,21 +747,35 @@ const openSubheader = () => {
                 <span>{{ COMBAT_SUB_META[sub].label }}</span>
               </button>
             </div>
+            <!-- subtab bar sticky для inventory (только если есть чертежи) -->
+            <div v-else-if="selectedTab === 'inventory' && showInventorySubTabs" class="desktop-subtab-sticky">
+              <button
+                v-for="sub in INVENTORY_SUB_TABS"
+                :key="sub"
+                class="char-subtab-btn"
+                :class="{ active: inventorySubTab === sub }"
+                @click="setInventorySubTab(sub)"
+              >
+                <ion-icon :icon="INVENTORY_SUB_META[sub].icon"/>
+                <span>{{ INVENTORY_SUB_META[sub].label }}</span>
+              </button>
+            </div>
             <!-- заголовок для остальных вкладок -->
             <h2 v-else class="desktop-tab-title">{{ selectedTabTitle }}</h2>
 
             <!-- контент с анимацией для подвкладок -->
             <Transition
-              :name="selectedTab === 'character' ? charTransition : selectedTab === 'combat' ? combatTransition : 'slide-left'"
+              :name="selectedTab === 'character' ? charTransition : selectedTab === 'combat' ? combatTransition : selectedTab === 'inventory' ? inventoryTransition : 'slide-left'"
               mode="out-in"
             >
-              <div :key="selectedTab === 'character' ? characterSubTab : selectedTab === 'combat' ? combatSubTab : selectedTab" class="subtab-page">
+              <div :key="selectedTab === 'character' ? characterSubTab : selectedTab === 'combat' ? combatSubTab : selectedTab === 'inventory' ? inventorySubTab : selectedTab" class="subtab-page">
                 <AbilitiesView v-if="asyncDone && selectedTab === 'character' && characterSubTab === 'abilities'" @ability-selected="openEditAbilityModal" @skill-selected="openEditSkillModal"/>
                 <AttacksAndSkillsView v-if="asyncDone && selectedTab === 'combat' && combatSubTab === 'attacks'" @ability-selected="openEditAbilityModal"/>
                 <Suspense><PersonalityView v-if="asyncDone && selectedTab === 'character' && characterSubTab === 'bio'"/></Suspense>
                 <Suspense><TraitsView v-if="asyncDone && selectedTab === 'character' && characterSubTab === 'traits'"/></Suspense>
                 <Suspense><MagicView v-if="asyncDone && selectedTab === 'combat' && combatSubTab === 'magic'"/></Suspense>
-                <Suspense><InventoryView v-if="asyncDone && selectedTab === 'inventory'"/></Suspense>
+                <Suspense><InventoryView v-if="asyncDone && selectedTab === 'inventory' && inventorySubTab === 'inventory'"/></Suspense>
+                <Suspense><BlueprintsView v-if="asyncDone && selectedTab === 'inventory' && inventorySubTab === 'blueprints'"/></Suspense>
                 <Suspense><NotesView v-if="asyncDone && selectedTab === 'notes'"/></Suspense>
                 <Suspense><CompanionsView v-if="asyncDone && selectedTab === 'companions'"/></Suspense>
               </div>
@@ -725,10 +826,13 @@ const openSubheader = () => {
                      color="dark"
                      direction="y"
                      :scroll-x="false">
-          <div class="tab-content inventory" :class="{ openSubheader: subheaderStore.subheaderOpened }">
-            <Suspense>
-              <InventoryView v-if="asyncDone"/>
-            </Suspense>
+          <div ref="inventorySwipeRef" class="tab-content inventory subtab-host" :class="{ openSubheader: subheaderStore.subheaderOpened, 'has-subtabs': showInventorySubTabs }">
+            <Transition :name="inventoryTransition" mode="out-in">
+              <div :key="inventorySubTab" class="subtab-page">
+                <Suspense><InventoryView v-if="asyncDone && inventorySubTab === 'inventory'"/></Suspense>
+                <Suspense><BlueprintsView v-if="asyncDone && inventorySubTab === 'blueprints'"/></Suspense>
+              </div>
+            </Transition>
           </div>
         </ion-content>
       </ion-tab>
@@ -1212,6 +1316,15 @@ ion-page {
   transition: margin-top 0.3s ease;
 }
 
+/* У инвентаря подвкладки появляются только с чертежами — освобождаем место под их бар. */
+.inventory.has-subtabs {
+  margin-top: calc(120px + 10px);
+}
+
+.inventory.has-subtabs.openSubheader {
+  margin-top: calc(220px + 10px);
+}
+
 .subheader-block {
   position: absolute;
   top: 100%;
@@ -1268,7 +1381,8 @@ ion-page {
 
   .inventory,
   .notes,
-  .companions {
+  .companions,
+  .inventory.has-subtabs {
     margin-top: 0;
     transition: margin-top 0.3s ease;
   }
@@ -1296,6 +1410,11 @@ ion-page {
 
     .character.openSubheader,
     .combat.openSubheader {
+      margin-top: calc(200px + 46px);
+    }
+
+    /* База раскрытого сабхедера на iOS своя (200px), поэтому бар подвкладок добавляем к ней. */
+    .inventory.has-subtabs.openSubheader {
       margin-top: calc(200px + 46px);
     }
 
